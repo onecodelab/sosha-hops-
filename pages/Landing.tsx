@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Shield, Briefcase, Coffee, ChefHat } from 'lucide-react';
+import { SoshaLogo } from '../components/SoshaLogo';
+import ThemeToggle from '../components/ThemeToggle';
+import { cn } from '../components/ui';
 
 const Landing: React.FC = () => {
   const navigate = useNavigate();
@@ -8,12 +11,12 @@ const Landing: React.FC = () => {
   const [showContent, setShowContent] = useState(false);
 
   useEffect(() => {
-    // Phase 1: Reveal content slightly before intro finishes for smooth transition
+    // Phase 1: Reveal content slightly before intro finishes
     const contentTimer = setTimeout(() => {
       setShowContent(true);
     }, 2200);
 
-    // Phase 2: Remove intro layer to allow interaction
+    // Phase 2: Remove intro layer
     const introTimer = setTimeout(() => {
       setShowIntro(false);
     }, 2800);
@@ -26,9 +29,9 @@ const Landing: React.FC = () => {
 
   const roles = [
     { id: 'owner', label: 'Owner / Admin', icon: <Shield className="w-8 h-8 text-primary" />, desc: 'System Control' },
-    { id: 'manager', label: 'Manager', icon: <Briefcase className="w-8 h-8 text-purple-400" />, desc: 'Operations' },
-    { id: 'waiter', label: 'Waiter', icon: <Coffee className="w-8 h-8 text-orange-400" />, desc: 'Service' },
-    { id: 'kitchen', label: 'Kitchen', icon: <ChefHat className="w-8 h-8 text-red-400" />, desc: 'KDS Display' },
+    { id: 'manager', label: 'Manager', icon: <Briefcase className="w-8 h-8 text-purple-500" />, desc: 'Operations' },
+    { id: 'waiter', label: 'Waiter', icon: <Coffee className="w-8 h-8 text-orange-500" />, desc: 'Service' },
+    { id: 'kitchen', label: 'Kitchen', icon: <ChefHat className="w-8 h-8 text-red-500" />, desc: 'KDS Display' },
   ];
 
   return (
@@ -52,17 +55,18 @@ const Landing: React.FC = () => {
         }
       `}</style>
 
-      <div className="min-h-screen bg-black overflow-hidden font-sans selection:bg-primary selection:text-white">
+      <div className="min-h-screen bg-background overflow-hidden font-sans selection:bg-primary selection:text-white transition-colors duration-500">
         
+        {/* Theme Toggle (Absolute Top Right - Visible Immediately) */}
+        <div className="fixed top-6 right-6 z-[60]">
+          <ThemeToggle />
+        </div>
+
         {/* Intro Overlay */}
         {showIntro && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black pointer-events-none">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-background pointer-events-none transition-colors duration-500">
             <div className="relative w-32 h-32 md:w-48 md:h-48 animate-intro">
-               <img 
-                 src="https://aistudiocdn.com/uploads/image_c40e53a2-0941-45bd-895c-55b63777d206.png" 
-                 alt="Sosha" 
-                 className="w-full h-full object-contain drop-shadow-2xl"
-               />
+               <SoshaLogo className="w-full h-full drop-shadow-2xl" />
             </div>
           </div>
         )}
@@ -72,17 +76,13 @@ const Landing: React.FC = () => {
           className={`min-h-screen flex flex-col items-center justify-center p-4 transition-all duration-1000 ${showContent ? 'opacity-100 blur-0' : 'opacity-0 blur-sm'}`}
         >
            {/* Header / Logo */}
-           <div className="text-center space-y-8 mb-16 fade-in-up" style={{ animationDelay: '0ms' }}>
-              <div className="w-24 h-24 mx-auto bg-gray-900/50 rounded-3xl p-5 border border-white/10 shadow-2xl backdrop-blur-sm">
-                 <img 
-                   src="https://aistudiocdn.com/uploads/image_c40e53a2-0941-45bd-895c-55b63777d206.png" 
-                   alt="Sosha" 
-                   className="w-full h-full object-contain"
-                 />
+           <div className="text-center space-y-6 mb-16 fade-in-up" style={{ animationDelay: '0ms' }}>
+              <div className="w-32 h-32 mx-auto flex items-center justify-center transform hover:scale-105 transition-transform duration-500">
+                 <SoshaLogo className="w-full h-full drop-shadow-[0_0_25px_rgba(33,123,244,0.3)] dark:drop-shadow-[0_0_25px_rgba(255,176,57,0.3)]" />
               </div>
               <div className="space-y-2">
-                <h1 className="text-4xl md:text-5xl font-bold text-white tracking-tighter">Sosha OS</h1>
-                <p className="text-gray-500 font-medium tracking-wide text-sm uppercase">Restaurant Operating System</p>
+                <h1 className="text-4xl md:text-5xl font-bold text-foreground tracking-tighter transition-colors">Sosha OS</h1>
+                <p className="text-muted font-medium tracking-wide text-sm uppercase transition-colors">Restaurant Operating System</p>
               </div>
            </div>
 
@@ -92,13 +92,13 @@ const Landing: React.FC = () => {
                 <button
                   key={role.id}
                   onClick={() => navigate(`/login/${role.id}`)}
-                  className="group relative bg-gray-900/40 hover:bg-gray-900 border border-white/5 hover:border-primary/50 rounded-2xl p-6 transition-all duration-300 hover:shadow-2xl hover:shadow-primary/10 hover:-translate-y-1 text-left overflow-hidden"
+                  className="group relative bg-card/50 hover:bg-card border border-border hover:border-primary/50 rounded-2xl p-6 transition-all duration-300 hover:shadow-xl hover:shadow-primary/5 hover:-translate-y-1 text-left overflow-hidden"
                 >
-                  <div className="mb-4 p-3 bg-gray-950 rounded-xl inline-block group-hover:bg-primary/20 group-hover:text-white transition-colors border border-white/5">
+                  <div className="mb-4 p-3 bg-background rounded-xl inline-block group-hover:bg-primary/10 transition-colors border border-border">
                     {role.icon}
                   </div>
-                  <h3 className="text-lg font-bold text-white mb-1 tracking-tight">{role.label}</h3>
-                  <p className="text-sm text-gray-500 group-hover:text-gray-300 transition-colors">{role.desc}</p>
+                  <h3 className="text-lg font-bold text-foreground mb-1 tracking-tight">{role.label}</h3>
+                  <p className="text-sm text-muted group-hover:text-foreground/70 transition-colors">{role.desc}</p>
                   
                   {/* Subtle gradient glow */}
                   <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 blur-3xl rounded-full translate-x-10 -translate-y-10 group-hover:bg-primary/10 transition-all duration-500" />
@@ -106,7 +106,7 @@ const Landing: React.FC = () => {
               ))}
            </div>
            
-           <div className="fixed bottom-8 text-gray-700 text-xs font-mono uppercase tracking-widest fade-in-up" style={{ animationDelay: '400ms' }}>
+           <div className="fixed bottom-8 text-muted text-xs font-mono uppercase tracking-widest fade-in-up" style={{ animationDelay: '400ms' }}>
              powered by withramin.ai
            </div>
         </div>

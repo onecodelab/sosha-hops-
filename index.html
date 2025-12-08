@@ -1,14 +1,15 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Sosha OS - Restaurant System</title>
-    <link rel="icon" type="image/png" href="https://aistudiocdn.com/uploads/image_c40e53a2-0941-45bd-895c-55b63777d206.png" />
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><circle cx=%2250%22 cy=%2250%22 r=%2245%22 stroke=%22%23FFB039%22 stroke-width=%225%22 fill=%22none%22/><text x=%2250%22 y=%2258%22 font-family=%22sans-serif%22 font-weight=%22bold%22 font-size=%2226%22 text-anchor=%22middle%22 fill=%22%23FFB039%22>S</text></svg>" />
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Work+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script>
       tailwind.config = {
+        darkMode: 'class',
         theme: {
           extend: {
             fontFamily: {
@@ -19,33 +20,56 @@
                 DEFAULT: '#217BF4',
                 hover: '#1a62c4',
               },
-              card: '#141414',
-              background: '#0a0a0a',
-              border: '#262626',
+              // Semantic colors mapping to CSS variables
+              background: 'var(--background)',
+              card: 'var(--card)',
+              border: 'var(--border)',
+              foreground: 'var(--foreground)',
+              muted: 'var(--muted)',
             }
           }
         }
       }
     </script>
     <style>
-      body {
-        background-color: #0a0a0a;
-        color: #ffffff;
+      :root {
+        /* Light Mode - Clean Slate (Brand Aligned) */
+        --background: #f8fafc; /* Slate-50 */
+        --card: #ffffff;
+        --border: #e2e8f0; /* Slate-200 */
+        --foreground: #0f172a; /* Slate-900 */
+        --muted: #64748b; /* Slate-500 */
       }
-      /* Custom scrollbar for dark theme */
+      
+      .dark {
+        /* Dark Mode - Original Sosha OS */
+        --background: #0a0a0a;
+        --card: #141414;
+        --border: #262626;
+        --foreground: #ffffff;
+        --muted: #a3a3a3;
+      }
+      
+      body {
+        background-color: var(--background);
+        color: var(--foreground);
+        transition: background-color 0.3s ease, color 0.3s ease;
+      }
+
+      /* Custom scrollbar */
       ::-webkit-scrollbar {
         width: 8px;
         height: 8px;
       }
       ::-webkit-scrollbar-track {
-        background: #141414; 
+        background: var(--card); 
       }
       ::-webkit-scrollbar-thumb {
-        background: #262626; 
+        background: var(--border); 
         border-radius: 4px;
       }
       ::-webkit-scrollbar-thumb:hover {
-        background: #333; 
+        background: var(--muted); 
       }
     </style>
   <script type="importmap">
@@ -57,7 +81,8 @@
     "react/": "https://aistudiocdn.com/react@^19.2.1/",
     "react": "https://aistudiocdn.com/react@^19.2.1",
     "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.1/",
-    "@supabase/supabase-js": "https://aistudiocdn.com/@supabase/supabase-js@^2.86.2"
+    "@supabase/supabase-js": "https://aistudiocdn.com/@supabase/supabase-js@^2.86.2",
+    "jsqr": "https://esm.sh/jsqr@1.4.0"
   }
 }
 </script>

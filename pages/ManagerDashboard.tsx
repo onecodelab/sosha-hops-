@@ -4,7 +4,9 @@ import { useAuth } from '../AuthContext';
 import { supabase } from '../supabase';
 import { MenuItem, Order } from '../types';
 import { Button, Card, CardContent, CardHeader, CardTitle, Input, showToast, cn } from '../components/ui';
-import { Building2, Smartphone, Wallet, Receipt, XCircle } from 'lucide-react';
+import { Building2, Smartphone, Wallet, Receipt, XCircle, Scan, QrCode, CheckCircle2 } from 'lucide-react';
+import { SoshaLogo } from '../components/SoshaLogo';
+import QRScanner from '../components/QRScanner';
 
 // Bank Configuration with Default Accounts
 const BANKS = [
@@ -38,6 +40,7 @@ const ManagerDashboard: React.FC = () => {
   const [accountNumber, setAccountNumber] = useState(BANKS[0].defaultAccount);
   const [verifying, setVerifying] = useState(false);
   const [verificationResult, setVerificationResult] = useState<VerificationResult | null>(null);
+  const [isScannerOpen, setIsScannerOpen] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -67,6 +70,12 @@ const ManagerDashboard: React.FC = () => {
     setSelectedBank(bank);
     setAccountNumber(bank.defaultAccount);
     setVerificationResult(null); // Reset result on bank change
+  };
+
+  const handleScan = (data: string) => {
+    setReferenceNumber(data);
+    setIsScannerOpen(false);
+    showToast('Transaction ID scanned successfully');
   };
 
   const handleVerifyPayment = () => {
@@ -106,6 +115,24 @@ const ManagerDashboard: React.FC = () => {
     }, 1500);
   };
 
+  const handleDone = () => {
+    if (verificationResult && verificationResult.success) {
+      const mockOrder: any = {
+        id: `txn-${Date.now()}`,
+        table_no: 'Mobile',
+        status: 'paid',
+        total_amount: verificationResult.amount,
+        created_at: new Date().toISOString(),
+        verified_by_user: { name: 'Mobile App' }
+      };
+      
+      setRecentOrders(prev => [mockOrder, ...prev]);
+      showToast('Transaction saved to history');
+    }
+    setVerificationResult(null);
+    setReferenceNumber('');
+  };
+
   const filteredItems = menuItems.filter(i => i.name.toLowerCase().includes(searchInv.toLowerCase()));
 
   return (
@@ -122,22 +149,22 @@ const ManagerDashboard: React.FC = () => {
           </CardHeader>
           <CardContent className="flex-1 overflow-y-auto max-h-[600px] space-y-2">
             {filteredItems.map(item => (
-              <div key={item.id} className="flex items-center justify-between p-3 rounded-lg border border-border bg-gray-900/30 hover:bg-gray-900/50 transition-colors">
+              <div key={item.id} className="flex items-center justify-between p-3 rounded-lg border border-border bg-black/5 dark:bg-gray-900/30 hover:bg-black/10 dark:hover:bg-gray-900/50 transition-colors">
                 <div className="flex items-center gap-3">
                    {item.image_url ? (
-                     <img src={item.image_url} alt={item.name} className="w-10 h-10 rounded-md object-cover bg-gray-800" />
+                     <img src={item.image_url} alt={item.name} className="w-10 h-10 rounded-md object-cover bg-gray-200 dark:bg-gray-800" />
                    ) : (
-                     <div className="w-10 h-10 rounded-md bg-gray-800 flex items-center justify-center text-xs text-gray-500">Img</div>
+                     <div className="w-10 h-10 rounded-md bg-gray-200 dark:bg-gray-800 flex items-center justify-center text-xs text-muted">Img</div>
                    )}
                    <div>
-                      <p className="font-medium text-sm text-white">{item.name}</p>
-                      <p className="text-xs text-gray-400">ETB {item.price}</p>
+                      <p className="font-medium text-sm text-foreground">{item.name}</p>
+                      <p className="text-xs text-muted">ETB {item.price}</p>
                    </div>
                 </div>
                 <div className="flex items-center gap-3">
                    <button 
                      onClick={() => toggleAvailability(item.id, item.is_available)}
-                     className={`w-12 h-6 rounded-full p-1 transition-all duration-300 ease-in-out ${item.is_available ? 'bg-primary' : 'bg-gray-700'}`}
+                     className={`w-12 h-6 rounded-full p-1 transition-all duration-300 ease-in-out ${item.is_available ? 'bg-primary' : 'bg-gray-400 dark:bg-gray-700'}`}
                    >
                      <div className={`w-4 h-4 rounded-full bg-white shadow-sm transition-transform duration-300 ${item.is_available ? 'translate-x-6' : ''}`} />
                    </button>
@@ -154,23 +181,25 @@ const ManagerDashboard: React.FC = () => {
           <Card className="overflow-hidden border-primary/20">
             <CardHeader className="pb-4">
               <CardTitle className="flex items-center gap-2">
-                <Receipt className="w-5 h-5 text-primary" />
+                <div className="p-1.5 bg-primary/20 rounded-md">
+                   <Receipt className="w-5 h-5 text-primary" />
+                </div>
                 Payment Verification
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
               
-              {/* Bank Selector */}
-              <div className="grid grid-cols-4 gap-2">
+              {/* Bank Selector (Tabbed Segmented Control) */}
+              <div className="grid grid-cols-4 gap-2 bg-black/5 dark:bg-gray-900/50 p-1 rounded-xl border border-border">
                 {BANKS.map(bank => (
                   <button
                     key={bank.id}
                     onClick={() => handleBankChange(bank.id)}
                     className={cn(
-                      "flex flex-col items-center justify-center p-2 rounded-lg border transition-all text-xs font-medium gap-1",
+                      "flex flex-col items-center justify-center py-3 rounded-lg transition-all duration-200 text-xs font-medium gap-1.5 relative",
                       selectedBank.id === bank.id 
-                        ? "bg-primary/20 border-primary text-primary shadow-[0_0_10px_rgba(33,123,244,0.2)]" 
-                        : "bg-gray-900/50 border-gray-800 text-gray-400 hover:bg-gray-800 hover:border-gray-700"
+                        ? "bg-primary/10 border border-primary text-primary shadow-sm" 
+                        : "text-muted hover:text-foreground hover:bg-black/5 dark:hover:bg-white/5"
                     )}
                   >
                     {bank.icon}
@@ -180,82 +209,106 @@ const ManagerDashboard: React.FC = () => {
               </div>
 
               {/* Inputs */}
-              <div className="space-y-4">
-                <div className="space-y-1.5">
-                   <label className="text-xs font-medium text-gray-400 uppercase tracking-wide">Transaction ID / Reference</label>
-                   <Input 
-                     placeholder="e.g. FT25333Q3RYH" 
-                     className="bg-gray-950 border-gray-800 focus:border-primary/50 text-lg tracking-wider"
-                     value={referenceNumber} 
-                     onChange={e => setReferenceNumber(e.target.value)} 
-                   />
-                   <p className="text-[10px] text-gray-500">Enter the reference number or upload receipt image (Coming soon)</p>
+              <div className="space-y-5">
+                <div className="space-y-2">
+                   <label className="text-xs font-bold text-muted uppercase tracking-wide">Transaction ID / Reference</label>
+                   <div className="relative group">
+                     <Input 
+                       placeholder="e.g. FT25333Q3RYH" 
+                       className="bg-black/5 dark:bg-gray-950/50 border-border focus:border-primary/50 h-12 text-base tracking-wide pl-4 pr-32 font-medium"
+                       value={referenceNumber} 
+                       onChange={e => setReferenceNumber(e.target.value)} 
+                     />
+                     <div className="absolute right-1 top-1 bottom-1 flex items-center">
+                       <Button 
+                         variant="secondary" 
+                         size="sm" 
+                         className="h-full px-4 text-xs font-medium border-l border-border flex items-center gap-2"
+                         onClick={() => setIsScannerOpen(true)}
+                       >
+                         <QrCode className="w-4 h-4 text-primary" />
+                         Scan
+                       </Button>
+                     </div>
+                   </div>
+                   <p className="text-[10px] text-muted">Enter the reference number or upload receipt image (Coming soon)</p>
                 </div>
 
-                <div className="space-y-1.5">
-                   <label className="text-xs font-medium text-gray-400 uppercase tracking-wide">Account Number (Receiver)</label>
-                   <Input 
-                     placeholder={selectedBank.defaultAccount ? "Locked" : "Enter Account #"}
-                     className="bg-gray-950 border-gray-800 font-mono"
-                     value={accountNumber} 
-                     onChange={e => setAccountNumber(e.target.value)}
-                   />
-                   {selectedBank.defaultAccount && (
-                     <p className="text-[10px] text-primary/70">Default verification account for {selectedBank.name}</p>
-                   )}
+                <div className="space-y-2">
+                   <label className="text-xs font-bold text-muted uppercase tracking-wide">Account Number (Receiver)</label>
+                   <div className={cn(
+                     "relative rounded-lg border-2 p-4 transition-all duration-300",
+                     selectedBank.defaultAccount
+                       ? "bg-primary/5 border-primary/50 shadow-[inset_0_0_15px_rgba(33,123,244,0.05)]" 
+                       : "bg-black/5 dark:bg-gray-950 border-border"
+                   )}>
+                     <div className="text-xl font-bold font-mono tracking-wider text-foreground">
+                        {accountNumber || <span className="text-muted text-sm font-sans font-normal italic">Select a bank to view account</span>}
+                     </div>
+                     {selectedBank.defaultAccount && (
+                        <p className="text-[10px] font-medium text-primary mt-1.5">
+                          Default verification account for {selectedBank.name}
+                        </p>
+                     )}
+                   </div>
                 </div>
               </div>
 
               {/* Result Display */}
               {verificationResult && (
                 <div className={cn(
-                  "rounded-xl border p-4 space-y-3 animate-in fade-in zoom-in-95 duration-300",
+                  "rounded-xl border p-4 space-y-3 animate-in fade-in zoom-in-95 duration-300 relative overflow-hidden mt-2",
                   verificationResult.success ? "bg-green-500/5 border-green-500/20" : "bg-red-500/5 border-red-500/20"
                 )}>
-                  <div className="flex items-center justify-between border-b border-white/5 pb-2 mb-2">
-                    <span className="font-semibold text-sm text-gray-300">Verification Result</span>
-                    <span className={cn("font-mono font-bold text-sm", verificationResult.success ? "text-green-400" : "text-red-400")}>
+                  <div className="absolute -top-4 -right-4 w-20 h-20 opacity-10">
+                    <SoshaLogo className="w-full h-full" />
+                  </div>
+
+                  <div className="flex items-center justify-between border-b border-border pb-2 mb-2 relative z-10">
+                    <div className="flex items-center gap-2">
+                      <div className="w-5 h-5 opacity-70">
+                         <SoshaLogo className="w-full h-full" />
+                      </div>
+                      <span className="font-semibold text-sm text-muted">Verification Result</span>
+                    </div>
+                    <span className={cn("font-mono font-bold text-sm", verificationResult.success ? "text-green-500" : "text-red-500")}>
                       {verificationResult.success ? "true" : "false"}
                     </span>
                   </div>
 
                   {verificationResult.success ? (
-                    <div className="space-y-1.5 text-xs">
+                    <div className="space-y-1.5 text-xs relative z-10">
                       <div className="flex justify-between">
-                        <span className="text-gray-500">Payer:</span>
-                        <span className="text-white font-medium">{verificationResult.payer}</span>
+                        <span className="text-muted">Payer:</span>
+                        <span className="text-foreground font-medium">{verificationResult.payer}</span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-gray-500">Payer Account:</span>
-                        <span className="text-white font-mono">{verificationResult.payerAccount}</span>
+                        <span className="text-muted">Payer Account:</span>
+                        <span className="text-foreground font-mono">{verificationResult.payerAccount}</span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-gray-500">Receiver:</span>
-                        <span className="text-white font-medium">{verificationResult.receiver}</span>
+                        <span className="text-muted">Receiver:</span>
+                        <span className="text-foreground font-medium">{verificationResult.receiver}</span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-gray-500">Receiver Account:</span>
-                        <span className="text-white font-mono">{verificationResult.receiverAccount}</span>
+                        <span className="text-muted">Receiver Account:</span>
+                        <span className="text-foreground font-mono">{verificationResult.receiverAccount}</span>
                       </div>
-                      <div className="flex justify-between items-center py-1 my-1 border-t border-b border-white/5">
-                        <span className="text-gray-500">Amount:</span>
+                      <div className="flex justify-between items-center py-1 my-1 border-t border-border">
+                        <span className="text-muted">Amount:</span>
                         <span className="text-primary font-bold text-sm">ETB {verificationResult.amount.toLocaleString()}</span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-gray-500">Date:</span>
-                        <span className="text-gray-400">{new Date(verificationResult.date).toLocaleString()}</span>
+                        <span className="text-muted">Date:</span>
+                        <span className="text-muted">{new Date(verificationResult.date).toLocaleString()}</span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-gray-500">Reference:</span>
-                        <span className="text-white font-mono">{verificationResult.reference}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-500">Reason:</span>
-                        <span className="text-gray-400">{verificationResult.reason}</span>
+                        <span className="text-muted">Reference:</span>
+                        <span className="text-foreground font-mono">{verificationResult.reference}</span>
                       </div>
                     </div>
                   ) : (
-                    <div className="text-center py-4 text-gray-400 text-sm flex flex-col items-center">
+                    <div className="text-center py-4 text-muted text-sm flex flex-col items-center">
                       <XCircle className="w-8 h-8 text-red-500 mb-2 opacity-50" />
                       Transaction details not found.
                     </div>
@@ -263,22 +316,29 @@ const ManagerDashboard: React.FC = () => {
                 </div>
               )}
 
-              {/* Verify Button */}
+              {/* Verify / Done Button */}
               <Button 
-                onClick={handleVerifyPayment} 
+                onClick={verificationResult ? handleDone : handleVerifyPayment} 
                 className={cn(
-                  "w-full h-12 text-sm font-bold tracking-wide shadow-lg transition-all",
+                  "w-full h-12 text-sm font-bold tracking-wide shadow-lg transition-all mt-4",
                   verifying ? "opacity-80" : "hover:scale-[1.01]"
                 )}
                 disabled={verifying}
                 style={{
                   background: verifying 
-                    ? 'linear-gradient(90deg, #217BF4 0%, #0a4aa8 100%)' 
-                    : 'linear-gradient(90deg, #100f2e 0%, #4a1d47 100%)', // Match dark vibe in screenshot
+                    ? 'linear-gradient(90deg, #4c1d95 0%, #2e1065 100%)' 
+                    : verificationResult?.success
+                      ? 'linear-gradient(90deg, #10b981 0%, #059669 100%)' // Green for Done
+                      : 'linear-gradient(90deg, #3b0764 0%, #581c87 100%)', // Dark purple gradient
                   border: '1px solid rgba(255,255,255,0.1)'
                 }}
               >
-                {verifying ? 'Verifying...' : 'Verify'}
+                {verifying 
+                  ? 'Verifying...' 
+                  : verificationResult?.success 
+                    ? <><CheckCircle2 className="w-4 h-4 mr-2" /> Done</> 
+                    : 'Verify'
+                }
               </Button>
 
             </CardContent>
@@ -288,20 +348,24 @@ const ManagerDashboard: React.FC = () => {
           <Card>
             <CardHeader><CardTitle>Recent Activity</CardTitle></CardHeader>
             <CardContent>
-               {recentOrders.length === 0 ? <p className="text-gray-500 text-sm">No activity yet.</p> : (
+               {recentOrders.length === 0 ? <p className="text-muted text-sm">No activity yet.</p> : (
                  <div className="space-y-0">
                    {recentOrders.map((order, i) => (
-                     <div key={order.id} className={`flex items-center justify-between text-sm py-3 ${i !== recentOrders.length -1 ? 'border-b border-gray-800' : ''}`}>
+                     <div key={order.id} className={`flex items-center justify-between text-sm py-3 ${i !== recentOrders.length -1 ? 'border-b border-border' : ''}`}>
                        <div className="flex items-center gap-3">
                          <div className={`w-2 h-2 rounded-full ${order.status === 'paid' ? 'bg-green-500' : 'bg-yellow-500'}`} />
                          <div>
-                            <p className="font-bold text-white">Table {order.table_no}</p>
-                            <p className="text-xs text-gray-500 capitalize">{order.status.replace('_', ' ')}</p>
+                            {order.table_no === 'Mobile' ? (
+                                <p className="font-bold text-blue-500 dark:text-blue-400">Mobile Payment</p>
+                            ) : (
+                                <p className="font-bold text-foreground">Table {order.table_no}</p>
+                            )}
+                            <p className="text-xs text-muted capitalize">{order.status.replace('_', ' ')}</p>
                          </div>
                        </div>
                        <div className="text-right">
-                         <div className="font-medium text-white">ETB {order.total_amount}</div>
-                         <div className="text-xs text-gray-500">
+                         <div className="font-medium text-foreground">ETB {order.total_amount.toLocaleString()}</div>
+                         <div className="text-xs text-muted">
                            {new Date(order.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
                          </div>
                        </div>
@@ -313,6 +377,14 @@ const ManagerDashboard: React.FC = () => {
           </Card>
         </div>
       </div>
+      
+      {/* Scanner Overlay */}
+      {isScannerOpen && (
+        <QRScanner 
+          onScan={handleScan} 
+          onClose={() => setIsScannerOpen(false)} 
+        />
+      )}
     </DashboardLayout>
   );
 };

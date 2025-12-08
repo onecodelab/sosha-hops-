@@ -4,7 +4,8 @@ import { useAuth } from '../AuthContext';
 import { supabase } from '../supabase';
 import { MenuItem, Order, OrderItem, CartItem } from '../types';
 import { Button, Card, CardContent, Input, Badge, Dialog, showToast, cn } from '../components/ui';
-import { Plus, Minus, Search, ShoppingBag, Check, X, CreditCard, Clock } from 'lucide-react';
+import { Plus, Minus, Search, ShoppingBag, Check, X, CreditCard, Clock, QrCode } from 'lucide-react';
+import QRScanner from '../components/QRScanner';
 
 const WaiterDashboard: React.FC = () => {
   const { profile, user } = useAuth();
@@ -17,6 +18,7 @@ const WaiterDashboard: React.FC = () => {
   const [tableNo, setTableNo] = useState('');
   const [cart, setCart] = useState<CartItem[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [isScannerOpen, setIsScannerOpen] = useState(false);
 
   useEffect(() => {
     fetchOrders();
@@ -134,6 +136,13 @@ const WaiterDashboard: React.FC = () => {
     fetchOrders();
   };
 
+  const handleScan = (data: string) => {
+    // Assuming data is the table number
+    setTableNo(data);
+    setIsScannerOpen(false);
+    showToast(`Table ${data} scanned!`);
+  };
+
   // --- Filtering Orders for Tabs ---
   const pendingOrders = orders.filter(o => o.status === 'pending');
   const activeOrders = orders.filter(o => 
@@ -246,13 +255,18 @@ const WaiterDashboard: React.FC = () => {
           <div className="flex gap-4 mb-4">
              <div className="w-1/3">
                <label className="text-sm font-medium mb-1 block">Table No.</label>
-               <Input 
-                 type="number" 
-                 value={tableNo} 
-                 onChange={(e) => setTableNo(e.target.value)} 
-                 placeholder="#"
-                 className="text-lg font-bold"
-               />
+               <div className="flex gap-2">
+                 <Input 
+                   type="number" 
+                   value={tableNo} 
+                   onChange={(e) => setTableNo(e.target.value)} 
+                   placeholder="#"
+                   className="text-lg font-bold"
+                 />
+                 <Button variant="secondary" size="icon" onClick={() => setIsScannerOpen(true)} title="Scan Table QR">
+                   <QrCode className="w-5 h-5" />
+                 </Button>
+               </div>
              </div>
              <div className="flex-1">
                <label className="text-sm font-medium mb-1 block">Search Menu</label>
@@ -322,6 +336,14 @@ const WaiterDashboard: React.FC = () => {
           </div>
         </div>
       </Dialog>
+      
+      {/* Scanner Overlay */}
+      {isScannerOpen && (
+        <QRScanner 
+          onScan={handleScan} 
+          onClose={() => setIsScannerOpen(false)} 
+        />
+      )}
     </DashboardLayout>
   );
 };

@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../supabase';
 import { Button, Input, Card, CardContent, CardHeader, CardTitle, showToast } from '../components/ui';
 import { Role } from '../types';
+import { SoshaLogo } from '../components/SoshaLogo';
 
 const Login: React.FC = () => {
   const { role } = useParams<{ role: string }>();
@@ -59,7 +60,7 @@ const Login: React.FC = () => {
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1 flex flex-col items-center">
           <div className="w-24 h-24 mb-4 flex items-center justify-center">
-              <img src="https://aistudiocdn.com/uploads/image_c40e53a2-0941-45bd-895c-55b63777d206.png" alt="Sosha" className="w-full h-full object-contain" />
+              <SoshaLogo className="w-full h-full" />
           </div>
           <CardTitle className="text-2xl text-center capitalize">
             {role === 'owner' ? 'Admin' : role} Login

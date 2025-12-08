@@ -19,11 +19,11 @@ export const Button: React.FC<ButtonProps> = ({
   const baseStyles = "inline-flex items-center justify-center rounded-lg text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-50 disabled:pointer-events-none";
   
   const variants = {
-    primary: "bg-primary text-white hover:bg-primary-hover",
-    secondary: "bg-gray-800 text-white hover:bg-gray-700",
-    destructive: "bg-red-900/50 text-red-200 border border-red-900 hover:bg-red-900/70",
-    outline: "border border-border bg-transparent hover:bg-gray-800 text-white",
-    ghost: "hover:bg-gray-800 text-gray-300 hover:text-white",
+    primary: "bg-primary text-white hover:bg-primary-hover shadow-md",
+    secondary: "bg-gray-200 text-gray-900 hover:bg-gray-300 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700",
+    destructive: "bg-red-500/10 text-red-600 border border-red-500/20 hover:bg-red-500/20 dark:bg-red-900/50 dark:text-red-200 dark:border-red-900",
+    outline: "border border-border bg-transparent hover:bg-black/5 dark:hover:bg-white/5 text-foreground",
+    ghost: "hover:bg-black/5 dark:hover:bg-white/5 text-muted-foreground hover:text-foreground",
   };
 
   const sizes = {
@@ -52,7 +52,7 @@ export const Input: React.FC<InputProps> = ({ className, ...props }) => {
   return (
     <input
       className={cn(
-        "flex h-11 w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-white ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-gray-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-50",
+        "flex h-11 w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-50 transition-colors",
         className
       )}
       {...props}
@@ -63,7 +63,7 @@ export const Input: React.FC<InputProps> = ({ className, ...props }) => {
 // --- Card ---
 export const Card: React.FC<React.HTMLAttributes<HTMLDivElement>> = ({ className, children, ...props }) => {
   return (
-    <div className={cn("rounded-xl border border-border bg-card text-white shadow-sm", className)} {...props}>
+    <div className={cn("rounded-xl border border-border bg-card text-foreground shadow-sm transition-colors", className)} {...props}>
       {children}
     </div>
   );
@@ -89,11 +89,11 @@ interface BadgeProps extends React.HTMLAttributes<HTMLDivElement> {
 export const Badge: React.FC<BadgeProps> = ({ className, variant = 'default', ...props }) => {
   const variants = {
     default: "bg-primary text-white",
-    success: "bg-green-500/15 text-green-400 border border-green-500/20",
-    warning: "bg-yellow-500/15 text-yellow-400 border border-yellow-500/20",
-    destructive: "bg-red-500/15 text-red-400 border border-red-500/20",
-    outline: "text-gray-300 border border-border",
-    secondary: "bg-gray-800 text-gray-300",
+    success: "bg-green-500/15 text-green-600 dark:text-green-400 border border-green-500/20",
+    warning: "bg-yellow-500/15 text-yellow-600 dark:text-yellow-400 border border-yellow-500/20",
+    destructive: "bg-red-500/15 text-red-600 dark:text-red-400 border border-red-500/20",
+    outline: "text-muted-foreground border border-border",
+    secondary: "bg-black/5 dark:bg-white/10 text-muted-foreground",
   };
   
   return (
@@ -112,11 +112,11 @@ interface DialogProps {
 export const Dialog: React.FC<DialogProps> = ({ isOpen, onClose, title, children }) => {
   if (!isOpen) return null;
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-      <div className="w-full max-w-lg rounded-xl bg-card border border-border shadow-lg animate-in fade-in zoom-in duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+      <div className="w-full max-w-lg rounded-xl bg-card border border-border shadow-xl animate-in fade-in zoom-in duration-200">
         <div className="flex items-center justify-between p-6 border-b border-border">
-          <h2 className="text-lg font-semibold text-white">{title}</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-white">
+          <h2 className="text-lg font-semibold text-foreground">{title}</h2>
+          <button onClick={onClose} className="text-muted hover:text-foreground">
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
           </button>
         </div>
@@ -136,7 +136,7 @@ export const showToast = (message: string, type: 'success' | 'error' = 'success'
   if (!container) return;
 
   const toast = document.createElement('div');
-  toast.className = `pointer-events-auto flex items-center w-full max-w-xs p-4 rounded-lg shadow text-white ${
+  toast.className = `pointer-events-auto flex items-center w-full max-w-xs p-4 rounded-lg shadow-lg text-white ${
     type === 'success' ? 'bg-green-600' : 'bg-red-600'
   } animate-in slide-in-from-right fade-in duration-300 mb-2`;
   
