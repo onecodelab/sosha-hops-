@@ -1,0 +1,88 @@
+export const getImageForCategory = (category: string) => {
+  const c = category.toLowerCase();
+  if (c.includes('juice') || c.includes('smoothie')) return 'https://images.unsplash.com/photo-1613478223719-2ab802602423?auto=format&fit=crop&w=300&q=80';
+  if (c.includes('fasting') || c.includes('salad')) return 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=300&q=80';
+  if (c.includes('wrap') || c.includes('sandwich')) return 'https://images.unsplash.com/photo-1528735602780-2552fd46c7af?auto=format&fit=crop&w=300&q=80';
+  if (c.includes('soup')) return 'https://images.unsplash.com/photo-1547592166-23acbe346499?auto=format&fit=crop&w=300&q=80';
+  if (c.includes('breakfast') || c.includes('egg') || c.includes('omelet') || c.includes('pancake')) return 'https://images.unsplash.com/photo-1533089862017-54148d31d4df?auto=format&fit=crop&w=300&q=80';
+  if (c.includes('pasta')) return 'https://images.unsplash.com/photo-1621996346565-e3dbc646d9a9?auto=format&fit=crop&w=300&q=80';
+  return 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=300&q=80';
+};
+
+export const MENU_SEED_DATA = [
+  { category: "Fasting", name: "Grilled Vegetable Wrap", price: 599 },
+  { category: "Fasting", name: "Grilled Vegetable Wrap with Tuna", price: 969 },
+  { category: "Fasting", name: "Falafel Wrap", price: 649 },
+  { category: "Fasting", name: "Hummus and Avocado Sandwich", price: 719 },
+  { category: "Fasting", name: "Avocado Barley, Chickpea Wrap", price: 679 },
+  { category: "Fasting", name: "Nile perch wrap (spicy)", price: 999 },
+  { category: "Wraps & Sandwiches", name: "Chicken Wrap with Grilled Vegetable", price: 999 },
+  { category: "Wraps & Sandwiches", name: "Avocado, Barley, Chicken Wrap (Spicy)", price: 979 },
+  { category: "Wraps & Sandwiches", name: "Grilled Beef Fillet", price: 1299 },
+  { category: "Wraps & Sandwiches", name: "Grilled Chicken Wrap", price: 1299 },
+  { category: "Wraps & Sandwiches", name: "Chicken Wrap with Mozzarella Cheese", price: 1499 },
+  { category: "Wraps & Sandwiches", name: "Chicken Mortadella Sandwich", price: 719 },
+  { category: "Juice", name: "Banana Red Coffee", price: 369 },
+  { category: "Juice", name: "Powered Spinach", price: 369 },
+  { category: "Juice", name: "Banana Yogurt Shake", price: 369 },
+  { category: "Juice", name: "Mango Sesame Smoothie", price: 449 },
+  { category: "Juice", name: "Mango and Avocado Smoothie", price: 449 },
+  { category: "Juice", name: "Energizer", price: 479 },
+  { category: "Juice", name: "Watermelon & Dates", price: 449 },
+  { category: "Juice", name: "Avocado and Dates", price: 449 },
+  { category: "Juice", name: "Peanut Smoothie", price: 369 },
+  { category: "Juice", name: "Papaya Juice", price: 369 },
+  { category: "Juice", name: "Love your Oats", price: 369 },
+  { category: "Juice", name: "Powered Green", price: 369 },
+  { category: "Juice", name: "Green Goddess", price: 369 },
+  { category: "Soup", name: "Spinach soup", price: 489 },
+  { category: "Soup", name: "Fish soup", price: 619 },
+  { category: "Breakfast", name: "Egg Sandwich", price: 579 },
+  { category: "Breakfast", name: "Croissant egg sandwich", price: 699 },
+  { category: "Breakfast", name: "Croissant cheese sandwich", price: 579 },
+  { category: "Breakfast", name: "Cheese Sandwich", price: 579 },
+  { category: "Breakfast", name: "Omelet with cheese", price: 619 },
+  { category: "Breakfast", name: "Omelet", price: 579 },
+  { category: "Breakfast", name: "French toast Banana Sandwich", price: 449 },
+  { category: "Breakfast", name: "Jam Spread Cinnamon French Toast", price: 479 },
+  { category: "Breakfast", name: "Mediterranean Toast", price: 519 },
+  { category: "Breakfast", name: "Egg & Spinach Wrap", price: 619 },
+  { category: "Breakfast", name: "Egg & Avocado Wrap", price: 619 },
+  { category: "Breakfast", name: "Scrambled Egg with Spinach", price: 619 },
+  { category: "Breakfast", name: "Overnight oats", price: 419 },
+  { category: "Breakfast", name: "Foul", price: 479 },
+  { category: "Breakfast", name: "Shakshuka", price: 519 },
+  { category: "Breakfast", name: "Quesadilla", price: 619 },
+  { category: "Breakfast", name: "Toasted Bread with Avocado, Fruit & Boiled Egg", price: 499 },
+  { category: "Breakfast", name: "Granola", price: 549 },
+  { category: "Breakfast", name: "Local Oats", price: 549 },
+  { category: "Breakfast", name: "Oatmeal", price: 619 },
+  { category: "Breakfast", name: "Pancake", price: 639 },
+  { category: "Breakfast", name: "Fish surprise (Fasting)", price: 619 },
+  { category: "Breakfast", name: "Flaxseed /White Flour Waffle with Fruits", price: 619 },
+  { category: "Salad Bar", name: "Seasonal Salad", price: 699 },
+  { category: "Salad Bar", name: "Tuna", price: 879 },
+  { category: "Salad Bar", name: "Grilled Chicken", price: 819 },
+  { category: "Salad Bar", name: "Falafel", price: 699 },
+  { category: "Salad Bar", name: "Shrimp and Avocado Salad", price: 4449 },
+  { category: "Salad Bar", name: "Grilled Salmon Salad", price: 5449 },
+  { category: "Salad Bar", name: "Smoked Salmon Salad", price: 5449 },
+  { category: "Pasta Salad", name: "Fusilli Pasta Salad (Fasting)", price: 649 },
+  { category: "Pasta Salad", name: "Fusilli Pasta Salad with Chicken", price: 799 },
+  { category: "Habeshastyle Salad", name: "Injera with Flaxseed (Telba) sauce salad", price: 479 },
+  { category: "Habeshastyle Salad", name: "Injera with Sesame Salad", price: 479 },
+  { category: "All Day Juices", name: "Avocado Ginger", price: 369 },
+  { category: "All Day Juices", name: "Avocado, Pineapple, Mint", price: 369 },
+  { category: "All Day Juices", "name": "Banana, Blueberry, Honey", price: 369 },
+  { category: "All Day Juices", "name": "Mango, Carrot", price: 369 },
+  { category: "All Day Juices", "name": "Orange, Ginger", price: 369 },
+  { category: "All Day Juices", "name": "Mango Banana Smoothie", price: 449 },
+  { category: "All Day Juices", "name": "Watermelon Guanabana", price: 449 },
+  { category: "All Day Juices", "name": "Banana and Avocado Smoothie", price: 449 },
+  { category: "All Day Juices", "name": "Avocado and Dates", price: 449 },
+  { category: "All Day Juices", "name": "Chia Seed Juice", price: 369 }
+].map(item => ({
+  ...item,
+  is_available: true,
+  image_url: getImageForCategory(item.category)
+}));
