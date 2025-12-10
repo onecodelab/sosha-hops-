@@ -58,7 +58,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .single();
 
       if (error) {
-        console.error('Error fetching profile:', error);
+        // Ignore "Row not found" error (code PGRST116) which happens for new users
+        if (error.code !== 'PGRST116') {
+          console.error('Error fetching profile:', error.message || JSON.stringify(error));
+        }
       } else {
         setProfile(data as UserProfile);
       }

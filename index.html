@@ -4,23 +4,27 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Sosha OS - Restaurant System</title>
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><circle cx=%2250%22 cy=%2250%22 r=%2245%22 stroke=%22%23FFB039%22 stroke-width=%225%22 fill=%22none%22/><text x=%2250%22 y=%2258%22 font-family=%22sans-serif%22 font-weight=%22bold%22 font-size=%2226%22 text-anchor=%22middle%22 fill=%22%23FFB039%22>S</text></svg>" />
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><circle cx=%2250%22 cy=%2250%22 r=%2245%22 stroke=%22%23FFB800%22 stroke-width=%225%22 fill=%22none%22/><text x=%2250%22 y=%2258%22 font-family=%22sans-serif%22 font-weight=%22bold%22 font-size=%2226%22 text-anchor=%22middle%22 fill=%22%23FFB800%22>S</text></svg>" />
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Work+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script>
       tailwind.config = {
         darkMode: 'class',
         theme: {
           extend: {
             fontFamily: {
-              sans: ['Work Sans', 'sans-serif'],
+              sans: ['Inter', 'sans-serif'],
             },
             colors: {
               primary: {
-                DEFAULT: '#217BF4',
-                hover: '#1a62c4',
+                DEFAULT: '#FFB800', // Sosha Yellow
+                hover: '#EAB308',
+                foreground: '#000000'
               },
-              // Semantic colors mapping to CSS variables
+              secondary: {
+                DEFAULT: '#84CC16', // Fresh Green
+                hover: '#65A30D'
+              },
               background: 'var(--background)',
               card: 'var(--card)',
               border: 'var(--border)',
@@ -33,21 +37,21 @@
     </script>
     <style>
       :root {
-        /* Light Mode - Clean Slate (Brand Aligned) */
-        --background: #f8fafc; /* Slate-50 */
+        /* Clean Slate Theme (Light Mode) */
+        --background: #F3F4F6;
         --card: #ffffff;
-        --border: #e2e8f0; /* Slate-200 */
-        --foreground: #0f172a; /* Slate-900 */
-        --muted: #64748b; /* Slate-500 */
+        --border: #e5e7eb;
+        --foreground: #111827;
+        --muted: #6b7280;
       }
       
       .dark {
-        /* Dark Mode - Original Sosha OS */
-        --background: #0a0a0a;
-        --card: #141414;
-        --border: #262626;
-        --foreground: #ffffff;
-        --muted: #a3a3a3;
+        /* Deep Matte Black Theme */
+        --background: #050505;
+        --card: #1A1A1A; /* Updated to requested lighter dark gray */
+        --border: #27272a;
+        --foreground: #F3F4F6; /* Off-white for better contrast */
+        --muted: #9CA3AF;
       }
       
       body {
@@ -58,18 +62,18 @@
 
       /* Custom scrollbar */
       ::-webkit-scrollbar {
-        width: 8px;
-        height: 8px;
+        width: 6px;
+        height: 6px;
       }
       ::-webkit-scrollbar-track {
-        background: var(--card); 
+        background: transparent; 
       }
       ::-webkit-scrollbar-thumb {
-        background: var(--border); 
+        background: #333; 
         border-radius: 4px;
       }
       ::-webkit-scrollbar-thumb:hover {
-        background: var(--muted); 
+        background: #555; 
       }
     </style>
   <script type="importmap">

@@ -28,6 +28,8 @@ export type OrderStatus =
   | 'paid' 
   | 'cancelled';
 
+export type PaymentMethod = 'cash' | 'chapa' | 'cbe' | 'abyssinia';
+
 export interface Order {
   id: string;
   table_no: string;
@@ -35,9 +37,12 @@ export interface Order {
   total_amount: number;
   verified_by?: string;
   created_at: string;
+  payment_method?: PaymentMethod;
+  paid_at?: string;
   // Joins
   verified_by_user?: UserProfile; 
   items?: OrderItem[];
+  order_items?: OrderItem[]; // Added to match Supabase relation
 }
 
 export interface OrderItem {

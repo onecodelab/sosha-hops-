@@ -1,392 +1,313 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { 
-  AreaChart, Area, BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, 
-  ResponsiveContainer, CartesianGrid, PieChart, Pie, Cell, LineChart, Line, Legend 
+  AreaChart, Area, ResponsiveContainer, 
+  PieChart, Pie, Cell, BarChart, Bar, XAxis, Tooltip
 } from 'recharts';
-import DashboardLayout from '../components/DashboardLayout';
-import { useAuth } from '../AuthContext';
-import { supabase } from '../supabase';
-import { MenuItem } from '../types';
-import { Button, Card, CardContent, CardHeader, CardTitle, Input, Badge, Dialog, showToast, cn } from '../components/ui';
+import { DashboardLayout } from '../components/DashboardLayout';
 import { 
-  TrendingUp, TrendingDown, AlertTriangle, DollarSign, Clock, Users, 
-  AlertCircle, ArrowUpRight, ArrowDownRight, Package, Utensils, 
-  ClipboardList, Plus, Database, Search, FileText, UserPlus, Filter 
+  TrendingUp, TrendingDown, Users, 
+  ShoppingBag, ChefHat, Utensils, AlertOctagon, AlertTriangle
 } from 'lucide-react';
-import { MENU_SEED_DATA } from '../utils/seedData';
+import { cn } from '../components/ui';
 
-// --- Mock Data Generators for Visualization ---
-const generateRevenueData = () => Array.from({ length: 24 }, (_, i) => ({
-  time: `${i}:00`,
-  revenue: Math.floor(Math.random() * 5000) + 1000,
-  profit: Math.floor(Math.random() * 2000) + 500,
-}));
+// --- Components ---
 
-const generateStaffData = () => [
-  { name: 'Sarah', orders: 45, speed: 92, complaints: 0 },
-  { name: 'Mike', orders: 38, speed: 78, complaints: 1 },
-  { name: 'Jessica', orders: 52, speed: 95, complaints: 0 },
-  { name: 'David', orders: 20, speed: 65, complaints: 2 },
-];
+const KPICard = ({ title, value, subtext, trend, trendValue, icon: Icon, chartData, color = "primary" }: any) => {
+    const isPositive = trend === 'up';
+    const trendColor = isPositive ? 'text-[#84CC16]' : 'text-red-500';
+    const trendBg = isPositive ? 'bg-[#84CC16]/10' : 'bg-red-500/10';
+    const TrendIcon = isPositive ? TrendingUp : TrendingDown;
+    
+    // Color mapping
+    const accentColor = color === 'primary' ? '#FFB800' : color === 'success' ? '#84CC16' : color === 'danger' ? '#EF4444' : '#3B82F6';
 
-const ORDER_TYPES = [
-  { name: 'Dine-in', value: 65, color: '#217BF4' },
-  { name: 'Takeaway', value: 25, color: '#FFB039' },
-  { name: 'Delivery', value: 10, color: '#10B981' },
-];
+    return (
+        <div className="bg-[#1A1A1A] border border-gray-800 rounded-[20px] p-5 shadow-lg hover:border-gray-700 transition-all group h-full flex flex-col justify-between relative overflow-hidden">
+             <div className="flex justify-between items-start mb-2 relative z-10">
+               <div>
+                  <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">{title}</p>
+                  <h3 className="text-2xl font-bold text-white mt-1">{value}</h3>
+               </div>
+               <div className={cn("w-10 h-10 rounded-full flex items-center justify-center", `bg-[${accentColor}]/10`)}>
+                  <Icon className="w-5 h-5" style={{ color: accentColor }} />
+               </div>
+            </div>
+            
+            {/* Middle Section: Chart or Subtext */}
+            <div className="flex-1 min-h-[40px] relative z-10 flex items-end">
+                {chartData ? (
+                    <div className="w-full h-[50px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <AreaChart data={chartData}>
+                                <defs>
+                                <linearGradient id={`grad-${color}`} x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor={accentColor} stopOpacity={0.3}/>
+                                    <stop offset="95%" stopColor={accentColor} stopOpacity={0}/>
+                                </linearGradient>
+                                </defs>
+                                <Area type="monotone" dataKey="value" stroke={accentColor} strokeWidth={2} fill={`url(#grad-${color})`} />
+                            </AreaChart>
+                        </ResponsiveContainer>
+                    </div>
+                ) : (
+                    <p className="text-sm font-medium text-white mb-1">{subtext}</p>
+                )}
+            </div>
+
+            <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-800 relative z-10">
+               <div className={cn("flex items-center text-xs font-bold px-2 py-1 rounded-md", trendColor, trendBg)}>
+                  <TrendIcon className="w-3 h-3 mr-1" /> {trendValue}
+               </div>
+               <span className="text-[10px] text-gray-500 font-medium uppercase">Last 24 Hours</span>
+            </div>
+            
+            {/* Background Glow */}
+            <div className="absolute -bottom-10 -right-10 w-32 h-32 opacity-10 blur-3xl rounded-full" style={{ backgroundColor: accentColor }} />
+        </div>
+    );
+};
 
 const AdminDashboard: React.FC = () => {
-  const { profile } = useAuth();
+  // --- Dummy Data ---
   
-  // -- State --
-  const [loading, setLoading] = useState(true);
-  const [stats, setStats] = useState({
-    revenue: 145000,
-    profit: 52000,
-    cogs: 48000,
-    orders: 342,
-    aov: 424,
-    wasteCost: 3200
-  });
-  
-  // Menu Intelligence Data (Mocked but structured for the table)
-  const [menuIntelligence, setMenuIntelligence] = useState<any[]>([]);
-  const [inventoryAlerts, setInventoryAlerts] = useState<any[]>([]);
-  
-  // Modals & Actions
-  const [isItemModalOpen, setIsItemModalOpen] = useState(false);
-  const [seeding, setSeeding] = useState(false);
+  const revenueChartData = [
+    { value: 4000 }, { value: 3000 }, { value: 9800 }, { value: 8780 }, 
+    { value: 5890 }, { value: 4390 }, { value: 6490 }, { value: 8490 }, { value: 11490 }
+  ];
 
-  useEffect(() => {
-    // Simulate fetching complex analytics
-    setTimeout(() => {
-      setMenuIntelligence([
-        { id: 1, name: 'Special Burger', sales: 124, revenue: 55800, margin: 65, prepTime: 12, rating: 4.8, status: 'Star' },
-        { id: 2, name: 'Truffle Pasta', sales: 98, revenue: 44100, margin: 72, prepTime: 18, rating: 4.9, status: 'Cash Cow' },
-        { id: 3, name: 'Lobster Bisque', sales: 12, revenue: 5400, margin: 40, prepTime: 25, rating: 4.2, status: 'Problem' },
-        { id: 4, name: 'Caesar Salad', sales: 85, revenue: 12750, margin: 80, prepTime: 5, rating: 4.5, status: 'Star' },
-        { id: 5, name: 'Beef Wellington', sales: 8, revenue: 9600, margin: 30, prepTime: 45, rating: 3.5, status: 'Dog' },
-      ]);
+  const kitchenData = [
+    { name: 'Appetizers', active: 12, delayed: 1 },
+    { name: 'Main Course', active: 28, delayed: 4 },
+    { name: 'Desserts', active: 5, delayed: 0 },
+    { name: 'Drinks', active: 8, delayed: 0 },
+  ];
 
-      setInventoryAlerts([
-        { name: 'Premium Beef', stock: '2.5kg', status: 'critical', depletion: '4 hrs' },
-        { name: 'Truffle Oil', stock: '1 Bottle', status: 'low', depletion: '1 day' },
-        { name: 'Fresh Basil', stock: '0.5kg', status: 'waste_risk', depletion: 'Spoilage Risk' },
-      ]);
-      
-      setLoading(false);
-    }, 800);
-  }, []);
-
-  const handleSeedMenu = async () => {
-    if (!confirm(`This will add demo items to the database. Continue?`)) return;
-    setSeeding(true);
-    try {
-      await supabase.from('menu').insert(MENU_SEED_DATA);
-      showToast('Seed data injected successfully');
-    } catch (err: any) {
-      showToast('Error seeding data', 'error');
-    } finally {
-      setSeeding(false);
-    }
-  };
-
-  // --- Components ---
-
-  const KpiCard = ({ title, value, sub, trend, alert }: any) => (
-    <div className={cn(
-      "bg-card border border-border rounded-xl p-5 shadow-sm flex flex-col justify-between h-full relative overflow-hidden",
-      alert && "border-l-4 border-l-red-500"
-    )}>
-      <div className="flex justify-between items-start mb-2">
-        <h3 className="text-sm font-medium text-muted uppercase tracking-wider">{title}</h3>
-        {alert && <AlertTriangle className="w-4 h-4 text-red-500 animate-pulse" />}
-      </div>
-      <div className="mt-2">
-        <div className="text-2xl font-bold text-foreground">{value}</div>
-        <div className="flex items-center mt-1 gap-2">
-           {trend > 0 ? <ArrowUpRight className="w-4 h-4 text-green-500"/> : <ArrowDownRight className="w-4 h-4 text-red-500"/>}
-           <span className={cn("text-xs font-medium", trend > 0 ? "text-green-500" : "text-red-500")}>
-             {Math.abs(trend)}% vs last week
-           </span>
-        </div>
-        <p className="text-xs text-muted mt-2">{sub}</p>
-      </div>
-    </div>
-  );
+  const healthScore = 85;
+  const healthData = [
+      { name: 'Score', value: healthScore, color: '#84CC16' },
+      { name: 'Remaining', value: 100 - healthScore, color: '#333' }
+  ];
 
   return (
-    <DashboardLayout 
-      title="Owner Command Center" 
-      subtitle="Operational control & financial signals"
-      actions={
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={handleSeedMenu} isLoading={seeding}>
-            <Database className="w-4 h-4 mr-2"/> Seed Data
-          </Button>
-          <Button variant="primary" size="sm" onClick={() => setIsItemModalOpen(true)}>
-            <Plus className="w-4 h-4 mr-2"/> Add Item
-          </Button>
-          <Button variant="secondary" size="sm">
-            <FileText className="w-4 h-4 mr-2"/> Reports
-          </Button>
-        </div>
-      }
-    >
-      {/* 1. FINANCIAL HEALTH (Top Row) */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <KpiCard 
-          title="Net Revenue (Today)" 
-          value={`ETB ${stats.revenue.toLocaleString()}`} 
-          trend={12.5} 
-          sub="Projected: ETB 180k"
-        />
-        <KpiCard 
-          title="Est. Daily Profit" 
-          value={`ETB ${stats.profit.toLocaleString()}`} 
-          trend={8.2} 
-          sub={`Margin: ${((stats.profit/stats.revenue)*100).toFixed(1)}%`}
-        />
-        <KpiCard 
-          title="Avg Order Value" 
-          value={`ETB ${stats.aov}`} 
-          trend={-2.4} 
-          sub="Target: ETB 450"
-        />
-        <KpiCard 
-          title="COGS Pressure" 
-          value={`ETB ${stats.cogs.toLocaleString()}`} 
-          trend={-5.1} 
-          sub="Waste Alert: High Spoilage"
-          alert={true}
-        />
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+    <DashboardLayout>
+      <div className="space-y-6">
         
-        {/* 2. REVENUE TRENDS (Chart) */}
-        <div className="lg:col-span-2 bg-card border border-border rounded-xl p-5 shadow-sm">
-          <div className="flex justify-between items-center mb-6">
-            <div>
-              <h3 className="font-bold text-foreground">Revenue & Profit Velocity</h3>
-              <p className="text-sm text-muted">Real-time hourly breakdown</p>
-            </div>
-            <Badge variant="outline">Peak: 1:00 PM</Badge>
+        {/* Header Title Section */}
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+          <div>
+            <h2 className="text-2xl font-bold text-white">Operations Overview</h2>
+            <p className="text-sm text-gray-400">Real-time snapshot of restaurant performance</p>
           </div>
-          <div className="h-[300px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={generateRevenueData()}>
-                <defs>
-                  <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#217BF4" stopOpacity={0.3}/>
-                    <stop offset="95%" stopColor="#217BF4" stopOpacity={0}/>
-                  </linearGradient>
-                  <linearGradient id="colorProf" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#10B981" stopOpacity={0.3}/>
-                    <stop offset="95%" stopColor="#10B981" stopOpacity={0}/>
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" opacity={0.5} />
-                <XAxis dataKey="time" hide />
-                <YAxis hide />
-                <RechartsTooltip 
-                  contentStyle={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)', borderRadius: '8px' }}
-                />
-                <Area type="monotone" dataKey="revenue" stroke="#217BF4" fillOpacity={1} fill="url(#colorRev)" strokeWidth={2} />
-                <Area type="monotone" dataKey="profit" stroke="#10B981" fillOpacity={1} fill="url(#colorProf)" strokeWidth={2} />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        {/* 3. OPERATIONAL PULSE */}
-        <div className="space-y-4">
-          {/* Kitchen Load */}
-          <Card className="border-l-4 border-l-yellow-500">
-             <CardHeader className="pb-2">
-               <CardTitle className="text-sm font-medium text-muted uppercase flex justify-between">
-                 Kitchen Load <FlameIcon load="high" />
-               </CardTitle>
-             </CardHeader>
-             <CardContent>
-               <div className="flex items-end justify-between mb-2">
-                 <span className="text-2xl font-bold text-foreground">85%</span>
-                 <span className="text-sm text-yellow-500 font-medium">Heavy Load</span>
-               </div>
-               <div className="w-full bg-gray-200 dark:bg-gray-800 rounded-full h-2">
-                 <div className="bg-yellow-500 h-2 rounded-full" style={{ width: '85%' }}></div>
-               </div>
-               <p className="text-xs text-muted mt-2">Avg Prep Time: <span className="text-red-500 font-bold">24 min</span> (Target: 15)</p>
-             </CardContent>
-          </Card>
-
-          {/* Table Turnover */}
-          <Card>
-             <CardHeader className="pb-2">
-               <CardTitle className="text-sm font-medium text-muted uppercase">Table Turnover</CardTitle>
-             </CardHeader>
-             <CardContent>
-               <div className="flex items-end justify-between mb-2">
-                 <span className="text-2xl font-bold text-foreground">42 min</span>
-                 <span className="text-sm text-green-500 font-medium">Efficient</span>
-               </div>
-               <p className="text-xs text-muted">Rate: 1.2 turns / hour</p>
-             </CardContent>
-          </Card>
-
-          {/* Order Breakdown */}
-          <div className="bg-card border border-border rounded-xl p-4 flex items-center justify-between">
-             <div className="h-20 w-20">
-               <ResponsiveContainer width="100%" height="100%">
-                 <PieChart>
-                   <Pie data={ORDER_TYPES} innerRadius={15} outerRadius={35} paddingAngle={5} dataKey="value">
-                     {ORDER_TYPES.map((entry, index) => (
-                       <Cell key={`cell-${index}`} fill={entry.color} />
-                     ))}
-                   </Pie>
-                 </PieChart>
-               </ResponsiveContainer>
-             </div>
-             <div className="flex-1 pl-4 text-xs space-y-1">
-               {ORDER_TYPES.map(type => (
-                 <div key={type.name} className="flex justify-between">
-                    <span className="flex items-center gap-1">
-                      <div className="w-2 h-2 rounded-full" style={{backgroundColor: type.color}} />
-                      {type.name}
-                    </span>
-                    <span className="font-bold">{type.value}%</span>
-                 </div>
-               ))}
+          <div className="flex items-center gap-3">
+             <div className="text-right hidden md:block">
+                <p className="text-xs text-gray-400 uppercase tracking-widest">Current Shift</p>
+                <p className="text-sm font-bold text-white">Manager: <span className="text-primary">Sarah J.</span></p>
              </div>
           </div>
         </div>
-      </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        
-        {/* 4. MENU INTELLIGENCE */}
-        <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden">
-           <div className="p-5 border-b border-border flex justify-between items-center">
-             <div>
-               <h3 className="font-bold text-foreground">Menu Performance Matrix</h3>
-               <p className="text-sm text-muted">Profitability vs. Operational Cost</p>
-             </div>
-             <Button variant="ghost" size="sm"><Filter className="w-4 h-4"/></Button>
-           </div>
-           <div className="overflow-x-auto">
-             <table className="w-full text-sm text-left">
-               <thead className="bg-black/5 dark:bg-white/5 text-muted uppercase text-xs font-semibold">
-                 <tr>
-                   <th className="px-5 py-3">Item</th>
-                   <th className="px-5 py-3 text-right">Margin</th>
-                   <th className="px-5 py-3 text-right">Prep (min)</th>
-                   <th className="px-5 py-3 text-right">Sales</th>
-                   <th className="px-5 py-3">Signal</th>
-                 </tr>
-               </thead>
-               <tbody className="divide-y divide-border">
-                 {menuIntelligence.map((item) => (
-                   <tr key={item.id} className="hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
-                     <td className="px-5 py-3 font-medium text-foreground">{item.name}</td>
-                     <td className="px-5 py-3 text-right">
-                       <span className={cn(
-                         "px-2 py-0.5 rounded text-xs font-bold",
-                         item.margin > 60 ? "bg-green-500/10 text-green-600" : "bg-red-500/10 text-red-600"
-                       )}>{item.margin}%</span>
-                     </td>
-                     <td className="px-5 py-3 text-right text-muted">
-                        <span className={item.prepTime > 20 ? "text-red-500 font-bold" : ""}>{item.prepTime}</span>
-                     </td>
-                     <td className="px-5 py-3 text-right font-mono">ETB {(item.revenue / 1000).toFixed(1)}k</td>
-                     <td className="px-5 py-3">
-                       {item.status === 'Problem' && <Badge variant="destructive">Cut?</Badge>}
-                       {item.status === 'Star' && <Badge variant="success">Promote</Badge>}
-                       {item.status === 'Dog' && <Badge variant="outline" className="text-muted-foreground">Review</Badge>}
-                       {item.status === 'Cash Cow' && <Badge variant="warning">Keep</Badge>}
-                     </td>
-                   </tr>
-                 ))}
-               </tbody>
-             </table>
-           </div>
+        {/* 1. KPI Cards Row */}
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+          <KPICard 
+             title="Today's Revenue" 
+             value="ETB 45,987" 
+             trend="up" 
+             trendValue="+12.5%" 
+             icon={Utensils} 
+             chartData={revenueChartData}
+             color="primary"
+          />
+          <KPICard 
+             title="Order Volume" 
+             value="142 Orders" 
+             subtext="Peak: 1pm - 2pm"
+             trend="up" 
+             trendValue="18 orders/hr" 
+             icon={ShoppingBag} 
+             color="success"
+          />
+          <KPICard 
+             title="Inventory Health" 
+             value="3 Critical" 
+             subtext="Value: ETB 125,000"
+             trend="down" 
+             trendValue="5 Expiring Soon" 
+             icon={AlertOctagon} 
+             color="danger"
+          />
+          <KPICard 
+             title="Staff Load" 
+             value="8 Active" 
+             subtext="Bottleneck: Kitchen"
+             trend="up" 
+             trendValue="17 orders/staff" 
+             icon={Users} 
+             color="info"
+          />
         </div>
 
-        {/* 5. ACTION CENTER & ALERTS */}
-        <div className="space-y-6">
+        {/* 2. Middle Section: Kitchen & Business Health */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           
-          {/* Inventory Alerts */}
-          <div className="bg-card border border-border rounded-xl shadow-sm p-5">
-             <h3 className="font-bold text-foreground flex items-center gap-2 mb-4">
-               <AlertCircle className="w-4 h-4 text-red-500" /> 
-               Critical Inventory Signals
-             </h3>
-             <div className="space-y-3">
-               {inventoryAlerts.map((alert, i) => (
-                 <div key={i} className="flex items-center justify-between p-3 bg-red-500/5 border border-red-500/20 rounded-lg">
-                    <div className="flex items-center gap-3">
-                       <div className="p-2 bg-card rounded-md border border-border">
-                         <Package className="w-4 h-4 text-muted" />
-                       </div>
-                       <div>
-                         <p className="text-sm font-bold text-foreground">{alert.name}</p>
-                         <p className="text-xs text-red-500">Depletion: {alert.depletion}</p>
-                       </div>
+          {/* Kitchen Status (Wide) */}
+          <div className="lg:col-span-2 bg-[#1A1A1A] border border-gray-800 rounded-[20px] p-6 shadow-lg">
+             <div className="flex justify-between items-center mb-6">
+                <div>
+                    <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                        <ChefHat className="w-5 h-5 text-primary" /> Kitchen Status
+                    </h3>
+                    <p className="text-xs text-gray-500">Active dishes and delay monitoring</p>
+                </div>
+                <div className="flex gap-4">
+                   <div className="text-right">
+                      <p className="text-xs text-gray-500">Avg Prep Time</p>
+                      <p className="text-lg font-bold text-white font-mono">18m <span className="text-xs text-red-400 font-normal">(+3m)</span></p>
+                   </div>
+                </div>
+             </div>
+
+             <div className="h-[250px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                   <BarChart data={kitchenData} layout="vertical" margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                      <XAxis type="number" hide />
+                      <Tooltip 
+                        cursor={{fill: 'rgba(255,255,255,0.05)'}}
+                        contentStyle={{ backgroundColor: '#1A1A1A', border: '1px solid #333', borderRadius: '8px' }}
+                      />
+                      <Bar dataKey="active" stackId="a" fill="#333" radius={[0, 4, 4, 0]} barSize={20} name="Active Orders" />
+                      <Bar dataKey="delayed" stackId="a" fill="#EF4444" radius={[0, 4, 4, 0]} barSize={20} name="Delayed" />
+                   </BarChart>
+                </ResponsiveContainer>
+             </div>
+             <div className="mt-4 grid grid-cols-4 gap-2 text-center text-xs">
+                {kitchenData.map(d => (
+                    <div key={d.name} className="bg-black/20 rounded-lg p-2 border border-white/5">
+                        <p className="text-gray-400 mb-1">{d.name}</p>
+                        <div className="flex justify-center items-center gap-2">
+                            <span className="text-white font-bold">{d.active}</span>
+                            {d.delayed > 0 && <span className="text-red-500 font-bold">({d.delayed}!)</span>}
+                        </div>
                     </div>
-                    <div className="text-right">
-                       <p className="text-sm font-mono font-bold text-foreground">{alert.stock}</p>
-                       <Button size="sm" variant="outline" className="h-6 text-xs mt-1">Restock</Button>
-                    </div>
-                 </div>
-               ))}
+                ))}
              </div>
           </div>
 
-          {/* Staff Performance */}
-          <div className="bg-card border border-border rounded-xl shadow-sm p-5">
-             <div className="flex justify-between items-center mb-4">
-                <h3 className="font-bold text-foreground">Staff Velocity</h3>
-                <span className="text-xs text-muted">Orders / Speed Index</span>
+          {/* Business Health Score (Narrow) */}
+          <div className="bg-[#1A1A1A] border border-gray-800 rounded-[20px] p-6 shadow-lg flex flex-col items-center justify-center relative">
+             <h3 className="text-lg font-bold text-white mb-2 absolute top-6 left-6">Health Score</h3>
+             
+             <div className="w-[200px] h-[200px] relative mt-4">
+                <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                        <Pie
+                            data={healthData}
+                            innerRadius={70}
+                            outerRadius={85}
+                            startAngle={90}
+                            endAngle={-270}
+                            dataKey="value"
+                            stroke="none"
+                        >
+                            <Cell key="score" fill="#84CC16" />
+                            <Cell key="bg" fill="#262626" />
+                        </Pie>
+                    </PieChart>
+                </ResponsiveContainer>
+                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                    <span className="text-4xl font-bold text-white">{healthScore}</span>
+                    <span className="text-xs text-gray-400 uppercase tracking-widest mt-1">Good</span>
+                </div>
              </div>
-             <div className="space-y-4">
-               {generateStaffData().map((staff) => (
-                 <div key={staff.name}>
-                   <div className="flex justify-between text-xs mb-1">
-                     <span className="font-medium text-foreground">{staff.name}</span>
-                     <span className={cn(
-                       "font-bold",
-                       staff.speed < 80 ? "text-red-500" : "text-green-500"
-                     )}>Speed: {staff.speed}</span>
-                   </div>
-                   <div className="w-full bg-gray-200 dark:bg-gray-800 rounded-full h-1.5">
-                     <div 
-                       className={cn("h-1.5 rounded-full", staff.speed < 80 ? "bg-red-500" : "bg-primary")} 
-                       style={{ width: `${staff.speed}%` }}
-                     ></div>
-                   </div>
-                   {staff.complaints > 0 && (
-                     <p className="text-[10px] text-red-500 mt-1 flex items-center gap-1">
-                       <AlertTriangle className="w-3 h-3"/> {staff.complaints} Customer Complaint(s) today
-                     </p>
-                   )}
+
+             <div className="w-full mt-6 space-y-3">
+                 <div className="flex justify-between text-sm items-center">
+                    <span className="text-gray-400">Delays</span>
+                    <span className="text-red-400 font-bold">High (4)</span>
                  </div>
-               ))}
+                 <div className="flex justify-between text-sm items-center">
+                    <span className="text-gray-400">Inventory</span>
+                    <span className="text-[#FFB800] font-bold">Warning</span>
+                 </div>
+                 <div className="flex justify-between text-sm items-center">
+                    <span className="text-gray-400">Quality</span>
+                    <span className="text-[#84CC16] font-bold">Excellent</span>
+                 </div>
              </div>
           </div>
+        </div>
+
+        {/* 3. Bottom Row: Tables & Loss Indicators */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+           
+           {/* Tables Status */}
+           <div className="bg-[#1A1A1A] border border-gray-800 rounded-[20px] p-6 shadow-lg">
+              <div className="flex justify-between items-center mb-4">
+                 <h3 className="text-lg font-bold text-white">Table Service</h3>
+                 <span className="text-xs bg-gray-800 text-white px-2 py-1 rounded">24/28 Occupied</span>
+              </div>
+              
+              <div className="grid grid-cols-7 gap-2">
+                 {Array.from({length: 28}).map((_, i) => {
+                     const status = i < 20 ? 'occupied' : i < 22 ? 'waiting' : i < 24 ? 'cleaning' : 'free';
+                     const colors = {
+                         occupied: 'bg-gray-700',
+                         waiting: 'bg-red-500 animate-pulse',
+                         cleaning: 'bg-yellow-500/50',
+                         free: 'border border-gray-700'
+                     };
+                     return (
+                         <div key={i} className={cn("aspect-square rounded-md flex items-center justify-center text-[10px] font-bold text-white/50", colors[status])}>
+                             {i+1}
+                         </div>
+                     )
+                 })}
+              </div>
+              <div className="flex gap-4 mt-4 text-xs">
+                 <div className="flex items-center gap-2 text-gray-400"><div className="w-2 h-2 rounded-full bg-red-500 animate-pulse"/> Long Wait (2)</div>
+                 <div className="flex items-center gap-2 text-gray-400"><div className="w-2 h-2 rounded-full bg-yellow-500/50"/> Needs Cleaning (3)</div>
+              </div>
+           </div>
+
+           {/* Loss Indicators */}
+           <div className="bg-[#1A1A1A] border border-gray-800 rounded-[20px] p-6 shadow-lg">
+              <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                  <AlertTriangle className="w-5 h-5 text-red-500" /> Loss Indicators
+              </h3>
+              
+              <div className="space-y-4">
+                  <div className="flex items-center justify-between p-3 rounded-xl bg-red-500/5 border border-red-500/10">
+                      <div className="flex items-center gap-3">
+                          <div className="p-2 bg-red-500/10 rounded-lg text-red-500"><Utensils className="w-4 h-4" /></div>
+                          <div>
+                              <p className="text-sm font-bold text-white">Remade Dishes</p>
+                              <p className="text-xs text-gray-500">2 items sent back to kitchen</p>
+                          </div>
+                      </div>
+                      <span className="text-red-500 font-bold">- ETB 850</span>
+                  </div>
+
+                  <div className="flex items-center justify-between p-3 rounded-xl bg-red-500/5 border border-red-500/10">
+                      <div className="flex items-center gap-3">
+                          <div className="p-2 bg-red-500/10 rounded-lg text-red-500"><AlertOctagon className="w-4 h-4" /></div>
+                          <div>
+                              <p className="text-sm font-bold text-white">Canceled Orders</p>
+                              <p className="text-xs text-gray-500">4 orders canceled after prep</p>
+                          </div>
+                      </div>
+                      <span className="text-red-500 font-bold">- ETB 1,200</span>
+                  </div>
+                  
+                  <div className="pt-2 flex justify-between items-center border-t border-gray-800">
+                      <span className="text-sm text-gray-400">Est. Daily Waste Cost</span>
+                      <span className="text-xl font-bold text-white">ETB 2,050</span>
+                  </div>
+              </div>
+           </div>
 
         </div>
       </div>
-      
-      <Dialog isOpen={isItemModalOpen} onClose={() => setIsItemModalOpen(false)} title="Add Menu Item">
-        <p className="text-muted">Form placeholder for adding items...</p>
-      </Dialog>
     </DashboardLayout>
   );
 };
-
-// Helper for visual flare
-const FlameIcon = ({ load }: { load: string }) => {
-  const color = load === 'high' ? 'text-red-500' : 'text-green-500';
-  return <div className={`flex gap-0.5 ${color}`}><div className="w-1 h-3 bg-current rounded-full animate-bounce"/><div className="w-1 h-4 bg-current rounded-full animate-bounce delay-75"/><div className="w-1 h-2 bg-current rounded-full animate-bounce delay-150"/></div>
-}
 
 export default AdminDashboard;

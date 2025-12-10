@@ -1,5 +1,5 @@
 import React from 'react';
-import { Navigate } from 'react-router-dom'; // Using react-router-dom normally, but HashRouter in App
+import { Navigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import { Role } from '../types';
 import { Loader2 } from 'lucide-react';
