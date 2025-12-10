@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { User, Session } from '@supabase/supabase-js';
+import type { User } from '@supabase/supabase-js';
 import { supabase } from './supabase';
-import { UserProfile, Role } from './types';
+import type { UserProfile } from './types';
 
 interface AuthContextType {
   user: User | null;
@@ -25,28 +25,58 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check active session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        fetchProfile(session.user.id);
-      } else {
-        setLoading(false);
-      }
-    });
+    let unsubscribe: (() => void) | undefined;
 
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        fetchProfile(session.user.id);
-      } else {
+    const initAuth = async () => {
+      try {
+        // 1) Try to get existing session
+        const { data, error } = await supabase.auth.getSession();
+
+        if (error) {
+          console.error('Error getting Supabase session:', error);
+        }
+
+        const session = data?.session ?? null;
+        setUser(session?.user ?? null);
+
+        if (session?.user) {
+          await fetchProfile(session.user.id);
+        } else {
+          setLoading(false);
+        }
+
+        // 2) Subscribe to auth changes
+        const { data: listener } = supabase.auth.onAuthStateChange((_event, newSession) => {
+          const currentUser = newSession?.user ?? null;
+          setUser(currentUser);
+
+          if (currentUser) {
+            fetchProfile(currentUser.id);
+          } else {
+            setProfile(null);
+            setLoading(false);
+          }
+        });
+
+        unsubscribe = () => {
+          listener.subscription.unsubscribe();
+        };
+      } catch (err) {
+        // This will catch storage access errors like “Access to storage is not allowed from this context.”
+        console.error('Supabase auth initialization failed:', err);
+        setUser(null);
         setProfile(null);
         setLoading(false);
       }
-    });
+    };
 
-    return () => subscription.unsubscribe();
+    initAuth();
+
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
   }, []);
 
   const fetchProfile = async (userId: string) => {
@@ -70,9 +100,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
-    setUser(null);
-    setProfile(null);
+    try {
+      await supabase.auth.signOut();
+    } catch (err) {
+      console.error('Error signing out:', err);
+    } finally {
+      setUser(null);
+      setProfile(null);
+    }
   };
 
   return (
