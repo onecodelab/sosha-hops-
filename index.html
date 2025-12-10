@@ -88,6 +88,10 @@
 </script>
 </head>
   <body>
+    <!-- Simple fallback content to verify page is rendering -->
+    <div style="color: white; position: fixed; top: 8px; left: 8px; z-index: 9999;">
+      If you see this text, the HTML is loading. If the app UI does not appear, React failed to mount.
+    </div>
     <div id="root"></div>
     <script type="module" src="/index.tsx"></script>
   </body>
