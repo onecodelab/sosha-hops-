@@ -113,10 +113,11 @@ const KitchenDashboard: React.FC = () => {
 
   return (
     <DashboardLayout title="Kitchen Display System" subtitle="Live Production Board">
-      <div className="space-y-6 h-[calc(100vh-140px)] flex flex-col">
+      {/* Strict Grid Layout: 3 Rows (KPI, Tickets, Insights) */}
+      <div className="grid grid-rows-[auto_1fr_auto] h-[calc(100vh-140px)] gap-4 w-full">
         
-        {/* 1. Top KPI Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 flex-none">
+        {/* Row 1: KPI Cards */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 flex-none">
           <Card className="bg-[#1A1A1A] border-gray-800 p-4">
              <div className="flex justify-between items-start">
                 <div>
@@ -172,20 +173,20 @@ const KitchenDashboard: React.FC = () => {
           </Card>
         </div>
 
-        {/* 2. Main KDS Board */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 flex-1 min-h-0">
+        {/* Row 2: Ticket Board (Main Area) */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 min-h-0 overflow-hidden">
            
-           {/* Column 1: Queue */}
-           <div className="flex flex-col h-full bg-black/20 rounded-xl border border-gray-800/50">
-              <div className="p-4 border-b border-gray-800 flex justify-between items-center bg-[#1A1A1A]/50 rounded-t-xl">
-                 <h3 className="font-bold text-gray-400 flex items-center gap-2">
+           {/* Column 1: Queue (Incoming) */}
+           <div className="flex flex-col h-full bg-black/20 rounded-xl border border-gray-800/50 overflow-hidden">
+              <div className="flex-none p-3 border-b border-gray-800 bg-[#1A1A1A] flex justify-between items-center">
+                 <h3 className="font-bold text-gray-400 flex items-center gap-2 text-sm">
                     <Bell className="w-4 h-4" /> Incoming / Queue
                  </h3>
                  <Badge variant="secondary" className="bg-gray-800 text-gray-300">
                     {orders.filter(o => ['verified', 'pending'].includes(o.status)).length}
                  </Badge>
               </div>
-              <div className="p-2 space-y-3 overflow-y-auto scrollbar-hide flex-1">
+              <div className="flex-1 overflow-y-auto p-2 space-y-3 custom-scrollbar">
                  {orders.filter(o => ['verified', 'pending'].includes(o.status)).map(order => (
                     <TicketCard 
                        key={order.id} 
@@ -197,22 +198,22 @@ const KitchenDashboard: React.FC = () => {
                     />
                  ))}
                  {orders.filter(o => ['verified', 'pending'].includes(o.status)).length === 0 && (
-                    <div className="h-40 flex items-center justify-center text-gray-600 italic">No new tickets</div>
+                    <div className="h-full flex items-center justify-center text-gray-600 italic text-sm">No new tickets</div>
                  )}
               </div>
            </div>
 
-           {/* Column 2: Cooking */}
-           <div className="flex flex-col h-full bg-black/20 rounded-xl border border-gray-800/50">
-              <div className="p-4 border-b border-gray-800 flex justify-between items-center bg-[#1A1A1A]/50 rounded-t-xl">
-                 <h3 className="font-bold text-orange-400 flex items-center gap-2">
+           {/* Column 2: Active Prep */}
+           <div className="flex flex-col h-full bg-black/20 rounded-xl border border-gray-800/50 overflow-hidden">
+              <div className="flex-none p-3 border-b border-gray-800 bg-[#1A1A1A] flex justify-between items-center">
+                 <h3 className="font-bold text-orange-400 flex items-center gap-2 text-sm">
                     <Flame className="w-4 h-4" /> Active Prep
                  </h3>
                  <Badge variant="secondary" className="bg-orange-500/10 text-orange-400 border-orange-500/20">
                     {orders.filter(o => ['accepted', 'preparing'].includes(o.status)).length}
                  </Badge>
               </div>
-              <div className="p-2 space-y-3 overflow-y-auto scrollbar-hide flex-1">
+              <div className="flex-1 overflow-y-auto p-2 space-y-3 custom-scrollbar">
                  {orders.filter(o => ['accepted', 'preparing'].includes(o.status)).map(order => (
                     <TicketCard 
                        key={order.id} 
@@ -227,16 +228,16 @@ const KitchenDashboard: React.FC = () => {
            </div>
 
            {/* Column 3: Ready */}
-           <div className="flex flex-col h-full bg-black/20 rounded-xl border border-gray-800/50">
-              <div className="p-4 border-b border-gray-800 flex justify-between items-center bg-[#1A1A1A]/50 rounded-t-xl">
-                 <h3 className="font-bold text-green-500 flex items-center gap-2">
+           <div className="flex flex-col h-full bg-black/20 rounded-xl border border-gray-800/50 overflow-hidden">
+              <div className="flex-none p-3 border-b border-gray-800 bg-[#1A1A1A] flex justify-between items-center">
+                 <h3 className="font-bold text-green-500 flex items-center gap-2 text-sm">
                     <CheckCircle2 className="w-4 h-4" /> Ready for Pickup
                  </h3>
                  <Badge variant="secondary" className="bg-green-500/10 text-green-500 border-green-500/20">
                     {readyCount}
                  </Badge>
               </div>
-              <div className="p-2 space-y-3 overflow-y-auto scrollbar-hide flex-1">
+              <div className="flex-1 overflow-y-auto p-2 space-y-3 custom-scrollbar">
                  {orders.filter(o => o.status === 'ready').map(order => (
                     <TicketCard 
                        key={order.id} 
@@ -250,24 +251,24 @@ const KitchenDashboard: React.FC = () => {
 
         </div>
 
-        {/* 3. Bottom Insights Section */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-none h-auto lg:h-[220px]">
+        {/* Row 3: Bottom Insights (Fixed Height) */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 h-48 flex-none overflow-hidden">
            
            {/* Station Load */}
-           <Card className="bg-[#1A1A1A] border-gray-800 overflow-hidden">
-              <CardHeader className="py-3 border-b border-gray-800">
-                 <CardTitle className="text-sm font-bold text-white flex items-center gap-2">
+           <Card className="bg-[#1A1A1A] border-gray-800 overflow-hidden h-full flex flex-col">
+              <CardHeader className="py-2 border-b border-gray-800 flex-none">
+                 <CardTitle className="text-xs font-bold text-white flex items-center gap-2">
                     <ChefHat className="w-4 h-4 text-primary" /> Station Load
                  </CardTitle>
               </CardHeader>
-              <CardContent className="p-4">
-                 <div className="h-[140px] w-full">
+              <CardContent className="p-2 flex-1 min-h-0">
+                 <div className="h-full w-full">
                     <ResponsiveContainer width="100%" height="100%">
-                       <BarChart data={stationData} layout="vertical" margin={{ left: 10, right: 30 }}>
+                       <BarChart data={stationData} layout="vertical" margin={{ left: 10, right: 30, top: 5, bottom: 5 }}>
                           <XAxis type="number" hide />
-                          <YAxis dataKey="name" type="category" width={80} tick={{fill: '#9CA3AF', fontSize: 11}} />
+                          <YAxis dataKey="name" type="category" width={80} tick={{fill: '#9CA3AF', fontSize: 10}} />
                           <Tooltip cursor={{fill: 'rgba(255,255,255,0.05)'}} contentStyle={{ backgroundColor: '#1A1A1A', border: '1px solid #333' }} />
-                          <Bar dataKey="count" fill="#FFB800" radius={[0, 4, 4, 0]} barSize={20}>
+                          <Bar dataKey="count" fill="#FFB800" radius={[0, 4, 4, 0]} barSize={16}>
                             {stationData.map((entry, index) => (
                               <Cell key={`cell-${index}`} fill={entry.count > 10 ? '#EF4444' : entry.count > 5 ? '#FFB800' : '#84CC16'} />
                             ))}
@@ -279,18 +280,18 @@ const KitchenDashboard: React.FC = () => {
            </Card>
 
            {/* Delay Insights */}
-           <Card className="bg-[#1A1A1A] border-gray-800 overflow-hidden">
-              <CardHeader className="py-3 border-b border-gray-800">
-                 <CardTitle className="text-sm font-bold text-white flex items-center gap-2">
+           <Card className="bg-[#1A1A1A] border-gray-800 overflow-hidden h-full flex flex-col">
+              <CardHeader className="py-2 border-b border-gray-800 flex-none">
+                 <CardTitle className="text-xs font-bold text-white flex items-center gap-2">
                     <Clock className="w-4 h-4 text-red-500" /> Top Delays (Today)
                  </CardTitle>
               </CardHeader>
-              <CardContent className="p-0">
+              <CardContent className="p-0 flex-1 overflow-y-auto min-h-0">
                  <div className="divide-y divide-gray-800">
                     {delayedDishes.map((dish, i) => (
-                       <div key={i} className="flex justify-between items-center p-3 hover:bg-white/5 text-xs">
+                       <div key={i} className="flex justify-between items-center p-2 hover:bg-white/5 text-[10px]">
                           <span className="font-bold text-gray-300">{dish.name}</span>
-                          <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-2">
                              <span className="text-gray-500">{dish.count} delayed</span>
                              <span className="text-red-400 font-mono font-bold">+{dish.avgDelay}</span>
                           </div>
@@ -300,23 +301,23 @@ const KitchenDashboard: React.FC = () => {
               </CardContent>
            </Card>
 
-           {/* Remakes & Service Lag */}
-           <Card className="bg-[#1A1A1A] border-gray-800 overflow-hidden">
-              <CardHeader className="py-3 border-b border-gray-800">
-                 <CardTitle className="text-sm font-bold text-white flex items-center gap-2">
-                    <AlertOctagon className="w-4 h-4 text-orange-500" /> Quality & Service
+           {/* Quality & Service */}
+           <Card className="bg-[#1A1A1A] border-gray-800 overflow-hidden h-full flex flex-col">
+              <CardHeader className="py-2 border-b border-gray-800 flex-none">
+                 <CardTitle className="text-xs font-bold text-white flex items-center gap-2">
+                    <AlertOctagon className="w-4 h-4 text-orange-500" /> Quality Check
                  </CardTitle>
               </CardHeader>
-              <CardContent className="p-4 space-y-4">
+              <CardContent className="p-3 space-y-3 flex-1 overflow-y-auto">
                  <div className="flex justify-between items-center">
-                    <span className="text-xs text-gray-400">Avg Pickup Time (Ready → Served)</span>
-                    <span className="text-sm font-bold text-primary">3m 45s</span>
+                    <span className="text-[10px] text-gray-400">Avg Pickup</span>
+                    <span className="text-xs font-bold text-primary">3m 45s</span>
                  </div>
-                 <div className="space-y-2">
-                    <p className="text-xs text-gray-500 font-bold uppercase">Remake Reasons</p>
-                    <div className="flex gap-2">
-                       {remakesStats.map(stat => (
-                          <Badge key={stat.reason} variant="secondary" className="text-[10px] bg-red-500/10 text-red-400 border-red-500/20">
+                 <div className="space-y-1">
+                    <p className="text-[10px] text-gray-500 font-bold uppercase">Remake Reasons</p>
+                    <div className="flex flex-wrap gap-1">
+                       {remakeStats.map(stat => (
+                          <Badge key={stat.reason} variant="secondary" className="text-[10px] bg-red-500/10 text-red-400 border-red-500/20 px-1 py-0">
                              {stat.reason} ({stat.count})
                           </Badge>
                        ))}
@@ -345,26 +346,19 @@ const getTimerBg = (minutes: number) => {
   return "bg-black/20 border-gray-800";
 };
 
-// Renamed locally used variable to avoid conflict if any, though inside component uses 'remakeStats'
-const remakesStats = [
-    { reason: "Overcooked", count: 3 },
-    { reason: "Cold", count: 1 },
-    { reason: "Wrong Item", count: 1 },
-];
-
 function TicketCard({ order, elapsed, onAction, actionLabel, actionColor, isReady }: any) {
   const timerColor = getTimerColor(elapsed);
   const timerBg = getTimerBg(elapsed);
 
   return (
-    <div className={cn("rounded-lg border bg-[#1A1A1A] p-4 relative shadow-sm transition-all", timerBg)}>
-       <div className="flex justify-between items-start mb-3">
-          <div className="flex items-center gap-3">
-             <div className="w-10 h-10 rounded-lg bg-black/40 flex items-center justify-center border border-white/5">
-                <span className="text-xl font-bold text-white">{order.table_no}</span>
+    <div className={cn("rounded-lg border bg-[#1A1A1A] p-3 relative shadow-sm transition-all", timerBg)}>
+       <div className="flex justify-between items-start mb-2">
+          <div className="flex items-center gap-2">
+             <div className="w-8 h-8 rounded-lg bg-black/40 flex items-center justify-center border border-white/5">
+                <span className="text-lg font-bold text-white">{order.table_no}</span>
              </div>
              <div>
-                <div className="flex items-center gap-1.5 text-xs font-mono font-bold mb-0.5">
+                <div className="flex items-center gap-1.5 text-[10px] font-mono font-bold mb-0.5">
                    <Clock className={cn("w-3 h-3", timerColor)} />
                    <span className={timerColor}>{elapsed}m</span>
                 </div>
@@ -373,15 +367,15 @@ function TicketCard({ order, elapsed, onAction, actionLabel, actionColor, isRead
           </div>
           {isReady && (
              <div className="animate-pulse">
-                <Badge className="bg-green-500 text-black font-bold border-none hover:bg-green-500">PICKUP</Badge>
+                <Badge className="bg-green-500 text-black font-bold border-none hover:bg-green-500 text-[10px]">PICKUP</Badge>
              </div>
           )}
        </div>
 
-       <div className="space-y-1.5 mb-4">
+       <div className="space-y-1 mb-3">
           {order.order_items?.map((item: any, idx: number) => (
-             <div key={idx} className="flex gap-2 text-sm">
-                <span className="font-bold text-primary w-5 text-right">{item.quantity}</span>
+             <div key={idx} className="flex gap-2 text-xs">
+                <span className="font-bold text-primary w-4 text-right">{item.quantity}</span>
                 <span className="text-gray-200 line-clamp-1">{item.menu_item?.name}</span>
              </div>
           ))}
@@ -393,15 +387,15 @@ function TicketCard({ order, elapsed, onAction, actionLabel, actionColor, isRead
                 size="sm" 
                 onClick={onAction}
                 className={cn(
-                   "w-full text-xs font-bold h-8",
+                   "w-full text-[10px] font-bold h-7",
                    actionColor === 'success' ? "bg-green-600 hover:bg-green-700" : 
                    "bg-primary text-black hover:bg-primary/90"
                 )}
              >
                 {actionLabel}
              </Button>
-             <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-red-500 hover:bg-red-500/10">
-                <AlertTriangle className="w-4 h-4" />
+             <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-red-500 hover:bg-red-500/10">
+                <AlertTriangle className="w-3 h-3" />
              </Button>
           </div>
        )}

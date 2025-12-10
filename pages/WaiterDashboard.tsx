@@ -6,7 +6,7 @@ import { MenuItem, Order, CartItem } from '../types';
 import { Button, Card, CardContent, Input, Badge, Dialog, showToast, cn } from '../components/ui';
 import { 
   Plus, Minus, Search, ShoppingBag, Check, CreditCard, Clock, 
-  QrCode, User, Bell, Utensils, TrendingUp, AlertCircle
+  QrCode, User, Bell, Utensils, TrendingUp, AlertCircle, Bot
 } from 'lucide-react';
 import QRScanner from '../components/QRScanner';
 import { PaymentVerificationModal, FloatingPaymentButton } from '../components/PaymentVerificationModal';
@@ -52,7 +52,7 @@ const WaiterDashboard: React.FC = () => {
   }, [user]);
 
   const fetchOrders = async () => {
-    // Fetch orders verified by this waiter OR pending orders (to claim)
+    // Fetch orders verified by this waiter OR pending/unclaimed orders (Shared Pool)
     const { data, error } = await supabase
       .from('orders')
       .select(`
@@ -66,8 +66,13 @@ const WaiterDashboard: React.FC = () => {
       .order('created_at', { ascending: false });
 
     if (!error && data) {
-       // Filter client-side for "My Orders" logic + "Pending" orders which are public pool
-       const myData = data.filter(o => o.verified_by === user?.id || o.status === 'pending');
+       // Filter client-side:
+       // 1. Orders assigned to me
+       // 2. Orders that are unclaimed (verified_by is null) - e.g. Chatbot orders
+       const myData = data.filter(o => 
+         o.verified_by === user?.id || 
+         o.verified_by === null
+       );
        setOrders(myData as Order[]);
     }
   };
@@ -81,6 +86,12 @@ const WaiterDashboard: React.FC = () => {
   const updateStatus = async (orderId: string, status: string) => {
     const updateData: any = { status };
     if (status === 'verified') updateData.verified_by = user?.id;
+    
+    // If marking served and it was unclaimed, claim it now
+    const order = orders.find(o => o.id === orderId);
+    if (order && !order.verified_by) {
+        updateData.verified_by = user?.id;
+    }
     
     await supabase.from('orders').update(updateData).eq('id', orderId);
     showToast(`Order status: ${status}`);
@@ -144,13 +155,18 @@ const WaiterDashboard: React.FC = () => {
   };
 
   // --- Filtering ---
+  // Active orders: Assigned to me OR Unclaimed
   const myActiveOrders = orders.filter(o => 
-    o.verified_by === user?.id && ['verified', 'accepted', 'preparing', 'ready', 'served', 'ready_to_pay'].includes(o.status)
+    (o.verified_by === user?.id || o.verified_by === null) && 
+    ['verified', 'accepted', 'preparing', 'ready', 'served', 'ready_to_pay', 'pending'].includes(o.status)
   );
   
-  // Unpaid served orders for verification (includes 'served' and 'ready_to_pay' but not 'paid')
+  // Unpaid served orders for verification
+  // Includes served/ready_to_pay that are either mine or unclaimed
   const unpaidServedOrders = orders.filter(o => 
-    ['served', 'ready_to_pay'].includes(o.status) && o.status !== 'paid'
+    ['served', 'ready_to_pay'].includes(o.status) && 
+    o.status !== 'paid' &&
+    (o.verified_by === user?.id || o.verified_by === null)
   );
   
   // "My Tables" are distinct tables from active orders
@@ -317,7 +333,7 @@ const WaiterDashboard: React.FC = () => {
                    </div>
                 )}
                 {myActiveOrders.map(order => (
-                   <div key={order.id} className="relative p-4 rounded-xl bg-[#1A1A1A] border border-gray-800 flex flex-col gap-3">
+                   <div key={order.id} className={cn("relative p-4 rounded-xl border flex flex-col gap-3 transition-all", order.verified_by === null ? "bg-purple-900/10 border-purple-500/30" : "bg-[#1A1A1A] border-gray-800")}>
                       {order.status === 'ready' && (
                          <div className="absolute top-4 right-4 animate-bounce">
                             <span className="flex h-3 w-3">
@@ -336,9 +352,16 @@ const WaiterDashboard: React.FC = () => {
                                <span className="ml-1 opacity-50">({getElapsedMinutes(order.created_at)}m ago)</span>
                             </span>
                          </div>
-                         <Badge className={cn("text-[10px] uppercase mr-6", getStatusColor(order.status))}>
-                            {order.status}
-                         </Badge>
+                         <div className="flex items-center gap-2">
+                            {order.verified_by === null && (
+                                <Badge variant="secondary" className="bg-purple-500 text-white border-purple-400 text-[10px] animate-pulse">
+                                    <Bot className="w-3 h-3 mr-1" /> Unclaimed Bot Order
+                                </Badge>
+                            )}
+                            <Badge className={cn("text-[10px] uppercase", getStatusColor(order.status))}>
+                                {order.status}
+                            </Badge>
+                         </div>
                       </div>
 
                       <div className="bg-black/20 p-2 rounded-lg text-sm text-gray-300 space-y-1">
@@ -361,9 +384,9 @@ const WaiterDashboard: React.FC = () => {
                                Request Payment
                             </Button>
                          )}
-                         {['verified', 'accepted', 'preparing'].includes(order.status) && (
+                         {['verified', 'accepted', 'preparing', 'pending'].includes(order.status) && (
                             <p className="text-xs text-gray-500 italic py-2 text-center w-full">
-                               {order.status === 'preparing' ? 'Kitchen is cooking...' : 'Waiting for kitchen...'}
+                               {order.status === 'preparing' ? 'Kitchen is cooking...' : order.status === 'pending' ? 'Pending kitchen review...' : 'Waiting for kitchen...'}
                             </p>
                          )}
                       </div>
