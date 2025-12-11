@@ -28,15 +28,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     mounted.current = true;
 
+    // Failsafe: If auth takes too long (e.g. network hang), force loading to false
+    // so the app doesn't get stuck on the spinner forever.
+    const failsafeTimeout = setTimeout(() => {
+      if (mounted.current) {
+        setLoading((prev) => {
+          if (prev) {
+            console.warn("Auth initialization timed out - forcing app load");
+            return false;
+          }
+          return prev;
+        });
+      }
+    }, 5000); // 5 seconds max wait
+
     const initAuth = async () => {
       try {
         const { data: { session }, error } = await supabase.auth.getSession();
         
-        if (error) {
-          console.error("Auth init error:", error);
-          if (mounted.current) setLoading(false);
-          return;
-        }
+        if (error) throw error;
 
         if (session?.user) {
           if (mounted.current) setUser(session.user);
@@ -48,22 +58,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
         }
       } catch (err) {
-        console.error("Unexpected auth error:", err);
+        console.error("Auth init error:", err);
+        // On error, ensure we don't block the UI
+        if (mounted.current) {
+           setUser(null);
+           setProfile(null);
+        }
       } finally {
-        if (mounted.current) setLoading(false);
+        if (mounted.current) {
+           setLoading(false);
+           clearTimeout(failsafeTimeout);
+        }
       }
     };
 
     initAuth();
 
-    // Auth Subscription
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       if (!mounted.current) return;
       
       setUser(session?.user ?? null);
       
       if (session?.user) {
-        // Only fetch if we don't have a profile or if the user changed
         if (!profile || profile.id !== session.user.id) {
             await fetchProfile(session.user.id);
         }
@@ -76,6 +92,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => {
       mounted.current = false;
       subscription.unsubscribe();
+      clearTimeout(failsafeTimeout);
     };
   }, []);
 
@@ -88,9 +105,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .single();
 
       if (error) {
-        // Ignore "Row not found" error (code PGRST116) which happens for new users
         if (error.code !== 'PGRST116') {
-          console.error('Error fetching profile:', error.message || JSON.stringify(error));
+           console.error('Error fetching profile:', error.message);
         }
       } else {
         if (mounted.current) setProfile(data as UserProfile);
@@ -98,7 +114,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (err) {
       console.error('Unexpected error fetching profile:', err);
     }
-    // We do NOT set loading to false here, it is handled in initAuth finally block or onAuthStateChange
   };
 
   const signOut = async () => {

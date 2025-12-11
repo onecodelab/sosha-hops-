@@ -1,8 +1,8 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import { Role } from '../types';
-import { Loader2, ShieldAlert, ArrowLeft, Home } from 'lucide-react';
+import { Loader2, ShieldAlert, ArrowLeft, Home, LogOut } from 'lucide-react';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -10,15 +10,45 @@ interface ProtectedRouteProps {
 }
 
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowedRoles }) => {
-  const { user, profile, loading } = useAuth();
+  const { user, profile, loading, signOut } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
+  const [showSlowLoading, setShowSlowLoading] = useState(false);
+
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout>;
+    if (loading) {
+      // If still loading after 3 seconds, show the escape options
+      timer = setTimeout(() => setShowSlowLoading(true), 3000);
+    }
+    return () => clearTimeout(timer);
+  }, [loading]);
 
   if (loading) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-background text-white">
+      <div className="min-h-screen flex flex-col items-center justify-center bg-background text-white p-4">
         <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
-        <p className="text-gray-400">Loading your profile...</p>
+        <p className="text-gray-400 mb-6">Loading your profile...</p>
+        
+        {showSlowLoading && (
+           <div className="animate-in fade-in flex flex-col items-center gap-4">
+              <p className="text-xs text-gray-500">Taking longer than expected?</p>
+              <div className="flex gap-4">
+                  <button 
+                    onClick={() => navigate('/')} 
+                    className="flex items-center gap-2 px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg text-sm transition-colors"
+                  >
+                    <Home className="w-4 h-4" /> Go Home
+                  </button>
+                  <button 
+                    onClick={() => { signOut(); navigate('/'); }} 
+                    className="flex items-center gap-2 px-4 py-2 bg-red-500/10 text-red-500 hover:bg-red-500/20 rounded-lg text-sm transition-colors border border-red-500/20"
+                  >
+                    <LogOut className="w-4 h-4" /> Sign Out
+                  </button>
+              </div>
+           </div>
+        )}
       </div>
     );
   }
@@ -30,9 +60,28 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowedRoles 
   // If user exists but profile is missing/null (e.g. deleted or network error), show error
   if (!profile) {
      return (
-       <div className="min-h-screen flex flex-col items-center justify-center bg-background text-white gap-4">
-         <p className="text-red-400">Profile not found. Please contact admin.</p>
-         <button onClick={() => navigate('/')} className="text-sm text-gray-500 hover:text-white underline">Back to Home</button>
+       <div className="min-h-screen flex flex-col items-center justify-center bg-background text-white gap-6 p-4 text-center">
+         <ShieldAlert className="w-12 h-12 text-red-500 opacity-80" />
+         <div>
+            <h2 className="text-xl font-bold text-white mb-2">Profile Not Found</h2>
+            <p className="text-gray-400 max-w-md">
+               We couldn't retrieve your user profile. This might be a network issue or your account setup is incomplete.
+            </p>
+         </div>
+         <div className="flex gap-4">
+            <button 
+                onClick={() => window.location.reload()} 
+                className="px-4 py-2 bg-primary text-black font-bold rounded-lg hover:bg-primary/90 transition-colors"
+            >
+                Retry
+            </button>
+            <button 
+                onClick={() => { signOut(); navigate('/'); }} 
+                className="px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-700 transition-colors"
+            >
+                Back to Home
+            </button>
+         </div>
        </div>
      );
   }
