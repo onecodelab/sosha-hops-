@@ -16,6 +16,11 @@ import WaiterDashboard from './pages/WaiterDashboard';
 import KitchenDashboard from './pages/KitchenDashboard';
 import ProtectedRoute from './components/ProtectedRoute';
 
+console.log('=== SOSHA DEBUG ===');
+console.log('SUPABASE_URL:', (import.meta as any).env?.VITE_SUPABASE_URL);
+console.log('SUPABASE_KEY exists:', !!(import.meta as any).env?.VITE_SUPABASE_ANON_KEY);
+console.log('Window loaded:', typeof window !== 'undefined');
+
 const App: React.FC = () => {
   return (
     <HashRouter>
