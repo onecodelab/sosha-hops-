@@ -284,7 +284,7 @@ const OrdersTables: React.FC = () => {
               </div>
               <div className="mt-4 text-center text-xs text-gray-500">
                  Total Cycle Time: <span className="text-white font-bold">20 min</span> (Target: 18 min)
-                 <span className="ml-4 text-red-400">12 dishes delayed > 25m today</span>
+                 <span className="ml-4 text-red-400">12 dishes delayed &gt; 25m today</span>
               </div>
            </CardContent>
         </Card>
