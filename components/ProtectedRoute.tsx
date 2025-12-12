@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import { Role } from '../types';
-import { Loader2, ShieldAlert, ArrowLeft, Home, LogOut } from 'lucide-react';
+import { Loader2, ShieldAlert, ArrowLeft, Home, RefreshCw, Trash2 } from 'lucide-react';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -18,8 +18,8 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowedRoles 
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout>;
     if (loading) {
-      // If still loading after 3 seconds, show the escape options
-      timer = setTimeout(() => setShowSlowLoading(true), 3000);
+      // If still loading after 2 seconds, show options
+      timer = setTimeout(() => setShowSlowLoading(true), 2000);
     }
     return () => clearTimeout(timer);
   }, [loading]);
@@ -28,23 +28,35 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowedRoles 
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-background text-white p-4">
         <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
-        <p className="text-gray-400 mb-6">Loading your profile...</p>
+        <p className="text-gray-400 mb-6 font-medium">Loading your profile...</p>
         
         {showSlowLoading && (
-           <div className="animate-in fade-in flex flex-col items-center gap-4">
-              <p className="text-xs text-gray-500">Taking longer than expected?</p>
-              <div className="flex gap-4">
+           <div className="animate-in fade-in flex flex-col items-center gap-4 bg-[#1A1A1A] p-6 rounded-xl border border-gray-800 shadow-xl max-w-sm w-full">
+              <div className="flex items-center gap-2 text-yellow-500 mb-2">
+                 <ShieldAlert className="w-5 h-5" />
+                 <p className="text-sm font-bold">Taking longer than usual?</p>
+              </div>
+              <p className="text-xs text-gray-400 text-center mb-2">
+                 Your connection might be unstable or the session is stuck.
+              </p>
+              
+              <div className="grid grid-cols-1 w-full gap-3">
                   <button 
-                    onClick={() => navigate('/')} 
-                    className="flex items-center gap-2 px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg text-sm transition-colors"
+                    onClick={() => window.location.reload()} 
+                    className="flex items-center justify-center gap-2 px-4 py-3 bg-gray-800 hover:bg-gray-700 rounded-lg text-sm transition-colors font-medium"
                   >
-                    <Home className="w-4 h-4" /> Go Home
+                    <RefreshCw className="w-4 h-4" /> Reload Page
                   </button>
+                  
                   <button 
-                    onClick={() => { signOut(); navigate('/'); }} 
-                    className="flex items-center gap-2 px-4 py-2 bg-red-500/10 text-red-500 hover:bg-red-500/20 rounded-lg text-sm transition-colors border border-red-500/20"
+                    onClick={async () => {
+                        await signOut();
+                        localStorage.clear();
+                        window.location.href = '/';
+                    }} 
+                    className="flex items-center justify-center gap-2 px-4 py-3 bg-red-500/10 text-red-500 hover:bg-red-500/20 rounded-lg text-sm transition-colors border border-red-500/20 font-medium"
                   >
-                    <LogOut className="w-4 h-4" /> Sign Out
+                    <Trash2 className="w-4 h-4" /> Reset Application
                   </button>
               </div>
            </div>
@@ -61,25 +73,29 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowedRoles 
   if (!profile) {
      return (
        <div className="min-h-screen flex flex-col items-center justify-center bg-background text-white gap-6 p-4 text-center">
-         <ShieldAlert className="w-12 h-12 text-red-500 opacity-80" />
+         <ShieldAlert className="w-16 h-16 text-red-500 opacity-80" />
          <div>
-            <h2 className="text-xl font-bold text-white mb-2">Profile Not Found</h2>
-            <p className="text-gray-400 max-w-md">
-               We couldn't retrieve your user profile. This might be a network issue or your account setup is incomplete.
+            <h2 className="text-2xl font-bold text-white mb-2">Profile Error</h2>
+            <p className="text-gray-400 max-w-md mx-auto">
+               We found your login session but couldn't load your user profile data.
             </p>
          </div>
          <div className="flex gap-4">
             <button 
                 onClick={() => window.location.reload()} 
-                className="px-4 py-2 bg-primary text-black font-bold rounded-lg hover:bg-primary/90 transition-colors"
+                className="px-6 py-2 bg-primary text-black font-bold rounded-lg hover:bg-primary/90 transition-colors"
             >
                 Retry
             </button>
             <button 
-                onClick={() => { signOut(); navigate('/'); }} 
-                className="px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-700 transition-colors"
+                onClick={async () => { 
+                    await signOut(); 
+                    localStorage.clear();
+                    navigate('/'); 
+                }} 
+                className="px-6 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-700 transition-colors"
             >
-                Back to Home
+                Log Out & Reset
             </button>
          </div>
        </div>

@@ -4,7 +4,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { 
   LogOut, Menu, Search, Wallet,
   LayoutDashboard, ShoppingBag, 
-  Users, Settings, 
+  Users, 
   Table2, Armchair, ClipboardList, Utensils, Flame,
   ChevronDown, Bell, ChevronLeft, ChevronRight
 } from 'lucide-react';
@@ -43,6 +43,22 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, titl
     return () => document.removeEventListener("click", handleProfile);
   }, []);
 
+  const handleLogout = async (e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    setIsProfileActive(false);
+    try {
+      await signOut();
+      // Use hard redirect to ensure clean state
+      window.location.replace('/');
+    } catch (error) {
+      console.error("Logout error:", error);
+      window.location.replace('/');
+    }
+  };
+
   // Menu Logic
   const getSidebarItems = (role: Role) => {
     switch (role) {
@@ -54,7 +70,6 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, titl
           { icon: ShoppingBag, label: 'Inventory', path: '/inventory' },
           { icon: Users, label: 'Staff', path: '/staff-performance' },
           { icon: Table2, label: 'Tables', path: '/orders-tables' },
-          { icon: Settings, label: 'Settings', path: '/settings' },
         ];
       case 'manager':
         return [
@@ -151,6 +166,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, titl
                     </div>
                     
                     <button
+                        type="button"
                         ref={profileRef}
                         onClick={(e) => { e.stopPropagation(); if(!isCollapsed) setIsProfileActive(!isProfileActive); else setIsCollapsed(false); }}
                         className={cn("p-1 rounded-md text-gray-400 hover:text-white transition-all", isCollapsed ? "hidden" : "block")}
@@ -163,9 +179,13 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, titl
                 {isProfileActive && !isCollapsed && (
                     <div className="absolute top-full left-0 right-0 mt-2 z-50 bg-[#1A1A1A] border border-gray-700 rounded-xl shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-100">
                          <div className="px-4 py-2 bg-black/20 text-xs text-gray-500">Account</div>
-                         <button onClick={() => { setIsProfileActive(false); navigate('/settings'); }} className="w-full text-left px-4 py-2.5 text-sm text-gray-300 hover:bg-gray-800 hover:text-white transition-colors">Settings</button>
-                         <div className="h-px bg-gray-800" />
-                         <button onClick={() => { setIsProfileActive(false); signOut(); }} className="w-full text-left px-4 py-2.5 text-sm text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-colors">Sign Out</button>
+                         <button 
+                            type="button"
+                            onClick={handleLogout} 
+                            className="w-full text-left px-4 py-2.5 text-sm text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-colors"
+                         >
+                            Sign Out
+                         </button>
                     </div>
                 )}
             </div>
@@ -205,11 +225,12 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, titl
             {/* 4. Footer Actions */}
             <div className="py-4 border-t border-gray-800 mt-auto space-y-1">
                 <button 
+                     type="button"
                      className={cn(
                        "w-full flex items-center transition-all duration-200 text-gray-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg",
                        isCollapsed ? "justify-center p-3" : "gap-x-3 p-3 text-sm font-medium"
                      )}
-                     onClick={signOut}
+                     onClick={handleLogout}
                      title="Sign Out"
                 >
                     <LogOut className="w-5 h-5 shrink-0" />

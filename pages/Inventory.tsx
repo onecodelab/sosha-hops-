@@ -1,57 +1,77 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { DashboardLayout } from '../components/DashboardLayout';
-import { Card, CardContent, CardHeader, CardTitle, Button, Input, cn } from '../components/ui';
+import { Card, CardContent, CardHeader, CardTitle, Button, Input, cn, showToast } from '../components/ui';
 import { 
   Search, AlertTriangle, Package, TrendingDown, Truck, 
   Calendar, DollarSign, RefreshCw, AlertOctagon, ArrowRight
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import { supabase } from '../supabase';
 
 const Inventory: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
+  const [ingredients, setIngredients] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // --- Mock Data ---
+  useEffect(() => {
+    fetchInventory();
+  }, []);
 
+  const fetchInventory = async () => {
+     setLoading(true);
+     const { data, error } = await supabase.from('inventory').select('*').order('name');
+     if (error) {
+        showToast("Failed to fetch inventory", "error");
+     } else {
+        setIngredients(data || []);
+     }
+     setLoading(false);
+  };
+
+  // --- Derived Metrics from Real Data ---
+
+  // 1. Total Value
+  const totalValue = ingredients.reduce((acc, item) => acc + (item.quantity * item.cost_per_unit), 0);
+  
+  // 2. Critical Items
+  const criticalItems = ingredients.filter(i => {
+     // If unit is kg/L, treat quantity as float. Par level is simple number.
+     // Simple logic: if qty < par_level * 0.3 => Critical
+     return i.status === 'critical' || i.quantity < (i.par_level * 0.3);
+  });
+
+  // 3. Reorder Suggestions (Low or Critical)
+  const reorderSuggestions = ingredients
+    .filter(i => i.status === 'low' || i.status === 'critical' || i.quantity < i.par_level)
+    .map(i => ({
+      ...i,
+      suggestedQty: Math.max(0, Math.ceil((i.par_level * 1.5) - i.quantity)), // Order to reach 1.5x par
+    }));
+
+  // --- Static/Mock Data for UI Elements not yet in DB ---
   const inventoryStats = {
-    totalValue: 125430,
-    valueTrend: -2.5, // percent
     dailyWaste: 2050,
     wasteTrend: +12, // percent up from avg
   };
 
-  const ingredients = [
-    { id: 1, name: "Beef Fillet", quantity: 12, unit: "kg", par: 15, location: "Freezer A", status: "low", cost: 850, usage: 3.5, supplier: "Meat Masters Ltd" },
-    { id: 2, name: "Avocados", quantity: 45, unit: "pcs", par: 30, location: "Pantry", status: "ok", cost: 25, usage: 12, supplier: "Fresh Greens" },
-    { id: 3, name: "Cheddar Cheese", quantity: 0.5, unit: "kg", par: 5, location: "Fridge 2", status: "critical", cost: 1200, usage: 0.8, supplier: "Dairy King" },
-    { id: 4, name: "Burger Buns", quantity: 120, unit: "pcs", par: 100, location: "Pantry", status: "ok", cost: 15, usage: 40, supplier: "City Bakery" },
-    { id: 5, name: "Tomatoes", quantity: 8, unit: "kg", par: 10, location: "Fridge 1", status: "low", cost: 60, usage: 2.5, supplier: "Fresh Greens" },
-    { id: 6, name: "Espresso Beans", quantity: 2, unit: "kg", par: 10, location: "Bar Shelf", status: "critical", cost: 1800, usage: 0.9, supplier: "Tomoca" },
-    { id: 7, name: "Olive Oil", quantity: 15, unit: "L", par: 5, location: "Pantry", status: "ok", cost: 800, usage: 0.2, supplier: "Global Imports" },
-  ];
-
   const expiryItems = [
     { name: "Milk (Whole)", days: 2, qty: "10 L" },
     { name: "Chicken Breast", days: 3, qty: "5 kg" },
-    { name: "Yogurt", days: 6, qty: "4 kg" },
-    { name: "Lettuce", days: 7, qty: "12 heads" },
   ];
 
   const varianceData = [
     { name: 'Beef', expected: 15, actual: 12, variance: -3 },
     { name: 'Coffee', expected: 3, actual: 2, variance: -1 },
-    { name: 'Cheese', expected: 1, actual: 0.5, variance: -0.5 },
   ];
-
-  const reorderSuggestions = ingredients
-    .filter(i => i.status === 'low' || i.status === 'critical')
-    .map(i => ({
-      ...i,
-      suggestedQty: Math.ceil((i.par * 1.5) - i.quantity), // Order enough to reach 1.5x par
-    }));
 
   // --- Helpers ---
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status: string, quantity: number, par: number) => {
+    // Override DB status if we detect low stock
+    if (quantity <= 0) return 'bg-red-500/10 text-red-500 border-red-500/20';
+    if (quantity < par * 0.3) return 'bg-red-500/10 text-red-500 border-red-500/20';
+    if (quantity < par) return 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20';
+
     switch (status) {
       case 'ok': return 'bg-green-500/10 text-green-500 border-green-500/20';
       case 'low': return 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20';
@@ -60,14 +80,9 @@ const Inventory: React.FC = () => {
     }
   };
 
-  const getDepletionDays = (qty: number, usage: number) => {
-    if (usage === 0) return 999;
-    return Math.floor(qty / usage);
-  };
-
   const filteredIngredients = ingredients.filter(i => 
     i.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    i.location.toLowerCase().includes(searchTerm.toLowerCase())
+    (i.location && i.location.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   return (
@@ -78,11 +93,11 @@ const Inventory: React.FC = () => {
         <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
           <div>
             <h1 className="text-2xl font-bold text-white">Inventory Management</h1>
-            <p className="text-gray-400 text-sm">Stock tracking, expiry alerts, and smart reordering</p>
+            <p className="text-gray-400 text-sm">Stock tracking from real-time database</p>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" className="border-gray-700 text-gray-300 hover:text-white">
-              <RefreshCw className="w-4 h-4 mr-2" /> Sync
+            <Button variant="outline" className="border-gray-700 text-gray-300 hover:text-white" onClick={fetchInventory}>
+              <RefreshCw className={cn("w-4 h-4 mr-2", loading && "animate-spin")} /> Sync
             </Button>
             <Button>
               <Package className="w-4 h-4 mr-2" /> Add Item
@@ -99,22 +114,19 @@ const Inventory: React.FC = () => {
                 <div className="flex justify-between items-start">
                    <div>
                       <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Total Value</p>
-                      <h3 className="text-2xl font-bold text-white mt-1">ETB {inventoryStats.totalValue.toLocaleString()}</h3>
+                      <h3 className="text-2xl font-bold text-white mt-1">ETB {totalValue.toLocaleString()}</h3>
                    </div>
                    <div className="p-2 bg-primary/10 rounded-full">
                       <DollarSign className="w-5 h-5 text-primary" />
                    </div>
                 </div>
                 <div className="mt-4 flex items-center text-xs">
-                   <span className="text-red-400 flex items-center font-bold">
-                      <TrendingDown className="w-3 h-3 mr-1" /> {Math.abs(inventoryStats.valueTrend)}%
-                   </span>
-                   <span className="text-gray-500 ml-2">vs last week</span>
+                   <span className="text-gray-500">Calculated from {ingredients.length} items</span>
                 </div>
              </CardContent>
           </Card>
 
-          {/* Waste Tracking */}
+          {/* Waste Tracking (Static for demo) */}
           <Card className="bg-[#1A1A1A] border-gray-800">
              <CardContent className="p-6">
                 <div className="flex justify-between items-start">
@@ -139,14 +151,13 @@ const Inventory: React.FC = () => {
           <Card className="bg-[#1A1A1A] border-gray-800 md:col-span-2">
              <CardHeader className="py-4 border-b border-gray-800">
                 <CardTitle className="text-sm font-bold text-gray-400 uppercase tracking-wider flex items-center gap-2">
-                   <AlertTriangle className="w-4 h-4 text-primary" /> Critical Low Stock (Empty in &lt; 3 Days)
+                   <AlertTriangle className="w-4 h-4 text-primary" /> Low Stock Alerts
                 </CardTitle>
              </CardHeader>
              <CardContent className="p-0">
-                <div className="divide-y divide-gray-800">
-                   {ingredients
-                      .filter(i => getDepletionDays(i.quantity, i.usage) < 3)
-                      .map(i => (
+                <div className="divide-y divide-gray-800 max-h-[140px] overflow-y-auto">
+                   {criticalItems.length === 0 && <p className="p-4 text-sm text-gray-500">Stock levels look good.</p>}
+                   {criticalItems.map(i => (
                          <div key={i.id} className="flex justify-between items-center p-4 hover:bg-white/5 transition-colors">
                             <div className="flex items-center gap-3">
                                <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
@@ -156,8 +167,8 @@ const Inventory: React.FC = () => {
                                </div>
                             </div>
                             <div className="text-right">
-                               <p className="text-sm font-bold text-primary">{getDepletionDays(i.quantity, i.usage) === 0 ? 'Today' : `${getDepletionDays(i.quantity, i.usage)} Days`}</p>
-                               <p className="text-xs text-gray-500">Depletion Forecast</p>
+                               <p className="text-sm font-bold text-red-500">Below Par</p>
+                               <p className="text-xs text-gray-500">Par: {i.par_level}</p>
                             </div>
                          </div>
                       ))}
@@ -191,11 +202,14 @@ const Inventory: React.FC = () => {
                           <th className="px-6 py-4">Ingredient</th>
                           <th className="px-6 py-4">Quantity</th>
                           <th className="px-6 py-4">Location</th>
-                          <th className="px-6 py-4">Usage (Daily)</th>
+                          <th className="px-6 py-4">Est. Value</th>
                           <th className="px-6 py-4 text-center">Status</th>
                        </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-800">
+                       {filteredIngredients.length === 0 && (
+                          <tr><td colSpan={5} className="p-8 text-center text-gray-500">No ingredients found. Try seeding data in Settings.</td></tr>
+                       )}
                        {filteredIngredients.map((item) => (
                           <tr key={item.id} className="hover:bg-white/5 transition-colors">
                              <td className="px-6 py-4 font-medium text-white">
@@ -204,13 +218,13 @@ const Inventory: React.FC = () => {
                              </td>
                              <td className="px-6 py-4 text-gray-300">
                                 {item.quantity} <span className="text-gray-500 text-xs">{item.unit}</span>
-                                <div className="text-xs text-gray-600">Par: {item.par}</div>
+                                <div className="text-xs text-gray-600">Par: {item.par_level}</div>
                              </td>
-                             <td className="px-6 py-4 text-gray-400">{item.location}</td>
-                             <td className="px-6 py-4 text-gray-300">~{item.usage} {item.unit}</td>
+                             <td className="px-6 py-4 text-gray-400">{item.location || '-'}</td>
+                             <td className="px-6 py-4 text-gray-300">ETB {(item.quantity * item.cost_per_unit).toLocaleString()}</td>
                              <td className="px-6 py-4 text-center">
-                                <span className={cn("px-2.5 py-1 rounded-full text-xs font-bold border", getStatusColor(item.status))}>
-                                   {item.status === 'critical' ? 'OUT / CRITICAL' : item.status.toUpperCase()}
+                                <span className={cn("px-2.5 py-1 rounded-full text-xs font-bold border", getStatusColor(item.status, item.quantity, item.par_level))}>
+                                   {item.quantity < item.par_level ? 'LOW' : 'OK'}
                                 </span>
                              </td>
                           </tr>
@@ -266,9 +280,6 @@ const Inventory: React.FC = () => {
                           </BarChart>
                        </ResponsiveContainer>
                     </div>
-                    <div className="text-xs text-center text-gray-500 mt-2">
-                       Significant discrepancy in <span className="text-red-400">Beef Fillet</span> (-3kg)
-                    </div>
                  </CardContent>
               </Card>
 
@@ -302,7 +313,7 @@ const Inventory: React.FC = () => {
                              <td className="px-4 py-3 text-white">{item.name}</td>
                              <td className="px-4 py-3 text-gray-400">{item.quantity} {item.unit}</td>
                              <td className="px-4 py-3 text-primary font-bold">{item.suggestedQty} {item.unit}</td>
-                             <td className="px-4 py-3 text-gray-300">ETB {(item.suggestedQty * item.cost).toLocaleString()}</td>
+                             <td className="px-4 py-3 text-gray-300">ETB {(item.suggestedQty * item.cost_per_unit).toLocaleString()}</td>
                              <td className="px-4 py-3 text-right">
                                 <Button size="sm" className="h-8">
                                    Order <ArrowRight className="w-3 h-3 ml-1" />
@@ -310,6 +321,9 @@ const Inventory: React.FC = () => {
                              </td>
                           </tr>
                        ))}
+                       {reorderSuggestions.length === 0 && (
+                          <tr><td colSpan={6} className="p-4 text-center text-gray-500">No reorders needed.</td></tr>
+                       )}
                     </tbody>
                  </table>
               </div>

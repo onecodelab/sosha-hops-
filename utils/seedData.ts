@@ -86,3 +86,13 @@ export const MENU_SEED_DATA = [
   is_available: true,
   image_url: getImageForCategory(item.category)
 }));
+
+export const INVENTORY_SEED_DATA = [
+  { name: "Beef Fillet", quantity: 12, unit: "kg", par_level: 15, location: "Freezer A", status: "low", cost_per_unit: 850, supplier: "Meat Masters Ltd" },
+  { name: "Avocados", quantity: 45, unit: "pcs", par_level: 30, location: "Pantry", status: "ok", cost_per_unit: 25, supplier: "Fresh Greens" },
+  { name: "Cheddar Cheese", quantity: 0.5, unit: "kg", par_level: 5, location: "Fridge 2", status: "critical", cost_per_unit: 1200, supplier: "Dairy King" },
+  { name: "Burger Buns", quantity: 120, unit: "pcs", par_level: 100, location: "Pantry", status: "ok", cost_per_unit: 15, supplier: "City Bakery" },
+  { name: "Tomatoes", quantity: 8, unit: "kg", par_level: 10, location: "Fridge 1", status: "low", cost_per_unit: 60, supplier: "Fresh Greens" },
+  { name: "Espresso Beans", quantity: 2, unit: "kg", par_level: 10, location: "Bar Shelf", status: "critical", cost_per_unit: 1800, supplier: "Tomoca" },
+  { name: "Olive Oil", quantity: 15, unit: "L", par_level: 5, location: "Pantry", status: "ok", cost_per_unit: 800, supplier: "Global Imports" },
+];

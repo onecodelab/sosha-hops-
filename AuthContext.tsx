@@ -1,13 +1,16 @@
 import React, { createContext, useContext, useEffect, useState, useRef } from 'react';
-import { User, Session } from '@supabase/supabase-js';
+import { User } from '@supabase/supabase-js';
 import { supabase } from './supabase';
-import { UserProfile, Role } from './types';
+import { UserProfile } from './types';
+import { SetupGuide } from './components/SetupGuide';
 
 interface AuthContextType {
   user: User | null;
   profile: UserProfile | null;
   loading: boolean;
   signOut: () => Promise<void>;
+  refreshProfile: (userId?: string) => Promise<void>;
+  markDatabaseAsMissing: () => void;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -15,6 +18,8 @@ const AuthContext = createContext<AuthContextType>({
   profile: null,
   loading: true,
   signOut: async () => {},
+  refreshProfile: async () => {},
+  markDatabaseAsMissing: () => {},
 });
 
 export const useAuth = () => useContext(AuthContext);
@@ -23,67 +28,45 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [needsSetup, setNeedsSetup] = useState(false);
   const mounted = useRef(true);
 
   useEffect(() => {
     mounted.current = true;
 
-    // Failsafe: If auth takes too long (e.g. network hang), force loading to false
-    // so the app doesn't get stuck on the spinner forever.
-    const failsafeTimeout = setTimeout(() => {
-      if (mounted.current) {
-        setLoading((prev) => {
-          if (prev) {
-            console.warn("Auth initialization timed out - forcing app load");
-            return false;
-          }
-          return prev;
-        });
-      }
-    }, 5000); // 5 seconds max wait
-
-    const initAuth = async () => {
+    // Initial Auth Check
+    const initializeAuth = async () => {
       try {
-        const { data: { session }, error } = await supabase.auth.getSession();
+        const { data: { session } } = await supabase.auth.getSession();
         
-        if (error) throw error;
-
         if (session?.user) {
           if (mounted.current) setUser(session.user);
           await fetchProfile(session.user.id);
-        } else {
-          if (mounted.current) {
-            setUser(null);
-            setProfile(null);
-          }
         }
-      } catch (err) {
-        console.error("Auth init error:", err);
-        // On error, ensure we don't block the UI
-        if (mounted.current) {
-           setUser(null);
-           setProfile(null);
-        }
+      } catch (error) {
+        console.warn("Auth init error:", error);
       } finally {
-        if (mounted.current) {
-           setLoading(false);
-           clearTimeout(failsafeTimeout);
-        }
+        if (mounted.current) setLoading(false);
       }
     };
 
-    initAuth();
+    initializeAuth();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    // Subscription for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!mounted.current) return;
       
+      // Update User State immediately
       setUser(session?.user ?? null);
-      
-      if (session?.user) {
-        if (!profile || profile.id !== session.user.id) {
-            await fetchProfile(session.user.id);
+
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        if (session?.user) {
+           // Set loading to true while we fetch the profile to prevent premature redirects
+           setLoading(true); 
+           await fetchProfile(session.user.id);
+           if (mounted.current) setLoading(false);
         }
-      } else {
+      } else if (event === 'SIGNED_OUT') {
         setProfile(null);
         setLoading(false);
       }
@@ -92,33 +75,59 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => {
       mounted.current = false;
       subscription.unsubscribe();
-      clearTimeout(failsafeTimeout);
     };
   }, []);
+
+  const markDatabaseAsMissing = () => {
+    setNeedsSetup(true);
+  };
 
   const fetchProfile = async (userId: string) => {
     try {
       const { data, error } = await supabase
-        .from('profiles')
+        .from('users')
         .select('*')
         .eq('id', userId)
-        .single();
+        .maybeSingle();
 
       if (error) {
-        if (error.code !== 'PGRST116') {
-           console.error('Error fetching profile:', error.message);
+        const errMsg = error.message || JSON.stringify(error);
+        
+        // CRITICAL: Detect missing tables
+        if (errMsg.includes('does not exist') || errMsg.includes('relation "public.users" does not exist')) {
+            console.error("Database setup required: ", errMsg);
+            setNeedsSetup(true);
+            return;
         }
-      } else {
-        if (mounted.current) setProfile(data as UserProfile);
       }
-    } catch (err) {
-      console.error('Unexpected error fetching profile:', err);
+
+      if (data && mounted.current) {
+        const displayProfile = {
+          ...data,
+          name: data.full_name || data.name || data.email?.split('@')[0] || 'Staff Member'
+        };
+        setProfile(displayProfile as UserProfile);
+      } else if (mounted.current) {
+        // Profile doesn't exist yet (will be created by Login page)
+        setProfile(null);
+      }
+    } catch (err: any) {
+      console.warn('Profile fetch exception:', err.message || err);
+    }
+  };
+
+  const refreshProfile = async (userId?: string) => {
+    const idToFetch = userId || user?.id;
+    if (idToFetch) {
+        // We do NOT set global loading here to avoid flickering UI on manual refreshes
+        await fetchProfile(idToFetch);
     }
   };
 
   const signOut = async () => {
     try {
       await supabase.auth.signOut();
+      localStorage.clear(); 
     } catch (error) {
       console.error('Sign out error:', error);
     }
@@ -128,8 +137,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  if (needsSetup) {
+    return <SetupGuide />;
+  }
+
   return (
-    <AuthContext.Provider value={{ user, profile, loading, signOut }}>
+    <AuthContext.Provider value={{ user, profile, loading, signOut, refreshProfile, markDatabaseAsMissing }}>
       {children}
     </AuthContext.Provider>
   );
