@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
   AreaChart, Area, ResponsiveContainer, 
   PieChart, Pie, Cell, BarChart, Bar, XAxis, Tooltip
@@ -9,6 +9,7 @@ import {
   ShoppingBag, ChefHat, Utensils, AlertOctagon, AlertTriangle
 } from 'lucide-react';
 import { cn } from '../components/ui';
+import { supabase } from '../supabase';
 
 // --- Components ---
 
@@ -68,8 +69,15 @@ const KPICard = ({ title, value, subtext, trend, trendValue, icon: Icon, chartDa
 };
 
 const AdminDashboard: React.FC = () => {
-  // --- Dummy Data ---
-  
+  // --- Local State for Live Metrics ---
+  const [revenueToday, setRevenueToday] = useState<number | null>(null);
+  const [orderCountToday, setOrderCountToday] = useState<number | null>(null);
+  const [criticalInventoryCount, setCriticalInventoryCount] = useState<number | null>(null);
+  const [activeStaffCount, setActiveStaffCount] = useState<number | null>(null);
+  const [tables, setTables] = useState<any[]>([]);
+  const [loadingStats, setLoadingStats] = useState(true);
+
+  // --- Dummy Chart Data (visual only for now) ---
   const revenueChartData = [
     { value: 4000 }, { value: 3000 }, { value: 9800 }, { value: 8780 }, 
     { value: 5890 }, { value: 4390 }, { value: 6490 }, { value: 8490 }, { value: 11490 }
@@ -87,6 +95,104 @@ const AdminDashboard: React.FC = () => {
       { name: 'Score', value: healthScore, color: '#84CC16' },
       { name: 'Remaining', value: 100 - healthScore, color: '#333' }
   ];
+
+  // --- Data Fetching ---
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        setLoadingStats(true);
+
+        // Start-of-day timestamp for "today"
+        const startOfToday = new Date();
+        startOfToday.setHours(0, 0, 0, 0);
+        const startIso = startOfToday.toISOString();
+
+        // 1) Today's Revenue (sum of total_amount where status != cancelled)
+        const { data: revenueData, error: revenueError } = await supabase
+          .from('orders')
+          .select('total_amount,status,created_at')
+          .gte('created_at', startIso);
+
+        if (!revenueError && revenueData) {
+          const sum = revenueData
+            .filter((o: any) => o.status !== 'cancelled')
+            .reduce((acc: number, o: any) => acc + Number(o.total_amount || 0), 0);
+          setRevenueToday(sum);
+        }
+
+        // 2) Order Volume Today (count)
+        const { count: orderCount, error: countError } = await supabase
+          .from('orders')
+          .select('id', { count: 'exact', head: true })
+          .gte('created_at', startIso);
+
+        if (!countError && typeof orderCount === 'number') {
+          setOrderCountToday(orderCount);
+        }
+
+        // 3) Inventory Health – items at/below reorder level
+        const { count: inventoryCount, error: inventoryError } = await supabase
+          .from('inventory')
+          .select('id', { count: 'exact', head: true })
+          .lte('quantity', 'reorder_level' as any);
+
+        if (!inventoryError && typeof inventoryCount === 'number') {
+          setCriticalInventoryCount(inventoryCount);
+        }
+
+        // 4) Staff Load – staff with roles: waiter, kitchen, manager
+        const { count: staffCount, error: staffError } = await supabase
+          .from('profiles')
+          .select('id', { count: 'exact', head: true })
+          .in('role', ['waiter', 'kitchen', 'manager']);
+
+        if (!staffError && typeof staffCount === 'number') {
+          setActiveStaffCount(staffCount);
+        }
+
+        // 5) Table Service – full table listing
+        const { data: tablesData, error: tablesError } = await supabase
+          .from('tables')
+          .select('*')
+          .order('table_number', { ascending: true });
+
+        if (!tablesError && tablesData) {
+          setTables(tablesData);
+        }
+      } finally {
+        setLoadingStats(false);
+      }
+    };
+
+    fetchStats();
+  }, []);
+
+  // Helper: format ETB totals
+  const formatCurrency = (value: number | null | undefined) =>
+    typeof value === 'number'
+      ? value.toLocaleString('en-ET', { maximumFractionDigits: 0 })
+      : '—';
+
+  // Helper: table status -> CSS class
+  const getTableStatusClass = (status: string | null | undefined) => {
+    switch (status) {
+      case 'occupied':
+        return 'bg-gray-700';
+      case 'cleaning':
+        return 'bg-yellow-500/50';
+      case 'reserved':
+        return 'bg-red-500 animate-pulse';
+      case 'available':
+      default:
+        return 'border border-gray-700';
+    }
+  };
+
+  // Derived table stats
+  const totalTables = 28;
+  const occupiedTables = tables.filter(t => t.status === 'occupied').length;
+  const cleaningTables = tables.filter(t => t.status === 'cleaning').length;
+  const longWaitTables = tables.filter(t => t.status === 'reserved').length;
 
   return (
     <DashboardLayout>
@@ -110,7 +216,7 @@ const AdminDashboard: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
           <KPICard 
              title="Today's Revenue" 
-             value="ETB 45,987" 
+             value={`ETB ${formatCurrency(revenueToday)}`} 
              trend="up" 
              trendValue="+12.5%" 
              icon={Utensils} 
@@ -119,7 +225,7 @@ const AdminDashboard: React.FC = () => {
           />
           <KPICard 
              title="Order Volume" 
-             value="142 Orders" 
+             value={`${orderCountToday ?? '—'} Orders`} 
              subtext="Peak: 1pm - 2pm"
              trend="up" 
              trendValue="18 orders/hr" 
@@ -128,7 +234,7 @@ const AdminDashboard: React.FC = () => {
           />
           <KPICard 
              title="Inventory Health" 
-             value="3 Critical" 
+             value={`${criticalInventoryCount ?? '—'} Critical`} 
              subtext="Value: ETB 125,000"
              trend="down" 
              trendValue="5 Expiring Soon" 
@@ -137,7 +243,7 @@ const AdminDashboard: React.FC = () => {
           />
           <KPICard 
              title="Staff Load" 
-             value="8 Active" 
+             value={`${activeStaffCount ?? '—'} Active`} 
              subtext="Bottleneck: Kitchen"
              trend="up" 
              trendValue="17 orders/staff" 
@@ -243,28 +349,38 @@ const AdminDashboard: React.FC = () => {
            <div className="bg-[#1A1A1A] border border-gray-800 rounded-[20px] p-6 shadow-lg">
               <div className="flex justify-between items-center mb-4">
                  <h3 className="text-lg font-bold text-white">Table Service</h3>
-                 <span className="text-xs bg-gray-800 text-white px-2 py-1 rounded">24/28 Occupied</span>
+                 <span className="text-xs bg-gray-800 text-white px-2 py-1 rounded">
+                   {occupiedTables}/{totalTables} Occupied
+                 </span>
               </div>
               
               <div className="grid grid-cols-7 gap-2">
-                 {Array.from({length: 28}).map((_, i) => {
-                     const status = i < 20 ? 'occupied' : i < 22 ? 'waiting' : i < 24 ? 'cleaning' : 'free';
-                     const colors = {
-                         occupied: 'bg-gray-700',
-                         waiting: 'bg-red-500 animate-pulse',
-                         cleaning: 'bg-yellow-500/50',
-                         free: 'border border-gray-700'
-                     };
+                 {Array.from({ length: totalTables }).map((_, i) => {
+                     const tableNumber = (i + 1).toString();
+                     const table = tables.find(t => t.table_number === tableNumber);
+                     const statusClass = getTableStatusClass(table?.status);
                      return (
-                         <div key={i} className={cn("aspect-square rounded-md flex items-center justify-center text-[10px] font-bold text-white/50", colors[status])}>
-                             {i+1}
+                         <div 
+                           key={tableNumber} 
+                           className={cn(
+                             'aspect-square rounded-md flex items-center justify-center text-[10px] font-bold text-white/50',
+                             statusClass
+                           )}
+                         >
+                             {tableNumber}
                          </div>
-                     )
+                     );
                  })}
               </div>
               <div className="flex gap-4 mt-4 text-xs">
-                 <div className="flex items-center gap-2 text-gray-400"><div className="w-2 h-2 rounded-full bg-red-500 animate-pulse"/> Long Wait (2)</div>
-                 <div className="flex items-center gap-2 text-gray-400"><div className="w-2 h-2 rounded-full bg-yellow-500/50"/> Needs Cleaning (3)</div>
+                 <div className="flex items-center gap-2 text-gray-400">
+                   <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" /> 
+                   Long Wait ({longWaitTables})
+                 </div>
+                 <div className="flex items-center gap-2 text-gray-400">
+                   <div className="w-2 h-2 rounded-full bg-yellow-500/50" /> 
+                   Needs Cleaning ({cleaningTables})
+                 </div>
               </div>
            </div>
 
