@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { supabase } from '../supabase';
 import { Button, Input, Card, CardContent, CardHeader, CardTitle, showToast } from '../components/ui';
 import { SoshaLogo } from '../components/SoshaLogo';
@@ -35,85 +35,71 @@ const Login: React.FC = () => {
     setLoading(true);
 
     try {
-      // 1. Authenticate
-      const { data: { user: authUser }, error } = await supabase.auth.signInWithPassword({
+      // 1. Authenticate (Strict Sign In Only)
+      const { data: authData, error: signInError } = await supabase.auth.signInWithPassword({
         email: email.trim(),
         password: password.trim(),
       });
 
-      if (error) throw error;
-      if (!authUser) throw new Error("No user returned from login.");
+      if (signInError) {
+        throw new Error("Invalid login credentials.");
+      }
 
-      // 2. Check Profile Existence directly
+      if (!authData.user) {
+         throw new Error("Authentication failed.");
+      }
+
+      // 2. Check for Existing Profile
       let { data: existingProfile, error: fetchError } = await supabase
         .from('users')
         .select('*')
-        .eq('id', authUser.id)
+        .eq('id', authData.user.id)
         .maybeSingle();
 
       if (fetchError) {
-         if (fetchError.message.includes('does not exist')) {
+         if (fetchError.message.includes('does not exist') || fetchError.message.includes('relation "public.users" does not exist')) {
             markDatabaseAsMissing();
             setLoading(false);
             return;
          }
+         throw fetchError;
       }
 
-      // 3. Create Profile if missing
+      // 3. Auto-Create Profile if Missing (Fix for "Access denied" error)
       if (!existingProfile) {
-        console.log("Profile missing. Creating...");
+        console.log("Profile missing. Attempting auto-creation...");
         
-        // Fetch a restaurant ID if possible
-        const { data: rData } = await supabase.from('restaurants').select('id').limit(1).maybeSingle();
-        const restaurantId = rData?.id;
+        // Use the role from the URL or default to 'waiter'
+        const targetRole = role ? role.toLowerCase() : 'waiter';
+        const fullName = authData.user.user_metadata?.full_name || email.split('@')[0];
 
-        const validRoles = ['owner', 'admin', 'manager', 'waiter', 'kitchen'];
-        const targetRole = (role && validRoles.includes(role.toLowerCase())) ? role.toLowerCase() : 'waiter';
+        const { error: insertError } = await supabase.from('users').insert([
+          {
+            id: authData.user.id,
+            email: authData.user.email,
+            full_name: fullName,
+            role: targetRole,
+            is_online: true
+          }
+        ]);
 
-        const newProfile = {
-           id: authUser.id,
-           email: authUser.email,
-           full_name: authUser.email?.split('@')[0] || 'User',
-           role: targetRole,
-           restaurant_id: restaurantId,
-           created_at: new Date().toISOString()
-        };
-
-        const { error: insertError } = await supabase.from('users').insert([newProfile]);
-        
         if (insertError) {
-           console.error("Profile creation failed:", insertError);
-           if (insertError.message.includes('does not exist')) {
-              markDatabaseAsMissing();
-              return;
-           }
-           throw new Error("Failed to create user profile. Please try again.");
+          console.error("Auto-creation failed:", insertError);
+          // Only sign out if we really can't create the profile
+          await supabase.auth.signOut();
+          throw new Error(`Access denied: Staff profile not found and could not be created. (${insertError.message})`);
         }
         
-        // Force refresh context with the new user ID
-        await refreshProfile(authUser.id);
-        
-        // Use the local object for immediate redirect
-        existingProfile = newProfile;
-        showToast("Profile initialized!", "success");
-      } else {
-        // Just refresh context to be safe
-        await refreshProfile(authUser.id);
+        showToast("Profile created automatically.", "success");
       }
 
-      // 4. Redirect
-      if (existingProfile) {
-         redirectUser(existingProfile.role);
-      }
-
+      // 4. Success - Refresh Context
+      await refreshProfile(authData.user.id);
+      showToast("Welcome back!", "success");
+      
     } catch (err: any) {
       console.error("Login Error:", err);
       showToast(err.message || 'Login failed', 'error');
-      // If authenticating failed, ensure we are signed out locally
-      if (err.message.includes('Invalid login')) {
-          await supabase.auth.signOut();
-      }
-    } finally {
       setLoading(false);
     }
   };
@@ -153,10 +139,14 @@ const Login: React.FC = () => {
                 className="bg-black/20 border-gray-700 text-white focus:border-primary"
               />
             </div>
-            <Button type="submit" className="w-full font-bold text-black" isLoading={loading}>
+            <Button type="submit" className="w-full font-bold text-black" isLoading={loading} disabled={loading}>
               {loading ? 'Verifying...' : 'Sign In'}
             </Button>
-            <div className="text-center">
+            
+            <div className="flex flex-col gap-2 pt-2 text-center">
+                <Link to="/signup" className="text-sm text-primary hover:text-primary-hover transition-colors font-medium">
+                    First time? Sign up here
+                </Link>
                 <button type="button" onClick={() => navigate('/')} className="text-sm text-gray-500 hover:text-white transition-colors">
                     Back to Role Selection
                 </button>

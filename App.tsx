@@ -6,6 +6,7 @@ import { ToastContainer } from './components/ui';
 // Pages
 import Landing from './pages/Landing';
 import Login from './pages/Login';
+import SignUp from './pages/SignUp';
 import AdminDashboard from './pages/AdminDashboard';
 import MenuAnalytics from './pages/MenuAnalytics';
 import Inventory from './pages/Inventory';
@@ -23,6 +24,7 @@ const App: React.FC = () => {
         <Routes>
           <Route path="/" element={<Landing />} />
           <Route path="/login/:role" element={<Login />} />
+          <Route path="/signup" element={<SignUp />} />
           
           <Route path="/admin" element={
             <ProtectedRoute allowedRoles={['owner', 'admin' as any, 'manager']}>

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
   AreaChart, Area, ResponsiveContainer, 
   PieChart, Pie, Cell, BarChart, Bar, XAxis, Tooltip
@@ -6,13 +6,14 @@ import {
 import { DashboardLayout } from '../components/DashboardLayout';
 import { 
   TrendingUp, TrendingDown, Users, 
-  ShoppingBag, ChefHat, Utensils, AlertOctagon, AlertTriangle
+  ShoppingBag, ChefHat, Utensils, AlertOctagon, AlertTriangle, Loader2, RefreshCw
 } from 'lucide-react';
 import { cn } from '../components/ui';
+import { supabase } from '../supabase';
 
 // --- Components ---
 
-const KPICard = ({ title, value, subtext, trend, trendValue, icon: Icon, chartData, color = "primary" }: any) => {
+const KPICard = ({ title, value, subtext, trend, trendValue, icon: Icon, chartData, color = "primary", loading }: any) => {
     const isPositive = trend === 'up';
     const trendColor = isPositive ? 'text-[#84CC16]' : 'text-red-500';
     const trendBg = isPositive ? 'bg-[#84CC16]/10' : 'bg-red-500/10';
@@ -26,7 +27,11 @@ const KPICard = ({ title, value, subtext, trend, trendValue, icon: Icon, chartDa
              <div className="flex justify-between items-start mb-2 relative z-10">
                <div>
                   <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">{title}</p>
-                  <h3 className="text-2xl font-bold text-white mt-1">{value}</h3>
+                  {loading ? (
+                    <div className="h-8 w-24 bg-gray-800 rounded animate-pulse mt-1" />
+                  ) : (
+                    <h3 className="text-2xl font-bold text-white mt-1">{value}</h3>
+                  )}
                </div>
                <div className={cn("w-10 h-10 rounded-full flex items-center justify-center", `bg-[${accentColor}]/10`)}>
                   <Icon className="w-5 h-5" style={{ color: accentColor }} />
@@ -68,8 +73,110 @@ const KPICard = ({ title, value, subtext, trend, trendValue, icon: Icon, chartDa
 };
 
 const AdminDashboard: React.FC = () => {
-  // --- Dummy Data ---
+  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState({
+      revenue: 0,
+      orders: 0,
+      inventoryCritical: 0,
+      staffActive: 0
+  });
   
+  // Table Status: Map of Table Number -> { status, elapsedMinutes }
+  const [tableStatus, setTableStatus] = useState<Record<string, { status: string, elapsed: number }>>({});
+  const [longWaitCount, setLongWaitCount] = useState(0);
+
+  useEffect(() => {
+    fetchDashboardData();
+
+    // Realtime Subscriptions
+    const channels = [
+        supabase.channel('admin_orders').on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => fetchDashboardData()),
+        supabase.channel('admin_inventory').on('postgres_changes', { event: '*', schema: 'public', table: 'inventory' }, () => fetchDashboardData()),
+    ];
+
+    channels.forEach(c => c.subscribe());
+
+    return () => {
+        channels.forEach(c => supabase.removeChannel(c));
+    };
+  }, []);
+
+  const fetchDashboardData = async () => {
+      try {
+        const todayStr = new Date().toISOString().split('T')[0];
+        
+        // 1. Revenue & Orders (Today)
+        const { data: todayOrders } = await supabase
+            .from('orders')
+            .select('total_amount, status, created_at')
+            .gte('created_at', `${todayStr}T00:00:00`);
+
+        let rev = 0;
+        let count = 0;
+
+        if (todayOrders) {
+            count = todayOrders.length;
+            rev = todayOrders
+                .filter(o => o.status !== 'cancelled')
+                .reduce((acc, curr) => acc + (curr.total_amount || 0), 0);
+        }
+
+        // 2. Inventory Health
+        const { data: inventory } = await supabase.from('inventory').select('quantity, par_level');
+        let critical = 0;
+        if (inventory) {
+            critical = inventory.filter((i: any) => i.quantity <= (i.par_level || 0)).length;
+        }
+
+        // 3. Staff Load (Using Total Users as Proxy)
+        const { count: staffCount } = await supabase.from('users').select('*', { count: 'exact', head: true });
+
+        // 4. Table Service (Derived from Active Orders)
+        // Active = Not Paid and Not Cancelled
+        const { data: activeOrders } = await supabase
+            .from('orders')
+            .select('table_no, created_at')
+            .not('status', 'in', '("paid","cancelled")');
+
+        const tStatus: Record<string, { status: string, elapsed: number }> = {};
+        let waits = 0;
+        const now = new Date();
+
+        if (activeOrders) {
+            activeOrders.forEach((o: any) => {
+                // Determine elapsed time
+                const created = new Date(o.created_at);
+                const elapsed = Math.floor((now.getTime() - created.getTime()) / 60000);
+                
+                if (elapsed > 45) waits++;
+
+                // Normalize table number
+                const tNo = o.table_no.toString().replace(/^T/i, ''); // Remove 'T' prefix if exists
+                
+                tStatus[tNo] = {
+                    status: 'occupied',
+                    elapsed
+                };
+            });
+        }
+
+        setStats({
+            revenue: rev,
+            orders: count,
+            inventoryCritical: critical,
+            staffActive: staffCount || 0
+        });
+        setTableStatus(tStatus);
+        setLongWaitCount(waits);
+
+      } catch (err) {
+        console.error("Dashboard fetch error:", err);
+      } finally {
+        setLoading(false);
+      }
+  };
+
+  // --- Dummy Chart Data (Preserved for UI Layout) ---
   const revenueChartData = [
     { value: 4000 }, { value: 3000 }, { value: 9800 }, { value: 8780 }, 
     { value: 5890 }, { value: 4390 }, { value: 6490 }, { value: 8490 }, { value: 11490 }
@@ -88,6 +195,8 @@ const AdminDashboard: React.FC = () => {
       { name: 'Remaining', value: 100 - healthScore, color: '#333' }
   ];
 
+  const activeTablesCount = Object.keys(tableStatus).length;
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -103,6 +212,9 @@ const AdminDashboard: React.FC = () => {
                 <p className="text-xs text-gray-400 uppercase tracking-widest">Current Shift</p>
                 <p className="text-sm font-bold text-white">Manager: <span className="text-primary">Sarah J.</span></p>
              </div>
+             <button onClick={fetchDashboardData} className="p-2 bg-gray-800 rounded-lg hover:bg-gray-700 text-gray-400 hover:text-white transition-colors">
+                <RefreshCw className={cn("w-4 h-4", loading && "animate-spin")} />
+             </button>
           </div>
         </div>
 
@@ -110,39 +222,43 @@ const AdminDashboard: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
           <KPICard 
              title="Today's Revenue" 
-             value="ETB 45,987" 
+             value={`ETB ${stats.revenue.toLocaleString()}`} 
              trend="up" 
              trendValue="+12.5%" 
              icon={Utensils} 
              chartData={revenueChartData}
              color="primary"
+             loading={loading}
           />
           <KPICard 
              title="Order Volume" 
-             value="142 Orders" 
+             value={`${stats.orders} Orders`} 
              subtext="Peak: 1pm - 2pm"
              trend="up" 
              trendValue="18 orders/hr" 
              icon={ShoppingBag} 
              color="success"
+             loading={loading}
           />
           <KPICard 
              title="Inventory Health" 
-             value="3 Critical" 
-             subtext="Value: ETB 125,000"
+             value={`${stats.inventoryCritical} Critical`} 
+             subtext="Items below Par Level"
              trend="down" 
-             trendValue="5 Expiring Soon" 
+             trendValue="Needs Restock" 
              icon={AlertOctagon} 
              color="danger"
+             loading={loading}
           />
           <KPICard 
              title="Staff Load" 
-             value="8 Active" 
-             subtext="Bottleneck: Kitchen"
+             value={`${stats.staffActive} Active`} 
+             subtext="Registered Users"
              trend="up" 
-             trendValue="17 orders/staff" 
+             trendValue="100% Coverage" 
              icon={Users} 
              color="info"
+             loading={loading}
           />
         </div>
 
@@ -243,32 +359,57 @@ const AdminDashboard: React.FC = () => {
            <div className="bg-[#1A1A1A] border border-gray-800 rounded-[20px] p-6 shadow-lg">
               <div className="flex justify-between items-center mb-4">
                  <h3 className="text-lg font-bold text-white">Table Service</h3>
-                 <span className="text-xs bg-gray-800 text-white px-2 py-1 rounded">24/28 Occupied</span>
+                 <span className="text-xs bg-gray-800 text-white px-2 py-1 rounded">
+                    {activeTablesCount}/28 Occupied
+                 </span>
               </div>
               
               <div className="grid grid-cols-7 gap-2">
                  {Array.from({length: 28}).map((_, i) => {
-                     const status = i < 20 ? 'occupied' : i < 22 ? 'waiting' : i < 24 ? 'cleaning' : 'free';
-                     const colors = {
-                         occupied: 'bg-gray-700',
-                         waiting: 'bg-red-500 animate-pulse',
-                         cleaning: 'bg-yellow-500/50',
-                         free: 'border border-gray-700'
-                     };
+                     const tNum = (i + 1).toString();
+                     const info = tableStatus[tNum];
+                     const isOccupied = !!info;
+                     const isLongWait = info?.elapsed > 45;
+
+                     // Determine visual status
+                     let statusColor = 'border border-gray-700 text-gray-500 hover:bg-white/5'; // Free
+                     
+                     if (isOccupied) {
+                         if (isLongWait) statusColor = 'bg-red-500 animate-pulse text-white font-bold border-none';
+                         else statusColor = 'bg-gray-700 text-white font-bold border-none';
+                     }
+
                      return (
-                         <div key={i} className={cn("aspect-square rounded-md flex items-center justify-center text-[10px] font-bold text-white/50", colors[status])}>
-                             {i+1}
+                         <div 
+                            key={i} 
+                            className={cn("aspect-square rounded-md flex items-center justify-center text-[10px] transition-colors relative group cursor-default", statusColor)}
+                            title={isOccupied ? `Occupied for ${info.elapsed}m` : 'Available'}
+                         >
+                             {tNum}
+                             {isOccupied && (
+                                <div className="absolute -top-1 -right-1 w-2 h-2 bg-green-500 rounded-full border border-[#1A1A1A]" />
+                             )}
                          </div>
                      )
                  })}
               </div>
               <div className="flex gap-4 mt-4 text-xs">
-                 <div className="flex items-center gap-2 text-gray-400"><div className="w-2 h-2 rounded-full bg-red-500 animate-pulse"/> Long Wait (2)</div>
-                 <div className="flex items-center gap-2 text-gray-400"><div className="w-2 h-2 rounded-full bg-yellow-500/50"/> Needs Cleaning (3)</div>
+                 <div className="flex items-center gap-2 text-gray-400">
+                    <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse"/> 
+                    Long Wait ({longWaitCount})
+                 </div>
+                 <div className="flex items-center gap-2 text-gray-400">
+                    <div className="w-2 h-2 rounded-full bg-gray-700"/> 
+                    Occupied
+                 </div>
+                 <div className="flex items-center gap-2 text-gray-400">
+                    <div className="w-2 h-2 rounded-full border border-gray-600"/> 
+                    Available
+                 </div>
               </div>
            </div>
 
-           {/* Loss Indicators */}
+           {/* Loss Indicators (Kept Static as requested for Overview) */}
            <div className="bg-[#1A1A1A] border border-gray-800 rounded-[20px] p-6 shadow-lg">
               <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
                   <AlertTriangle className="w-5 h-5 text-red-500" /> Loss Indicators

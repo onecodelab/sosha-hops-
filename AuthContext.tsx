@@ -33,48 +33,75 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     mounted.current = true;
+    
+    // Safety timeout to prevent infinite loading on mount
+    const safetyTimeout = setTimeout(() => {
+      if (mounted.current && loading) {
+        console.warn("Auth loading safety timeout triggered - Forcing app load");
+        setLoading(false);
+      }
+    }, 5000);
 
-    // Initial Auth Check
     const initializeAuth = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        const { data: { session }, error } = await supabase.auth.getSession();
         
+        if (error) {
+          console.warn("Session check error:", error);
+        }
+
         if (session?.user) {
           if (mounted.current) setUser(session.user);
           await fetchProfile(session.user.id);
         }
       } catch (error) {
-        console.warn("Auth init error:", error);
+        console.error("Auth initialization failed:", error);
       } finally {
-        if (mounted.current) setLoading(false);
+        if (mounted.current) {
+          setLoading(false);
+          clearTimeout(safetyTimeout);
+        }
       }
     };
 
     initializeAuth();
 
-    // Subscription for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!mounted.current) return;
       
-      // Update User State immediately
       setUser(session?.user ?? null);
 
-      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-        if (session?.user) {
-           // Set loading to true while we fetch the profile to prevent premature redirects
-           setLoading(true); 
-           await fetchProfile(session.user.id);
+      if (event === 'SIGNED_IN') {
+         // Block UI temporarily to fetch profile on sign in
+         setLoading(true);
+         // Safety timeout specific to sign-in action
+         const signinTimeout = setTimeout(() => {
+             if (mounted.current && loading) setLoading(false);
+         }, 5000);
+
+         try {
+           if (session?.user) {
+              await fetchProfile(session.user.id);
+           }
+         } finally {
+           clearTimeout(signinTimeout);
            if (mounted.current) setLoading(false);
-        }
+         }
       } else if (event === 'SIGNED_OUT') {
         setProfile(null);
         setLoading(false);
+      } else if (event === 'TOKEN_REFRESHED') {
+        // Do not block UI on token refresh, just update background
+        if (session?.user && !profile) {
+            fetchProfile(session.user.id);
+        }
       }
     });
 
     return () => {
       mounted.current = false;
       subscription.unsubscribe();
+      clearTimeout(safetyTimeout);
     };
   }, []);
 
@@ -92,13 +119,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (error) {
         const errMsg = error.message || JSON.stringify(error);
-        
-        // CRITICAL: Detect missing tables
         if (errMsg.includes('does not exist') || errMsg.includes('relation "public.users" does not exist')) {
-            console.error("Database setup required: ", errMsg);
+            console.error("Database setup required:", errMsg);
             setNeedsSetup(true);
             return;
         }
+        console.warn('Profile fetch error:', errMsg);
       }
 
       if (data && mounted.current) {
@@ -108,32 +134,35 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         };
         setProfile(displayProfile as UserProfile);
       } else if (mounted.current) {
-        // Profile doesn't exist yet (will be created by Login page)
+        // If profile is missing but user is auth'd, we might set profile to null
+        // The ProtectedRoute handles the case where user exists but profile is null
         setProfile(null);
       }
     } catch (err: any) {
-      console.warn('Profile fetch exception:', err.message || err);
+      console.warn('Profile fetch exception:', err);
     }
   };
 
   const refreshProfile = async (userId?: string) => {
     const idToFetch = userId || user?.id;
     if (idToFetch) {
-        // We do NOT set global loading here to avoid flickering UI on manual refreshes
         await fetchProfile(idToFetch);
     }
   };
 
   const signOut = async () => {
+    setLoading(true);
     try {
       await supabase.auth.signOut();
       localStorage.clear(); 
     } catch (error) {
       console.error('Sign out error:', error);
-    }
-    if (mounted.current) {
-      setUser(null);
-      setProfile(null);
+    } finally {
+      if (mounted.current) {
+        setUser(null);
+        setProfile(null);
+        setLoading(false);
+      }
     }
   };
 

@@ -131,14 +131,17 @@ export const Dialog: React.FC<DialogProps> = ({ isOpen, onClose, title, children
 // --- Toast (Simplified) ---
 export const ToastContainer = () => <div id="toast-container" className="fixed top-4 right-4 z-50 flex flex-col gap-2 pointer-events-none" />;
 
-export const showToast = (message: string, type: 'success' | 'error' = 'success') => {
+export const showToast = (message: string, type: 'success' | 'error' | 'warning' = 'success') => {
   const container = document.getElementById('toast-container');
   if (!container) return;
 
   const toast = document.createElement('div');
-  toast.className = `pointer-events-auto flex items-center w-full max-w-xs p-4 rounded-lg shadow-lg text-white ${
-    type === 'success' ? 'bg-green-600' : 'bg-red-600'
-  } animate-in slide-in-from-right fade-in duration-300 mb-2`;
+  
+  let bgClass = 'bg-green-600';
+  if (type === 'error') bgClass = 'bg-red-600';
+  if (type === 'warning') bgClass = 'bg-yellow-600';
+  
+  toast.className = `pointer-events-auto flex items-center w-full max-w-xs p-4 rounded-lg shadow-lg text-white ${bgClass} animate-in slide-in-from-right fade-in duration-300 mb-2`;
   
   toast.innerHTML = `
     <div class="text-sm font-normal">${message}</div>

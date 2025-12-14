@@ -1,65 +1,204 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
   AreaChart, Area, Cell
 } from 'recharts';
-import { Card, CardContent, CardHeader, CardTitle, Badge, cn } from '../components/ui';
+import { Card, CardContent, CardHeader, CardTitle, Badge, cn, Button, showToast } from '../components/ui';
 import { 
   Users, Award, Clock, AlertTriangle, TrendingUp, 
-  Zap, UserCheck, UserX, AlertCircle 
+  Zap, UserCheck, AlertCircle, Loader2, Plus, UserX, UserCog, Mail
 } from 'lucide-react';
+import { supabase } from '../supabase';
+import { useAuth } from '../AuthContext';
+import { InviteStaffModal } from '../components/InviteStaffModal';
 
 const StaffPerformance: React.FC = () => {
+  const { profile } = useAuth();
+  const [loading, setLoading] = useState(true);
+  const [staffList, setStaffList] = useState<any[]>([]);
+  const [leaderboard, setLeaderboard] = useState<any[]>([]);
+  const [workloadData, setWorkloadData] = useState<any[]>([]);
+  const [remakesData, setRemakesData] = useState<any[]>([]);
+  const [activeStaffCount, setActiveStaffCount] = useState(0);
+  const [speedData, setSpeedData] = useState<any[]>([]);
   
-  // --- Mock Data ---
+  // Management State
+  const [isInviteOpen, setIsInviteOpen] = useState(false);
+  const [allUsers, setAllUsers] = useState<any[]>([]);
 
-  const staffLeaderboard = [
-    { id: 1, name: "Sarah J.", role: "Manager", orders: 45, sales: 15400, upsells: 12, score: 98 },
-    { id: 2, name: "David M.", role: "Waiter", orders: 62, sales: 12800, upsells: 8, score: 94 },
-    { id: 3, name: "Hana A.", role: "Waiter", orders: 58, sales: 11200, upsells: 15, score: 92 },
-    { id: 4, name: "Yonas B.", role: "Waiter", orders: 41, sales: 8500, upsells: 3, score: 85 },
-    { id: 5, name: "Tigist L.", role: "Kitchen", orders: 0, sales: 0, upsells: 0, score: 96 },
-  ];
+  useEffect(() => {
+    fetchData();
 
-  const shiftData = [
-    { name: "Sarah J.", role: "Manager", login: "08:00 AM", status: "online", duration: "6h 30m" },
-    { name: "David M.", role: "Waiter", login: "08:30 AM", status: "online", duration: "6h 00m" },
-    { name: "Hana A.", role: "Waiter", login: "11:00 AM", status: "online", duration: "3h 30m" },
-    { name: "Michael K.", role: "Waiter", login: "08:00 AM", logout: "02:00 PM", status: "offline", duration: "6h 00m" },
-    { name: "Tigist L.", role: "Kitchen", login: "07:30 AM", status: "online", duration: "7h 00m" },
-  ];
+    // Subscribe to changes
+    const ordersSub = supabase.channel('staff_perf_updates')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => fetchData())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, () => fetchData())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'order_issues' }, () => fetchData())
+      .subscribe();
+      
+    return () => { supabase.removeChannel(ordersSub); };
+  }, []);
 
-  // Avg time from Order -> Kitchen Ready (minutes)
-  const speedData = [
-    { name: 'David M.', time: 12, target: 15 },
-    { name: 'Hana A.', time: 14, target: 15 },
-    { name: 'Yonas B.', time: 18, target: 15 }, // Slower
-    { name: 'Sarah J.', time: 10, target: 15 },
-  ];
+  const fetchData = async () => {
+    try {
+        setLoading(true);
+        const todayStr = new Date().toISOString().split('T')[0];
+        const startOfDay = `${todayStr}T00:00:00`;
 
-  // Workload (Orders per hour per waiter)
-  const workloadData = [
-    { time: '12pm', David: 4, Hana: 2, Yonas: 3 },
-    { time: '1pm', David: 8, Hana: 6, Yonas: 5 },
-    { time: '2pm', David: 12, Hana: 10, Yonas: 8 }, // Peak
-    { time: '3pm', David: 6, Hana: 8, Yonas: 4 },
-    { time: '4pm', David: 3, Hana: 4, Yonas: 2 },
-  ];
+        // 1. Fetch Staff (Users) with online status
+        // Note: With new RLS, standard staff can see all users (policy: "Staff can view all users")
+        const { data: users, error: userError } = await supabase
+            .from('users')
+            .select('*')
+            .order('is_online', { ascending: false });
 
-  const remakesData = [
-    { id: 1, dish: "Special Burger", waiter: "Yonas B.", cook: "Tigist L.", reason: "Wrong toppings", time: "1:15 PM" },
-    { id: 2, dish: "Macchiato", waiter: "David M.", cook: "Barista 1", reason: "Cold", time: "2:30 PM" },
-    { id: 3, dish: "Steak", waiter: "Hana A.", cook: "Chef K.", reason: "Overcooked", time: "12:45 PM" },
-  ];
+        if (userError) throw userError;
+        
+        setAllUsers(users || []);
+        
+        // Filter for specific roles for performance tracking
+        const trackableStaff = users?.filter(u => ['waiter', 'manager', 'kitchen', 'owner'].includes(u.role)) || [];
+        
+        const activeCount = trackableStaff.filter(u => u.is_online).length || 0;
+        setActiveStaffCount(activeCount);
+        setStaffList(trackableStaff);
 
-  // Idle vs Pressure stats (Percentages)
-  const pressureData = [
-    { name: "David M.", idle: 20, active: 50, overload: 30 },
-    { name: "Hana A.", idle: 15, active: 60, overload: 25 },
-    { name: "Yonas B.", idle: 40, active: 40, overload: 20 },
-    { name: "Tigist L.", idle: 10, active: 40, overload: 50 }, // Kitchen busy
-  ];
+        // 2. Fetch Today's Orders
+        const { data: orders, error: orderError } = await supabase
+            .from('orders')
+            .select('*')
+            .gte('created_at', startOfDay);
+
+        if (orderError) throw orderError;
+
+        // --- Process Leaderboard (Orders & Score) ---
+        const statsMap = new Map<string, { orders: number, sales: number, speedSum: number, speedCount: number }>();
+        
+        trackableStaff.forEach(u => {
+            statsMap.set(u.id, { orders: 0, sales: 0, speedSum: 0, speedCount: 0 });
+        });
+
+        orders?.forEach((o: any) => {
+            if (o.verified_by) {
+                const current = statsMap.get(o.verified_by);
+                if (current) {
+                    // Count orders
+                    if (['paid', 'served', 'ready_to_pay', 'verified', 'accepted', 'ready', 'preparing'].includes(o.status)) {
+                        current.orders += 1;
+                        current.sales += (o.total_amount || 0);
+                    }
+                    
+                    // Calc Speed (Served - Created)
+                    if (o.served_at && o.created_at) {
+                         const diff = (new Date(o.served_at).getTime() - new Date(o.created_at).getTime()) / 60000;
+                         if (diff > 0 && diff < 120) { // Filter outliers
+                             current.speedSum += diff;
+                             current.speedCount += 1;
+                         }
+                    }
+                }
+            }
+        });
+
+        const lbData = trackableStaff.map(u => {
+            const stats = statsMap.get(u.id) || { orders: 0, sales: 0, speedSum: 0, speedCount: 0 };
+            
+            // Formula: (Orders * 2) + (Sales / 100)
+            const rawScore = (stats.orders * 2) + (stats.sales / 100); 
+            const score = Math.min(100, Math.round(rawScore)); 
+
+            const avgSpeed = stats.speedCount > 0 ? Math.round(stats.speedSum / stats.speedCount) : 0;
+
+            return {
+                id: u.id,
+                name: u.full_name || u.email?.split('@')[0],
+                role: u.role,
+                orders: stats.orders,
+                sales: stats.sales,
+                score: stats.orders > 0 ? score : 0,
+                avgSpeed
+            };
+        }).sort((a, b) => b.score - a.score).slice(0, 10) || [];
+
+        setLeaderboard(lbData);
+
+        // --- Process Speed Data for Chart ---
+        const speedChartData = lbData.filter(s => s.orders > 0).slice(0, 5).map(s => ({
+            name: s.name,
+            time: s.avgSpeed || 0,
+            target: 15
+        }));
+        setSpeedData(speedChartData);
+
+        // --- Process Workload (Hourly) ---
+        const hours = ['10am', '11am', '12pm', '1pm', '2pm', '3pm', '4pm', '5pm', '6pm', '7pm', '8pm'];
+        const workloadMap: Record<string, any> = {};
+
+        hours.forEach(h => {
+            workloadMap[h] = { time: h };
+            // Initialize top 3 staff with 0
+            lbData.slice(0, 3).forEach(s => workloadMap[h][s.name] = 0);
+        });
+
+        orders?.forEach((o: any) => {
+            const date = new Date(o.created_at);
+            let hour = date.getHours();
+            const ampm = hour >= 12 ? 'pm' : 'am';
+            const h12 = hour % 12 || 12;
+            const timeKey = `${h12}${ampm}`;
+
+            if (workloadMap[timeKey]) {
+                const staff = trackableStaff.find(u => u.id === o.verified_by);
+                if (staff) {
+                     const name = staff.full_name || staff.email?.split('@')[0];
+                     if (workloadMap[timeKey][name] !== undefined) {
+                         workloadMap[timeKey][name]++;
+                     }
+                }
+            }
+        });
+        setWorkloadData(Object.values(workloadMap));
+
+        // --- Fetch Order Issues ---
+        try {
+            const { data: issues, error: issueError } = await supabase
+                .from('order_issues')
+                .select('*')
+                .gte('created_at', startOfDay)
+                .order('created_at', { ascending: false })
+                .limit(10);
+            
+            if (!issueError && issues) {
+                setRemakesData(issues);
+            } else {
+                 setRemakesData([]);
+            }
+        } catch (e) {
+            console.log("Issues table likely missing, skipping.");
+        }
+
+    } catch (err) {
+        console.error("Staff Perf Fetch Error:", err);
+    } finally {
+        setLoading(false);
+    }
+  };
+
+  const handleDeleteStaff = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this staff profile? This cannot be undone.")) return;
+    try {
+        const { error } = await supabase.from('users').delete().eq('id', id);
+        if (error) throw error;
+        showToast("Staff profile deleted.", "success");
+        fetchData();
+    } catch (err: any) {
+        showToast("Failed to delete staff: " + err.message, "error");
+    }
+  };
+
+  const colors = ["#3B82F6", "#8B5CF6", "#EC4899", "#10B981", "#F59E0B"];
+  const isOwner = profile?.role === 'owner';
 
   return (
     <DashboardLayout>
@@ -68,18 +207,22 @@ const StaffPerformance: React.FC = () => {
         {/* Header */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-white">Staff Performance</h1>
+            <h1 className="text-2xl font-bold text-white">Staff Management & Performance</h1>
             <p className="text-gray-400 text-sm">Efficiency metrics, shift tracking, and quality control</p>
           </div>
           <div className="flex gap-3">
              <div className="flex items-center gap-2 px-3 py-1 bg-green-500/10 rounded-lg border border-green-500/20">
                 <UserCheck className="w-4 h-4 text-green-500" />
-                <span className="text-sm font-bold text-green-400">8 Online</span>
+                <span className="text-sm font-bold text-green-400">{activeStaffCount} Online</span>
              </div>
-             <div className="flex items-center gap-2 px-3 py-1 bg-gray-800 rounded-lg border border-gray-700">
-                <Users className="w-4 h-4 text-gray-400" />
-                <span className="text-sm font-bold text-gray-300">12 Total Staff</span>
-             </div>
+             {isOwner && (
+                <Button onClick={() => setIsInviteOpen(true)} className="bg-primary text-black font-bold h-8">
+                   <Plus className="w-4 h-4 mr-1" /> Invite Staff
+                </Button>
+             )}
+             <Button variant="outline" onClick={fetchData} className="h-8 w-8 p-0 border-gray-700">
+                <Loader2 className={cn("w-4 h-4", loading && "animate-spin")} />
+             </Button>
           </div>
         </div>
 
@@ -94,20 +237,22 @@ const StaffPerformance: React.FC = () => {
               </CardTitle>
             </CardHeader>
             <CardContent className="p-0">
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto max-h-[350px]">
                 <table className="w-full text-sm text-left">
-                  <thead className="text-xs text-gray-500 uppercase bg-black/20 border-b border-gray-800">
+                  <thead className="text-xs text-gray-500 uppercase bg-black/20 border-b border-gray-800 sticky top-0 backdrop-blur-sm z-10">
                     <tr>
                       <th className="px-6 py-4">Rank</th>
                       <th className="px-6 py-4">Staff Member</th>
                       <th className="px-6 py-4 text-center">Orders</th>
                       <th className="px-6 py-4 text-right">Sales</th>
-                      <th className="px-6 py-4 text-center">Upsells</th>
                       <th className="px-6 py-4 text-right">Score</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-800">
-                    {staffLeaderboard.filter(s => s.role !== 'Kitchen').map((staff, index) => (
+                    {leaderboard.length === 0 && (
+                        <tr><td colSpan={5} className="p-8 text-center text-gray-500">No active staff data today.</td></tr>
+                    )}
+                    {leaderboard.map((staff, index) => (
                       <tr key={staff.id} className="hover:bg-white/5 transition-colors group">
                         <td className="px-6 py-4">
                            <div className={cn(
@@ -120,8 +265,8 @@ const StaffPerformance: React.FC = () => {
                            </div>
                         </td>
                         <td className="px-6 py-4">
-                           <div className="font-bold text-white">{staff.name}</div>
-                           <div className="text-xs text-gray-500">{staff.role}</div>
+                           <div className="font-bold text-white capitalize">{staff.name}</div>
+                           <div className="text-xs text-gray-500 capitalize">{staff.role}</div>
                         </td>
                         <td className="px-6 py-4 text-center text-gray-300">
                            {staff.orders}
@@ -129,15 +274,10 @@ const StaffPerformance: React.FC = () => {
                         <td className="px-6 py-4 text-right font-mono text-primary font-bold">
                            ETB {staff.sales.toLocaleString()}
                         </td>
-                        <td className="px-6 py-4 text-center">
-                           <span className="px-2 py-1 bg-blue-500/10 text-blue-400 rounded-md font-bold text-xs border border-blue-500/20">
-                             {staff.upsells}
-                           </span>
-                        </td>
                         <td className="px-6 py-4 text-right">
                            <span className={cn(
                              "text-lg font-bold",
-                             staff.score >= 95 ? "text-green-500" : staff.score >= 85 ? "text-primary" : "text-red-500"
+                             staff.score >= 90 ? "text-green-500" : staff.score >= 50 ? "text-primary" : "text-gray-500"
                            )}>
                              {staff.score}
                            </span>
@@ -150,36 +290,46 @@ const StaffPerformance: React.FC = () => {
             </CardContent>
           </Card>
 
-          {/* Shift Attendance */}
-          <Card className="bg-[#1A1A1A] border-gray-800 flex flex-col">
+          {/* Shift Attendance / Staff List */}
+          <Card className="bg-[#1A1A1A] border-gray-800 flex flex-col max-h-[430px]">
             <CardHeader>
                <CardTitle className="text-white flex items-center gap-2">
-                  <Clock className="w-5 h-5 text-gray-400" /> Shift Attendance
+                  <Clock className="w-5 h-5 text-gray-400" /> Staff Directory
                </CardTitle>
             </CardHeader>
-            <CardContent className="flex-1 overflow-y-auto pr-2 space-y-3">
-               {shiftData.map((staff, i) => (
-                  <div key={i} className="flex items-center justify-between p-3 rounded-xl bg-black/20 border border-gray-800/50">
+            <CardContent className="flex-1 overflow-y-auto pr-2 space-y-3 custom-scrollbar">
+               {allUsers.map((staff, i) => (
+                  <div key={i} className="flex items-center justify-between p-3 rounded-xl bg-black/20 border border-gray-800/50 group">
                      <div className="flex items-center gap-3">
                         <div className="relative">
-                           <div className="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center text-xs font-bold text-gray-300">
-                              {staff.name.charAt(0)}
+                           <div className="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center text-xs font-bold text-gray-300 capitalize">
+                              {staff.full_name?.charAt(0) || staff.email?.charAt(0)}
                            </div>
-                           <div className={cn(
-                              "absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-[#1A1A1A]",
-                              staff.status === 'online' ? "bg-green-500" : "bg-gray-500"
-                           )} />
+                           <div className={cn("absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-[#1A1A1A]", staff.is_online ? "bg-green-500" : "bg-gray-500")} />
                         </div>
                         <div>
-                           <p className="text-sm font-bold text-white">{staff.name}</p>
-                           <p className="text-xs text-gray-500">{staff.role}</p>
+                           <p className="text-sm font-bold text-white capitalize flex items-center gap-1">
+                               {staff.full_name || staff.email?.split('@')[0]}
+                               {staff.role === 'owner' && <Badge variant="outline" className="text-[9px] border-primary/40 text-primary py-0 px-1">OWNER</Badge>}
+                           </p>
+                           <p className="text-xs text-gray-500 capitalize">{staff.role}</p>
                         </div>
                      </div>
-                     <div className="text-right text-xs">
-                        <p className={staff.status === 'online' ? "text-green-400 font-bold" : "text-gray-500"}>
-                           {staff.status === 'online' ? 'Online' : 'Logged Out'}
-                        </p>
-                        <p className="text-gray-500">{staff.duration}</p>
+                     <div className="text-right">
+                        {isOwner && staff.role !== 'owner' ? (
+                            <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                className="h-7 w-7 p-0 text-red-500 hover:bg-red-500/10 opacity-0 group-hover:opacity-100 transition-opacity"
+                                onClick={() => handleDeleteStaff(staff.id)}
+                            >
+                                <UserX className="w-4 h-4" />
+                            </Button>
+                        ) : (
+                            <div className="text-xs text-gray-500">
+                                {staff.is_online ? "Online" : "Away"}
+                            </div>
+                        )}
                      </div>
                   </div>
                ))}
@@ -195,11 +345,16 @@ const StaffPerformance: React.FC = () => {
            <Card className="bg-[#1A1A1A] border-gray-800">
               <CardHeader>
                  <CardTitle className="text-white flex items-center gap-2">
-                    <Zap className="w-5 h-5 text-yellow-500" /> Service Speed (Order → Ready)
+                    <Zap className="w-5 h-5 text-yellow-500" /> Service Speed (Avg. Mins)
                  </CardTitle>
               </CardHeader>
               <CardContent>
                  <div className="h-[250px] w-full">
+                    {speedData.length === 0 ? (
+                        <div className="h-full flex items-center justify-center text-gray-500">
+                           No served orders today to calculate speed
+                        </div>
+                    ) : (
                     <ResponsiveContainer width="100%" height="100%">
                        <BarChart data={speedData} layout="vertical" margin={{ left: 20, right: 30 }}>
                           <CartesianGrid strokeDasharray="3 3" stroke="#333" horizontal={false} />
@@ -216,10 +371,7 @@ const StaffPerformance: React.FC = () => {
                           </Bar>
                        </BarChart>
                     </ResponsiveContainer>
-                 </div>
-                 <div className="flex justify-center gap-6 text-xs text-gray-400 mt-2">
-                    <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-[#84CC16]"/> On Target (&lt;15m)</span>
-                    <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-[#EF4444]"/> Slow (&gt;15m)</span>
+                    )}
                  </div>
               </CardContent>
            </Card>
@@ -228,7 +380,7 @@ const StaffPerformance: React.FC = () => {
            <Card className="bg-[#1A1A1A] border-gray-800">
               <CardHeader>
                  <CardTitle className="text-white flex items-center gap-2">
-                    <TrendingUp className="w-5 h-5 text-blue-500" /> Workload Distribution (Hourly)
+                    <TrendingUp className="w-5 h-5 text-blue-500" /> Workload Distribution (Today)
                  </CardTitle>
               </CardHeader>
               <CardContent>
@@ -239,93 +391,75 @@ const StaffPerformance: React.FC = () => {
                           <XAxis dataKey="time" stroke="#666" />
                           <YAxis stroke="#666" />
                           <Tooltip contentStyle={{ backgroundColor: '#1A1A1A', border: '1px solid #333' }} />
-                          <Area type="monotone" dataKey="David" stackId="1" stroke="#3B82F6" fill="#3B82F6" fillOpacity={0.3} />
-                          <Area type="monotone" dataKey="Hana" stackId="1" stroke="#8B5CF6" fill="#8B5CF6" fillOpacity={0.3} />
-                          <Area type="monotone" dataKey="Yonas" stackId="1" stroke="#EC4899" fill="#EC4899" fillOpacity={0.3} />
+                          {leaderboard.slice(0, 3).map((staff, idx) => (
+                              <Area 
+                                key={staff.id}
+                                type="monotone" 
+                                dataKey={staff.name} 
+                                stackId="1" 
+                                stroke={colors[idx % colors.length]} 
+                                fill={colors[idx % colors.length]} 
+                                fillOpacity={0.3} 
+                              />
+                          ))}
                        </AreaChart>
                     </ResponsiveContainer>
                  </div>
-                 <div className="flex justify-center gap-6 text-xs text-gray-400 mt-2">
-                    <span className="text-blue-500 font-bold">David M.</span>
-                    <span className="text-purple-500 font-bold">Hana A.</span>
-                    <span className="text-pink-500 font-bold">Yonas B.</span>
+                 <div className="flex justify-center gap-4 text-xs text-gray-400 mt-2 flex-wrap">
+                    {leaderboard.slice(0, 3).map((staff, idx) => (
+                        <span key={staff.id} style={{ color: colors[idx % colors.length] }} className="font-bold">
+                            {staff.name}
+                        </span>
+                    ))}
                  </div>
               </CardContent>
            </Card>
 
         </div>
 
-        {/* Bottom Section: QC & Load */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Bottom Section: Remakes & Quality */}
+        <div className="grid grid-cols-1 gap-6">
            
            {/* Errors & Remakes */}
-           <Card className="lg:col-span-2 bg-[#1A1A1A] border-gray-800">
+           <Card className="bg-[#1A1A1A] border-gray-800">
               <CardHeader>
                  <CardTitle className="text-white flex items-center gap-2">
-                    <AlertTriangle className="w-5 h-5 text-red-500" /> Quality Control (Remakes)
+                    <AlertTriangle className="w-5 h-5 text-red-500" /> Quality Control (Issues Log)
                  </CardTitle>
               </CardHeader>
               <CardContent>
                  <div className="space-y-3">
+                    {remakesData.length === 0 && (
+                        <div className="p-8 text-center bg-black/20 rounded-lg border border-dashed border-gray-800">
+                            <p className="text-gray-500 text-sm">No issues reported in `order_issues` today.</p>
+                        </div>
+                    )}
                     {remakesData.map((item) => (
                        <div key={item.id} className="flex items-center justify-between p-3 rounded-lg bg-red-500/5 border border-red-500/10">
                           <div className="flex items-center gap-4">
-                             <div className="text-xs text-gray-500 font-mono w-16">{item.time}</div>
+                             <div className="text-xs text-gray-500 font-mono w-24">
+                                {new Date(item.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                             </div>
                              <div>
-                                <p className="text-sm font-bold text-white">{item.dish}</p>
-                                <p className="text-xs text-gray-400">Reason: <span className="text-red-400">{item.reason}</span></p>
+                                <p className="text-sm font-bold text-white capitalize">{item.issue_type}</p>
+                                <p className="text-xs text-gray-400">{item.description}</p>
                              </div>
                           </div>
-                          <div className="text-right text-xs">
-                             <p className="text-gray-300">Waiter: {item.waiter}</p>
-                             <p className="text-gray-500">Cook: {item.cook}</p>
-                          </div>
+                          <Badge variant="outline" className="border-red-500/20 text-red-400">{item.status}</Badge>
                        </div>
                     ))}
-                    {remakesData.length === 0 && <p className="text-gray-500 text-sm">No reported issues today.</p>}
-                 </div>
-              </CardContent>
-           </Card>
-
-           {/* Workload Indicators */}
-           <Card className="bg-[#1A1A1A] border-gray-800">
-              <CardHeader>
-                 <CardTitle className="text-white flex items-center gap-2">
-                    <AlertCircle className="w-5 h-5 text-orange-400" /> Efficiency Breakdown
-                 </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                 {pressureData.map(staff => (
-                    <div key={staff.name}>
-                       <div className="flex justify-between text-xs mb-1.5">
-                          <span className="font-bold text-white">{staff.name}</span>
-                          <span className={cn(
-                             "font-bold",
-                             staff.overload > 40 ? "text-red-500" : "text-gray-400"
-                          )}>
-                             {staff.overload > 40 ? "Overloaded" : "Optimal"}
-                          </span>
-                       </div>
-                       <div className="h-2 w-full rounded-full flex overflow-hidden bg-gray-800">
-                          <div style={{ width: `${staff.idle}%` }} className="bg-gray-600 h-full" title="Idle" />
-                          <div style={{ width: `${staff.active}%` }} className="bg-green-500 h-full" title="Active" />
-                          <div style={{ width: `${staff.overload}%` }} className="bg-red-500 h-full" title="Overload" />
-                       </div>
-                       <div className="flex justify-between text-[10px] text-gray-500 mt-1">
-                          <span>Idle {staff.idle}%</span>
-                          <span>Busy {staff.overload}%</span>
-                       </div>
-                    </div>
-                 ))}
-                 <div className="flex justify-center gap-4 text-[10px] text-gray-400 border-t border-gray-800 pt-3">
-                    <div className="flex items-center gap-1"><div className="w-2 h-2 bg-gray-600 rounded-full"/> Idle</div>
-                    <div className="flex items-center gap-1"><div className="w-2 h-2 bg-green-500 rounded-full"/> Active</div>
-                    <div className="flex items-center gap-1"><div className="w-2 h-2 bg-red-500 rounded-full"/> Overload</div>
                  </div>
               </CardContent>
            </Card>
 
         </div>
+        
+        {/* Modals */}
+        <InviteStaffModal 
+            isOpen={isInviteOpen} 
+            onClose={() => setIsInviteOpen(false)} 
+            onSuccess={fetchData} 
+        />
 
       </div>
     </DashboardLayout>

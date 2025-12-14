@@ -14,6 +14,7 @@ export interface MenuItem {
   category: string;
   image_url?: string;
   is_available: boolean;
+  stock_quantity?: number; // Added field
   created_at: string;
 }
 
@@ -39,6 +40,12 @@ export interface Order {
   created_at: string;
   payment_method?: PaymentMethod;
   paid_at?: string;
+  // Analytics fields
+  served_at?: string;
+  kitchen_accepted_at?: string;
+  ready_at?: string;
+  order_type?: string;
+  
   // Joins
   verified_by_user?: UserProfile; 
   items?: OrderItem[];

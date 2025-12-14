@@ -4,7 +4,7 @@ import { DashboardLayout } from '../components/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle, Badge, Button, cn, showToast } from '../components/ui';
 import { 
   Users, AlertCircle, TrendingUp, Clock, AlertTriangle, 
-  CheckCircle2, BarChart3, Timer
+  CheckCircle2, BarChart3, Timer, Loader2
 } from 'lucide-react';
 import { 
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell 
@@ -13,89 +13,198 @@ import { Order } from '../types';
 import { PaymentVerificationModal, FloatingPaymentButton } from '../components/PaymentVerificationModal';
 
 const ManagerDashboard: React.FC = () => {
+  const [loading, setLoading] = useState(true);
   const [orders, setOrders] = useState<Order[]>([]);
   const [isPaymentOpen, setIsPaymentOpen] = useState(false);
+  
+  // Data State
+  const [kpi, setKpi] = useState({
+     revenue: 0,
+     orders: 0,
+     issues: 0,
+     staffActive: 0
+  });
+  const [staffPerf, setStaffPerf] = useState<any[]>([]);
+  const [shiftStaff, setShiftStaff] = useState<any[]>([]);
+  const [issues, setIssues] = useState<any[]>([]);
+  const [serviceFlow, setServiceFlow] = useState<any[]>([]);
+  const [avgServiceTime, setAvgServiceTime] = useState("0m");
 
   // --- Realtime Data Fetching ---
   useEffect(() => {
-    fetchOrders();
+    fetchDashboardData();
 
-    const subscription = supabase
-      .channel('manager_orders')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => {
-        fetchOrders();
-      })
-      .subscribe();
+    const subscriptions = [
+       supabase.channel('mgr_orders').on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => fetchDashboardData()),
+       supabase.channel('mgr_issues').on('postgres_changes', { event: '*', schema: 'public', table: 'operational_issues' }, () => fetchDashboardData()),
+       supabase.channel('mgr_users').on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, () => fetchDashboardData()),
+    ];
+
+    subscriptions.forEach(s => s.subscribe());
 
     return () => { 
-      supabase.removeChannel(subscription); 
+      subscriptions.forEach(s => supabase.removeChannel(s)); 
     }
   }, []);
 
-  const fetchOrders = async () => {
-     const { data } = await supabase.from('orders').select('*');
-     if (data) setOrders(data as Order[]);
+  const fetchDashboardData = async () => {
+     try {
+        const todayStr = new Date().toISOString().split('T')[0];
+        const startOfDay = `${todayStr}T00:00:00`;
+
+        // 1. Fetch Orders (Today)
+        const { data: todayOrders, error: orderError } = await supabase
+           .from('orders')
+           .select('*')
+           .gte('created_at', startOfDay);
+        
+        if (orderError) throw orderError;
+        setOrders(todayOrders as Order[]);
+
+        // 2. Fetch Users (Staff)
+        const { data: allStaff, error: userError } = await supabase
+           .from('users')
+           .select('*')
+           .in('role', ['waiter', 'kitchen', 'manager', 'security']);
+
+        // 3. Fetch Operational Issues
+        const { data: issuesData, error: issueError } = await supabase
+           .from('operational_issues')
+           .select('*')
+           .gte('created_at', startOfDay)
+           .order('created_at', { ascending: false });
+
+        // --- Calculate KPIs ---
+        const activeOrders = todayOrders || [];
+        const revenue = activeOrders
+            .filter(o => o.status !== 'cancelled')
+            .reduce((sum, o) => sum + (o.total_amount || 0), 0);
+        
+        const totalOrders = activeOrders.length;
+        
+        // Count open issues + cancelled orders today
+        const dbIssuesCount = issuesData?.filter((i: any) => i.status === 'open').length || 0;
+        const cancelledCount = activeOrders.filter(o => o.status === 'cancelled').length;
+        const totalIssues = dbIssuesCount + cancelledCount; // Combined metric
+
+        // Mock 'Online' status if column missing or data empty, using verified orders as proxy for activity
+        const staffActivityMap = new Set(activeOrders.map(o => o.verified_by).filter(Boolean));
+        const activeStaffCount = allStaff?.filter((u: any) => 
+            u.is_online || staffActivityMap.has(u.id)
+        ).length || 0;
+
+        setKpi({
+            revenue,
+            orders: totalOrders,
+            issues: totalIssues,
+            staffActive: activeStaffCount
+        });
+
+        // --- Process Service Flow ---
+        const stageCounts = { order: 0, prep: 0, pickup: 0, pay: 0 };
+        let totalServedTime = 0;
+        let servedCount = 0;
+
+        activeOrders.forEach(o => {
+            if (['pending', 'verified'].includes(o.status)) stageCounts.order++;
+            else if (['accepted', 'preparing'].includes(o.status)) stageCounts.prep++;
+            else if (['ready'].includes(o.status)) stageCounts.pickup++;
+            else if (['served', 'ready_to_pay', 'paid'].includes(o.status)) {
+                stageCounts.pay++;
+                // Calc avg service time if timestamps exist
+                if (o.served_at && o.created_at) {
+                    const diff = (new Date(o.served_at).getTime() - new Date(o.created_at).getTime()) / 60000;
+                    if (diff > 0 && diff < 120) {
+                        totalServedTime += diff;
+                        servedCount++;
+                    }
+                }
+            }
+        });
+
+        const flowChartData = [
+            { step: 'Order', time: stageCounts.order, target: 5 }, // Using count as proxy for load/time in chart for now
+            { step: 'Prep', time: stageCounts.prep, target: 8 },
+            { step: 'Pickup', time: stageCounts.pickup, target: 4 },
+            { step: 'Pay', time: stageCounts.pay > 20 ? 20 : stageCounts.pay, target: 10 }, // Cap visual
+        ];
+        setServiceFlow(flowChartData);
+        setAvgServiceTime(servedCount > 0 ? `${Math.round(totalServedTime / servedCount)}m` : "0m");
+
+        // --- Process Staff Performance ---
+        const staffMap: Record<string, any> = {};
+        allStaff?.forEach((u: any) => {
+             staffMap[u.id] = { 
+                 id: u.id, 
+                 name: u.full_name || u.email.split('@')[0], 
+                 role: u.role, 
+                 orders: 0, 
+                 sales: 0, 
+                 errors: 0 
+             };
+        });
+
+        activeOrders.forEach(o => {
+             if (o.verified_by && staffMap[o.verified_by]) {
+                 staffMap[o.verified_by].orders++;
+                 staffMap[o.verified_by].sales += o.total_amount || 0;
+                 if (o.status === 'cancelled') staffMap[o.verified_by].errors++;
+             }
+        });
+
+        const perfData = Object.values(staffMap)
+            .filter((s: any) => s.orders > 0)
+            .sort((a: any, b: any) => b.orders - a.orders)
+            .slice(0, 10);
+            
+        setStaffPerf(perfData);
+
+        // --- Process Shift Overview ---
+        // Display staff who are marked online OR have activity
+        const activeShiftStaff = allStaff?.filter((u: any) => u.is_online || staffActivityMap.has(u.id))
+            .map((u: any) => ({
+                name: u.full_name || u.email.split('@')[0],
+                role: u.role,
+                // Mock duration if shift_start is null
+                duration: u.shift_start ? 
+                    `${Math.round((new Date().getTime() - new Date(u.shift_start).getTime()) / 3600000 * 10) / 10}h` : 
+                    'Active'
+            })) || [];
+        setShiftStaff(activeShiftStaff);
+
+        // --- Process Issues ---
+        setIssues(issuesData || []);
+
+     } catch (err) {
+        console.error("Manager Dashboard Fetch Error:", err);
+     } finally {
+        setLoading(false);
+     }
   };
 
-  // --- Filter Logic ---
+  const resolveIssue = async (id: string) => {
+    try {
+        const { error } = await supabase
+            .from('operational_issues')
+            .update({ status: 'resolved', resolved_at: new Date().toISOString() })
+            .eq('id', id);
+        
+        if (error) throw error;
+        showToast('Issue marked as resolved', 'success');
+        fetchDashboardData();
+    } catch (err) {
+        showToast('Failed to resolve issue', 'error');
+    }
+  };
+
+  // Filter for Payment Modal
   const unpaidServedOrders = orders.filter(o => 
     ['served', 'ready_to_pay'].includes(o.status) && o.status !== 'paid'
   );
 
-  // --- Mock Data ---
-
-  const kpiData = {
-    revenue: 45200,
-    orders: 142,
-    issues: 5, // 3 complaints + 2 remakes
-    staffActive: 8
-  };
-
-  const staffPerformance = [
-    { id: 1, name: "David M.", role: "Waiter", orders: 42, sales: 12500, avgTime: "14m", errors: 0 },
-    { id: 2, name: "Hana A.", role: "Waiter", orders: 38, sales: 11200, avgTime: "16m", errors: 1 },
-    { id: 3, name: "Sarah J.", role: "Waiter", orders: 35, sales: 9800, avgTime: "13m", errors: 0 },
-    { id: 4, name: "Yonas B.", role: "Waiter", orders: 27, sales: 7500, avgTime: "21m", errors: 2 },
-  ];
-
-  const shiftOverview = [
-    { name: "David M.", role: "Waiter", since: "08:00 AM", duration: "6h" },
-    { name: "Hana A.", role: "Waiter", since: "08:30 AM", duration: "5.5h" },
-    { name: "Tigist L.", role: "Kitchen", since: "07:00 AM", duration: "7h" },
-    { name: "Abebe K.", role: "Kitchen", since: "07:00 AM", duration: "7h" },
-    { name: "Security 1", role: "Security", since: "06:00 AM", duration: "8h" },
-  ];
-
-  // Service Flow Data
-  const flowData = [
-    { step: 'Order', time: 2, target: 3 },
-    { step: 'Prep', time: 18, target: 15 }, // Bottleneck
-    { step: 'Pickup', time: 4, target: 2 },
-    { step: 'Pay', time: 5, target: 5 },
-  ];
-
-  const stationDelays = [
-    { station: 'Grill', count: 4 },
-    { station: 'Salad', count: 1 },
-    { station: 'Bar', count: 0 },
-  ];
-
-  const complaintsLog = [
-    { id: 101, type: 'Remake', table: 'T5', staff: 'Yonas B.', reason: 'Steak overcooked', time: '12:45 PM', status: 'resolved' },
-    { id: 102, type: 'Complaint', table: 'T2', staff: 'David M.', reason: 'Slow service', time: '1:15 PM', status: 'pending' },
-    { id: 103, type: 'Cancel', table: 'T8', staff: 'Hana A.', reason: 'Changed mind', time: '1:30 PM', status: 'pending' },
-  ];
-
-  const [issues, setIssues] = useState(complaintsLog);
-
-  const resolveIssue = (id: number) => {
-    setIssues(prev => prev.map(i => i.id === id ? { ...i, status: 'resolved' } : i));
-    showToast('Issue marked as resolved');
-  };
-
-  // Determine Bottleneck
-  const slowStep = flowData.reduce((prev, curr) => (curr.time - curr.target) > (prev.time - prev.target) ? curr : prev);
-  const bottleneckLabel = slowStep.time > slowStep.target ? slowStep.step : "None";
+  // Determine Bottleneck for UI
+  const slowStep = serviceFlow.length > 0 ? serviceFlow.reduce((prev, curr) => (curr.time > curr.target) ? curr : prev, serviceFlow[0]) : null;
+  const bottleneckLabel = slowStep && slowStep.time > slowStep.target ? slowStep.step : "None";
 
   return (
     <DashboardLayout>
@@ -103,9 +212,12 @@ const ManagerDashboard: React.FC = () => {
         
         {/* Header */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
-          <div>
-            <h1 className="text-2xl font-bold text-white">Branch Manager</h1>
-            <p className="text-gray-400 text-sm">Daily operations and staff oversight</p>
+          <div className="flex items-center gap-3">
+             <div>
+                <h1 className="text-2xl font-bold text-white">Branch Manager</h1>
+                <p className="text-gray-400 text-sm">Daily operations and staff oversight</p>
+             </div>
+             {loading && <Loader2 className="w-5 h-5 animate-spin text-primary" />}
           </div>
           <div className="text-right">
              <div className="text-xs text-gray-500 uppercase tracking-widest">Today</div>
@@ -119,7 +231,7 @@ const ManagerDashboard: React.FC = () => {
              <CardContent className="p-5 flex justify-between items-start">
                 <div>
                    <p className="text-xs text-gray-500 uppercase font-bold tracking-wider">Revenue Today</p>
-                   <h3 className="text-2xl font-bold text-white mt-1">ETB {kpiData.revenue.toLocaleString()}</h3>
+                   <h3 className="text-2xl font-bold text-white mt-1">ETB {kpi.revenue.toLocaleString()}</h3>
                 </div>
                 <div className="p-2 bg-primary/10 rounded-full">
                    <TrendingUp className="w-5 h-5 text-primary" />
@@ -130,21 +242,21 @@ const ManagerDashboard: React.FC = () => {
              <CardContent className="p-5 flex justify-between items-start">
                 <div>
                    <p className="text-xs text-gray-500 uppercase font-bold tracking-wider">Total Orders</p>
-                   <h3 className="text-2xl font-bold text-white mt-1">{kpiData.orders}</h3>
+                   <h3 className="text-2xl font-bold text-white mt-1">{kpi.orders}</h3>
                 </div>
                 <div className="p-2 bg-blue-500/10 rounded-full">
                    <BarChart3 className="w-5 h-5 text-blue-500" />
                 </div>
              </CardContent>
           </Card>
-          <Card className={cn("bg-[#1A1A1A] border-gray-800", kpiData.issues > 0 && "border-red-500/30")}>
+          <Card className={cn("bg-[#1A1A1A] border-gray-800", kpi.issues > 0 && "border-red-500/30")}>
              <CardContent className="p-5 flex justify-between items-start">
                 <div>
                    <p className="text-xs text-gray-500 uppercase font-bold tracking-wider">Guest Issues</p>
-                   <h3 className={cn("text-2xl font-bold mt-1", kpiData.issues > 0 ? "text-red-500" : "text-white")}>
-                      {kpiData.issues}
+                   <h3 className={cn("text-2xl font-bold mt-1", kpi.issues > 0 ? "text-red-500" : "text-white")}>
+                      {kpi.issues}
                    </h3>
-                   {kpiData.issues > 0 && <span className="text-xs text-red-400">Action Required</span>}
+                   {kpi.issues > 0 && <span className="text-xs text-red-400">Action Required</span>}
                 </div>
                 <div className="p-2 bg-red-500/10 rounded-full">
                    <AlertCircle className="w-5 h-5 text-red-500" />
@@ -155,7 +267,7 @@ const ManagerDashboard: React.FC = () => {
              <CardContent className="p-5 flex justify-between items-start">
                 <div>
                    <p className="text-xs text-gray-500 uppercase font-bold tracking-wider">Staff On Shift</p>
-                   <h3 className="text-2xl font-bold text-white mt-1">{kpiData.staffActive}</h3>
+                   <h3 className="text-2xl font-bold text-white mt-1">{kpi.staffActive}</h3>
                 </div>
                 <div className="p-2 bg-green-500/10 rounded-full">
                    <Users className="w-5 h-5 text-green-500" />
@@ -175,7 +287,7 @@ const ManagerDashboard: React.FC = () => {
                  </CardTitle>
                  {bottleneckLabel !== 'None' && (
                     <Badge variant="destructive" className="bg-red-500/10 text-red-400 border-red-500/20 animate-pulse">
-                       Bottleneck: {bottleneckLabel}
+                       High Load: {bottleneckLabel}
                     </Badge>
                  )}
               </CardHeader>
@@ -184,7 +296,7 @@ const ManagerDashboard: React.FC = () => {
                     {/* Chart */}
                     <div className="h-[200px] w-full">
                        <ResponsiveContainer width="100%" height="100%">
-                          <BarChart data={flowData} layout="vertical" margin={{ left: 10, right: 10 }}>
+                          <BarChart data={serviceFlow} layout="vertical" margin={{ left: 10, right: 10 }}>
                              <XAxis type="number" hide />
                              <YAxis dataKey="step" type="category" width={50} tick={{fill: '#9CA3AF', fontSize: 12}} />
                              <Tooltip 
@@ -192,39 +304,34 @@ const ManagerDashboard: React.FC = () => {
                                 contentStyle={{ backgroundColor: '#1A1A1A', border: '1px solid #333' }}
                              />
                              <Bar dataKey="time" barSize={20} radius={[0, 4, 4, 0]}>
-                                {flowData.map((entry, index) => (
+                                {serviceFlow.map((entry, index) => (
                                    <Cell key={`cell-${index}`} fill={entry.time > entry.target ? '#EF4444' : '#3B82F6'} />
                                 ))}
                              </Bar>
                           </BarChart>
                        </ResponsiveContainer>
                        <div className="flex justify-center gap-4 text-xs text-gray-500 mt-2">
-                          <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-[#3B82F6]"/> Normal</span>
-                          <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-[#EF4444]"/> Delayed</span>
+                          <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-[#3B82F6]"/> Normal Load</span>
+                          <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-[#EF4444]"/> High Load</span>
                        </div>
                     </div>
 
                     {/* Insights Panel */}
                     <div className="space-y-4">
-                       <h4 className="text-sm font-bold text-gray-400 uppercase tracking-wider">Station Delays</h4>
-                       <div className="grid grid-cols-3 gap-3">
-                          {stationDelays.map(s => (
-                             <div key={s.station} className={cn(
-                                "p-3 rounded-lg border text-center",
-                                s.count > 0 ? "bg-red-500/5 border-red-500/20" : "bg-gray-800/50 border-gray-700"
-                             )}>
-                                <div className="text-xs text-gray-500 mb-1">{s.station}</div>
-                                <div className={cn("text-xl font-bold", s.count > 0 ? "text-red-500" : "text-gray-300")}>
-                                   {s.count}
-                                </div>
-                             </div>
-                          ))}
-                       </div>
-                       <div className="pt-4 border-t border-gray-800">
-                          <div className="flex justify-between items-center text-sm">
-                             <span className="text-gray-400">Avg Service Time</span>
-                             <span className="font-bold text-white">29 min <span className="text-red-400 text-xs">(+4m)</span></span>
+                       <h4 className="text-sm font-bold text-gray-400 uppercase tracking-wider">Live Metrics</h4>
+                       <div className="grid grid-cols-2 gap-3">
+                          <div className="p-3 bg-gray-800/50 rounded-lg border border-gray-700 text-center">
+                              <p className="text-xs text-gray-500">Pending Orders</p>
+                              <p className="text-xl font-bold text-white">{serviceFlow.find(f => f.step === 'Order')?.time || 0}</p>
                           </div>
+                          <div className="p-3 bg-gray-800/50 rounded-lg border border-gray-700 text-center">
+                              <p className="text-xs text-gray-500">Avg Service Time</p>
+                              <p className="text-xl font-bold text-primary">{avgServiceTime}</p>
+                          </div>
+                       </div>
+                       <div className="p-3 bg-blue-500/5 border border-blue-500/10 rounded-lg text-xs text-gray-400">
+                          <span className="text-blue-400 font-bold block mb-1">Tip:</span>
+                          Monitor the 'Prep' stage. High numbers indicate kitchen congestion.
                        </div>
                     </div>
                  </div>
@@ -239,15 +346,16 @@ const ManagerDashboard: React.FC = () => {
                  </CardTitle>
               </CardHeader>
               <CardContent className="flex-1 overflow-y-auto pr-2 space-y-3">
-                 {shiftOverview.map((staff, i) => (
+                 {shiftStaff.length === 0 && <p className="text-gray-500 text-center text-sm pt-10">No active staff detected.</p>}
+                 {shiftStaff.map((staff, i) => (
                     <div key={i} className="flex items-center justify-between p-2.5 rounded-lg bg-black/20 hover:bg-white/5 transition-colors border border-gray-800/50">
                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center text-xs font-bold text-gray-300">
+                          <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center text-xs font-bold text-gray-300 capitalize">
                              {staff.name.charAt(0)}
                           </div>
                           <div>
-                             <p className="text-sm font-bold text-white">{staff.name}</p>
-                             <p className="text-[10px] text-gray-500">{staff.role} • On for {staff.duration}</p>
+                             <p className="text-sm font-bold text-white capitalize">{staff.name}</p>
+                             <p className="text-[10px] text-gray-500 capitalize">{staff.role} • {staff.duration}</p>
                           </div>
                        </div>
                        <div className="w-2 h-2 rounded-full bg-green-500" title="Online" />
@@ -271,27 +379,19 @@ const ManagerDashboard: React.FC = () => {
                           <th className="px-6 py-4">Staff Member</th>
                           <th className="px-6 py-4">Orders</th>
                           <th className="px-6 py-4">Sales (ETB)</th>
-                          <th className="px-6 py-4">Avg Speed</th>
                           <th className="px-6 py-4 text-right">Errors</th>
                        </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-800">
-                       {staffPerformance.map((staff) => (
+                       {staffPerf.length === 0 && <tr><td colSpan={4} className="p-6 text-center text-gray-500">No staff activity recorded today.</td></tr>}
+                       {staffPerf.map((staff) => (
                           <tr key={staff.id} className="hover:bg-white/5 transition-colors">
                              <td className="px-6 py-4">
-                                <span className="font-bold text-white">{staff.name}</span>
-                                <span className="ml-2 text-xs text-gray-500">{staff.role}</span>
+                                <span className="font-bold text-white capitalize">{staff.name}</span>
+                                <span className="ml-2 text-xs text-gray-500 capitalize">{staff.role}</span>
                              </td>
                              <td className="px-6 py-4 text-gray-300">{staff.orders}</td>
                              <td className="px-6 py-4 text-primary font-mono">{staff.sales.toLocaleString()}</td>
-                             <td className="px-6 py-4">
-                                <span className={cn(
-                                   "px-2 py-1 rounded text-xs font-bold",
-                                   parseInt(staff.avgTime) > 20 ? "bg-red-500/10 text-red-500" : "bg-green-500/10 text-green-500"
-                                )}>
-                                   {staff.avgTime}
-                                </span>
-                             </td>
                              <td className="px-6 py-4 text-right">
                                 {staff.errors > 0 ? (
                                    <span className="text-red-400 font-bold">{staff.errors}</span>
@@ -317,25 +417,29 @@ const ManagerDashboard: React.FC = () => {
            <CardContent className="p-0">
               <div className="divide-y divide-gray-800">
                  {issues.length === 0 && (
-                    <div className="p-8 text-center text-gray-500">No active issues. Great job!</div>
+                    <div className="p-8 text-center text-gray-500">No active issues found in `operational_issues`.</div>
                  )}
                  {issues.map((issue) => (
                     <div key={issue.id} className="flex items-center justify-between p-4 hover:bg-white/5 transition-colors">
                        <div className="flex items-center gap-4">
                           <div className={cn(
                              "p-2 rounded-lg",
-                             issue.type === 'Remake' ? "bg-red-500/10 text-red-500" : "bg-orange-500/10 text-orange-500"
+                             issue.issue_type === 'remake' ? "bg-red-500/10 text-red-500" : "bg-orange-500/10 text-orange-500"
                           )}>
                              <AlertTriangle className="w-5 h-5" />
                           </div>
                           <div>
                              <div className="flex items-center gap-2">
-                                <span className="font-bold text-white">{issue.type}</span>
-                                <Badge variant="outline" className="border-gray-700 text-gray-400 text-[10px]">{issue.time}</Badge>
+                                <span className="font-bold text-white capitalize">{issue.issue_type}</span>
+                                <Badge variant="outline" className="border-gray-700 text-gray-400 text-[10px]">
+                                    {new Date(issue.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                                </Badge>
                                 {issue.status === 'resolved' && <Badge variant="success" className="bg-green-500/10 text-green-500 border-green-500/20">Resolved</Badge>}
                              </div>
                              <p className="text-sm text-gray-400 mt-0.5">
-                                {issue.reason} • <span className="text-gray-500">Table {issue.table} ({issue.staff})</span>
+                                {issue.description || 'No description'} 
+                                {issue.table_number && ` • Table ${issue.table_number}`}
+                                {issue.staff_name && ` (${issue.staff_name})`}
                              </p>
                           </div>
                        </div>
@@ -364,7 +468,7 @@ const ManagerDashboard: React.FC = () => {
         onClose={() => setIsPaymentOpen(false)} 
         orders={unpaidServedOrders}
         onPaymentSuccess={() => {
-          fetchOrders();
+          fetchDashboardData();
         }}
       />
       <FloatingPaymentButton 

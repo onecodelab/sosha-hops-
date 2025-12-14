@@ -2,26 +2,33 @@ import React, { useEffect, useState } from 'react';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { useAuth } from '../AuthContext';
 import { supabase } from '../supabase';
-import { MenuItem, Order, CartItem } from '../types';
+import { Order, CartItem } from '../types';
+import { useMenu } from '../hooks/useMenu';
 import { Button, Card, CardContent, Input, Badge, Dialog, showToast, cn } from '../components/ui';
 import { 
   Plus, Minus, Search, ShoppingBag, Check, CreditCard, Clock, 
-  QrCode, User, Bell, Utensils, TrendingUp, AlertCircle, Bot
+  QrCode, User, Bell, Utensils, TrendingUp, AlertCircle, Bot, ScanLine
 } from 'lucide-react';
 import QRScanner from '../components/QRScanner';
 import { PaymentVerificationModal, FloatingPaymentButton } from '../components/PaymentVerificationModal';
+import { ReceiptVerificationModal } from '../components/ReceiptVerificationModal';
 
 const WaiterDashboard: React.FC = () => {
   const { profile, user } = useAuth();
   const [orders, setOrders] = useState<Order[]>([]); 
-  const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   
+  // Use the new hook
+  const { menuItems, categories, loading: menuLoading } = useMenu(true);
+
   // Modal & Form State
   const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [isPaymentOpen, setIsPaymentOpen] = useState(false); // New Payment Modal State
+  const [isPaymentOpen, setIsPaymentOpen] = useState(false);
+  const [isVerifyOpen, setIsVerifyOpen] = useState(false);
+  
   const [tableNo, setTableNo] = useState('');
   const [cart, setCart] = useState<CartItem[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   
   // Derived State
@@ -29,7 +36,6 @@ const WaiterDashboard: React.FC = () => {
 
   useEffect(() => {
     fetchOrders();
-    fetchMenu();
     
     // Clock for elapsed time calculations
     const timer = setInterval(() => setCurrentTime(new Date()), 60000);
@@ -52,7 +58,10 @@ const WaiterDashboard: React.FC = () => {
   }, [user]);
 
   const fetchOrders = async () => {
-    // Fetch orders verified by this waiter OR pending/unclaimed orders (Shared Pool)
+    // Optimization: Only fetch orders from "today"
+    const today = new Date().toISOString().split('T')[0];
+    const startOfDay = `${today}T00:00:00`;
+
     const { data, error } = await supabase
       .from('orders')
       .select(`
@@ -63,23 +72,16 @@ const WaiterDashboard: React.FC = () => {
           menu_item:menu (name, category)
         )
       `)
+      .gte('created_at', startOfDay) // Server-side date filter
       .order('created_at', { ascending: false });
 
     if (!error && data) {
-       // Filter client-side:
-       // 1. Orders assigned to me
-       // 2. Orders that are unclaimed (verified_by is null) - e.g. Chatbot orders
-       const myData = data.filter(o => 
-         o.verified_by === user?.id || 
-         o.verified_by === null
-       );
-       setOrders(myData as Order[]);
+       // We still perform some client-side filtering to segregate "My" orders vs general pool if needed,
+       // but strictly speaking, the Waiter Dashboard usually shows orders relevant to the logged-in waiter.
+       // However, sometimes waiters help each other, so we fetch all today's orders but highlight "mine".
+       const relevantOrders = data as Order[];
+       setOrders(relevantOrders);
     }
-  };
-
-  const fetchMenu = async () => {
-    const { data } = await supabase.from('menu').select('*').eq('is_available', true);
-    if (data) setMenuItems(data);
   };
 
   // --- Actions ---
@@ -154,26 +156,58 @@ const WaiterDashboard: React.FC = () => {
     }
   };
 
-  // --- Filtering ---
-  // Active orders: Assigned to me OR Unclaimed
-  const myActiveOrders = orders.filter(o => 
-    (o.verified_by === user?.id || o.verified_by === null) && 
+  // --- Filtering & Logic ---
+  const myOrders = orders.filter(o => o.verified_by === user?.id || o.verified_by === null);
+
+  // 1. Open Tables: Unique tables with active status (pending, preparing, ready)
+  const openTablesCount = new Set(
+    myOrders
+      .filter(o => ['pending', 'verified', 'accepted', 'preparing', 'ready'].includes(o.status))
+      .map(o => o.table_no)
+  ).size;
+
+  // 2. Active Orders: Total orders in active states
+  const activeOrdersCount = myOrders.filter(o => 
+    ['pending', 'verified', 'accepted', 'preparing', 'ready'].includes(o.status)
+  ).length;
+
+  // 3. Sales Today: Sum of served/paid
+  const todaySales = myOrders
+    .filter(o => ['served', 'paid', 'ready_to_pay'].includes(o.status))
+    .reduce((sum, o) => sum + (o.total_amount || 0), 0);
+
+  // 4. Avg Service Time: (served_at - created_at)
+  const servedOrders = myOrders.filter(o => o.status === 'served' || o.status === 'paid');
+  let totalServiceMinutes = 0;
+  let validServiceCount = 0;
+  
+  servedOrders.forEach(o => {
+     if (o.served_at && o.created_at) {
+        const diff = (new Date(o.served_at).getTime() - new Date(o.created_at).getTime()) / 60000;
+        if (diff > 0 && diff < 120) { // Filter outliers
+           totalServiceMinutes += diff;
+           validServiceCount++;
+        }
+     }
+  });
+  const avgServiceTime = validServiceCount > 0 ? `${Math.round(totalServiceMinutes / validServiceCount)}m` : '0m';
+
+
+  // Lists for UI
+  const myActiveOrdersList = myOrders.filter(o => 
     ['verified', 'accepted', 'preparing', 'ready', 'served', 'ready_to_pay', 'pending'].includes(o.status)
   );
-  
-  // Unpaid served orders for verification
-  // Includes served/ready_to_pay that are either mine or unclaimed
-  const unpaidServedOrders = orders.filter(o => 
+
+  const unpaidServedOrders = myOrders.filter(o => 
     ['served', 'ready_to_pay'].includes(o.status) && 
-    o.status !== 'paid' &&
-    (o.verified_by === user?.id || o.verified_by === null)
+    o.status !== 'paid'
   );
   
-  // "My Tables" are distinct tables from active orders
-  const myTables = Array.from(new Set(myActiveOrders.map(o => o.table_no))).map(tNo => {
-    const tableOrders = myActiveOrders.filter(o => o.table_no === tNo);
-    const oldestOrder = tableOrders.sort((a,b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())[0];
-    const totalBill = tableOrders.reduce((sum, o) => sum + o.total_amount, 0);
+  const myTables = Array.from(new Set(myActiveOrdersList.map(o => o.table_no))).map(tNo => {
+    const tableOrders = myActiveOrdersList.filter(o => o.table_no === tNo);
+    // Sort to find oldest for elapsed time
+    const oldestOrder = [...tableOrders].sort((a,b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())[0];
+    const totalBill = tableOrders.reduce((sum, o) => sum + (o.total_amount || 0), 0);
     const lastStatus = tableOrders[tableOrders.length - 1].status; 
     
     return {
@@ -187,22 +221,26 @@ const WaiterDashboard: React.FC = () => {
     };
   }).sort((a,b) => a.elapsed - b.elapsed); 
 
-  // KPIs
-  const todaySales = orders
-    .filter(o => o.verified_by === user?.id && ['paid', 'served', 'ready_to_pay'].includes(o.status))
-    .reduce((sum, o) => sum + o.total_amount, 0);
-  
-  const avgServiceTime = "14m"; 
-  const topItems = ["Burger", "Macchiato", "Pizza"];
+  // Filter Menu
+  const filteredMenu = menuItems.filter(m => {
+    const matchesSearch = m.name.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesCategory = selectedCategory === 'All' || m.category === selectedCategory;
+    return matchesSearch && matchesCategory;
+  });
 
   return (
     <DashboardLayout 
       title="Waiter Station" 
       subtitle={`Welcome back, ${profile?.name || 'Staff'}`}
       actions={
-        <Button onClick={() => setIsCreateOpen(true)} className="bg-primary text-black font-bold hover:bg-primary/90">
-          <Plus className="mr-2 h-4 w-4" /> New Order
-        </Button>
+        <div className="flex gap-2">
+            <Button onClick={() => setIsVerifyOpen(true)} variant="secondary" className="bg-gray-800 text-white hover:bg-gray-700">
+               <ScanLine className="mr-2 h-4 w-4" /> Verify Receipt
+            </Button>
+            <Button onClick={() => setIsCreateOpen(true)} className="bg-primary text-black font-bold hover:bg-primary/90">
+               <Plus className="mr-2 h-4 w-4" /> New Order
+            </Button>
+        </div>
       }
     >
       <div className="space-y-6">
@@ -212,14 +250,14 @@ const WaiterDashboard: React.FC = () => {
           <Card className="bg-[#1A1A1A] border-gray-800 p-4 flex flex-col justify-between">
             <p className="text-xs text-gray-500 font-bold uppercase">My Open Tables</p>
             <div className="flex justify-between items-end">
-              <h3 className="text-2xl font-bold text-white">{myTables.length}</h3>
+              <h3 className="text-2xl font-bold text-white">{openTablesCount}</h3>
               <User className="w-5 h-5 text-primary opacity-50" />
             </div>
           </Card>
           <Card className="bg-[#1A1A1A] border-gray-800 p-4 flex flex-col justify-between">
             <p className="text-xs text-gray-500 font-bold uppercase">Active Orders</p>
             <div className="flex justify-between items-end">
-              <h3 className="text-2xl font-bold text-white">{myActiveOrders.filter(o => o.status !== 'served').length}</h3>
+              <h3 className="text-2xl font-bold text-white">{activeOrdersCount}</h3>
               <Utensils className="w-5 h-5 text-blue-400 opacity-50" />
             </div>
           </Card>
@@ -318,21 +356,21 @@ const WaiterDashboard: React.FC = () => {
                 </h3>
                 <div className="flex gap-2">
                   <Badge variant="secondary" className="bg-green-500/10 text-green-500 border-green-500/20">
-                     {myActiveOrders.filter(o => o.status === 'ready').length} Ready
+                     {myActiveOrdersList.filter(o => o.status === 'ready').length} Ready
                   </Badge>
                   <Badge variant="secondary" className="bg-orange-500/10 text-orange-500 border-orange-500/20">
-                     {myActiveOrders.filter(o => o.status === 'preparing').length} Cooking
+                     {myActiveOrdersList.filter(o => o.status === 'preparing').length} Cooking
                   </Badge>
                 </div>
              </div>
 
              <div className="flex-1 overflow-y-auto space-y-3 pr-1">
-                {myActiveOrders.length === 0 && (
+                {myActiveOrdersList.length === 0 && (
                    <div className="h-40 flex items-center justify-center text-gray-500 border border-dashed border-gray-800 rounded-xl">
                       No active orders
                    </div>
                 )}
-                {myActiveOrders.map(order => (
+                {myActiveOrdersList.map(order => (
                    <div key={order.id} className={cn("relative p-4 rounded-xl border flex flex-col gap-3 transition-all", order.verified_by === null ? "bg-purple-900/10 border-purple-500/30" : "bg-[#1A1A1A] border-gray-800")}>
                       {order.status === 'ready' && (
                          <div className="absolute top-4 right-4 animate-bounce">
@@ -397,59 +435,16 @@ const WaiterDashboard: React.FC = () => {
 
         </div>
 
-        {/* 3. Bottom Strip: Performance & Notifications */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-           {/* Performance */}
-           <div className="lg:col-span-2 bg-[#1A1A1A] border border-gray-800 rounded-xl p-4 flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                 <div className="p-3 bg-primary/10 rounded-full">
-                    <TrendingUp className="w-5 h-5 text-primary" />
-                 </div>
-                 <div>
-                    <h4 className="text-sm font-bold text-white">Performance Insights</h4>
-                    <p className="text-xs text-gray-500">You're doing great! Keep pushing desserts.</p>
-                 </div>
-              </div>
-              <div className="flex gap-8 text-center">
-                 <div>
-                    <p className="text-[10px] text-gray-500 uppercase font-bold">Top Items</p>
-                    <div className="flex gap-1 mt-1">
-                       {topItems.map(i => <Badge key={i} variant="secondary" className="text-[10px] bg-gray-800">{i}</Badge>)}
-                    </div>
-                 </div>
-                 <div>
-                    <p className="text-[10px] text-gray-500 uppercase font-bold">Upsell Rate</p>
-                    <p className="text-lg font-bold text-green-500">18%</p>
-                 </div>
-                 <div className="hidden sm:block">
-                    <p className="text-[10px] text-gray-500 uppercase font-bold">Remakes</p>
-                    <p className="text-lg font-bold text-white">0</p>
-                 </div>
-              </div>
-           </div>
-           
-           {/* Compact Notification Area */}
-           <div className="bg-[#1A1A1A] border border-gray-800 rounded-xl p-4">
-              <h4 className="text-xs font-bold text-gray-500 uppercase mb-3 flex items-center gap-2">
-                 <AlertCircle className="w-3 h-3" /> Alerts
-              </h4>
-              <div className="space-y-2">
-                 {myTables.some(t => t.elapsed > 45) ? (
-                    <div className="flex items-center gap-2 text-xs text-red-400 bg-red-500/5 p-2 rounded border border-red-500/10">
-                       <Clock className="w-3 h-3" />
-                       <span>Table waiting &gt; 45 mins</span>
-                    </div>
-                 ) : (
-                    <p className="text-xs text-gray-600 italic">No alerts</p>
-                 )}
-              </div>
-           </div>
-        </div>
-
       </div>
 
       {/* --- Modals --- */}
       
+      {/* Receipt Verification Modal */}
+      <ReceiptVerificationModal 
+         isOpen={isVerifyOpen}
+         onClose={() => setIsVerifyOpen(false)}
+      />
+
       {/* Payment Verification Modal */}
       <PaymentVerificationModal 
         isOpen={isPaymentOpen} 
@@ -498,23 +493,54 @@ const WaiterDashboard: React.FC = () => {
              </div>
           </div>
 
+          <div className="flex gap-2 mb-4 overflow-x-auto pb-2 scrollbar-none">
+            <Button 
+               size="sm" 
+               variant={selectedCategory === 'All' ? 'primary' : 'outline'}
+               onClick={() => setSelectedCategory('All')}
+               className="rounded-full px-4"
+            >
+               All
+            </Button>
+            {categories.map(cat => (
+               <Button 
+                  key={cat}
+                  size="sm"
+                  variant={selectedCategory === cat ? 'primary' : 'outline'}
+                  onClick={() => setSelectedCategory(cat)}
+                  className="rounded-full px-4 whitespace-nowrap"
+               >
+                  {cat}
+               </Button>
+            ))}
+          </div>
+
           <div className="flex-1 flex gap-4 overflow-hidden">
              {/* Menu List */}
              <div className="flex-1 overflow-y-auto pr-2 space-y-2">
-                {menuItems
-                  .filter(m => m.name.toLowerCase().includes(searchTerm.toLowerCase()))
-                  .map(item => (
-                    <div key={item.id} className="flex items-center justify-between p-3 rounded-xl bg-gray-900/50 border border-gray-800 hover:border-gray-600 transition-colors cursor-pointer" onClick={() => addToCart(item)}>
+                {menuLoading && <p className="text-center text-gray-500 mt-4">Loading menu...</p>}
+                {!menuLoading && filteredMenu.length === 0 && (
+                   <div className="text-center text-gray-500 mt-10">
+                      <Utensils className="w-10 h-10 mx-auto opacity-20 mb-2" />
+                      <p>No items found</p>
+                   </div>
+                )}
+                {filteredMenu.map(item => (
+                    <div key={item.id} className="flex items-center justify-between p-3 rounded-xl bg-gray-900/50 border border-gray-800 hover:border-gray-600 transition-colors cursor-pointer group" onClick={() => addToCart(item)}>
                        <div className="flex items-center gap-3">
-                           <div className="h-10 w-10 rounded-lg bg-gray-800 flex items-center justify-center text-xs font-bold text-gray-500 border border-gray-700">
-                             {item.name.slice(0,2).toUpperCase()}
+                           <div className="h-10 w-10 rounded-lg bg-gray-800 flex items-center justify-center text-xs font-bold text-gray-500 border border-gray-700 overflow-hidden">
+                             {item.image_url ? (
+                                <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" />
+                             ) : (
+                                item.name.slice(0,2).toUpperCase()
+                             )}
                            </div>
                           <div>
                             <p className="font-bold text-sm text-gray-200">{item.name}</p>
                             <p className="text-xs text-gray-500">ETB {item.price}</p>
                           </div>
                        </div>
-                       <Button size="sm" variant="ghost" className="text-primary"><Plus className="h-4 w-4"/></Button>
+                       <Button size="sm" variant="ghost" className="text-primary opacity-0 group-hover:opacity-100"><Plus className="h-4 w-4"/></Button>
                     </div>
                   ))
                 }
@@ -522,7 +548,7 @@ const WaiterDashboard: React.FC = () => {
 
              {/* Cart Summary */}
              <div className="w-1/3 bg-[#0A0A0A] border border-gray-800 rounded-xl p-4 flex flex-col shadow-xl">
-                <h3 className="font-bold mb-4 flex items-center gap-2 text-white border-b border-gray-800 pb-2"><ShoppingBag className="h-4 w-4 text-primary"/> Current Order</h3>
+                <h3 className="font-bold mb-4 flex items-center gap-2 text-white border-b border-gray-800 pb-2"><ShoppingBag className="h-4 w-4 text-primary"/> Order</h3>
                 <div className="flex-1 overflow-y-auto space-y-3">
                    {cart.map(item => (
                      <div key={item.id} className="text-sm bg-gray-900/50 p-2 rounded-lg border border-gray-800">
@@ -570,8 +596,7 @@ const WaiterDashboard: React.FC = () => {
     </DashboardLayout>
   );
 
-  // Cart Helpers
-  function addToCart(item: MenuItem) {
+  function addToCart(item: any) {
     setCart(prev => {
       const existing = prev.find(i => i.id === item.id);
       if (existing) return prev.map(i => i.id === item.id ? { ...i, quantity: i.quantity + 1 } : i);

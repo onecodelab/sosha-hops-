@@ -1,57 +1,251 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
   PieChart, Pie, Cell
 } from 'recharts';
-import { Card, CardContent, CardHeader, CardTitle, cn } from '../components/ui';
+import { Card, CardContent, CardHeader, CardTitle, cn, showToast } from '../components/ui';
 import { 
   ClipboardList, Clock, AlertOctagon, TrendingUp, DollarSign, 
-  Armchair, Utensils, Truck, CheckCircle2, AlertTriangle, ArrowRight
+  Armchair, Utensils, Truck, CheckCircle2, AlertTriangle, ArrowRight, Loader2
 } from 'lucide-react';
+import { supabase } from '../supabase';
 
 const OrdersTables: React.FC = () => {
   const [period, setPeriod] = useState<'today' | 'week' | 'month'>('today');
+  const [loading, setLoading] = useState(true);
+  
+  // Analytics State
+  const [kpi, setKpi] = useState({
+    totalOrders: 0,
+    avgValue: 0,
+    cancellations: 0,
+    cancellationRate: 0,
+    turnover: 0
+  });
 
-  // --- Mock Data ---
+  const [hourlyData, setHourlyData] = useState<any[]>([]);
+  const [orderTypeData, setOrderTypeData] = useState<any[]>([]);
+  const [tableStats, setTableStats] = useState<any[]>([]);
+  const [staffStats, setStaffStats] = useState<any[]>([]);
+  const [serviceFlow, setServiceFlow] = useState({
+      toKitchen: 0,
+      toReady: 0,
+      toServed: 0,
+      total: 0
+  });
 
-  // Hourly Order Volume
-  const hourlyData = [
-    { time: '10am', orders: 12 },
-    { time: '11am', orders: 25 },
-    { time: '12pm', orders: 65 }, // Peak
-    { time: '1pm', orders: 85 }, // Peak
-    { time: '2pm', orders: 55 },
-    { time: '3pm', orders: 30 },
-    { time: '4pm', orders: 25 },
-    { time: '5pm', orders: 40 },
-    { time: '6pm', orders: 70 },
-    { time: '7pm', orders: 90 }, // Peak
-    { time: '8pm', orders: 60 },
-    { time: '9pm', orders: 35 },
-  ];
+  useEffect(() => {
+    fetchData();
 
-  // Dine-in vs Delivery
-  const orderTypeData = [
-    { name: 'Dine-in', value: 340, color: '#FFB800' },
-    { name: 'Delivery', value: 120, color: '#84CC16' },
-    { name: 'Takeaway', value: 45, color: '#3B82F6' },
-  ];
+    // Subscribe to updates
+    const sub = supabase.channel('orders_tables_analytics')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => fetchData())
+      .subscribe();
+      
+    return () => { supabase.removeChannel(sub); };
+  }, [period]);
 
-  // Table Utilization
-  const tableStats = [
-    { id: 'T5', usage: 12, revenue: 8500, avgTurnover: '45m' },
-    { id: 'T2', usage: 11, revenue: 7200, avgTurnover: '50m' },
-    { id: 'T8', usage: 10, revenue: 6800, avgTurnover: '40m' },
-    { id: 'T1', usage: 3, revenue: 1200, avgTurnover: '35m' }, // Least used
-  ];
+  const fetchData = async () => {
+      setLoading(true);
+      try {
+          // 1. Determine Date Range
+          const now = new Date();
+          let startDate = new Date();
+          
+          if (period === 'today') {
+              startDate.setHours(0,0,0,0);
+          } else if (period === 'week') {
+              startDate.setDate(now.getDate() - 7);
+          } else if (period === 'month') {
+              startDate.setDate(now.getDate() - 30);
+          }
+          const startISO = startDate.toISOString();
 
-  // Staff Stats
-  const staffStats = [
-    { name: 'David M.', role: 'Waiter', orders: 62, speed: '12m', errors: 1 },
-    { name: 'Hana A.', role: 'Waiter', orders: 58, speed: '14m', errors: 0 },
-    { name: 'Yonas B.', role: 'Waiter', orders: 41, speed: '18m', errors: 3 },
-  ];
+          // 2. Fetch Users (Client-side join preparation)
+          const { data: users, error: userError } = await supabase.from('users').select('*');
+          if (userError) console.error("Error fetching users:", userError);
+          
+          const userMap = new Map();
+          users?.forEach(u => userMap.set(u.id, u));
+
+          // 3. Fetch Orders
+          const { data: orders, error } = await supabase
+             .from('orders')
+             .select('*')
+             .gte('created_at', startISO);
+
+          if (error) throw error;
+          const safeOrders = orders || [];
+
+          // --- Process KPI ---
+          const totalOrders = safeOrders.length;
+          const revenue = safeOrders.reduce((acc, o) => acc + (o.total_amount || 0), 0);
+          const avgValue = totalOrders > 0 ? Math.round(revenue / totalOrders) : 0;
+          
+          const cancelled = safeOrders.filter(o => o.status === 'cancelled').length;
+          const cancellationRate = totalOrders > 0 ? ((cancelled / totalOrders) * 100).toFixed(1) : '0';
+
+          // Turnover (Served/Paid orders: Paid At - Created At)
+          const completedOrders = safeOrders.filter(o => ['served', 'paid'].includes(o.status));
+          let totalDurationMins = 0;
+          let countedDuration = 0;
+
+          completedOrders.forEach(o => {
+             const start = new Date(o.created_at).getTime();
+             const end = o.paid_at ? new Date(o.paid_at).getTime() : new Date(o.created_at).getTime() + (45 * 60000); 
+             const diff = (end - start) / 60000;
+             if (diff > 0 && diff < 300) { 
+                 totalDurationMins += diff;
+                 countedDuration++;
+             }
+          });
+          const turnover = countedDuration > 0 ? Math.round(totalDurationMins / countedDuration) : 0;
+
+          setKpi({
+              totalOrders,
+              avgValue,
+              cancellations: cancelled,
+              cancellationRate: Number(cancellationRate),
+              turnover
+          });
+
+          // --- Process Hourly ---
+          const hoursMap = new Array(24).fill(0);
+          safeOrders.forEach(o => {
+              const h = new Date(o.created_at).getHours();
+              hoursMap[h]++;
+          });
+          
+          const hData = hoursMap.map((count, i) => {
+              const ampm = i >= 12 ? 'pm' : 'am';
+              const hour12 = i % 12 || 12;
+              return { time: `${hour12}${ampm}`, orders: count, hour24: i };
+          }).filter(d => d.hour24 >= 8 && d.hour24 <= 22);
+
+          setHourlyData(hData);
+
+          // --- Process Order Type ---
+          const typeCount: Record<string, number> = { 'Dine-in': 0, 'Delivery': 0, 'Takeaway': 0 };
+          safeOrders.forEach(o => {
+              const type = o.order_type ? 
+                  (o.order_type.charAt(0).toUpperCase() + o.order_type.slice(1)) : 
+                  'Dine-in';
+              if (typeCount[type] !== undefined) typeCount[type]++;
+              else typeCount['Dine-in']++;
+          });
+
+          const oTypeData = Object.entries(typeCount).map(([name, value]) => ({
+             name, 
+             value,
+             color: name === 'Dine-in' ? '#FFB800' : name === 'Delivery' ? '#84CC16' : '#3B82F6'
+          })).filter(d => d.value > 0);
+          setOrderTypeData(oTypeData);
+
+          // --- Process Table Stats ---
+          const tableMap: Record<string, { turns: number, rev: number, duration: number, count: number }> = {};
+          
+          safeOrders.forEach(o => {
+              if (!o.table_no) return;
+              const t = o.table_no;
+              if (!tableMap[t]) tableMap[t] = { turns: 0, rev: 0, duration: 0, count: 0 };
+              
+              tableMap[t].turns++;
+              tableMap[t].rev += (o.total_amount || 0);
+
+              if (['served', 'paid'].includes(o.status)) {
+                  const start = new Date(o.created_at).getTime();
+                  const end = o.paid_at ? new Date(o.paid_at).getTime() : new Date().getTime(); 
+                  const dur = (end - start) / 60000;
+                  if (dur > 0) {
+                      tableMap[t].duration += dur;
+                      tableMap[t].count++;
+                  }
+              }
+          });
+
+          const tStats = Object.entries(tableMap).map(([id, data]) => ({
+              id,
+              usage: data.turns,
+              revenue: data.rev,
+              avgTurnover: data.count > 0 ? `${Math.round(data.duration / data.count)}m` : '-'
+          })).sort((a,b) => b.revenue - a.revenue).slice(0, 10);
+          
+          setTableStats(tStats);
+
+          // --- Process Staff Stats ---
+          const staffMap: Record<string, { name: string, role: string, orders: number, cancelled: number, speedTotal: number, speedCount: number }> = {};
+
+          safeOrders.forEach(o => {
+              const uid = o.verified_by;
+              if (!uid) return;
+              
+              const u = userMap.get(uid);
+
+              if (!staffMap[uid]) staffMap[uid] = { name: u?.full_name || 'Unknown', role: u?.role || 'Staff', orders: 0, cancelled: 0, speedTotal: 0, speedCount: 0 };
+              
+              staffMap[uid].orders++;
+              if (o.status === 'cancelled') staffMap[uid].cancelled++;
+              
+              if (o.status === 'served' || o.status === 'paid') {
+                   const sTime = o.served_at ? new Date(o.served_at).getTime() : 0;
+                   const cTime = new Date(o.created_at).getTime();
+                   if (sTime > cTime) {
+                       staffMap[uid].speedTotal += (sTime - cTime) / 60000;
+                       staffMap[uid].speedCount++;
+                   }
+              }
+          });
+
+          const sStats = Object.values(staffMap).map(s => ({
+              name: s.name,
+              role: s.role,
+              orders: s.orders,
+              errors: s.cancelled,
+              speed: s.speedCount > 0 ? `${Math.round(s.speedTotal / s.speedCount)}m` : '-' 
+          })).sort((a,b) => b.orders - a.orders);
+
+          setStaffStats(sStats);
+
+          // --- Process Flow ---
+          let flowCounts = { k: 0, r: 0, s: 0 };
+          let flowSums = { k: 0, r: 0, s: 0 };
+
+          safeOrders.forEach(o => {
+               const created = new Date(o.created_at).getTime();
+               if (o.kitchen_accepted_at) {
+                   flowSums.k += (new Date(o.kitchen_accepted_at).getTime() - created) / 60000;
+                   flowCounts.k++;
+                   if (o.ready_at) {
+                       flowSums.r += (new Date(o.ready_at).getTime() - new Date(o.kitchen_accepted_at).getTime()) / 60000;
+                       flowCounts.r++;
+                       if (o.served_at) {
+                           flowSums.s += (new Date(o.served_at).getTime() - new Date(o.ready_at).getTime()) / 60000;
+                           flowCounts.s++;
+                       }
+                   }
+               }
+          });
+
+          const tk = flowCounts.k > 0 ? Math.round(flowSums.k / flowCounts.k) : 2;
+          const tr = flowCounts.r > 0 ? Math.round(flowSums.r / flowCounts.r) : 15;
+          const ts = flowCounts.s > 0 ? Math.round(flowSums.s / flowCounts.s) : 3;
+
+          setServiceFlow({
+              toKitchen: tk,
+              toReady: tr,
+              toServed: ts,
+              total: tk + tr + ts
+          });
+
+
+      } catch (err) {
+          console.error("Orders Analytics Error:", err);
+          showToast("Failed to load analytics data", "error");
+      } finally {
+          setLoading(false);
+      }
+  };
 
   return (
     <DashboardLayout>
@@ -59,9 +253,12 @@ const OrdersTables: React.FC = () => {
         
         {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <div>
-            <h1 className="text-2xl font-bold text-white">Orders & Tables</h1>
-            <p className="text-gray-400 text-sm">Throughput analysis and service efficiency</p>
+          <div className="flex items-center gap-3">
+            <div>
+              <h1 className="text-2xl font-bold text-white">Orders & Tables</h1>
+              <p className="text-gray-400 text-sm">Throughput analysis and service efficiency</p>
+            </div>
+            {loading && <Loader2 className="w-5 h-5 animate-spin text-primary" />}
           </div>
           
           <div className="flex bg-[#1A1A1A] p-1 rounded-lg border border-gray-800">
@@ -88,9 +285,9 @@ const OrdersTables: React.FC = () => {
              <CardContent className="p-5 flex justify-between items-start">
                 <div>
                    <p className="text-xs text-gray-500 uppercase font-bold tracking-wider">Total Orders</p>
-                   <h3 className="text-2xl font-bold text-white mt-1">505</h3>
+                   <h3 className="text-2xl font-bold text-white mt-1">{kpi.totalOrders}</h3>
                    <div className="text-xs text-[#84CC16] font-bold mt-1 flex items-center">
-                      <TrendingUp className="w-3 h-3 mr-1" /> +12% vs last {period}
+                      <TrendingUp className="w-3 h-3 mr-1" /> Volume
                    </div>
                 </div>
                 <div className="p-2 bg-primary/10 rounded-full">
@@ -102,9 +299,9 @@ const OrdersTables: React.FC = () => {
              <CardContent className="p-5 flex justify-between items-start">
                 <div>
                    <p className="text-xs text-gray-500 uppercase font-bold tracking-wider">Avg Order Value</p>
-                   <h3 className="text-2xl font-bold text-white mt-1">ETB 450</h3>
+                   <h3 className="text-2xl font-bold text-white mt-1">ETB {kpi.avgValue}</h3>
                    <div className="text-xs text-[#84CC16] font-bold mt-1 flex items-center">
-                      <TrendingUp className="w-3 h-3 mr-1" /> +5%
+                      <TrendingUp className="w-3 h-3 mr-1" /> Per Ticket
                    </div>
                 </div>
                 <div className="p-2 bg-green-500/10 rounded-full">
@@ -116,9 +313,9 @@ const OrdersTables: React.FC = () => {
              <CardContent className="p-5 flex justify-between items-start">
                 <div>
                    <p className="text-xs text-gray-500 uppercase font-bold tracking-wider">Cancellations</p>
-                   <h3 className="text-2xl font-bold text-white mt-1">1.2% <span className="text-sm font-normal text-gray-500">(6 orders)</span></h3>
-                   <div className="text-xs text-red-500 font-bold mt-1 flex items-center">
-                      <AlertOctagon className="w-3 h-3 mr-1" /> 2 remade
+                   <h3 className="text-2xl font-bold text-white mt-1">{kpi.cancellationRate}% <span className="text-sm font-normal text-gray-500">({kpi.cancellations})</span></h3>
+                   <div className={cn("text-xs font-bold mt-1 flex items-center", kpi.cancellations > 5 ? "text-red-500" : "text-gray-500")}>
+                      <AlertOctagon className="w-3 h-3 mr-1" /> {kpi.cancellations > 5 ? 'High Rate' : 'Normal'}
                    </div>
                 </div>
                 <div className="p-2 bg-red-500/10 rounded-full">
@@ -130,9 +327,9 @@ const OrdersTables: React.FC = () => {
              <CardContent className="p-5 flex justify-between items-start">
                 <div>
                    <p className="text-xs text-gray-500 uppercase font-bold tracking-wider">Table Turnover</p>
-                   <h3 className="text-2xl font-bold text-white mt-1">45 min</h3>
+                   <h3 className="text-2xl font-bold text-white mt-1">{kpi.turnover > 0 ? kpi.turnover + ' min' : '-'}</h3>
                    <div className="text-xs text-blue-400 font-bold mt-1 flex items-center">
-                      <Clock className="w-3 h-3 mr-1" /> Optimal
+                      <Clock className="w-3 h-3 mr-1" /> Cycle Time
                    </div>
                 </div>
                 <div className="p-2 bg-blue-500/10 rounded-full">
@@ -152,6 +349,9 @@ const OrdersTables: React.FC = () => {
               </CardHeader>
               <CardContent>
                  <div className="h-[300px] w-full">
+                    {hourlyData.length === 0 ? (
+                        <div className="h-full flex items-center justify-center text-gray-500">No hourly data available</div>
+                    ) : (
                     <ResponsiveContainer width="100%" height="100%">
                        <BarChart data={hourlyData} margin={{ top: 20, right: 30, left: 0, bottom: 0 }}>
                           <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
@@ -164,16 +364,7 @@ const OrdersTables: React.FC = () => {
                           <Bar dataKey="orders" fill="#FFB800" radius={[4, 4, 0, 0]} maxBarSize={40} />
                        </BarChart>
                     </ResponsiveContainer>
-                 </div>
-                 <div className="flex gap-6 mt-4 justify-center">
-                    <div className="text-center">
-                       <p className="text-xs text-gray-500">Lunch Peak</p>
-                       <p className="text-white font-bold">12pm - 2pm</p>
-                    </div>
-                    <div className="text-center">
-                       <p className="text-xs text-gray-500">Dinner Peak</p>
-                       <p className="text-white font-bold">7pm - 9pm</p>
-                    </div>
+                    )}
                  </div>
               </CardContent>
            </Card>
@@ -185,6 +376,9 @@ const OrdersTables: React.FC = () => {
               </CardHeader>
               <CardContent className="flex flex-col items-center justify-center">
                  <div className="h-[200px] w-full relative">
+                    {orderTypeData.length === 0 ? (
+                        <div className="h-full flex items-center justify-center text-gray-500">No data</div>
+                    ) : (
                     <ResponsiveContainer width="100%" height="100%">
                        <PieChart>
                           <Pie
@@ -205,8 +399,9 @@ const OrdersTables: React.FC = () => {
                           />
                        </PieChart>
                     </ResponsiveContainer>
+                    )}
                     <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                       <span className="text-3xl font-bold text-white">505</span>
+                       <span className="text-3xl font-bold text-white">{kpi.totalOrders}</span>
                        <span className="text-xs text-gray-500 uppercase">Total Orders</span>
                     </div>
                  </div>
@@ -220,6 +415,7 @@ const OrdersTables: React.FC = () => {
                           <span className="font-bold text-white">{type.value}</span>
                        </div>
                     ))}
+                    {orderTypeData.length === 0 && <p className="text-center text-gray-500 text-sm">No orders yet</p>}
                  </div>
               </CardContent>
            </Card>
@@ -252,7 +448,7 @@ const OrdersTables: React.FC = () => {
                        <CheckCircle2 className="w-5 h-5 text-purple-500" />
                     </div>
                     <p className="text-sm font-bold text-white">Kitchen Accept</p>
-                    <p className="text-xs text-primary font-bold mt-1">2m avg</p>
+                    <p className="text-xs text-primary font-bold mt-1">{serviceFlow.toKitchen}m avg</p>
                     
                     <div className="hidden md:flex absolute top-1/2 -right-5 w-6 h-6 z-10 items-center justify-center bg-gray-800 rounded-full border border-gray-700">
                        <ArrowRight className="w-3 h-3 text-gray-400" />
@@ -265,7 +461,7 @@ const OrdersTables: React.FC = () => {
                        <Utensils className="w-5 h-5 text-orange-500" />
                     </div>
                     <p className="text-sm font-bold text-white">Ready</p>
-                    <p className="text-xs text-primary font-bold mt-1">15m avg</p>
+                    <p className="text-xs text-primary font-bold mt-1">{serviceFlow.toReady}m avg</p>
                     
                     <div className="hidden md:flex absolute top-1/2 -right-5 w-6 h-6 z-10 items-center justify-center bg-gray-800 rounded-full border border-gray-700">
                        <ArrowRight className="w-3 h-3 text-gray-400" />
@@ -278,13 +474,13 @@ const OrdersTables: React.FC = () => {
                        <Truck className="w-5 h-5 text-green-500" />
                     </div>
                     <p className="text-sm font-bold text-white">Served</p>
-                    <p className="text-xs text-primary font-bold mt-1">3m avg</p>
+                    <p className="text-xs text-primary font-bold mt-1">{serviceFlow.toServed}m avg</p>
                  </div>
 
               </div>
               <div className="mt-4 text-center text-xs text-gray-500">
-                 Total Cycle Time: <span className="text-white font-bold">20 min</span> (Target: 18 min)
-                 <span className="ml-4 text-red-400">12 dishes delayed &gt; 25m today</span>
+                 Total Cycle Time: <span className="text-white font-bold">{serviceFlow.total} min</span>
+                 <span className="ml-2 italic text-gray-600">(Note: Requires Kitchen Display usage for accuracy)</span>
               </div>
            </CardContent>
         </Card>
@@ -300,8 +496,9 @@ const OrdersTables: React.FC = () => {
                  </CardTitle>
               </CardHeader>
               <CardContent className="p-0">
+                 <div className="overflow-x-auto max-h-[300px]">
                  <table className="w-full text-sm text-left">
-                    <thead className="text-xs text-gray-500 uppercase bg-black/20 border-b border-gray-800">
+                    <thead className="text-xs text-gray-500 uppercase bg-black/20 border-b border-gray-800 sticky top-0 backdrop-blur-sm z-10">
                        <tr>
                           <th className="px-6 py-3">Table</th>
                           <th className="px-6 py-3">Turns</th>
@@ -310,6 +507,7 @@ const OrdersTables: React.FC = () => {
                        </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-800">
+                       {tableStats.length === 0 && <tr><td colSpan={4} className="p-4 text-center text-gray-500">No table data</td></tr>}
                        {tableStats.map((table) => (
                           <tr key={table.id} className="hover:bg-white/5 transition-colors">
                              <td className="px-6 py-3 font-bold text-white">{table.id}</td>
@@ -322,6 +520,7 @@ const OrdersTables: React.FC = () => {
                        ))}
                     </tbody>
                  </table>
+                 </div>
               </CardContent>
            </Card>
 
@@ -333,8 +532,9 @@ const OrdersTables: React.FC = () => {
                  </CardTitle>
               </CardHeader>
               <CardContent className="p-0">
+                 <div className="overflow-x-auto max-h-[300px]">
                  <table className="w-full text-sm text-left">
-                    <thead className="text-xs text-gray-500 uppercase bg-black/20 border-b border-gray-800">
+                    <thead className="text-xs text-gray-500 uppercase bg-black/20 border-b border-gray-800 sticky top-0 backdrop-blur-sm z-10">
                        <tr>
                           <th className="px-6 py-3">Waiter</th>
                           <th className="px-6 py-3">Volume</th>
@@ -343,9 +543,13 @@ const OrdersTables: React.FC = () => {
                        </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-800">
+                       {staffStats.length === 0 && <tr><td colSpan={4} className="p-4 text-center text-gray-500">No staff activity</td></tr>}
                        {staffStats.map((staff) => (
                           <tr key={staff.name} className="hover:bg-white/5 transition-colors">
-                             <td className="px-6 py-3 font-medium text-white">{staff.name}</td>
+                             <td className="px-6 py-3 font-medium text-white">
+                                {staff.name}
+                                <div className="text-xs text-gray-500">{staff.role}</div>
+                             </td>
                              <td className="px-6 py-3 text-gray-300">{staff.orders}</td>
                              <td className="px-6 py-3 text-gray-300">{staff.speed}</td>
                              <td className="px-6 py-3 text-right">
@@ -359,6 +563,7 @@ const OrdersTables: React.FC = () => {
                        ))}
                     </tbody>
                  </table>
+                 </div>
               </CardContent>
            </Card>
 
