@@ -1,15 +1,19 @@
-import React, { createContext, useContext, useEffect, useState, useRef } from 'react';
+import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User } from '@supabase/supabase-js';
 import { supabase } from './supabase';
 import { UserProfile } from './types';
 import { SetupGuide } from './components/SetupGuide';
+import { useProfile } from './queries/useProfile';
+import { LoadingSpinner } from './components/LoadingSpinner';
+import { ErrorScreen } from './components/ErrorScreen';
+import { useNavigate } from 'react-router-dom';
 
 interface AuthContextType {
   user: User | null;
   profile: UserProfile | null;
   loading: boolean;
   signOut: () => Promise<void>;
-  refreshProfile: (userId?: string) => Promise<void>;
+  refreshProfile: () => Promise<void>;
   markDatabaseAsMissing: () => void;
 }
 
@@ -26,152 +30,126 @@ export const useAuth = () => useContext(AuthContext);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [loading, setLoading] = useState(true);
   const [needsSetup, setNeedsSetup] = useState(false);
-  const mounted = useRef(true);
+  const navigate = useNavigate();
+
+  // Integrated React Query Profile Hook
+  const { 
+    data: profile, 
+    isLoading, 
+    isError, 
+    error, 
+    refetch 
+  } = useProfile();
 
   useEffect(() => {
-    mounted.current = true;
-    
-    // Safety timeout to prevent infinite loading on mount
-    const safetyTimeout = setTimeout(() => {
-      if (mounted.current && loading) {
-        console.warn("Auth loading safety timeout triggered - Forcing app load");
-        setLoading(false);
-      }
-    }, 5000);
-
-    const initializeAuth = async () => {
-      try {
-        const { data: { session }, error } = await supabase.auth.getSession();
-        
-        if (error) {
-          console.warn("Session check error:", error);
-        }
-
-        if (session?.user) {
-          if (mounted.current) setUser(session.user);
-          await fetchProfile(session.user.id);
-        }
-      } catch (error) {
-        console.error("Auth initialization failed:", error);
-      } finally {
-        if (mounted.current) {
-          setLoading(false);
-          clearTimeout(safetyTimeout);
-        }
-      }
-    };
-
-    initializeAuth();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (!mounted.current) return;
-      
+    // Initial visual state from session
+    supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
+    });
 
-      if (event === 'SIGNED_IN') {
-         // Block UI temporarily to fetch profile on sign in
-         setLoading(true);
-         // Safety timeout specific to sign-in action
-         const signinTimeout = setTimeout(() => {
-             if (mounted.current && loading) setLoading(false);
-         }, 5000);
-
-         try {
-           if (session?.user) {
-              await fetchProfile(session.user.id);
-           }
-         } finally {
-           clearTimeout(signinTimeout);
-           if (mounted.current) setLoading(false);
-         }
-      } else if (event === 'SIGNED_OUT') {
-        setProfile(null);
-        setLoading(false);
-      } else if (event === 'TOKEN_REFRESHED') {
-        // Do not block UI on token refresh, just update background
-        if (session?.user && !profile) {
-            fetchProfile(session.user.id);
-        }
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      setUser(session?.user ?? null);
+      
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        refetch();
+      }
+      if (event === 'SIGNED_OUT') {
+        refetch();
       }
     });
 
-    return () => {
-      mounted.current = false;
-      subscription.unsubscribe();
-      clearTimeout(safetyTimeout);
-    };
-  }, []);
+    return () => subscription.unsubscribe();
+  }, [refetch]);
+
+  const signOut = async () => {
+    try {
+      await supabase.auth.signOut();
+      localStorage.clear();
+      setUser(null);
+      refetch();
+      navigate('/');
+    } catch (error) {
+      console.error('Sign out error:', error);
+    }
+  };
 
   const markDatabaseAsMissing = () => {
     setNeedsSetup(true);
   };
 
-  const fetchProfile = async (userId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', userId)
-        .maybeSingle();
+  const refreshProfile = async () => {
+    await refetch();
+  };
 
-      if (error) {
-        const errMsg = error.message || JSON.stringify(error);
-        if (errMsg.includes('does not exist') || errMsg.includes('relation "public.users" does not exist')) {
-            console.error("Database setup required:", errMsg);
+  // Check for specific DB errors to trigger setup guide
+  useEffect(() => {
+    if (error) {
+        const msg = error.message || '';
+        if (msg.includes('relation "public.users" does not exist') || msg.includes('does not exist')) {
             setNeedsSetup(true);
-            return;
         }
-        console.warn('Profile fetch error:', errMsg);
-      }
-
-      if (data && mounted.current) {
-        const displayProfile = {
-          ...data,
-          name: data.full_name || data.name || data.email?.split('@')[0] || 'Staff Member'
-        };
-        setProfile(displayProfile as UserProfile);
-      } else if (mounted.current) {
-        // If profile is missing but user is auth'd, we might set profile to null
-        // The ProtectedRoute handles the case where user exists but profile is null
-        setProfile(null);
-      }
-    } catch (err: any) {
-      console.warn('Profile fetch exception:', err);
     }
-  };
-
-  const refreshProfile = async (userId?: string) => {
-    const idToFetch = userId || user?.id;
-    if (idToFetch) {
-        await fetchProfile(idToFetch);
-    }
-  };
-
-  const signOut = async () => {
-    setLoading(true);
-    try {
-      await supabase.auth.signOut();
-      localStorage.clear(); 
-    } catch (error) {
-      console.error('Sign out error:', error);
-    } finally {
-      if (mounted.current) {
-        setUser(null);
-        setProfile(null);
-        setLoading(false);
-      }
-    }
-  };
+  }, [error]);
 
   if (needsSetup) {
     return <SetupGuide />;
   }
 
+  if (isLoading) {
+    return (
+      <LoadingSpinner 
+        timeout={8000} 
+        onTimeout={() => {
+          console.error('Profile load timeout');
+          // If we appear to be logged in but profile is hanging, redirect to login
+          if (user) navigate('/login?error=timeout');
+        }} 
+      />
+    );
+  }
+
+  if (isError) {
+    // Differentiate "Not Authenticated" (Guest) from actual errors
+    const isGuest = error instanceof Error && (
+        error.message === 'Not authenticated' || 
+        error.message.includes('Auth session missing')
+    );
+
+    if (isGuest) {
+        return (
+            <AuthContext.Provider value={{ 
+                user: null, 
+                profile: null, 
+                loading: false, 
+                signOut, 
+                refreshProfile, 
+                markDatabaseAsMissing 
+            }}>
+              {children}
+            </AuthContext.Provider>
+        );
+    }
+
+    // Critical Error Screen
+    return (
+      <ErrorScreen 
+        message="Failed to load your profile" 
+        error={error as Error}
+        onRetry={() => refetch()}
+      />
+    );
+  }
+
   return (
-    <AuthContext.Provider value={{ user, profile, loading, signOut, refreshProfile, markDatabaseAsMissing }}>
+    <AuthContext.Provider value={{ 
+        user, 
+        profile: profile || null, 
+        loading: false, 
+        signOut, 
+        refreshProfile, 
+        markDatabaseAsMissing 
+    }}>
       {children}
     </AuthContext.Provider>
   );

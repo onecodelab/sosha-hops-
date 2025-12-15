@@ -2,6 +2,9 @@ import React from 'react';
 import { HashRouter, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './AuthContext';
 import { ToastContainer } from './components/ui';
+import { QueryClientProvider } from '@tanstack/react-query';
+import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
+import { queryClient } from './lib/queryClient';
 
 // Pages
 import Landing from './pages/Landing';
@@ -16,67 +19,77 @@ import ManagerDashboard from './pages/ManagerDashboard';
 import WaiterDashboard from './pages/WaiterDashboard';
 import KitchenDashboard from './pages/KitchenDashboard';
 import ProtectedRoute from './components/ProtectedRoute';
+import Settings from './pages/Settings';
 
 const App: React.FC = () => {
   return (
-    <HashRouter>
-      <AuthProvider>
-        <Routes>
-          <Route path="/" element={<Landing />} />
-          <Route path="/login/:role" element={<Login />} />
-          <Route path="/signup" element={<SignUp />} />
-          
-          <Route path="/admin" element={
-            <ProtectedRoute allowedRoles={['owner', 'admin' as any, 'manager']}>
-              <AdminDashboard />
-            </ProtectedRoute>
-          } />
+    <QueryClientProvider client={queryClient}>
+      <HashRouter>
+        <AuthProvider>
+          <Routes>
+            <Route path="/" element={<Landing />} />
+            <Route path="/login/:role" element={<Login />} />
+            <Route path="/signup" element={<SignUp />} />
+            
+            <Route path="/admin" element={
+              <ProtectedRoute allowedRoles={['owner', 'admin' as any, 'manager']}>
+                <AdminDashboard />
+              </ProtectedRoute>
+            } />
 
-          <Route path="/menu-analytics" element={
-            <ProtectedRoute allowedRoles={['owner', 'admin' as any]}>
-              <MenuAnalytics />
-            </ProtectedRoute>
-          } />
+            <Route path="/menu-analytics" element={
+              <ProtectedRoute allowedRoles={['owner', 'admin' as any]}>
+                <MenuAnalytics />
+              </ProtectedRoute>
+            } />
 
-          <Route path="/inventory" element={
-            <ProtectedRoute allowedRoles={['owner', 'manager', 'admin' as any, 'kitchen']}>
-              <Inventory />
-            </ProtectedRoute>
-          } />
+            <Route path="/inventory" element={
+              <ProtectedRoute allowedRoles={['owner', 'manager', 'admin' as any, 'kitchen']}>
+                <Inventory />
+              </ProtectedRoute>
+            } />
 
-          <Route path="/staff-performance" element={
-            <ProtectedRoute allowedRoles={['owner', 'manager', 'admin' as any]}>
-              <StaffPerformance />
-            </ProtectedRoute>
-          } />
+            <Route path="/staff-performance" element={
+              <ProtectedRoute allowedRoles={['owner', 'manager', 'admin' as any]}>
+                <StaffPerformance />
+              </ProtectedRoute>
+            } />
 
-          <Route path="/orders-tables" element={
-            <ProtectedRoute allowedRoles={['owner', 'manager', 'admin' as any]}>
-              <OrdersTables />
-            </ProtectedRoute>
-          } />
-          
-          <Route path="/manager" element={
-            <ProtectedRoute allowedRoles={['manager', 'owner']}>
-              <ManagerDashboard />
-            </ProtectedRoute>
-          } />
-          
-          <Route path="/waiter" element={
-            <ProtectedRoute allowedRoles={['waiter']}>
-              <WaiterDashboard />
-            </ProtectedRoute>
-          } />
-          
-          <Route path="/kitchen" element={
-            <ProtectedRoute allowedRoles={['kitchen', 'manager', 'owner']}>
-              <KitchenDashboard />
-            </ProtectedRoute>
-          } />
-        </Routes>
-        <ToastContainer />
-      </AuthProvider>
-    </HashRouter>
+            <Route path="/orders-tables" element={
+              <ProtectedRoute allowedRoles={['owner', 'manager', 'admin' as any]}>
+                <OrdersTables />
+              </ProtectedRoute>
+            } />
+            
+            <Route path="/manager" element={
+              <ProtectedRoute allowedRoles={['manager', 'owner']}>
+                <ManagerDashboard />
+              </ProtectedRoute>
+            } />
+            
+            <Route path="/waiter" element={
+              <ProtectedRoute allowedRoles={['waiter']}>
+                <WaiterDashboard />
+              </ProtectedRoute>
+            } />
+            
+            <Route path="/kitchen" element={
+              <ProtectedRoute allowedRoles={['kitchen', 'manager', 'owner']}>
+                <KitchenDashboard />
+              </ProtectedRoute>
+            } />
+
+            <Route path="/settings" element={
+              <ProtectedRoute allowedRoles={['owner', 'admin' as any]}>
+                <Settings />
+              </ProtectedRoute>
+            } />
+          </Routes>
+          <ToastContainer />
+        </AuthProvider>
+      </HashRouter>
+      <ReactQueryDevtools initialIsOpen={false} />
+    </QueryClientProvider>
   );
 };
 

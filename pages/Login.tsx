@@ -94,7 +94,7 @@ const Login: React.FC = () => {
       }
 
       // 4. Success - Refresh Context
-      await refreshProfile(authData.user.id);
+      await refreshProfile();
       showToast("Welcome back!", "success");
       
     } catch (err: any) {
