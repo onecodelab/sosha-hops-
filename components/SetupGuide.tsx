@@ -102,11 +102,12 @@ alter table public.orders add column if not exists order_type text default 'dine
 alter table public.orders add column if not exists kitchen_accepted_at timestamp with time zone;
 alter table public.orders add column if not exists ready_at timestamp with time zone;
 alter table public.orders add column if not exists served_at timestamp with time zone;
+alter table public.orders add column if not exists notes text; -- Special instructions
 
 -- 12. Manager Dashboard & Staff Updates
 alter table public.users add column if not exists is_online boolean default false;
 alter table public.users add column if not exists shift_start timestamp with time zone;
-alter table public.users add column if not exists created_by uuid; -- removed reference for flexibility
+alter table public.users add column if not exists created_by uuid; 
 alter table public.users add column if not exists phone text;
 alter table public.users add column if not exists invitation_pending boolean default false;
 
@@ -166,7 +167,6 @@ begin
 
   if existing_user_id is not null then
     -- Update the existing profile with the real Auth ID
-    -- This "adopts" the invited profile
     update public.users 
     set id = new.id, 
         invitation_pending = false,
@@ -232,17 +232,13 @@ using (
   )
 );
 
--- 17. FIX FOREIGN KEY CONSTRAINTS (CRITICAL FOR INVITE)
--- Make created_by nullable
+-- 17. FIX FOREIGN KEY CONSTRAINTS
 ALTER TABLE public.users 
 ALTER COLUMN created_by DROP NOT NULL;
 
--- Drop the strict constraint on ID that links to auth.users
--- This allows creating "invite-pending" users that don't have an auth login yet
 ALTER TABLE public.users 
 DROP CONSTRAINT IF EXISTS users_id_fkey;
 
--- Re-establish created_by relationship with SET NULL behavior
 ALTER TABLE public.users 
 DROP CONSTRAINT IF EXISTS users_created_by_fkey;
 
@@ -252,9 +248,6 @@ FOREIGN KEY (created_by)
 REFERENCES public.users(id) 
 ON DELETE SET NULL;
 `;
-
-  const edgeFunctionCode = `// Not needed for new flow. 
-// Staff will be inserted directly into database with 'invitation_pending' flag.`;
 
   const handleCopy = (text: string) => {
     navigator.clipboard.writeText(text);

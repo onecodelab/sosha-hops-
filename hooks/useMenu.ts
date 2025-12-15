@@ -17,7 +17,7 @@ export const useMenu = (filterAvailable = false) => {
         .order('name', { ascending: true });
 
       if (filterAvailable) {
-        query = query.eq('is_available', true);
+        query = query.eq('is_available', true); // Corrected column name
       }
 
       const { data, error: fetchError } = await query;

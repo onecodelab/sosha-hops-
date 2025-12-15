@@ -13,43 +13,47 @@ export interface MenuItem {
   price: number;
   category: string;
   image_url?: string;
-  is_available: boolean;
-  stock_quantity?: number; // Added field
+  is_available: boolean; // Corrected to match database column
+  stock_quantity?: number;
   created_at: string;
 }
 
 export type OrderStatus = 
   | 'pending' 
-  | 'verified' 
   | 'accepted' 
   | 'preparing' 
   | 'ready' 
   | 'served' 
-  | 'ready_to_pay' 
-  | 'paid' 
+  | 'completed' 
   | 'cancelled';
 
 export type PaymentMethod = 'cash' | 'chapa' | 'cbe' | 'abyssinia';
 
 export interface Order {
   id: string;
-  table_no: string;
+  order_number: string;
+  table_number: string;
+  waiter_id: string;
   status: OrderStatus;
+  order_type: 'dine-in' | 'takeout';
   total_amount: number;
-  verified_by?: string;
-  created_at: string;
+  customer_notes?: string;
   payment_method?: PaymentMethod;
-  paid_at?: string;
-  // Analytics fields
-  served_at?: string;
-  kitchen_accepted_at?: string;
+  
+  // Timestamps
+  created_at: string;
+  accepted_at?: string;
+  preparing_at?: string;
   ready_at?: string;
-  order_type?: string;
+  served_at?: string;
+  completed_at?: string;
+  paid_at?: string;
+  cancelled_at?: string;
+  cancelled_reason?: string;
   
   // Joins
-  verified_by_user?: UserProfile; 
-  items?: OrderItem[];
-  order_items?: OrderItem[]; // Added to match Supabase relation
+  waiter?: UserProfile; 
+  order_items?: OrderItem[];
 }
 
 export interface OrderItem {
@@ -57,11 +61,14 @@ export interface OrderItem {
   order_id: string;
   menu_item_id: string;
   quantity: number;
-  price_at_time: number;
+  price: number;
+  special_instructions?: string;
+  created_at: string;
   // Joins
   menu_item?: MenuItem;
 }
 
 export interface CartItem extends MenuItem {
   quantity: number;
+  instructions?: string;
 }

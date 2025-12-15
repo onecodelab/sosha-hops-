@@ -44,15 +44,15 @@ export const PaymentVerificationModal: React.FC<PaymentVerificationModalProps> =
 
   const handleOrderSelect = async (order: Order) => {
     // Claiming Logic: If order is unclaimed (bot), assign to current user before proceeding
-    if (!order.verified_by) {
+    if (!order.waiter_id) {
         setIsLoading(true);
         try {
             // Optimistic concurrency check: ensure it is still null
             const { data, error } = await supabase
                 .from('orders')
-                .update({ verified_by: user?.id })
+                .update({ waiter_id: user?.id })
                 .eq('id', order.id)
-                .is('verified_by', null)
+                .is('waiter_id', null)
                 .select()
                 .single();
 
@@ -63,7 +63,7 @@ export const PaymentVerificationModal: React.FC<PaymentVerificationModalProps> =
             }
 
             // Update local object to reflect claim
-            order.verified_by = user?.id as string; 
+            order.waiter_id = user?.id as string; 
             showToast("Order claimed successfully!");
         } catch (err: any) {
             showToast("Failed to claim order. Please try again.", 'error');
@@ -96,7 +96,7 @@ export const PaymentVerificationModal: React.FC<PaymentVerificationModalProps> =
       const { error } = await supabase
         .from('orders')
         .update({
-          status: 'paid',
+          status: 'paid', // Or 'completed' if that's the final state
           payment_method: method,
           paid_at: new Date().toISOString()
         })
@@ -135,25 +135,25 @@ export const PaymentVerificationModal: React.FC<PaymentVerificationModalProps> =
         </div>
       ) : (
         orders.map(order => (
-          <div key={order.id} className={cn("p-4 border rounded-xl transition-all flex justify-between items-center group", !order.verified_by ? "bg-purple-900/10 border-purple-500/30 hover:bg-purple-900/20" : "bg-black/20 border-gray-800 hover:bg-white/5")}>
+          <div key={order.id} className={cn("p-4 border rounded-xl transition-all flex justify-between items-center group", !order.waiter_id ? "bg-purple-900/10 border-purple-500/30 hover:bg-purple-900/20" : "bg-black/20 border-gray-800 hover:bg-white/5")}>
             <div>
               <div className="flex items-center gap-2 mb-1">
-                <Badge variant="outline" className="text-white bg-gray-800 border-gray-700">Table {order.table_no}</Badge>
-                {!order.verified_by && (
+                <Badge variant="outline" className="text-white bg-gray-800 border-gray-700">Table {order.table_number}</Badge>
+                {!order.waiter_id && (
                     <Badge variant="secondary" className="bg-purple-500 text-white border-purple-400 text-[10px] animate-pulse">
                         <Bot className="w-3 h-3 mr-1" /> Unclaimed
                     </Badge>
                 )}
-                <span className="text-xs text-gray-500 font-mono">#{order.id.slice(0,6)}</span>
+                <span className="text-xs text-gray-500 font-mono">#{order.order_number || order.id.slice(0,6)}</span>
               </div>
               <div className="text-xs text-gray-400">
-                 {order.items?.length || order.order_items?.length || 0} items • Served {new Date(order.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                 {order.order_items?.length || 0} items • Served {order.served_at ? new Date(order.served_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : 'N/A'}
               </div>
             </div>
             <div className="text-right flex items-center gap-4">
               <span className="text-lg font-bold text-primary font-mono">ETB {order.total_amount.toLocaleString()}</span>
-              <Button size="sm" onClick={() => handleOrderSelect(order)} className={cn(!order.verified_by && "bg-purple-600 hover:bg-purple-700")}>
-                {!order.verified_by ? "Claim & Pay" : "Select"} <ChevronRight className="w-4 h-4 ml-1" />
+              <Button size="sm" onClick={() => handleOrderSelect(order)} className={cn(!order.waiter_id && "bg-purple-600 hover:bg-purple-700")}>
+                {!order.waiter_id ? "Claim & Pay" : "Select"} <ChevronRight className="w-4 h-4 ml-1" />
               </Button>
             </div>
           </div>
@@ -166,7 +166,7 @@ export const PaymentVerificationModal: React.FC<PaymentVerificationModalProps> =
     <div className="space-y-4">
       <div className="flex items-center gap-2 mb-4 text-sm text-gray-400">
          <button onClick={() => setStage('select-order')} className="hover:text-white flex items-center"><ArrowLeft className="w-4 h-4 mr-1"/> Back</button>
-         <span>/ Order #{selectedOrder?.id.slice(0,6)}</span>
+         <span>/ Order #{selectedOrder?.order_number || selectedOrder?.id.slice(0,6)}</span>
       </div>
       
       <div className="grid grid-cols-1 gap-3">
@@ -223,7 +223,7 @@ export const PaymentVerificationModal: React.FC<PaymentVerificationModalProps> =
        <div>
          <h3 className="text-xl font-bold text-white">Confirm Cash Payment</h3>
          <p className="text-gray-400 mt-2">
-            Mark Order <span className="text-white font-mono">#{selectedOrder?.id.slice(0,6)}</span> (Table {selectedOrder?.table_no}) as paid?
+            Mark Order <span className="text-white font-mono">#{selectedOrder?.order_number || selectedOrder?.id.slice(0,6)}</span> (Table {selectedOrder?.table_number}) as paid?
          </p>
          <div className="text-3xl font-bold text-primary mt-4 font-mono">
             ETB {selectedOrder?.total_amount.toLocaleString()}

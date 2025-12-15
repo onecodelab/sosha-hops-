@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { supabase } from '../supabase';
 import { Button, Input, Card, CardContent, CardHeader, CardTitle, showToast } from '../components/ui';
 import { SoshaLogo } from '../components/SoshaLogo';
-import { Loader2, ArrowLeft } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 
 const SignUp: React.FC = () => {
   const navigate = useNavigate();
@@ -29,6 +29,8 @@ const SignUp: React.FC = () => {
       }
 
       // 2. Create auth account
+      // The database trigger 'handle_new_user' will automatically detect the existing 
+      // pending profile by email and update the ID to match the new Auth ID.
       const { data: authData, error: signUpError } = await supabase.auth.signUp({
         email,
         password,
@@ -43,29 +45,24 @@ const SignUp: React.FC = () => {
       if (signUpError) throw signUpError;
 
       if (authData.user) {
-        // 3. Update the user profile with the auth ID
-        // Note: The database trigger 'handle_new_user' is designed to handle this automatically.
-        // We attempt this manual update as a fallback/confirmation step as requested.
-        const { error: updateError } = await supabase
-          .from('users')
-          .update({
-            id: authData.user.id,
-            invitation_pending: false
-          })
-          .eq('email', email);
+        // Wait and verify the trigger worked
+        // Wait for the trigger to complete
+        await new Promise(resolve => setTimeout(resolve, 1500));
 
-        // We log but don't block on updateError because RLS might prevent non-owners from updating.
-        // If the trigger ran successfully, the ID is already updated anyway.
-        if (updateError) {
-           console.warn("Manual profile link update info:", updateError);
+        // Verify the profile was created/linked correctly
+        const { data: profile, error: profileError } = await supabase
+          .from('users')
+          .select('id, role, email')
+          .eq('id', authData.user.id)
+          .single();
+
+        if (profileError || !profile) {
+          throw new Error('Account created but profile linking failed. Please contact support.');
         }
 
-        showToast('Account created! Please log in.', 'success');
-        
-        // Redirect to the appropriate role login
-        setTimeout(() => {
-          navigate(`/login/${invitation.role}`);
-        }, 1500);
+        console.log('Profile linked successfully:', profile);
+        showToast('Account created successfully!', 'success');
+        navigate(`/login/${invitation.role}`);
       }
 
     } catch (error: any) {

@@ -87,7 +87,7 @@ const OrdersTables: React.FC = () => {
           const cancellationRate = totalOrders > 0 ? ((cancelled / totalOrders) * 100).toFixed(1) : '0';
 
           // Turnover (Served/Paid orders: Paid At - Created At)
-          const completedOrders = safeOrders.filter(o => ['served', 'paid'].includes(o.status));
+          const completedOrders = safeOrders.filter(o => ['served', 'completed', 'paid'].includes(o.status));
           let totalDurationMins = 0;
           let countedDuration = 0;
 
@@ -146,14 +146,14 @@ const OrdersTables: React.FC = () => {
           const tableMap: Record<string, { turns: number, rev: number, duration: number, count: number }> = {};
           
           safeOrders.forEach(o => {
-              if (!o.table_no) return;
-              const t = o.table_no;
+              if (!o.table_number) return;
+              const t = o.table_number;
               if (!tableMap[t]) tableMap[t] = { turns: 0, rev: 0, duration: 0, count: 0 };
               
               tableMap[t].turns++;
               tableMap[t].rev += (o.total_amount || 0);
 
-              if (['served', 'paid'].includes(o.status)) {
+              if (['served', 'completed', 'paid'].includes(o.status)) {
                   const start = new Date(o.created_at).getTime();
                   const end = o.paid_at ? new Date(o.paid_at).getTime() : new Date().getTime(); 
                   const dur = (end - start) / 60000;
@@ -177,7 +177,7 @@ const OrdersTables: React.FC = () => {
           const staffMap: Record<string, { name: string, role: string, orders: number, cancelled: number, speedTotal: number, speedCount: number }> = {};
 
           safeOrders.forEach(o => {
-              const uid = o.verified_by;
+              const uid = o.waiter_id;
               if (!uid) return;
               
               const u = userMap.get(uid);
@@ -187,7 +187,7 @@ const OrdersTables: React.FC = () => {
               staffMap[uid].orders++;
               if (o.status === 'cancelled') staffMap[uid].cancelled++;
               
-              if (o.status === 'served' || o.status === 'paid') {
+              if (o.status === 'served' || o.status === 'paid' || o.status === 'completed') {
                    const sTime = o.served_at ? new Date(o.served_at).getTime() : 0;
                    const cTime = new Date(o.created_at).getTime();
                    if (sTime > cTime) {
@@ -213,11 +213,11 @@ const OrdersTables: React.FC = () => {
 
           safeOrders.forEach(o => {
                const created = new Date(o.created_at).getTime();
-               if (o.kitchen_accepted_at) {
-                   flowSums.k += (new Date(o.kitchen_accepted_at).getTime() - created) / 60000;
+               if (o.accepted_at) { // Was kitchen_accepted_at
+                   flowSums.k += (new Date(o.accepted_at).getTime() - created) / 60000;
                    flowCounts.k++;
                    if (o.ready_at) {
-                       flowSums.r += (new Date(o.ready_at).getTime() - new Date(o.kitchen_accepted_at).getTime()) / 60000;
+                       flowSums.r += (new Date(o.ready_at).getTime() - new Date(o.accepted_at).getTime()) / 60000;
                        flowCounts.r++;
                        if (o.served_at) {
                            flowSums.s += (new Date(o.served_at).getTime() - new Date(o.ready_at).getTime()) / 60000;

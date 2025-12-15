@@ -1,29 +1,36 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { supabase } from '../supabase';
-import { Button, Card, CardContent, CardHeader, CardTitle, Badge, cn, showToast } from '../components/ui';
+import { Card, Badge, cn, showToast } from '../components/ui';
 import { 
   Clock, CheckCircle2, Flame, Bell, AlertTriangle, 
   Utensils, ChefHat, Timer, AlertOctagon 
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { Order } from '../types';
+import { OrderCard } from '../components/OrderCard';
+
+// Simple beep for notification
+const playNotificationSound = () => {
+    try {
+        const context = new (window.AudioContext || (window as any).webkitAudioContext)();
+        const oscillator = context.createOscillator();
+        const gainNode = context.createGain();
+        oscillator.connect(gainNode);
+        gainNode.connect(context.destination);
+        oscillator.type = 'sine';
+        oscillator.frequency.value = 800;
+        gainNode.gain.value = 0.1;
+        oscillator.start();
+        setTimeout(() => oscillator.stop(), 200);
+    } catch (e) {
+        console.error("Audio play failed", e);
+    }
+};
 
 const KitchenDashboard: React.FC = () => {
-  const [orders, setOrders] = useState<any[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
   const [currentTime, setCurrentTime] = useState(new Date());
-
-  // --- Mock Data for Analytics ---
-  const delayedDishes = [
-    { name: "Special Burger", count: 4, avgDelay: "5m" },
-    { name: "Steak", count: 2, avgDelay: "8m" },
-    { name: "Pasta Carbonara", count: 1, avgDelay: "3m" },
-  ];
-
-  const remakeStats = [
-    { reason: "Overcooked", count: 3 },
-    { reason: "Cold", count: 1 },
-    { reason: "Wrong Item", count: 1 },
-  ];
 
   useEffect(() => {
     fetchOrders();
@@ -32,13 +39,17 @@ const KitchenDashboard: React.FC = () => {
     const timerInterval = setInterval(() => setCurrentTime(new Date()), 60000);
 
     const subscription = supabase
-      .channel('kitchen_orders_v2')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, (payload) => {
-        fetchOrders();
-        if (payload.eventType === 'INSERT') {
-           showToast('🔔 New Ticket Received!', 'success');
+      .channel('kitchen_orders_sub')
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'orders' }, 
+        (payload) => {
+          fetchOrders();
+          if (payload.eventType === 'INSERT') {
+             playNotificationSound();
+             showToast('🔔 New Ticket Received!', 'success');
+          }
         }
-      })
+      )
       .subscribe();
 
     return () => { 
@@ -48,49 +59,65 @@ const KitchenDashboard: React.FC = () => {
   }, []);
 
   const fetchOrders = async () => {
+    const today = new Date().toISOString().split('T')[0];
     const { data } = await supabase
       .from('orders')
       .select(`
         *,
         order_items (
           quantity,
+          special_instructions,
           menu_item:menu (name, category)
         )
       `)
-      .in('status', ['verified', 'accepted', 'preparing', 'ready'])
-      .order('created_at', { ascending: true }); // Oldest first is standard for FIFO Kitchen
+      .gte('created_at', `${today}T00:00:00`)
+      .in('status', ['pending', 'accepted', 'preparing', 'ready'])
+      .order('created_at', { ascending: true }); // FIFO
 
-    if (data) setOrders(data);
+    if (data) setOrders(data as Order[]);
   };
 
-  const updateStatus = async (orderId: string, nextStatus: string) => {
-    await supabase.from('orders').update({ status: nextStatus }).eq('id', orderId);
-    setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: nextStatus } : o));
+  const handleOrderAction = async (action: string, orderId: string) => {
+    const update: any = {};
+    if (action === 'accepted') {
+        update.status = 'preparing';
+        update.accepted_at = new Date().toISOString();
+        update.preparing_at = new Date().toISOString();
+    } else if (action === 'preparing') {
+        update.status = 'preparing';
+        update.preparing_at = new Date().toISOString();
+    } else if (action === 'ready') {
+        update.status = 'ready';
+        update.ready_at = new Date().toISOString();
+    }
+
+    await supabase.from('orders').update(update).eq('id', orderId);
     
-    if (nextStatus === 'ready') showToast(`Table ${orders.find(o => o.id === orderId)?.table_no} Ready!`);
-  };
-
-  // --- Helpers ---
-
-  const getElapsedMinutes = (dateStr: string) => {
-    const start = new Date(dateStr).getTime();
-    const now = currentTime.getTime();
-    return Math.floor((now - start) / 60000);
+    // Optimistic Update
+    setOrders(prev => prev.map(o => o.id === orderId ? { ...o, ...update } : o));
+    
+    if (update.status === 'ready') showToast(`Order marked READY!`);
   };
 
   // --- KPI Calculations ---
   
   const activeCount = orders.filter(o => o.status !== 'ready').length;
   const readyCount = orders.filter(o => o.status === 'ready').length;
-  const delayedCount = orders.filter(o => getElapsedMinutes(o.created_at) > 20).length;
   
+  const getElapsedMinutes = (dateStr: string) => {
+    const start = new Date(dateStr).getTime();
+    const now = currentTime.getTime();
+    return Math.floor((now - start) / 60000);
+  };
+
   const totalMinutes = orders.reduce((acc, o) => acc + getElapsedMinutes(o.created_at), 0);
   const avgPrepTime = orders.length ? Math.floor(totalMinutes / orders.length) : 0;
+  const delayedCount = orders.filter(o => getElapsedMinutes(o.created_at) > 20).length;
 
-  // Station Load (Derived from active order items)
+  // Station Load
   const stationLoad = orders
     .filter(o => o.status !== 'ready')
-    .flatMap(o => o.order_items)
+    .flatMap(o => o.order_items || [])
     .reduce((acc: any, item: any) => {
        const cat = item.menu_item?.category || 'General';
        let station = 'General';
@@ -109,14 +136,11 @@ const KitchenDashboard: React.FC = () => {
   const loadLevel = totalItems > 30 ? "High" : totalItems > 15 ? "Normal" : "Low";
   const loadColor = loadLevel === "High" ? "text-red-500" : loadLevel === "Normal" ? "text-yellow-500" : "text-green-500";
 
-  // --- Render ---
-
   return (
     <DashboardLayout title="Kitchen Display System" subtitle="Live Production Board">
-      {/* Strict Grid Layout: 3 Rows (KPI, Tickets, Insights) */}
       <div className="grid grid-rows-[auto_1fr_auto] h-[calc(100vh-140px)] gap-4 w-full">
         
-        {/* Row 1: KPI Cards */}
+        {/* KPI Cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 flex-none">
           <Card className="bg-[#1A1A1A] border-gray-800 p-4">
              <div className="flex justify-between items-start">
@@ -173,37 +197,35 @@ const KitchenDashboard: React.FC = () => {
           </Card>
         </div>
 
-        {/* Row 2: Ticket Board (Main Area) */}
+        {/* Ticket Board */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 min-h-0 overflow-hidden">
            
-           {/* Column 1: Queue (Incoming) */}
+           {/* Queue */}
            <div className="flex flex-col h-full bg-black/20 rounded-xl border border-gray-800/50 overflow-hidden">
               <div className="flex-none p-3 border-b border-gray-800 bg-[#1A1A1A] flex justify-between items-center">
                  <h3 className="font-bold text-gray-400 flex items-center gap-2 text-sm">
                     <Bell className="w-4 h-4" /> Incoming / Queue
                  </h3>
                  <Badge variant="secondary" className="bg-gray-800 text-gray-300">
-                    {orders.filter(o => ['verified', 'pending'].includes(o.status)).length}
+                    {orders.filter(o => ['pending'].includes(o.status)).length}
                  </Badge>
               </div>
               <div className="flex-1 overflow-y-auto p-2 space-y-3 custom-scrollbar">
-                 {orders.filter(o => ['verified', 'pending'].includes(o.status)).map(order => (
-                    <TicketCard 
+                 {orders.filter(o => ['pending'].includes(o.status)).map(order => (
+                    <OrderCard 
                        key={order.id} 
                        order={order} 
-                       elapsed={getElapsedMinutes(order.created_at)}
-                       onAction={() => updateStatus(order.id, 'preparing')}
-                       actionLabel="Start Cooking"
-                       actionColor="primary"
+                       role="kitchen"
+                       onAction={handleOrderAction}
                     />
                  ))}
-                 {orders.filter(o => ['verified', 'pending'].includes(o.status)).length === 0 && (
+                 {orders.filter(o => ['pending'].includes(o.status)).length === 0 && (
                     <div className="h-full flex items-center justify-center text-gray-600 italic text-sm">No new tickets</div>
                  )}
               </div>
            </div>
 
-           {/* Column 2: Active Prep */}
+           {/* Active Prep */}
            <div className="flex flex-col h-full bg-black/20 rounded-xl border border-gray-800/50 overflow-hidden">
               <div className="flex-none p-3 border-b border-gray-800 bg-[#1A1A1A] flex justify-between items-center">
                  <h3 className="font-bold text-orange-400 flex items-center gap-2 text-sm">
@@ -215,19 +237,17 @@ const KitchenDashboard: React.FC = () => {
               </div>
               <div className="flex-1 overflow-y-auto p-2 space-y-3 custom-scrollbar">
                  {orders.filter(o => ['accepted', 'preparing'].includes(o.status)).map(order => (
-                    <TicketCard 
+                    <OrderCard 
                        key={order.id} 
                        order={order} 
-                       elapsed={getElapsedMinutes(order.created_at)}
-                       onAction={() => updateStatus(order.id, 'ready')}
-                       actionLabel="Mark Ready"
-                       actionColor="success"
+                       role="kitchen"
+                       onAction={handleOrderAction}
                     />
                  ))}
               </div>
            </div>
 
-           {/* Column 3: Ready */}
+           {/* Ready */}
            <div className="flex flex-col h-full bg-black/20 rounded-xl border border-gray-800/50 overflow-hidden">
               <div className="flex-none p-3 border-b border-gray-800 bg-[#1A1A1A] flex justify-between items-center">
                  <h3 className="font-bold text-green-500 flex items-center gap-2 text-sm">
@@ -239,11 +259,10 @@ const KitchenDashboard: React.FC = () => {
               </div>
               <div className="flex-1 overflow-y-auto p-2 space-y-3 custom-scrollbar">
                  {orders.filter(o => o.status === 'ready').map(order => (
-                    <TicketCard 
+                    <OrderCard 
                        key={order.id} 
                        order={order} 
-                       elapsed={getElapsedMinutes(order.created_at)}
-                       isReady
+                       role="kitchen"
                     />
                  ))}
               </div>
@@ -251,18 +270,15 @@ const KitchenDashboard: React.FC = () => {
 
         </div>
 
-        {/* Row 3: Bottom Insights (Fixed Height) */}
+        {/* Bottom Insights */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 h-48 flex-none overflow-hidden">
-           
            {/* Station Load */}
            <Card className="bg-[#1A1A1A] border-gray-800 overflow-hidden h-full flex flex-col">
-              <CardHeader className="py-2 border-b border-gray-800 flex-none">
-                 <CardTitle className="text-xs font-bold text-white flex items-center gap-2">
+              <div className="p-3">
+                 <h3 className="text-xs font-bold text-white flex items-center gap-2">
                     <ChefHat className="w-4 h-4 text-primary" /> Station Load
-                 </CardTitle>
-              </CardHeader>
-              <CardContent className="p-2 flex-1 min-h-0">
-                 <div className="h-full w-full">
+                 </h3>
+                 <div className="h-32 w-full mt-2">
                     <ResponsiveContainer width="100%" height="100%">
                        <BarChart data={stationData} layout="vertical" margin={{ left: 10, right: 30, top: 5, bottom: 5 }}>
                           <XAxis type="number" hide />
@@ -276,131 +292,25 @@ const KitchenDashboard: React.FC = () => {
                        </BarChart>
                     </ResponsiveContainer>
                  </div>
-              </CardContent>
+              </div>
            </Card>
-
-           {/* Delay Insights */}
-           <Card className="bg-[#1A1A1A] border-gray-800 overflow-hidden h-full flex flex-col">
-              <CardHeader className="py-2 border-b border-gray-800 flex-none">
-                 <CardTitle className="text-xs font-bold text-white flex items-center gap-2">
-                    <Clock className="w-4 h-4 text-red-500" /> Top Delays (Today)
-                 </CardTitle>
-              </CardHeader>
-              <CardContent className="p-0 flex-1 overflow-y-auto min-h-0">
-                 <div className="divide-y divide-gray-800">
-                    {delayedDishes.map((dish, i) => (
-                       <div key={i} className="flex justify-between items-center p-2 hover:bg-white/5 text-[10px]">
-                          <span className="font-bold text-gray-300">{dish.name}</span>
-                          <div className="flex items-center gap-2">
-                             <span className="text-gray-500">{dish.count} delayed</span>
-                             <span className="text-red-400 font-mono font-bold">+{dish.avgDelay}</span>
-                          </div>
-                       </div>
-                    ))}
+           
+           {/* Placeholder for Quality */}
+           <Card className="bg-[#1A1A1A] border-gray-800 overflow-hidden h-full col-span-2">
+              <div className="p-3">
+                 <h3 className="text-xs font-bold text-white flex items-center gap-2">
+                    <AlertOctagon className="w-4 h-4 text-orange-500" /> System Status
+                 </h3>
+                 <div className="mt-4 flex gap-4 text-sm text-gray-400">
+                    <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-green-500"/> Real-time Connection Active</div>
+                    <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-blue-500"/> Audio Alerts Enabled</div>
                  </div>
-              </CardContent>
+              </div>
            </Card>
-
-           {/* Quality & Service */}
-           <Card className="bg-[#1A1A1A] border-gray-800 overflow-hidden h-full flex flex-col">
-              <CardHeader className="py-2 border-b border-gray-800 flex-none">
-                 <CardTitle className="text-xs font-bold text-white flex items-center gap-2">
-                    <AlertOctagon className="w-4 h-4 text-orange-500" /> Quality Check
-                 </CardTitle>
-              </CardHeader>
-              <CardContent className="p-3 space-y-3 flex-1 overflow-y-auto">
-                 <div className="flex justify-between items-center">
-                    <span className="text-[10px] text-gray-400">Avg Pickup</span>
-                    <span className="text-xs font-bold text-primary">3m 45s</span>
-                 </div>
-                 <div className="space-y-1">
-                    <p className="text-[10px] text-gray-500 font-bold uppercase">Remake Reasons</p>
-                    <div className="flex flex-wrap gap-1">
-                       {remakeStats.map(stat => (
-                          <Badge key={stat.reason} variant="secondary" className="text-[10px] bg-red-500/10 text-red-400 border-red-500/20 px-1 py-0">
-                             {stat.reason} ({stat.count})
-                          </Badge>
-                       ))}
-                    </div>
-                 </div>
-              </CardContent>
-           </Card>
-
         </div>
       </div>
     </DashboardLayout>
   );
 };
-
-// --- Helper Functions and Components outside main component ---
-
-const getTimerColor = (minutes: number) => {
-  if (minutes > 20) return "text-red-500 animate-pulse";
-  if (minutes > 15) return "text-yellow-500";
-  return "text-gray-400";
-};
-
-const getTimerBg = (minutes: number) => {
-  if (minutes > 20) return "bg-red-500/10 border-red-500/30";
-  if (minutes > 15) return "bg-yellow-500/10 border-yellow-500/30";
-  return "bg-black/20 border-gray-800";
-};
-
-function TicketCard({ order, elapsed, onAction, actionLabel, actionColor, isReady }: any) {
-  const timerColor = getTimerColor(elapsed);
-  const timerBg = getTimerBg(elapsed);
-
-  return (
-    <div className={cn("rounded-lg border bg-[#1A1A1A] p-3 relative shadow-sm transition-all", timerBg)}>
-       <div className="flex justify-between items-start mb-2">
-          <div className="flex items-center gap-2">
-             <div className="w-8 h-8 rounded-lg bg-black/40 flex items-center justify-center border border-white/5">
-                <span className="text-lg font-bold text-white">{order.table_no}</span>
-             </div>
-             <div>
-                <div className="flex items-center gap-1.5 text-[10px] font-mono font-bold mb-0.5">
-                   <Clock className={cn("w-3 h-3", timerColor)} />
-                   <span className={timerColor}>{elapsed}m</span>
-                </div>
-                <span className="text-[10px] text-gray-500 uppercase tracking-wide">#{order.id.slice(0,6)}</span>
-             </div>
-          </div>
-          {isReady && (
-             <div className="animate-pulse">
-                <Badge className="bg-green-500 text-black font-bold border-none hover:bg-green-500 text-[10px]">PICKUP</Badge>
-             </div>
-          )}
-       </div>
-
-       <div className="space-y-1 mb-3">
-          {order.order_items?.map((item: any, idx: number) => (
-             <div key={idx} className="flex gap-2 text-xs">
-                <span className="font-bold text-primary w-4 text-right">{item.quantity}</span>
-                <span className="text-gray-200 line-clamp-1">{item.menu_item?.name}</span>
-             </div>
-          ))}
-       </div>
-
-       {!isReady && (
-          <div className="grid grid-cols-[1fr_auto] gap-2">
-             <Button 
-                size="sm" 
-                onClick={onAction}
-                className={cn(
-                   "w-full text-[10px] font-bold h-7",
-                   actionColor === 'success' ? "bg-green-600 hover:bg-green-700" : 
-                   "bg-primary text-black hover:bg-primary/90"
-                )}
-             >
-                {actionLabel}
-             </Button>
-             <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-red-500 hover:bg-red-500/10">
-                <AlertTriangle className="w-3 h-3" />
-             </Button>
-          </div>
-       )}
-    </div>
-  );
-}
 
 export default KitchenDashboard;

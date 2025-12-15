@@ -4,13 +4,14 @@ import { DashboardLayout } from '../components/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle, Badge, Button, cn, showToast } from '../components/ui';
 import { 
   Users, AlertCircle, TrendingUp, Clock, AlertTriangle, 
-  CheckCircle2, BarChart3, Timer, Loader2
+  CheckCircle2, BarChart3, Timer, Loader2, List
 } from 'lucide-react';
 import { 
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell 
 } from 'recharts';
 import { Order } from '../types';
 import { PaymentVerificationModal, FloatingPaymentButton } from '../components/PaymentVerificationModal';
+import { OrderCard } from '../components/OrderCard';
 
 const ManagerDashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
@@ -55,8 +56,15 @@ const ManagerDashboard: React.FC = () => {
         // 1. Fetch Orders (Today)
         const { data: todayOrders, error: orderError } = await supabase
            .from('orders')
-           .select('*')
-           .gte('created_at', startOfDay);
+           .select(`
+             *,
+             order_items (
+               quantity,
+               menu_item:menu (name)
+             )
+           `)
+           .gte('created_at', startOfDay)
+           .order('created_at', { ascending: false });
         
         if (orderError) throw orderError;
         setOrders(todayOrders as Order[]);
@@ -82,13 +90,11 @@ const ManagerDashboard: React.FC = () => {
         
         const totalOrders = activeOrders.length;
         
-        // Count open issues + cancelled orders today
         const dbIssuesCount = issuesData?.filter((i: any) => i.status === 'open').length || 0;
         const cancelledCount = activeOrders.filter(o => o.status === 'cancelled').length;
-        const totalIssues = dbIssuesCount + cancelledCount; // Combined metric
+        const totalIssues = dbIssuesCount + cancelledCount; 
 
-        // Mock 'Online' status if column missing or data empty, using verified orders as proxy for activity
-        const staffActivityMap = new Set(activeOrders.map(o => o.verified_by).filter(Boolean));
+        const staffActivityMap = new Set(activeOrders.map(o => o.waiter_id).filter(Boolean));
         const activeStaffCount = allStaff?.filter((u: any) => 
             u.is_online || staffActivityMap.has(u.id)
         ).length || 0;
@@ -106,12 +112,11 @@ const ManagerDashboard: React.FC = () => {
         let servedCount = 0;
 
         activeOrders.forEach(o => {
-            if (['pending', 'verified'].includes(o.status)) stageCounts.order++;
+            if (['pending'].includes(o.status)) stageCounts.order++;
             else if (['accepted', 'preparing'].includes(o.status)) stageCounts.prep++;
             else if (['ready'].includes(o.status)) stageCounts.pickup++;
-            else if (['served', 'ready_to_pay', 'paid'].includes(o.status)) {
+            else if (['served', 'completed', 'paid'].includes(o.status)) {
                 stageCounts.pay++;
-                // Calc avg service time if timestamps exist
                 if (o.served_at && o.created_at) {
                     const diff = (new Date(o.served_at).getTime() - new Date(o.created_at).getTime()) / 60000;
                     if (diff > 0 && diff < 120) {
@@ -123,10 +128,10 @@ const ManagerDashboard: React.FC = () => {
         });
 
         const flowChartData = [
-            { step: 'Order', time: stageCounts.order, target: 5 }, // Using count as proxy for load/time in chart for now
+            { step: 'Order', time: stageCounts.order, target: 5 },
             { step: 'Prep', time: stageCounts.prep, target: 8 },
             { step: 'Pickup', time: stageCounts.pickup, target: 4 },
-            { step: 'Pay', time: stageCounts.pay > 20 ? 20 : stageCounts.pay, target: 10 }, // Cap visual
+            { step: 'Pay', time: stageCounts.pay > 20 ? 20 : stageCounts.pay, target: 10 }, 
         ];
         setServiceFlow(flowChartData);
         setAvgServiceTime(servedCount > 0 ? `${Math.round(totalServedTime / servedCount)}m` : "0m");
@@ -145,10 +150,10 @@ const ManagerDashboard: React.FC = () => {
         });
 
         activeOrders.forEach(o => {
-             if (o.verified_by && staffMap[o.verified_by]) {
-                 staffMap[o.verified_by].orders++;
-                 staffMap[o.verified_by].sales += o.total_amount || 0;
-                 if (o.status === 'cancelled') staffMap[o.verified_by].errors++;
+             if (o.waiter_id && staffMap[o.waiter_id]) {
+                 staffMap[o.waiter_id].orders++;
+                 staffMap[o.waiter_id].sales += o.total_amount || 0;
+                 if (o.status === 'cancelled') staffMap[o.waiter_id].errors++;
              }
         });
 
@@ -159,20 +164,16 @@ const ManagerDashboard: React.FC = () => {
             
         setStaffPerf(perfData);
 
-        // --- Process Shift Overview ---
-        // Display staff who are marked online OR have activity
         const activeShiftStaff = allStaff?.filter((u: any) => u.is_online || staffActivityMap.has(u.id))
             .map((u: any) => ({
                 name: u.full_name || u.email.split('@')[0],
                 role: u.role,
-                // Mock duration if shift_start is null
                 duration: u.shift_start ? 
                     `${Math.round((new Date().getTime() - new Date(u.shift_start).getTime()) / 3600000 * 10) / 10}h` : 
                     'Active'
             })) || [];
         setShiftStaff(activeShiftStaff);
 
-        // --- Process Issues ---
         setIssues(issuesData || []);
 
      } catch (err) {
@@ -184,12 +185,10 @@ const ManagerDashboard: React.FC = () => {
 
   const resolveIssue = async (id: string) => {
     try {
-        const { error } = await supabase
+        await supabase
             .from('operational_issues')
             .update({ status: 'resolved', resolved_at: new Date().toISOString() })
             .eq('id', id);
-        
-        if (error) throw error;
         showToast('Issue marked as resolved', 'success');
         fetchDashboardData();
     } catch (err) {
@@ -197,12 +196,14 @@ const ManagerDashboard: React.FC = () => {
     }
   };
 
-  // Filter for Payment Modal
   const unpaidServedOrders = orders.filter(o => 
-    ['served', 'ready_to_pay'].includes(o.status) && o.status !== 'paid'
+    o.status === 'served'
+  );
+  
+  const liveActiveOrders = orders.filter(o => 
+    ['pending', 'accepted', 'preparing', 'ready'].includes(o.status)
   );
 
-  // Determine Bottleneck for UI
   const slowStep = serviceFlow.length > 0 ? serviceFlow.reduce((prev, curr) => (curr.time > curr.target) ? curr : prev, serviceFlow[0]) : null;
   const bottleneckLabel = slowStep && slowStep.time > slowStep.target ? slowStep.step : "None";
 
@@ -276,10 +277,33 @@ const ManagerDashboard: React.FC = () => {
           </Card>
         </div>
 
-        {/* 2. Service Flow & Shift Overview */}
+        {/* 2. Live Active Orders (New Section) */}
+        <Card className="bg-[#1A1A1A] border-gray-800">
+           <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-white flex items-center gap-2">
+                 <List className="w-5 h-5 text-blue-400" /> Live Active Orders
+              </CardTitle>
+              <Badge variant="outline" className="border-gray-700 text-gray-400">{liveActiveOrders.length} Active</Badge>
+           </CardHeader>
+           <CardContent>
+              {liveActiveOrders.length === 0 ? (
+                  <div className="h-24 flex items-center justify-center text-gray-500 border border-dashed border-gray-800 rounded-xl">
+                      No active orders at the moment.
+                  </div>
+              ) : (
+                  <div className="flex gap-4 overflow-x-auto pb-4 custom-scrollbar">
+                     {liveActiveOrders.map(order => (
+                        <div key={order.id} className="min-w-[300px]">
+                           <OrderCard order={order} role="manager" />
+                        </div>
+                     ))}
+                  </div>
+              )}
+           </CardContent>
+        </Card>
+
+        {/* 3. Service Flow & Shift Overview */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-           
-           {/* Service Flow Analysis */}
            <Card className="lg:col-span-2 bg-[#1A1A1A] border-gray-800">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                  <CardTitle className="text-white flex items-center gap-2">
@@ -293,7 +317,6 @@ const ManagerDashboard: React.FC = () => {
               </CardHeader>
               <CardContent>
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    {/* Chart */}
                     <div className="h-[200px] w-full">
                        <ResponsiveContainer width="100%" height="100%">
                           <BarChart data={serviceFlow} layout="vertical" margin={{ left: 10, right: 10 }}>
@@ -310,13 +333,8 @@ const ManagerDashboard: React.FC = () => {
                              </Bar>
                           </BarChart>
                        </ResponsiveContainer>
-                       <div className="flex justify-center gap-4 text-xs text-gray-500 mt-2">
-                          <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-[#3B82F6]"/> Normal Load</span>
-                          <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-[#EF4444]"/> High Load</span>
-                       </div>
                     </div>
 
-                    {/* Insights Panel */}
                     <div className="space-y-4">
                        <h4 className="text-sm font-bold text-gray-400 uppercase tracking-wider">Live Metrics</h4>
                        <div className="grid grid-cols-2 gap-3">
@@ -329,16 +347,11 @@ const ManagerDashboard: React.FC = () => {
                               <p className="text-xl font-bold text-primary">{avgServiceTime}</p>
                           </div>
                        </div>
-                       <div className="p-3 bg-blue-500/5 border border-blue-500/10 rounded-lg text-xs text-gray-400">
-                          <span className="text-blue-400 font-bold block mb-1">Tip:</span>
-                          Monitor the 'Prep' stage. High numbers indicate kitchen congestion.
-                       </div>
                     </div>
                  </div>
               </CardContent>
            </Card>
 
-           {/* Shift Overview Sidebar */}
            <Card className="bg-[#1A1A1A] border-gray-800 flex flex-col h-[380px]">
               <CardHeader className="pb-2">
                  <CardTitle className="text-white flex items-center gap-2">
@@ -363,10 +376,9 @@ const ManagerDashboard: React.FC = () => {
                  ))}
               </CardContent>
            </Card>
-
         </div>
 
-        {/* 3. Staff Performance Table */}
+        {/* 4. Staff Performance Table */}
         <Card className="bg-[#1A1A1A] border-gray-800">
            <CardHeader>
               <CardTitle className="text-white">Staff Performance (Live)</CardTitle>
@@ -383,7 +395,6 @@ const ManagerDashboard: React.FC = () => {
                        </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-800">
-                       {staffPerf.length === 0 && <tr><td colSpan={4} className="p-6 text-center text-gray-500">No staff activity recorded today.</td></tr>}
                        {staffPerf.map((staff) => (
                           <tr key={staff.id} className="hover:bg-white/5 transition-colors">
                              <td className="px-6 py-4">
@@ -407,62 +418,8 @@ const ManagerDashboard: React.FC = () => {
            </CardContent>
         </Card>
 
-        {/* 4. Issues Log */}
-        <Card className="bg-[#1A1A1A] border-gray-800">
-           <CardHeader>
-              <CardTitle className="text-white flex items-center gap-2">
-                 <AlertTriangle className="w-5 h-5 text-red-500" /> Operational Issues Log
-              </CardTitle>
-           </CardHeader>
-           <CardContent className="p-0">
-              <div className="divide-y divide-gray-800">
-                 {issues.length === 0 && (
-                    <div className="p-8 text-center text-gray-500">No active issues found in `operational_issues`.</div>
-                 )}
-                 {issues.map((issue) => (
-                    <div key={issue.id} className="flex items-center justify-between p-4 hover:bg-white/5 transition-colors">
-                       <div className="flex items-center gap-4">
-                          <div className={cn(
-                             "p-2 rounded-lg",
-                             issue.issue_type === 'remake' ? "bg-red-500/10 text-red-500" : "bg-orange-500/10 text-orange-500"
-                          )}>
-                             <AlertTriangle className="w-5 h-5" />
-                          </div>
-                          <div>
-                             <div className="flex items-center gap-2">
-                                <span className="font-bold text-white capitalize">{issue.issue_type}</span>
-                                <Badge variant="outline" className="border-gray-700 text-gray-400 text-[10px]">
-                                    {new Date(issue.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-                                </Badge>
-                                {issue.status === 'resolved' && <Badge variant="success" className="bg-green-500/10 text-green-500 border-green-500/20">Resolved</Badge>}
-                             </div>
-                             <p className="text-sm text-gray-400 mt-0.5">
-                                {issue.description || 'No description'} 
-                                {issue.table_number && ` • Table ${issue.table_number}`}
-                                {issue.staff_name && ` (${issue.staff_name})`}
-                             </p>
-                          </div>
-                       </div>
-                       
-                       {issue.status !== 'resolved' && (
-                          <Button 
-                             size="sm" 
-                             variant="outline" 
-                             className="border-green-500/20 text-green-500 hover:bg-green-500/10"
-                             onClick={() => resolveIssue(issue.id)}
-                          >
-                             <CheckCircle2 className="w-4 h-4 mr-2" /> Resolve
-                          </Button>
-                       )}
-                    </div>
-                 ))}
-              </div>
-           </CardContent>
-        </Card>
-
       </div>
 
-      {/* Payment System */}
       <PaymentVerificationModal 
         isOpen={isPaymentOpen} 
         onClose={() => setIsPaymentOpen(false)} 
