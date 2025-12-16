@@ -1,3 +1,4 @@
+
 import React, { ButtonHTMLAttributes, InputHTMLAttributes } from 'react';
 import { Loader2 } from 'lucide-react';
 
@@ -16,11 +17,12 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 export const Button: React.FC<ButtonProps> = ({ 
   className, variant = 'primary', size = 'default', isLoading, children, disabled, ...props 
 }) => {
-  const baseStyles = "inline-flex items-center justify-center rounded-lg text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-50 disabled:pointer-events-none";
+  const baseStyles = "inline-flex items-center justify-center rounded-lg text-sm font-medium transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-50 disabled:pointer-events-none";
   
   const variants = {
-    primary: "bg-primary text-white hover:bg-primary-hover shadow-md",
-    secondary: "bg-gray-200 text-gray-900 hover:bg-gray-300 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700",
+    // Updated primary to use var(--primary-glow) for theme-aware shadows
+    primary: "bg-primary text-black hover:bg-primary/90 shadow-[0_4px_20px_var(--primary-glow)] hover:shadow-[0_8px_25px_var(--primary-glow)] hover:-translate-y-0.5",
+    secondary: "bg-gray-200 text-gray-900 hover:bg-gray-300 dark:bg-white/10 dark:text-white dark:hover:bg-white/20 dark:border dark:border-white/5",
     destructive: "bg-red-500/10 text-red-600 border border-red-500/20 hover:bg-red-500/20 dark:bg-red-900/50 dark:text-red-200 dark:border-red-900",
     outline: "border border-border bg-transparent hover:bg-black/5 dark:hover:bg-white/5 text-foreground",
     ghost: "hover:bg-black/5 dark:hover:bg-white/5 text-muted-foreground hover:text-foreground",
@@ -88,7 +90,7 @@ interface BadgeProps extends React.HTMLAttributes<HTMLDivElement> {
 
 export const Badge: React.FC<BadgeProps> = ({ className, variant = 'default', ...props }) => {
   const variants = {
-    default: "bg-primary text-white",
+    default: "bg-primary text-black",
     success: "bg-green-500/15 text-green-600 dark:text-green-400 border border-green-500/20",
     warning: "bg-yellow-500/15 text-yellow-600 dark:text-yellow-400 border border-yellow-500/20",
     destructive: "bg-red-500/15 text-red-600 dark:text-red-400 border border-red-500/20",

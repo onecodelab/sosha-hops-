@@ -12,6 +12,7 @@ interface AuthContextType {
   user: User | null;
   profile: UserProfile | null;
   loading: boolean;
+  isProfileStale: boolean;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
   markDatabaseAsMissing: () => void;
@@ -21,6 +22,7 @@ const AuthContext = createContext<AuthContextType>({
   user: null,
   profile: null,
   loading: true,
+  isProfileStale: false,
   signOut: async () => {},
   refreshProfile: async () => {},
   markDatabaseAsMissing: () => {},
@@ -96,7 +98,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return <SetupGuide />;
   }
 
-  if (isLoading) {
+  // Determine error type
+  const isGuestError = error instanceof Error && (
+      error.message === 'Not authenticated' || 
+      error.message.includes('Auth session missing')
+  );
+
+  // 1. Guest Logic: If specifically "Not authenticated", allow access as guest (User/Profile null)
+  if (isGuestError) {
+      return (
+          <AuthContext.Provider value={{ 
+              user: null, 
+              profile: null, 
+              loading: false,
+              isProfileStale: false, 
+              signOut, 
+              refreshProfile, 
+              markDatabaseAsMissing 
+          }}>
+            {children}
+          </AuthContext.Provider>
+      );
+  }
+
+  // 2. Loading Logic: Only block with spinner if we have NO cached profile data
+  // If we have profile data but are 'isLoading' (background refetch), we render the app (optimistic).
+  if (isLoading && !profile) {
     return (
       <LoadingSpinner 
         timeout={8000} 
@@ -109,29 +136,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     );
   }
 
-  if (isError) {
-    // Differentiate "Not Authenticated" (Guest) from actual errors
-    const isGuest = error instanceof Error && (
-        error.message === 'Not authenticated' || 
-        error.message.includes('Auth session missing')
-    );
-
-    if (isGuest) {
-        return (
-            <AuthContext.Provider value={{ 
-                user: null, 
-                profile: null, 
-                loading: false, 
-                signOut, 
-                refreshProfile, 
-                markDatabaseAsMissing 
-            }}>
-              {children}
-            </AuthContext.Provider>
-        );
-    }
-
-    // Critical Error Screen
+  // 3. Critical Error Logic: Only show full ErrorScreen if we have NO profile data AND an error occurred
+  if (isError && !profile) {
     return (
       <ErrorScreen 
         message="Failed to load your profile" 
@@ -141,11 +147,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     );
   }
 
+  // 4. Success / Stale Logic: Render App
+  // If we are here, we either have data, or we are idle. 
+  // 'isError' being true here implies we have stale data from a cache but the latest fetch failed.
   return (
     <AuthContext.Provider value={{ 
         user, 
         profile: profile || null, 
         loading: false, 
+        isProfileStale: isError, 
         signOut, 
         refreshProfile, 
         markDatabaseAsMissing 

@@ -1,10 +1,14 @@
+
 export type Role = 'owner' | 'manager' | 'waiter' | 'kitchen';
 
 export interface UserProfile {
   id: string;
-  name: string;
+  full_name?: string;
+  name?: string; // Kept for backward compatibility
+  email?: string;
   role: Role;
   created_at: string;
+  is_online?: boolean;
 }
 
 export interface MenuItem {

@@ -1,66 +1,64 @@
+
 import React, { useEffect, useState } from 'react';
+import { Leaf, Sun } from 'lucide-react';
+import { cn } from './ui';
 
 const ThemeToggle = () => {
-  const [isDark, setIsDark] = useState(true);
+  const [theme, setTheme] = useState<'classic' | 'fresh'>('classic');
 
   useEffect(() => {
-    // Check local storage or default to dark
-    const savedTheme = localStorage.getItem('theme');
-    if (savedTheme === 'light') {
-      setIsDark(false);
-      document.documentElement.classList.remove('dark');
+    // Check local storage
+    const savedTheme = localStorage.getItem('sosha-theme') as 'classic' | 'fresh' | null;
+    if (savedTheme === 'fresh') {
+      setTheme('fresh');
+      document.body.setAttribute('data-theme', 'fresh');
     } else {
-      setIsDark(true);
-      document.documentElement.classList.add('dark');
+      setTheme('classic');
+      document.body.removeAttribute('data-theme');
     }
   }, []);
 
-  const toggleTheme = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const isChecked = e.target.checked;
-    setIsDark(isChecked);
+  const toggleTheme = () => {
+    const newTheme = theme === 'classic' ? 'fresh' : 'classic';
+    setTheme(newTheme);
+    localStorage.setItem('sosha-theme', newTheme);
     
-    if (isChecked) {
-      document.documentElement.classList.add('dark');
-      localStorage.setItem('theme', 'dark');
+    if (newTheme === 'fresh') {
+      document.body.setAttribute('data-theme', 'fresh');
     } else {
-      document.documentElement.classList.remove('dark');
-      localStorage.setItem('theme', 'light');
+      document.body.removeAttribute('data-theme');
     }
   };
 
   return (
-    <label className="relative inline-block w-[3.5em] h-[2em]" title="Toggle Theme">
-      {/* Hidden checkbox */}
-      <input 
-        type="checkbox" 
-        className="peer opacity-0 w-0 h-0" 
-        checked={isDark}
-        onChange={toggleTheme}
-      />
+    <button 
+      onClick={toggleTheme}
+      className={cn(
+        "relative flex items-center justify-between w-16 h-8 rounded-full p-1 transition-all duration-500 shadow-inner",
+        theme === 'fresh' 
+          ? "bg-gradient-to-r from-emerald-900 to-emerald-800 border border-emerald-600/50" 
+          : "bg-gradient-to-r from-zinc-900 to-zinc-800 border border-yellow-500/20"
+      )}
+      title={`Switch to ${theme === 'classic' ? 'Fresh' : 'Classic'} Theme`}
+    >
+      {/* Track Icons */}
+      <Sun className={cn("w-4 h-4 ml-1 transition-opacity duration-300", theme === 'classic' ? "text-yellow-500 opacity-100" : "opacity-0")} />
+      <Leaf className={cn("w-4 h-4 mr-1 transition-opacity duration-300", theme === 'fresh' ? "text-emerald-400 opacity-100" : "opacity-0")} />
 
-      {/* Slider */}
-      <span
-        className="
-          absolute inset-0 cursor-pointer rounded-[30px] transition duration-500 
-          bg-gray-300 /* Neutral for Light Mode */
-          peer-checked:bg-gray-700 
-          dark:peer-checked:bg-[#1e293b]
-          
-          before:content-[''] before:absolute before:h-[1.4em] before:w-[1.4em] before:rounded-full before:left-[10%] before:bottom-[15%] 
-          
-          /* Sun Icon (Light Mode) */
-          before:shadow-[inset_8px_-4px_0px_0px_#ffffff] 
-          before:bg-white
-          
-          before:transition before:duration-500 
-          
-          /* Moon Icon (Dark Mode) */
-          peer-checked:before:translate-x-full 
-          peer-checked:before:shadow-[inset_15px_-4px_0px_15px_#fff000] /* Yellow Sun/Moon shift */
-          peer-checked:before:bg-transparent
-        "
-      />
-    </label>
+      {/* Thumb */}
+      <div 
+        className={cn(
+          "absolute top-1 left-1 w-6 h-6 rounded-full shadow-lg transition-transform duration-500 flex items-center justify-center",
+          theme === 'fresh' ? "translate-x-8 bg-emerald-400" : "translate-x-0 bg-yellow-500"
+        )}
+      >
+        {theme === 'fresh' ? (
+             <Leaf className="w-3 h-3 text-emerald-950" fill="currentColor" />
+        ) : (
+             <Sun className="w-3 h-3 text-yellow-950" fill="currentColor" />
+        )}
+      </div>
+    </button>
   );
 };
 

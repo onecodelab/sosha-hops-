@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import { Role } from '../types';
-import { Loader2, ShieldAlert, ArrowLeft, Home, RefreshCw, Trash2 } from 'lucide-react';
+import { ShieldAlert, ArrowLeft, Home, RefreshCw, Trash2 } from 'lucide-react';
+import { LoadingSpinner } from './LoadingSpinner';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -18,50 +19,20 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowedRoles 
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout>;
     if (loading) {
-      // If still loading after 2 seconds, show options
-      timer = setTimeout(() => setShowSlowLoading(true), 2000);
+      // If still loading after 5 seconds, show options via the LoadingSpinner internal logic or explicit here
+      // Note: LoadingSpinner has its own internal warning, but we can keep local state if needed for other UI.
+      timer = setTimeout(() => setShowSlowLoading(true), 5000);
     }
     return () => clearTimeout(timer);
   }, [loading]);
 
   if (loading) {
+    // Use the New Splash Screen component for consistency
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-background text-white p-4">
-        <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
-        <p className="text-gray-400 mb-6 font-medium">Loading your profile...</p>
-        
-        {showSlowLoading && (
-           <div className="animate-in fade-in flex flex-col items-center gap-4 bg-[#1A1A1A] p-6 rounded-xl border border-gray-800 shadow-xl max-w-sm w-full">
-              <div className="flex items-center gap-2 text-yellow-500 mb-2">
-                 <ShieldAlert className="w-5 h-5" />
-                 <p className="text-sm font-bold">Taking longer than usual?</p>
-              </div>
-              <p className="text-xs text-gray-400 text-center mb-2">
-                 Your connection might be unstable or the session is stuck.
-              </p>
-              
-              <div className="grid grid-cols-1 w-full gap-3">
-                  <button 
-                    onClick={() => window.location.reload()} 
-                    className="flex items-center justify-center gap-2 px-4 py-3 bg-gray-800 hover:bg-gray-700 rounded-lg text-sm transition-colors font-medium"
-                  >
-                    <RefreshCw className="w-4 h-4" /> Reload Page
-                  </button>
-                  
-                  <button 
-                    onClick={async () => {
-                        await signOut();
-                        localStorage.clear();
-                        window.location.href = '/';
-                    }} 
-                    className="flex items-center justify-center gap-2 px-4 py-3 bg-red-500/10 text-red-500 hover:bg-red-500/20 rounded-lg text-sm transition-colors border border-red-500/20 font-medium"
-                  >
-                    <Trash2 className="w-4 h-4" /> Reset Application
-                  </button>
-              </div>
-           </div>
-        )}
-      </div>
+        <LoadingSpinner 
+            timeout={8000} 
+            onTimeout={() => setShowSlowLoading(true)} 
+        />
     );
   }
 

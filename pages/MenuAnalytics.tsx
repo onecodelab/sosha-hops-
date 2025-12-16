@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { supabase } from '../supabase';
@@ -176,11 +177,11 @@ const MenuAnalytics: React.FC = () => {
         {/* Header & Filter */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-white">Menu Analytics</h1>
-            <p className="text-gray-400 text-sm">Real-time profitability and popularity insights</p>
+            <h1 className="text-2xl font-bold text-foreground">Menu Analytics</h1>
+            <p className="text-muted text-sm">Real-time profitability and popularity insights</p>
           </div>
           
-          <div className="flex bg-[#1A1A1A] p-1 rounded-lg border border-gray-800">
+          <div className="flex bg-card p-1 rounded-lg border border-border">
             {(['today', 'week', 'month'] as const).map((p) => (
               <button
                 key={p}
@@ -189,7 +190,7 @@ const MenuAnalytics: React.FC = () => {
                   "px-4 py-1.5 text-xs font-bold rounded-md capitalize transition-all",
                   period === p 
                     ? "bg-primary text-black shadow-md" 
-                    : "text-gray-400 hover:text-white"
+                    : "text-muted hover:text-foreground"
                 )}
               >
                 {p}
@@ -202,9 +203,9 @@ const MenuAnalytics: React.FC = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           
           {/* Top Selling Items Table */}
-          <Card className="lg:col-span-2 bg-[#1A1A1A] border-gray-800">
+          <Card className="lg:col-span-2">
             <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="text-white">Top Performers</CardTitle>
+              <CardTitle className="text-foreground">Top Performers</CardTitle>
               <Badge variant="success" className="bg-[#84CC16]/10 text-[#84CC16] border-[#84CC16]/20">
                 <TrendingUp className="w-3 h-3 mr-1" /> Revenue Leaders
               </Badge>
@@ -212,7 +213,7 @@ const MenuAnalytics: React.FC = () => {
             <CardContent>
               <div className="overflow-x-auto max-h-[300px] custom-scrollbar">
                 <table className="w-full text-sm text-left">
-                  <thead className="text-xs text-gray-500 uppercase bg-black/20 border-b border-gray-800 sticky top-0 backdrop-blur-sm z-10">
+                  <thead className="text-xs text-muted uppercase bg-black/20 border-b border-border sticky top-0 backdrop-blur-sm z-10">
                     <tr>
                       <th className="px-4 py-3">Item Name</th>
                       <th className="px-4 py-3">Category</th>
@@ -221,13 +222,13 @@ const MenuAnalytics: React.FC = () => {
                       <th className="px-4 py-3 text-right">Est. Margin</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-800">
+                  <tbody className="divide-y divide-border">
                     {loading && <tr><td colSpan={5} className="p-4 text-center">Loading...</td></tr>}
-                    {!loading && topSellingItems.length === 0 && <tr><td colSpan={5} className="p-4 text-center text-gray-500">No sales data for this period.</td></tr>}
+                    {!loading && topSellingItems.length === 0 && <tr><td colSpan={5} className="p-4 text-center text-muted">No sales data for this period.</td></tr>}
                     {topSellingItems.map((item) => (
                       <tr key={item.id} className="hover:bg-white/5 transition-colors">
-                        <td className="px-4 py-3 font-medium text-white">{item.name}</td>
-                        <td className="px-4 py-3 text-gray-400">{item.category}</td>
+                        <td className="px-4 py-3 font-medium text-foreground">{item.name}</td>
+                        <td className="px-4 py-3 text-muted">{item.category}</td>
                         <td className="px-4 py-3 text-right text-gray-300">{item.orders}</td>
                         <td className="px-4 py-3 text-right font-mono text-primary">ETB {item.revenue.toLocaleString()}</td>
                         <td className="px-4 py-3 text-right">
@@ -248,9 +249,9 @@ const MenuAnalytics: React.FC = () => {
 
           {/* Out of Stock / Lost Revenue */}
           <div className="space-y-6">
-             <Card className="bg-[#1A1A1A] border-gray-800 border-l-4 border-l-red-500">
+             <Card className="border-l-4 border-l-red-500">
                 <CardHeader>
-                   <CardTitle className="text-white flex items-center gap-2">
+                   <CardTitle className="text-foreground flex items-center gap-2">
                       <AlertOctagon className="w-5 h-5 text-red-500" /> Out of Stock
                    </CardTitle>
                 </CardHeader>
@@ -258,23 +259,23 @@ const MenuAnalytics: React.FC = () => {
                    {outOfStockItems.map(item => (
                       <div key={item.id} className="p-3 bg-red-500/5 rounded-lg border border-red-500/10">
                          <div className="flex justify-between items-start mb-1">
-                            <span className="font-bold text-gray-200">{item.name}</span>
+                            <span className="font-bold text-foreground">{item.name}</span>
                             <span className="text-xs bg-red-500 text-white px-1.5 py-0.5 rounded">Unavailable</span>
                          </div>
-                         <div className="flex justify-between text-xs text-gray-400">
+                         <div className="flex justify-between text-xs text-muted">
                             <span>Category:</span>
                             <span>{item.category}</span>
                          </div>
                       </div>
                    ))}
-                   {outOfStockItems.length === 0 && <p className="text-gray-500 text-sm">All items available.</p>}
+                   {outOfStockItems.length === 0 && <p className="text-muted text-sm">All items available.</p>}
                 </CardContent>
              </Card>
 
              {/* Matrix Highlights */}
              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-[#1A1A1A] border border-gray-800 p-4 rounded-xl flex flex-col justify-between">
-                   <div className="text-xs text-gray-500 uppercase font-bold tracking-wider mb-2">Top Star</div>
+                <div className="bg-card border border-border p-4 rounded-xl flex flex-col justify-between">
+                   <div className="text-xs text-muted uppercase font-bold tracking-wider mb-2">Top Star</div>
                    <div className="text-sm font-bold text-[#84CC16] line-clamp-2">
                       {analyticsData.find(i => i.matrixType === 'Star')?.name || 'N/A'}
                    </div>
@@ -282,8 +283,8 @@ const MenuAnalytics: React.FC = () => {
                       <ArrowUpRight className="w-3 h-3 text-[#84CC16]" /> High Rev/Vol
                    </div>
                 </div>
-                <div className="bg-[#1A1A1A] border border-gray-800 p-4 rounded-xl flex flex-col justify-between">
-                   <div className="text-xs text-gray-500 uppercase font-bold tracking-wider mb-2">Underperforming</div>
+                <div className="bg-card border border-border p-4 rounded-xl flex flex-col justify-between">
+                   <div className="text-xs text-muted uppercase font-bold tracking-wider mb-2">Underperforming</div>
                    <div className="text-sm font-bold text-red-400 line-clamp-2">
                       {analyticsData.filter(i => i.orders > 0 && i.matrixType === 'Dog')[0]?.name || 'N/A'}
                    </div>
@@ -299,16 +300,16 @@ const MenuAnalytics: React.FC = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           
           {/* Profit vs Popularity Matrix */}
-          <Card className="lg:col-span-2 bg-[#1A1A1A] border-gray-800">
+          <Card className="lg:col-span-2">
              <CardHeader>
-                <CardTitle className="text-white flex items-center gap-2">
+                <CardTitle className="text-foreground flex items-center gap-2">
                    <DollarSign className="w-5 h-5 text-primary" /> Menu Engineering Matrix
                 </CardTitle>
              </CardHeader>
              <CardContent>
                 <div className="h-[300px] w-full relative">
                    {analyticsData.filter(i => i.orders > 0).length === 0 ? (
-                      <div className="h-full flex items-center justify-center text-gray-500">Need more sales data to build matrix</div>
+                      <div className="h-full flex items-center justify-center text-muted">Need more sales data to build matrix</div>
                    ) : (
                    <ResponsiveContainer width="100%" height="100%">
                       <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
@@ -321,7 +322,7 @@ const MenuAnalytics: React.FC = () => {
                                if (active && payload && payload.length) {
                                   const data = payload[0].payload;
                                   return (
-                                     <div className="bg-gray-900 border border-gray-700 p-2 rounded shadow-xl text-xs z-50">
+                                     <div className="bg-card border border-border p-2 rounded shadow-xl text-xs z-50">
                                         <p className="font-bold text-white mb-1">{data.name}</p>
                                         <p className="text-gray-400">Type: <span className="text-primary">{data.type}</span></p>
                                         <p className="text-gray-400">Orders: {data.x}</p>
@@ -356,23 +357,23 @@ const MenuAnalytics: React.FC = () => {
           </Card>
 
           {/* Hourly Heatmap */}
-          <Card className="bg-[#1A1A1A] border-gray-800">
+          <Card>
              <CardHeader>
-                <CardTitle className="text-white flex items-center gap-2">
+                <CardTitle className="text-foreground flex items-center gap-2">
                    <Clock className="w-5 h-5 text-blue-400" /> Today's Intensity
                 </CardTitle>
              </CardHeader>
              <CardContent>
                 <div className="flex flex-col gap-2 h-full justify-center pb-4">
                    {hourlyData.length === 0 && (
-                      <div className="text-center text-gray-500 py-10">No orders today yet</div>
+                      <div className="text-center text-muted py-10">No orders today yet</div>
                    )}
                    {hourlyData.map((slot) => (
                       <div key={slot.hour} className="flex items-center gap-3 group">
-                         <span className="text-xs font-mono text-gray-500 w-12 text-right">
+                         <span className="text-xs font-mono text-muted w-12 text-right">
                             {slot.hour}
                          </span>
-                         <div className="flex-1 h-6 bg-gray-900 rounded-md overflow-hidden relative">
+                         <div className="flex-1 h-6 bg-black/20 rounded-md overflow-hidden relative">
                             <div 
                                className={cn("h-full transition-all duration-500", getIntensityColor(slot.value))} 
                                style={{ width: `${Math.min(100, (slot.value / 10) * 100)}%` }} // Normalize for bar width
