@@ -333,7 +333,11 @@ const Inventory: React.FC = () => {
                           </tr>
                        ))}
                        {reorderSuggestions.length === 0 && (
-                          <tr><td colSpan={6} className="p-4 text-center text-muted">No reorders needed. All items > 10 units.</td></tr>
+                          <tr>
+                            <td colSpan={6} className="p-4 text-center text-muted">
+                              No reorder suggestions
+                            </td>
+                          </tr>
                        )}
                     </tbody>
                  </table>
