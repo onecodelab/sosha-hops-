@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en" class="dark">
   <head>
@@ -47,23 +48,43 @@
     </script>
     <style>
       :root {
-        /* Default (Classic Dark/Gold) */
+        /* Classic (Dark Mode) - Default */
         --background: #050505;
-        --card: #1A1A1A;
+        --card: #09090b; /* Zinc 950 - Deep Solid Black */
         --border: #27272a;
         --foreground: #F3F4F6;
         --muted: #9CA3AF;
-        --primary-glow: rgba(255, 184, 0, 0.25); /* Gold Glow */
+        --primary-glow: rgba(255, 184, 0, 0.25);
+        
+        /* Elements */
+        --glass-bg: rgba(255, 255, 255, 0.05);
+        --glass-border: rgba(255, 255, 255, 0.1);
+        --input-bg: rgba(0, 0, 0, 0.2);
+        --shadow-color: rgba(0, 0, 0, 0.6);
+
+        /* Bubble Colors (Dark) */
+        --bubble-1: rgba(16, 185, 129, 0.1);
+        --bubble-2: rgba(132, 204, 22, 0.1);
       }
 
-      /* Fresh Leaf Theme Override */
+      /* Fresh Leaf (Light Mode) */
       body[data-theme="fresh"] {
-        --background: #020607; /* Deep Organic Black */
-        --card: #050f0a;       /* Very Dark Green-Black */
-        --border: #064e3b;     /* Emerald-900 */
-        --foreground: #ecfdf5; /* Mint White */
-        --muted: #6ee7b7;      /* Soft Green Muted */
-        --primary-glow: rgba(74, 222, 128, 0.4); /* Green Glow */
+        --background: #f8fafc; /* Slate-50 / Soft White */
+        --card: #ffffff;
+        --border: #e2e8f0; /* Slate-200 */
+        --foreground: #0f172a; /* Slate-900 */
+        --muted: #64748b; /* Slate-500 */
+        --primary-glow: rgba(34, 197, 94, 0.4); /* Fresh Green Glow */
+
+        /* Elements */
+        --glass-bg: rgba(255, 255, 255, 0.6);
+        --glass-border: rgba(0, 0, 0, 0.05);
+        --input-bg: #f1f5f9; /* Slate-100 */
+        --shadow-color: rgba(148, 163, 184, 0.15); /* Soft Slate Shadow */
+
+        /* Bubble Colors (Light) */
+        --bubble-1: rgba(110, 231, 183, 0.3); /* Emerald-300 */
+        --bubble-2: rgba(190, 242, 100, 0.3); /* Lime-300 */
       }
       
       body {
@@ -95,8 +116,14 @@
         background: #333; 
         border-radius: 4px;
       }
+      body[data-theme="fresh"] ::-webkit-scrollbar-thumb {
+        background: #cbd5e1; /* Slate-300 */
+      }
       ::-webkit-scrollbar-thumb:hover {
         background: #555; 
+      }
+      body[data-theme="fresh"] ::-webkit-scrollbar-thumb:hover {
+        background: #94a3b8; /* Slate-400 */
       }
     </style>
   <script type="importmap">
@@ -111,7 +138,8 @@
     "@supabase/supabase-js": "https://aistudiocdn.com/@supabase/supabase-js@^2.86.2",
     "jsqr": "https://esm.sh/jsqr@1.4.0",
     "@tanstack/react-query": "https://esm.sh/@tanstack/react-query@5.28.9?external=react,react-dom",
-    "@tanstack/react-query-devtools": "https://esm.sh/@tanstack/react-query-devtools@5.28.9?external=react,react-dom,@tanstack/react-query"
+    "@tanstack/react-query-devtools": "https://esm.sh/@tanstack/react-query-devtools@5.28.9?external=react,react-dom,@tanstack/react-query",
+    "framer-motion": "https://esm.sh/framer-motion@11.0.8?external=react,react-dom"
   }
 }
 </script>

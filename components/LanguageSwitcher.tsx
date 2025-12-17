@@ -41,7 +41,7 @@ export const LanguageSwitcher: React.FC = () => {
       </button>
 
       {isOpen && (
-        <div className="absolute top-full right-0 mt-2 w-48 bg-[#1A1A1A] border border-gray-800 rounded-xl shadow-xl overflow-hidden z-50 animate-in fade-in zoom-in-95 duration-100">
+        <div className="absolute top-full right-0 mt-2 w-48 bg-[#1A1A1A] border border-gray-800 rounded-xl shadow-xl overflow-hidden z-[60] animate-in fade-in zoom-in-95 duration-100">
           <div className="p-1">
             {languages.map((lang) => (
               <button

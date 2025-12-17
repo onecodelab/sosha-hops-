@@ -200,25 +200,27 @@ const ManagerDashboard: React.FC = () => {
               </div>
            </SoshaCard>
 
-           <SoshaCard className="flex flex-col h-[400px]">
-              <SoshaCardTitle className="flex items-center gap-2 mb-4">
-                 <Clock className="w-5 h-5 text-green-500" /> Active Shift
-              </SoshaCardTitle>
-              <div className="flex-1 overflow-y-auto pr-2 space-y-3 custom-scrollbar">
-                 {shiftStaff.map((staff, i) => (
-                    <div key={i} className="flex items-center justify-between p-3 rounded-xl bg-white/5 hover:bg-white/10 transition-colors border border-white/5">
-                       <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center text-xs font-bold text-gray-300 capitalize">
-                             {staff.name.charAt(0)}
-                          </div>
-                          <div>
-                             <p className="text-sm font-bold text-white capitalize">{staff.name}</p>
-                             <p className="text-[10px] text-gray-500 capitalize font-bold">{staff.role} • {staff.duration}</p>
-                          </div>
-                       </div>
-                       <div className="w-2.5 h-2.5 rounded-full bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.5)]" />
-                    </div>
-                 ))}
+           <SoshaCard className="h-[400px]">
+              <div className="flex flex-col h-full">
+                  <SoshaCardTitle className="flex items-center gap-2 mb-4">
+                     <Clock className="w-5 h-5 text-green-500" /> Active Shift
+                  </SoshaCardTitle>
+                  <div className="flex-1 overflow-y-auto pr-2 space-y-3 custom-scrollbar">
+                     {shiftStaff.map((staff, i) => (
+                        <div key={i} className="flex items-center justify-between p-3 rounded-xl bg-white/5 hover:bg-white/10 transition-colors border border-white/5">
+                           <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center text-xs font-bold text-gray-300 capitalize">
+                                 {staff.name.charAt(0)}
+                              </div>
+                              <div>
+                                 <p className="text-sm font-bold text-white capitalize">{staff.name}</p>
+                                 <p className="text-[10px] text-gray-500 capitalize font-bold">{staff.role} • {staff.duration}</p>
+                              </div>
+                           </div>
+                           <div className="w-2.5 h-2.5 rounded-full bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.5)]" />
+                        </div>
+                     ))}
+                  </div>
               </div>
            </SoshaCard>
         </div>

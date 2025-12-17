@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { HashRouter, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './AuthContext';
 import { LanguageProvider } from './contexts/LanguageContext';
@@ -24,6 +24,16 @@ import ProtectedRoute from './components/ProtectedRoute';
 import Settings from './pages/Settings';
 
 const App: React.FC = () => {
+  // Initialize Theme Globally
+  useEffect(() => {
+    const savedTheme = localStorage.getItem('sosha-theme');
+    if (savedTheme === 'fresh') {
+      document.body.setAttribute('data-theme', 'fresh');
+    } else {
+      document.body.removeAttribute('data-theme');
+    }
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       <LanguageProvider>

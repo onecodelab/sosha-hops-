@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { 
   AreaChart, Area, ResponsiveContainer, 
@@ -26,46 +25,48 @@ const KPICard = ({ title, value, subtext, trend, trendValue, icon: Icon, chartDa
     const glowColor = color === 'primary' ? 'yellow' : color === 'success' ? 'green' : color === 'danger' ? 'red' : 'blue';
 
     return (
-        <SoshaCard indicatorColor={glowColor as any} className="h-full flex flex-col justify-between">
-             <div className="flex justify-between items-start mb-2 relative z-10">
-               <div>
-                  <p className="text-xs font-bold text-muted uppercase tracking-wider">{title}</p>
-                  {loading ? (
-                    <div className="h-8 w-24 bg-gray-800 rounded animate-pulse mt-1" />
-                  ) : (
-                    <h3 className="text-3xl font-bold text-foreground mt-2 tracking-tight">{value}</h3>
-                  )}
-               </div>
-               <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center border border-white/5", `bg-[${accentColor}]/10`)}>
-                  <Icon className="w-6 h-6" style={{ color: accentColor }} />
-               </div>
-            </div>
-            
-            <div className="flex-1 min-h-[40px] relative z-10 flex items-end my-4">
-                {chartData ? (
-                    <div className="w-full h-[60px]">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <AreaChart data={chartData}>
-                                <defs>
-                                <linearGradient id={`grad-${color}`} x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor={accentColor} stopOpacity={0.3}/>
-                                    <stop offset="95%" stopColor={accentColor} stopOpacity={0}/>
-                                </linearGradient>
-                                </defs>
-                                <Area type="monotone" dataKey="value" stroke={accentColor} strokeWidth={2} fill={`url(#grad-${color})`} />
-                            </AreaChart>
-                        </ResponsiveContainer>
-                    </div>
-                ) : (
-                    <p className="text-sm font-medium text-muted">{subtext}</p>
-                )}
-            </div>
+        <SoshaCard indicatorColor={glowColor as any} className="h-full">
+             <div className="flex flex-col justify-between h-full">
+                 <div className="flex justify-between items-start mb-2 relative z-10">
+                   <div>
+                      <p className="text-xs font-bold text-muted uppercase tracking-wider">{title}</p>
+                      {loading ? (
+                        <div className="h-8 w-24 bg-gray-800 rounded animate-pulse mt-1" />
+                      ) : (
+                        <h3 className="text-3xl font-bold text-foreground mt-2 tracking-tight">{value}</h3>
+                      )}
+                   </div>
+                   <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center border border-white/5", `bg-[${accentColor}]/10`)}>
+                      <Icon className="w-6 h-6" style={{ color: accentColor }} />
+                   </div>
+                </div>
+                
+                <div className="flex-1 min-h-[40px] relative z-10 flex items-end my-4">
+                    {chartData ? (
+                        <div className="w-full h-[60px]">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <AreaChart data={chartData}>
+                                    <defs>
+                                    <linearGradient id={`grad-${color}`} x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor={accentColor} stopOpacity={0.3}/>
+                                        <stop offset="95%" stopColor={accentColor} stopOpacity={0}/>
+                                    </linearGradient>
+                                    </defs>
+                                    <Area type="monotone" dataKey="value" stroke={accentColor} strokeWidth={2} fill={`url(#grad-${color})`} />
+                                </AreaChart>
+                            </ResponsiveContainer>
+                        </div>
+                    ) : (
+                        <p className="text-sm font-medium text-muted">{subtext}</p>
+                    )}
+                </div>
 
-            <div className="flex items-center justify-between pt-4 border-t border-white/5 relative z-10">
-               <div className={cn("flex items-center text-xs font-bold px-2.5 py-1.5 rounded-lg border border-white/5", trendColor, trendBg)}>
-                  <TrendIcon className="w-3 h-3 mr-1.5" /> {trendValue}
-               </div>
-               <span className="text-[10px] text-muted font-bold uppercase tracking-wider">vs Yesterday</span>
+                <div className="flex items-center justify-between pt-4 border-t border-white/5 relative z-10">
+                   <div className={cn("flex items-center text-xs font-bold px-2.5 py-1.5 rounded-lg border border-white/5", trendColor, trendBg)}>
+                      <TrendIcon className="w-3 h-3 mr-1.5" /> {trendValue}
+                   </div>
+                   <span className="text-[10px] text-muted font-bold uppercase tracking-wider">vs Yesterday</span>
+                </div>
             </div>
         </SoshaCard>
     );

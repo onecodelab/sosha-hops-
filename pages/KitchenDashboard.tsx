@@ -136,40 +136,44 @@ const KitchenDashboard: React.FC = () => {
 
         {/* Bottom Insights */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-48 flex-none overflow-hidden">
-           <SoshaCard className="h-full overflow-hidden p-0 flex flex-col">
-              <div className="p-4 border-b border-white/5"><h3 className="text-xs font-bold text-white flex items-center gap-2 uppercase tracking-wider"><ChefHat className="w-4 h-4 text-primary" /> Station Load</h3></div>
-              <div className="flex-1 w-full p-2">
-                 <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={stationData} layout="vertical" margin={{ left: 10, right: 30, top: 5, bottom: 5 }}>
-                       <XAxis type="number" hide />
-                       <YAxis dataKey="name" type="category" width={80} tick={{fill: '#9CA3AF', fontSize: 10}} />
-                       <Tooltip cursor={{fill: 'rgba(255,255,255,0.05)'}} contentStyle={{ backgroundColor: '#1A1A1A', border: '1px solid #333' }} />
-                       <Bar dataKey="count" fill="#FFB800" radius={[0, 4, 4, 0]} barSize={20}>
-                         {stationData.map((e, i) => <Cell key={i} fill={e.count > 10 ? '#EF4444' : e.count > 5 ? '#FFB800' : '#84CC16'} />)}
-                       </Bar>
-                    </BarChart>
-                 </ResponsiveContainer>
+           <SoshaCard className="h-full overflow-hidden p-0">
+              <div className="flex flex-col h-full">
+                  <div className="p-4 border-b border-white/5"><h3 className="text-xs font-bold text-white flex items-center gap-2 uppercase tracking-wider"><ChefHat className="w-4 h-4 text-primary" /> Station Load</h3></div>
+                  <div className="flex-1 w-full p-2">
+                     <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={stationData} layout="vertical" margin={{ left: 10, right: 30, top: 5, bottom: 5 }}>
+                           <XAxis type="number" hide />
+                           <YAxis dataKey="name" type="category" width={80} tick={{fill: '#9CA3AF', fontSize: 10}} />
+                           <Tooltip cursor={{fill: 'rgba(255,255,255,0.05)'}} contentStyle={{ backgroundColor: '#1A1A1A', border: '1px solid #333' }} />
+                           <Bar dataKey="count" fill="#FFB800" radius={[0, 4, 4, 0]} barSize={20}>
+                             {stationData.map((e, i) => <Cell key={i} fill={e.count > 10 ? '#EF4444' : e.count > 5 ? '#FFB800' : '#84CC16'} />)}
+                           </Bar>
+                        </BarChart>
+                     </ResponsiveContainer>
+                  </div>
               </div>
            </SoshaCard>
            
-           <SoshaCard className="h-full col-span-2 flex flex-col justify-center">
-              <div className="flex items-center gap-6 justify-around">
-                  <div className="text-center">
-                     <AlertOctagon className="w-8 h-8 text-green-500 mx-auto mb-2" />
-                     <p className="text-sm font-bold text-white">System Healthy</p>
-                     <p className="text-xs text-gray-500">Real-time sync active</p>
-                  </div>
-                  <div className="h-12 w-[1px] bg-white/10" />
-                  <div className="text-center">
-                     <Bell className="w-8 h-8 text-blue-500 mx-auto mb-2" />
-                     <p className="text-sm font-bold text-white">Audio Alerts</p>
-                     <p className="text-xs text-gray-500">Enabled (Vol 80%)</p>
-                  </div>
-                  <div className="h-12 w-[1px] bg-white/10" />
-                  <div className="text-center">
-                     <ChefHat className="w-8 h-8 text-orange-500 mx-auto mb-2" />
-                     <p className="text-sm font-bold text-white">Staff Active</p>
-                     <p className="text-xs text-gray-500">4 Cooks Online</p>
+           <SoshaCard className="h-full col-span-2">
+              <div className="flex flex-col h-full justify-center">
+                  <div className="flex items-center gap-6 justify-around">
+                      <div className="text-center">
+                         <AlertOctagon className="w-8 h-8 text-green-500 mx-auto mb-2" />
+                         <p className="text-sm font-bold text-white">System Healthy</p>
+                         <p className="text-xs text-gray-500">Real-time sync active</p>
+                      </div>
+                      <div className="h-12 w-[1px] bg-white/10" />
+                      <div className="text-center">
+                         <Bell className="w-8 h-8 text-blue-500 mx-auto mb-2" />
+                         <p className="text-sm font-bold text-white">Audio Alerts</p>
+                         <p className="text-xs text-gray-500">Enabled (Vol 80%)</p>
+                      </div>
+                      <div className="h-12 w-[1px] bg-white/10" />
+                      <div className="text-center">
+                         <ChefHat className="w-8 h-8 text-orange-500 mx-auto mb-2" />
+                         <p className="text-sm font-bold text-white">Staff Active</p>
+                         <p className="text-xs text-gray-500">4 Cooks Online</p>
+                      </div>
                   </div>
               </div>
            </SoshaCard>

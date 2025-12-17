@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { cn } from './ui';
 
@@ -17,8 +16,9 @@ export const SoshaCard: React.FC<SoshaCardProps> = ({
   return (
     <div 
       className={cn(
-        "relative rounded-[2rem] bg-card/90 border border-border shadow-[0_8px_40px_rgba(0,0,0,0.6)] overflow-hidden backdrop-blur-md transition-all duration-300 group",
-        isInteractive && "hover:-translate-y-1 hover:shadow-[0_20px_60px_rgba(0,0,0,0.8)] hover:border-white/10 cursor-pointer",
+        "relative rounded-[2rem] bg-card/95 border border-border overflow-hidden backdrop-blur-md transition-all duration-300 group",
+        "shadow-[0_8px_40px_var(--shadow-color)]",
+        isInteractive && "hover:-translate-y-1 hover:shadow-[0_20px_60px_var(--shadow-color)] hover:border-primary/20 cursor-pointer",
         className
       )}
       {...props}
@@ -26,8 +26,8 @@ export const SoshaCard: React.FC<SoshaCardProps> = ({
       {/* Subtle Top Gradient (Glass Reflection) */}
       <div className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-white/5 to-transparent opacity-50 pointer-events-none" />
       
-      {/* Inner Shadow for Depth */}
-      <div className="absolute inset-0 shadow-[inset_0_0_40px_rgba(0,0,0,0.2)] pointer-events-none rounded-[2rem]" />
+      {/* Inner Shadow for Depth (Variable) */}
+      <div className="absolute inset-0 shadow-[inset_0_0_40px_var(--glass-border)] pointer-events-none rounded-[2rem]" />
 
       {/* Role/Status Glow Indicator */}
       {indicatorColor && indicatorColor !== 'default' && (
@@ -43,27 +43,17 @@ export const SoshaCard: React.FC<SoshaCardProps> = ({
       )}
 
       {/* Content */}
-      <div className="relative z-10 p-6">
+      <div className="relative z-10 h-full w-full">
         {children}
       </div>
     </div>
   );
 };
 
-export const SoshaCardHeader: React.FC<React.HTMLAttributes<HTMLDivElement>> = ({ className, children, ...props }) => (
-  <div className={cn("flex flex-col space-y-1.5 mb-4", className)} {...props}>
-    {children}
-  </div>
-);
-
-export const SoshaCardTitle: React.FC<React.HTMLAttributes<HTMLHeadingElement>> = ({ className, children, ...props }) => (
-  <h3 className={cn("font-bold text-foreground tracking-tight text-lg", className)} {...props}>
-    {children}
-  </h3>
-);
-
-export const SoshaCardContent: React.FC<React.HTMLAttributes<HTMLDivElement>> = ({ className, children, ...props }) => (
-  <div className={cn("", className)} {...props}>
-    {children}
-  </div>
-);
+export const SoshaCardTitle: React.FC<React.HTMLAttributes<HTMLHeadingElement>> = ({ className, children, ...props }) => {
+  return (
+    <h3 className={cn("text-lg font-bold text-foreground tracking-tight", className)} {...props}>
+      {children}
+    </h3>
+  );
+};

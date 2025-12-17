@@ -1,9 +1,11 @@
+
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { supabase } from '../supabase';
 import { Button, Input, Card, CardContent, CardHeader, CardTitle, showToast } from '../components/ui';
 import { SoshaLogo } from '../components/SoshaLogo';
 import { ArrowLeft } from 'lucide-react';
+import { SoshaBackground } from '../components/SoshaBackground';
 
 const SignUp: React.FC = () => {
   const navigate = useNavigate();
@@ -46,7 +48,6 @@ const SignUp: React.FC = () => {
 
       if (authData.user) {
         // Wait and verify the trigger worked
-        // Wait for the trigger to complete
         await new Promise(resolve => setTimeout(resolve, 1500));
 
         // Verify the profile was created/linked correctly
@@ -74,58 +75,60 @@ const SignUp: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <Card className="w-full max-w-md bg-[#1A1A1A] border-gray-800">
-        <CardHeader className="space-y-1 flex flex-col items-center">
-          <div className="w-20 h-20 mb-4 flex items-center justify-center">
-              <SoshaLogo className="w-full h-full" />
-          </div>
-          <CardTitle className="text-2xl text-center text-white">
-            Staff Sign Up
-          </CardTitle>
-          <p className="text-center text-gray-400 text-sm">
-            Enter your email to claim your invitation
-          </p>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSignUp} className="space-y-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-300">Email Address</label>
-              <Input 
-                type="email" 
-                placeholder="name@example.com" 
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                className="bg-black/20 border-gray-700 text-white placeholder:text-gray-600 focus:border-primary"
-              />
+    <SoshaBackground variant="landing">
+      <div className="flex-1 flex items-center justify-center p-4">
+        <Card className="w-full max-w-md bg-card/90 border-border backdrop-blur-md">
+          <CardHeader className="space-y-1 flex flex-col items-center">
+            <div className="w-20 h-20 mb-4 flex items-center justify-center">
+                <SoshaLogo className="w-full h-full" />
             </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-300">Create Password</label>
-              <Input 
-                type="password" 
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                minLength={6}
-                placeholder="Min 6 characters"
-                className="bg-black/20 border-gray-700 text-white focus:border-primary"
-              />
-            </div>
-            
-            <Button type="submit" className="w-full font-bold text-black" isLoading={loading} disabled={loading}>
-              {loading ? 'Creating Account...' : 'Complete Sign Up'}
-            </Button>
-            
-            <div className="pt-4 border-t border-gray-800 text-center">
-                <Link to="/" className="text-sm text-gray-500 hover:text-white transition-colors flex items-center justify-center gap-2">
-                    <ArrowLeft className="w-4 h-4" /> Back to Home
-                </Link>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
-    </div>
+            <CardTitle className="text-2xl text-center text-foreground">
+              Staff Sign Up
+            </CardTitle>
+            <p className="text-center text-muted text-sm">
+              Enter your email to claim your invitation
+            </p>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSignUp} className="space-y-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-muted">Email Address</label>
+                <Input 
+                  type="email" 
+                  placeholder="name@example.com" 
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  className="bg-black/20 border-border text-foreground placeholder:text-muted focus:border-primary"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-muted">Create Password</label>
+                <Input 
+                  type="password" 
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  minLength={6}
+                  placeholder="Min 6 characters"
+                  className="bg-black/20 border-border text-foreground focus:border-primary"
+                />
+              </div>
+              
+              <Button type="submit" className="w-full font-bold text-black" isLoading={loading} disabled={loading}>
+                {loading ? 'Creating Account...' : 'Complete Sign Up'}
+              </Button>
+              
+              <div className="pt-4 border-t border-border text-center">
+                  <Link to="/" className="text-sm text-muted hover:text-foreground transition-colors flex items-center justify-center gap-2">
+                      <ArrowLeft className="w-4 h-4" /> Back to Home
+                  </Link>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
+    </SoshaBackground>
   );
 };
 

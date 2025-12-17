@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { supabase } from '../supabase';
-import { Button, Input, showToast } from '../components/ui';
+import { Button, Input, showToast, cn } from '../components/ui';
 import { SoshaLogo3D } from '../components/SoshaLogo3D';
 import { SoshaBackground } from '../components/SoshaBackground';
 import { useAuth } from '../AuthContext';
@@ -98,16 +98,16 @@ const Login: React.FC = () => {
       <div className="flex-1 flex flex-col items-center justify-center p-4">
         
         {/* Floating Card */}
-        <div className="w-full max-w-md bg-zinc-950/90 border border-zinc-800/70 rounded-3xl shadow-[0_24px_80px_rgba(0,0,0,0.85)] p-8 space-y-6 backdrop-blur-md transition-all duration-500 hover:-translate-y-1 hover:shadow-[0_32px_90px_rgba(0,0,0,0.95)]">
+        <div className="w-full max-w-md bg-card/90 border border-border rounded-3xl shadow-[0_24px_80px_rgba(0,0,0,0.85)] p-8 space-y-6 backdrop-blur-md transition-all duration-500 hover:-translate-y-1 hover:shadow-[0_32px_90px_rgba(0,0,0,0.95)]">
           
           {/* Header */}
           <div className="flex flex-col items-center text-center space-y-4">
             <SoshaLogo3D size="sm" />
             <div>
-              <h1 className="text-2xl font-bold text-white tracking-tight capitalize">
+              <h1 className="text-2xl font-bold text-foreground tracking-tight capitalize">
                 {displayRole} {t('login.title')}
               </h1>
-              <p className="text-gray-500 text-sm font-medium mt-1">
+              <p className="text-muted text-sm font-medium mt-1">
                 {t('login.subtitle')}
               </p>
             </div>
@@ -116,30 +116,30 @@ const Login: React.FC = () => {
           {/* Form */}
           <form onSubmit={handleLogin} className="space-y-5">
             <div className="space-y-2">
-              <label className="text-xs font-bold text-gray-400 uppercase tracking-wider ml-1">{t('login.email')}</label>
+              <label className="text-xs font-bold text-muted uppercase tracking-wider ml-1">{t('login.email')}</label>
               <Input 
                 type="email" 
                 placeholder="name@example.com" 
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="bg-zinc-900/70 border-zinc-800 text-white placeholder:text-gray-600 focus:border-yellow-400 focus:ring-1 focus:ring-yellow-400/60 rounded-xl h-12 text-sm transition-all"
+                className="bg-black/20 border-border text-foreground placeholder:text-muted focus:border-primary focus:ring-1 focus:ring-primary/60 rounded-xl h-12 text-sm transition-all"
               />
             </div>
             <div className="space-y-2">
-              <label className="text-xs font-bold text-gray-400 uppercase tracking-wider ml-1">{t('login.password')}</label>
+              <label className="text-xs font-bold text-muted uppercase tracking-wider ml-1">{t('login.password')}</label>
               <Input 
                 type="password" 
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                className="bg-zinc-900/70 border-zinc-800 text-white focus:border-yellow-400 focus:ring-1 focus:ring-yellow-400/60 rounded-xl h-12 transition-all"
+                className="bg-black/20 border-border text-foreground focus:border-primary focus:ring-1 focus:ring-primary/60 rounded-xl h-12 transition-all"
               />
             </div>
             
             <Button 
               type="submit" 
-              className="w-full bg-yellow-400 hover:bg-yellow-300 text-black font-bold rounded-xl h-12 shadow-[0_16px_40px_rgba(250,204,21,0.45)] transition-all transform active:scale-95 text-base" 
+              className="w-full bg-primary hover:bg-primary/90 text-black font-bold rounded-xl h-12 shadow-[0_16px_40px_var(--primary-glow)] transition-all transform active:scale-95 text-base" 
               isLoading={loading} 
               disabled={loading}
             >
@@ -147,13 +147,13 @@ const Login: React.FC = () => {
             </Button>
             
             <div className="flex flex-col gap-3 pt-2 text-center">
-                <Link to="/signup" className="text-sm text-gray-500 hover:text-white hover:underline transition-colors">
+                <Link to="/signup" className="text-sm text-muted hover:text-foreground hover:underline transition-colors">
                     {t('login.firstTime')}
                 </Link>
                 <button 
                   type="button" 
                   onClick={() => navigate('/')} 
-                  className="text-sm text-gray-500 hover:text-white hover:underline transition-colors flex items-center justify-center gap-2"
+                  className="text-sm text-muted hover:text-foreground hover:underline transition-colors flex items-center justify-center gap-2"
                 >
                     <ArrowLeft className="w-3 h-3" /> {t('login.backToRoles')}
                 </button>

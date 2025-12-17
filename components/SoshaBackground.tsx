@@ -3,6 +3,7 @@ import React from 'react';
 import { BackgroundMascots, MascotVariant } from './BackgroundMascots';
 import ThemeToggle from './ThemeToggle';
 import { LeafBubbleBackground } from './LeafBubbleBackground';
+import { cn } from './ui';
 
 interface SoshaBackgroundProps {
   children: React.ReactNode;
@@ -28,13 +29,13 @@ export const SoshaBackground: React.FC<SoshaBackgroundProps> = ({
       {/* Fresh Theme Background (Leaf Bubbles) - Controlled by CSS visibility */}
       <LeafBubbleBackground />
 
-      {/* Classic Background Layer */}
-      <div className="fixed inset-0 z-0 bg-gradient-to-b from-background to-black transition-colors duration-500">
+      {/* Background Layer */}
+      <div className="fixed inset-0 z-0 bg-gradient-to-b from-background via-background to-transparent transition-colors duration-500 pointer-events-none">
          <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.03]" />
          
-         {/* These classic glows will be overridden or blended by CSS variables in fresh theme */}
-         <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-primary/5 rounded-full blur-[120px]" />
-         <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] bg-purple-900/10 rounded-full blur-[120px]" />
+         {/* Classic Glows (Only visible in Dark Mode effectively due to blend modes or variable override) */}
+         <div className="hidden dark:block absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-primary/5 rounded-full blur-[120px]" />
+         <div className="hidden dark:block absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] bg-purple-900/10 rounded-full blur-[120px]" />
          
          <BackgroundMascots variant={variant} />
       </div>

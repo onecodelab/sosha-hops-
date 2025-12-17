@@ -78,25 +78,31 @@ const WaiterDashboard: React.FC = () => {
         
         {/* KPI Cards */}
         <div className="grid grid-cols-2 lg:grid-cols-3 gap-6">
-          <SoshaCard className="p-5 flex flex-col justify-between" indicatorColor="orange">
-            <p className="text-xs text-gray-500 font-bold uppercase tracking-wider">My Tables</p>
-            <div className="flex justify-between items-end">
-              <h3 className="text-4xl font-bold text-white tracking-tighter">{openTablesCount}</h3>
-              <User className="w-6 h-6 text-primary opacity-80" />
+          <SoshaCard className="p-5" indicatorColor="orange">
+            <div className="flex flex-col justify-between h-full">
+                <p className="text-xs text-gray-500 font-bold uppercase tracking-wider">My Tables</p>
+                <div className="flex justify-between items-end">
+                  <h3 className="text-4xl font-bold text-white tracking-tighter">{openTablesCount}</h3>
+                  <User className="w-6 h-6 text-primary opacity-80" />
+                </div>
             </div>
           </SoshaCard>
-          <SoshaCard className="p-5 flex flex-col justify-between">
-            <p className="text-xs text-gray-500 font-bold uppercase tracking-wider">Active Orders</p>
-            <div className="flex justify-between items-end">
-              <h3 className="text-4xl font-bold text-white tracking-tighter">{activeOrdersCount}</h3>
-              <Utensils className="w-6 h-6 text-blue-400 opacity-80" />
+          <SoshaCard className="p-5">
+            <div className="flex flex-col justify-between h-full">
+                <p className="text-xs text-gray-500 font-bold uppercase tracking-wider">Active Orders</p>
+                <div className="flex justify-between items-end">
+                  <h3 className="text-4xl font-bold text-white tracking-tighter">{activeOrdersCount}</h3>
+                  <Utensils className="w-6 h-6 text-blue-400 opacity-80" />
+                </div>
             </div>
           </SoshaCard>
-          <SoshaCard className="p-5 flex flex-col justify-between col-span-2 lg:col-span-1">
-            <p className="text-xs text-gray-500 font-bold uppercase tracking-wider">My Sales</p>
-            <div className="flex justify-between items-end">
-              <h3 className="text-4xl font-bold text-white tracking-tighter">ETB {todaySales.toLocaleString()}</h3>
-              <TrendingUp className="w-6 h-6 text-green-500 opacity-80" />
+          <SoshaCard className="p-5 col-span-2 lg:col-span-1">
+            <div className="flex flex-col justify-between h-full">
+                <p className="text-xs text-gray-500 font-bold uppercase tracking-wider">My Sales</p>
+                <div className="flex justify-between items-end">
+                  <h3 className="text-4xl font-bold text-white tracking-tighter">ETB {todaySales.toLocaleString()}</h3>
+                  <TrendingUp className="w-6 h-6 text-green-500 opacity-80" />
+                </div>
             </div>
           </SoshaCard>
         </div>
