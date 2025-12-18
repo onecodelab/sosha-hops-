@@ -18,7 +18,8 @@
     "jsqr": "1.4.0",
     "@tanstack/react-query": "5.28.9",
     "@tanstack/react-query-devtools": "5.28.9",
-    "framer-motion": "11.0.8"
+    "framer-motion": "11.0.8",
+    "react-is": "^19.2.3"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",
