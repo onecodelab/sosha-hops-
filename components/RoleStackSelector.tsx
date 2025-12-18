@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from "react";
-import { motion, PanInfo, useAnimation } from "framer-motion";
+import { motion, PanInfo } from "framer-motion";
 import { cn } from "./ui";
 import { LucideIcon, ArrowUp } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -18,19 +18,21 @@ interface RoleStackSelectorProps {
   roles: RoleCard[];
 }
 
-const SWIPE_THRESHOLD = 40;
+const SWIPE_THRESHOLD = 30;
+const SCROLL_DEBOUNCE = 600; // ms between allowed scroll steps
 
 export const RoleStackSelector: React.FC<RoleStackSelectorProps> = ({ roles }) => {
   const [activeIndex, setActiveIndex] = useState(0);
   const navigate = useNavigate();
   const containerRef = useRef<HTMLDivElement>(null);
+  const lastScrollTime = useRef<number>(0);
 
-  // Color mappings for styling
+  // Color mappings
   const colorStyles: Record<string, string> = {
-    yellow: "from-yellow-400/20 to-yellow-600/5 border-yellow-500/30 text-yellow-400",
-    purple: "from-purple-400/20 to-purple-600/5 border-purple-500/30 text-purple-400",
-    orange: "from-orange-400/20 to-orange-600/5 border-orange-500/30 text-orange-400",
-    red: "from-red-400/20 to-red-600/5 border-red-500/30 text-red-400",
+    yellow: "from-yellow-400/10 to-yellow-600/5 border-yellow-500/20 text-yellow-400",
+    purple: "from-purple-400/10 to-purple-600/5 border-purple-500/20 text-purple-400",
+    orange: "from-orange-400/10 to-orange-600/5 border-orange-500/20 text-orange-400",
+    red: "from-red-400/10 to-red-600/5 border-red-500/20 text-red-400",
   };
 
   const glowStyles: Record<string, string> = {
@@ -49,15 +51,9 @@ export const RoleStackSelector: React.FC<RoleStackSelectorProps> = ({ roles }) =
 
   const handleDragEnd = (_: any, info: PanInfo) => {
     if (info.offset.y < -SWIPE_THRESHOLD) {
-      // Swipe Up (Next)
-      if (activeIndex < roles.length - 1) {
-        setActiveIndex((prev) => prev + 1);
-      }
+      if (activeIndex < roles.length - 1) setActiveIndex((prev) => prev + 1);
     } else if (info.offset.y > SWIPE_THRESHOLD) {
-      // Swipe Down (Prev)
-      if (activeIndex > 0) {
-        setActiveIndex((prev) => prev - 1);
-      }
+      if (activeIndex > 0) setActiveIndex((prev) => prev - 1);
     }
   };
 
@@ -69,24 +65,29 @@ export const RoleStackSelector: React.FC<RoleStackSelectorProps> = ({ roles }) =
     }
   };
 
-  // Wheel support for desktop
+  // Smoother wheel support with throttling
   useEffect(() => {
     const handleWheel = (e: WheelEvent) => {
-      // Allow normal scroll if outside the component, but here we capture it
-      if (Math.abs(e.deltaY) > 10) {
+      const now = Date.now();
+      if (now - lastScrollTime.current < SCROLL_DEBOUNCE) {
+        e.preventDefault();
+        return;
+      }
+
+      if (Math.abs(e.deltaY) > 20) {
         e.preventDefault();
         if (e.deltaY > 0 && activeIndex < roles.length - 1) {
-          setActiveIndex((prev) => Math.min(prev + 1, roles.length - 1));
+          setActiveIndex((prev) => prev + 1);
+          lastScrollTime.current = now;
         } else if (e.deltaY < 0 && activeIndex > 0) {
-          setActiveIndex((prev) => Math.max(prev - 1, 0));
+          setActiveIndex((prev) => prev - 1);
+          lastScrollTime.current = now;
         }
       }
     };
 
     const el = containerRef.current;
-    if (el) {
-      el.addEventListener("wheel", handleWheel, { passive: false });
-    }
+    if (el) el.addEventListener("wheel", handleWheel, { passive: false });
     return () => {
       if (el) el.removeEventListener("wheel", handleWheel);
     };
@@ -95,8 +96,8 @@ export const RoleStackSelector: React.FC<RoleStackSelectorProps> = ({ roles }) =
   return (
     <div 
       ref={containerRef}
-      className="relative flex items-center justify-center w-full max-w-sm md:max-w-md h-[400px] md:h-[440px] touch-none"
-      style={{ perspective: "1200px" }}
+      className="relative flex items-center justify-center w-full max-w-sm md:max-w-md h-[400px] md:h-[450px] touch-none"
+      style={{ perspective: "2000px" }}
     >
       <div className="relative w-full h-full flex items-center justify-center preserve-3d">
         {roles.map((role, index) => {
@@ -104,89 +105,87 @@ export const RoleStackSelector: React.FC<RoleStackSelectorProps> = ({ roles }) =
           const offset = index - activeIndex;
           const Icon = role.icon;
 
-          // Limit visible stack for performance
           if (Math.abs(offset) > 2) return null;
 
           return (
             <motion.div
               key={role.id}
               className={cn(
-                "absolute rounded-[2rem] border shadow-[0_20px_50px_rgba(0,0,0,0.5)] overflow-hidden cursor-pointer flex flex-col select-none origin-center",
-                "bg-card border-border", // Solid opaque background
+                "absolute rounded-[2.5rem] border shadow-[0_30px_70px_rgba(0,0,0,0.6)] overflow-hidden cursor-pointer flex flex-col select-none origin-center",
+                "bg-[#0a0a0a] border-white/5", // Dark, solid card background
                 isActive ? "z-30" : "z-10",
-                // Responsive dimensions
-                "w-[260px] h-[360px] md:w-[280px] md:h-[400px]" 
+                "w-[270px] h-[370px] md:w-[290px] md:h-[410px]" 
               )}
               initial={false}
               animate={{
-                // Tighter vertical stacking
-                y: offset * 130, 
-                scale: 1 - Math.abs(offset) * 0.1,
-                opacity: isActive ? 1 : 1 - Math.abs(offset) * 0.4,
-                // Lower Z-Index base from 100 to 20 to prevent header overlap
+                y: offset * 140, // Increased vertical spacing
+                scale: 1 - Math.abs(offset) * 0.12,
+                opacity: isActive ? 1 : 0.4 - Math.abs(offset) * 0.15,
                 zIndex: 20 - Math.abs(offset),
-                rotateX: offset * -5, // Slight tilt for depth
+                rotateX: offset * -12, // More pronounced depth tilt
+                rotateZ: offset * 1.5, // Slight organic rotation
               }}
               transition={{
                 type: "spring",
-                stiffness: 300,
-                damping: 30,
+                stiffness: 80, // Much smoother, fluid motion
+                damping: 22,
+                mass: 1
               }}
               drag={isActive ? "y" : false}
               dragConstraints={{ top: 0, bottom: 0 }}
-              dragElastic={0.1}
+              dragElastic={0.15}
               onDragEnd={handleDragEnd}
               onClick={() => handleCardClick(index)}
             >
-              {/* Card Inner Content - Reduced Opacity Overlay */}
+              {/* Subtle Overlay */}
               <div className={cn(
-                "absolute inset-0 bg-gradient-to-br transition-colors duration-500 opacity-5", // Very subtle opacity
-                isActive ? colorStyles[role.color] : "from-gray-800/20 to-black/20"
+                "absolute inset-0 bg-gradient-to-br transition-colors duration-1000 opacity-10",
+                isActive ? colorStyles[role.color] : "from-transparent to-transparent"
               )} />
               
-              {/* Glow Blob */}
+              {/* Active Glow */}
               {isActive && (
-                <div className={cn(
-                  "absolute -top-20 -right-20 w-64 h-64 rounded-full blur-[80px] opacity-20",
-                  glowStyles[role.color]
-                )} />
+                <motion.div 
+                  layoutId="glow"
+                  className={cn(
+                    "absolute -top-32 -right-32 w-80 h-80 rounded-full blur-[100px] opacity-20",
+                    glowStyles[role.color]
+                  )} 
+                />
               )}
 
-              {/* Content Layout */}
-              <div className="relative z-10 flex flex-col items-center justify-between h-full p-6 text-center">
+              {/* Layout */}
+              <div className="relative z-10 flex flex-col items-center justify-between h-full p-8 text-center">
                 
-                {/* Top: Icon Avatar */}
-                <div className="mt-2">
+                <div className="mt-4">
                    <div className={cn(
-                     "w-24 h-24 md:w-28 md:h-28 rounded-full flex items-center justify-center border-2 shadow-[0_8px_30px_rgba(0,0,0,0.3)] transition-all duration-500 bg-black/5",
-                     isActive ? `border-${role.color}-500/50` : "border-white/10"
+                     "w-24 h-24 md:w-28 md:h-28 rounded-[2rem] flex items-center justify-center border transition-all duration-700 bg-white/[0.02]",
+                     isActive ? `border-${role.color}-500/30 shadow-[0_0_40px_rgba(0,0,0,0.4)]` : "border-white/5"
                    )}>
                       <Icon className={cn(
-                        "w-10 h-10 md:w-12 md:h-12 transition-colors duration-300",
-                        isActive ? `text-${role.color}-400` : "text-gray-500"
+                        "w-10 h-10 md:w-12 md:h-12 transition-colors duration-500",
+                        isActive ? `text-${role.color}-400` : "text-gray-700"
                       )} />
                    </div>
                 </div>
 
-                {/* Middle: Text */}
-                <div className="space-y-1 md:space-y-2">
+                <div className="space-y-2">
                    <h2 className={cn(
-                     "text-2xl md:text-3xl font-bold tracking-tight transition-colors duration-300",
-                     isActive ? "text-foreground" : "text-muted"
+                     "text-2xl md:text-3xl font-bold tracking-tighter transition-colors duration-500",
+                     isActive ? "text-white" : "text-gray-600"
                    )}>
                      {role.name}
                    </h2>
-                   <p className="text-xs md:text-sm font-medium text-muted uppercase tracking-wide">
+                   <p className="text-[10px] font-bold text-muted uppercase tracking-[0.2em] opacity-50">
                      {role.subtitle}
                    </p>
                 </div>
 
-                {/* Bottom: Pill & Hint */}
-                <div className="mb-2 space-y-4 w-full">
+                <div className="mb-2 space-y-6 w-full">
                    <div className="flex justify-center">
                       <span className={cn(
-                        "text-[10px] font-bold uppercase tracking-wider px-3 py-1 md:px-4 md:py-1.5 rounded-full border transition-all duration-300",
-                        isActive ? pillStyles[role.color] : "bg-white/5 border-white/5 text-gray-500"
+                        "text-[9px] font-bold uppercase tracking-[0.15em] px-4 py-1.5 rounded-full border transition-all duration-700",
+                        isActive ? pillStyles[role.color] : "bg-white/[0.02] border-white/5 text-gray-700"
                       )}>
                         {role.tagline}
                       </span>
@@ -196,10 +195,9 @@ export const RoleStackSelector: React.FC<RoleStackSelectorProps> = ({ roles }) =
                      <motion.div 
                        initial={{ opacity: 0, y: 10 }}
                        animate={{ opacity: 1, y: 0 }}
-                       transition={{ delay: 0.2 }}
-                       className="pt-2 flex justify-center"
+                       className="flex justify-center"
                      >
-                       <button className="bg-primary text-black px-6 py-2.5 rounded-xl font-bold shadow-[0_4px_20px_rgba(255,184,0,0.3)] hover:scale-105 active:scale-95 transition-all text-xs md:text-sm">
+                       <button className="bg-primary text-black px-8 py-3 rounded-2xl font-bold shadow-[0_10px_30px_rgba(255,184,0,0.3)] hover:scale-105 active:scale-95 transition-all text-xs md:text-sm">
                           Tap to Login
                        </button>
                      </motion.div>
@@ -211,27 +209,27 @@ export const RoleStackSelector: React.FC<RoleStackSelectorProps> = ({ roles }) =
         })}
       </div>
 
-      {/* Pagination Dots (Right Side - Vertically Centered) */}
-      <div className="absolute right-0 top-1/2 -translate-y-1/2 flex flex-col gap-3 z-40 pr-4">
+      {/* Pagination Dots */}
+      <div className="absolute right-0 top-1/2 -translate-y-1/2 flex flex-col gap-4 z-40 pr-2">
         {roles.map((_, idx) => (
           <button
             key={idx}
             onClick={() => setActiveIndex(idx)}
             className={cn(
-              "w-1.5 h-1.5 md:w-2 md:h-2 rounded-full transition-all duration-300",
+              "w-1 h-1 md:w-1.5 md:h-1.5 rounded-full transition-all duration-500",
               idx === activeIndex 
-                ? "bg-primary h-6 md:h-8 shadow-[0_0_10px_var(--primary-glow)]" 
-                : "bg-gray-700 hover:bg-gray-500"
+                ? "bg-primary h-6 md:h-10 opacity-100" 
+                : "bg-gray-800 hover:bg-gray-600 opacity-40"
             )}
           />
         ))}
       </div>
 
-      {/* Swipe Hint (Mobile only, visible initially) */}
-      <div className="absolute -bottom-8 left-0 right-0 text-center pointer-events-none md:hidden opacity-50 animate-bounce">
+      {/* Mobile Hint */}
+      <div className="absolute -bottom-12 left-0 right-0 text-center pointer-events-none md:hidden opacity-30 animate-pulse">
          <div className="flex flex-col items-center gap-1">
-            <ArrowUp className="w-4 h-4 text-muted" />
-            <span className="text-[10px] text-muted uppercase tracking-widest">Swipe to choose</span>
+            <ArrowUp className="w-3 h-3 text-muted" />
+            <span className="text-[9px] text-muted uppercase tracking-[0.3em]">Scroll to explore</span>
          </div>
       </div>
     </div>
