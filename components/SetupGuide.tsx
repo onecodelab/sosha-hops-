@@ -18,14 +18,19 @@ create table if not exists public.restaurants (
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
--- 3. Create Users Table
+-- 3. Create Users Table (Public Profile)
 create table if not exists public.users (
-  id uuid references auth.users on delete cascade primary key,
+  id uuid primary key, -- Linked to auth.users.id
   email text,
   full_name text,
-  role text check (role in ('owner', 'admin', 'manager', 'waiter', 'kitchen')),
+  role text check (role in ('owner', 'admin', 'manager', 'waiter', 'kitchen', 'security')),
   restaurant_id uuid references public.restaurants(id),
-  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  is_online boolean default false,
+  shift_start timestamp with time zone,
+  phone text,
+  invitation_pending boolean default false,
+  created_by uuid
 );
 
 -- 4. Create Menu Table
@@ -37,20 +42,27 @@ create table if not exists public.menu (
   image_url text,
   is_available boolean default true,
   restaurant_id uuid references public.restaurants(id),
-  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  stock_quantity integer default 0
 );
 
 -- 5. Create Orders Table
 create table if not exists public.orders (
   id uuid default uuid_generate_v4() primary key,
-  table_no text not null,
+  order_number text,
+  table_number text not null,
   status text not null default 'pending',
   total_amount numeric not null default 0,
   payment_method text,
   paid_at timestamp with time zone,
-  verified_by uuid references public.users(id),
+  waiter_id uuid references public.users(id), -- Explicit FK for performance joins
   restaurant_id uuid references public.restaurants(id),
-  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  order_type text default 'dine-in',
+  accepted_at timestamp with time zone,
+  ready_at timestamp with time zone,
+  served_at timestamp with time zone,
+  customer_notes text
 );
 
 -- 6. Create Order Items Table
@@ -60,32 +72,17 @@ create table if not exists public.order_items (
   menu_item_id uuid references public.menu(id),
   quantity integer not null default 1,
   price_at_time numeric not null,
+  special_instructions text,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
--- 7. Create Inventory Tables
-create table if not exists public.ingredients (
+-- 7. Create Staff Shifts Table
+create table if not exists public.staff_shifts (
   id uuid default uuid_generate_v4() primary key,
-  sku text unique not null,
-  name text not null,
-  category text,
-  unit_type text not null,
-  current_stock numeric default 0,
-  par_min numeric default 10,
-  cost_per_unit numeric default 0,
-  supplier_id uuid,
-  is_active boolean default true,
-  created_at timestamp with time zone default now()
-);
-
-create table if not exists public.tables (
-  id uuid default uuid_generate_v4() primary key,
-  table_number text not null,
-  capacity integer default 4,
-  x_position numeric default 0,
-  y_position numeric default 0,
-  shape text check (shape in ('square', 'round', 'rectangle')) default 'square',
-  status text default 'available',
+  staff_id uuid references public.users(id) on delete cascade,
+  clock_in timestamp with time zone default now(),
+  clock_out timestamp with time zone,
+  status text check (status in ('active', 'completed')) default 'active',
   created_at timestamp with time zone default now()
 );
 
@@ -94,63 +91,18 @@ alter table public.users enable row level security;
 alter table public.menu enable row level security;
 alter table public.orders enable row level security;
 alter table public.order_items enable row level security;
-alter table public.ingredients enable row level security;
 alter table public.restaurants enable row level security;
-alter table public.tables enable row level security;
+alter table public.staff_shifts enable row level security;
 
--- 9. Create Permissive Policies (Base)
-create policy "Public menu access" on public.menu for all using (true) with check (true);
-create policy "Public orders access" on public.orders for all using (true) with check (true);
-create policy "Public order_items access" on public.order_items for all using (true) with check (true);
-create policy "Public ingredients access" on public.ingredients for all using (true) with check (true);
-create policy "Public restaurants access" on public.restaurants for all using (true) with check (true);
-create policy "Public tables access" on public.tables for all using (true) with check (true);
+-- 9. Create Permissive Policies
+create policy "Public access" on public.users for all using (true) with check (true);
+create policy "Public access" on public.menu for all using (true) with check (true);
+create policy "Public access" on public.orders for all using (true) with check (true);
+create policy "Public access" on public.order_items for all using (true) with check (true);
+create policy "Public access" on public.restaurants for all using (true) with check (true);
+create policy "Public access" on public.staff_shifts for all using (true) with check (true);
 
--- 10. Seed Default Restaurant
-insert into public.restaurants (name)
-select 'Sosha Main Branch'
-where not exists (select 1 from public.restaurants);
-
--- 11. Helper Functions
-create or replace function public.increment_stock(row_id uuid, quantity numeric)
-returns void as $$
-begin
-  update public.ingredients 
-  set current_stock = current_stock + quantity
-  where id = row_id;
-end;
-$$ language plpgsql security definer;
-
--- 12. Add Analytics Columns
-alter table public.orders add column if not exists order_type text default 'dine-in';
-alter table public.orders add column if not exists kitchen_accepted_at timestamp with time zone;
-alter table public.orders add column if not exists ready_at timestamp with time zone;
-alter table public.orders add column if not exists served_at timestamp with time zone;
-alter table public.orders add column if not exists notes text;
-
--- 13. Manager Dashboard & Staff Updates
-alter table public.users add column if not exists is_online boolean default false;
-alter table public.users add column if not exists shift_start timestamp with time zone;
-alter table public.users add column if not exists created_by uuid; 
-alter table public.users add column if not exists phone text;
-alter table public.users add column if not exists invitation_pending boolean default false;
-
-create table if not exists public.operational_issues (
-  id uuid default uuid_generate_v4() primary key,
-  issue_type text not null, 
-  status text default 'open',
-  description text,
-  order_id uuid references public.orders(id),
-  table_number text,
-  staff_id uuid references public.users(id),
-  staff_name text,
-  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
-  resolved_at timestamp with time zone
-);
-alter table public.operational_issues enable row level security;
-create policy "Public operational_issues access" on public.operational_issues for all using (true) with check (true);
-
--- 14. Smart Trigger for Linking Invites
+-- 10. Smart Trigger for Linking Invites
 create or replace function public.handle_new_user()
 returns trigger as $$
 declare
@@ -190,16 +142,16 @@ create trigger on_auth_user_created after insert on auth.users for each row exec
            
            <div className="space-y-4 text-gray-400">
              <p className="text-lg">
-               Floor layout data requires the new `tables` table. Please run the updated SQL script.
+               Staff performance and operational tracking require updated schema. Please run the updated SQL script.
              </p>
              <div className="flex flex-col gap-4 pl-4 border-l-2 border-primary/30">
                 <div className="flex gap-3">
                    <div className="w-6 h-6 rounded-full bg-gray-800 flex items-center justify-center text-xs font-bold shrink-0">1</div>
-                   <p>Run the SQL migration script.</p>
+                   <p>Run the SQL migration script in your Supabase SQL Editor.</p>
                 </div>
                 <div className="flex gap-3">
                    <div className="w-6 h-6 rounded-full bg-gray-800 flex items-center justify-center text-xs font-bold shrink-0">2</div>
-                   <p>Refresh the application.</p>
+                   <p>Refresh the application to enable all features.</p>
                 </div>
              </div>
            </div>

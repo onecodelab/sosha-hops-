@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { supabase } from '../supabase';
@@ -70,7 +71,7 @@ const KitchenDashboard: React.FC = () => {
 
   return (
     <DashboardLayout title="Kitchen Display" subtitle="Live Production Board">
-      <div className="grid grid-rows-[auto_1fr_auto] h-[calc(100vh-140px)] gap-6 w-full">
+      <div className="flex flex-col gap-8 w-full animate-in fade-in duration-700">
         
         {/* KPI Cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 flex-none">
@@ -100,45 +101,53 @@ const KitchenDashboard: React.FC = () => {
           </SoshaCard>
         </div>
 
-        {/* Ticket Board */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 min-h-0 overflow-hidden">
+        {/* Ticket Board - Explicit Height to accommodate more orders */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 min-h-[700px] lg:h-[800px]">
            {/* Queue */}
-           <div className="flex flex-col h-full bg-[#0A0A0A]/80 rounded-[2rem] border border-white/5 backdrop-blur-md overflow-hidden shadow-2xl">
-              <div className="flex-none p-4 border-b border-white/5 bg-white/5 flex justify-between items-center">
+           <div className="flex flex-col h-full bg-[#0A0A0A]/80 rounded-[2.5rem] border border-white/5 backdrop-blur-md overflow-hidden shadow-2xl">
+              <div className="flex-none p-5 border-b border-white/5 bg-white/5 flex justify-between items-center">
                  <h3 className="font-bold text-gray-300 flex items-center gap-2 text-sm uppercase tracking-wider"><Bell className="w-4 h-4" /> Incoming</h3>
-                 <Badge className="bg-gray-800 text-white">{orders.filter(o => o.status === 'pending').length}</Badge>
+                 <Badge className="bg-gray-800 text-white font-mono">{orders.filter(o => o.status === 'pending').length}</Badge>
               </div>
-              <div className="flex-1 overflow-y-auto p-3 space-y-3 custom-scrollbar">
+              <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar bg-black/20">
                  {orders.filter(o => o.status === 'pending').map(o => <OrderCard key={o.id} order={o} role="kitchen" onAction={handleOrderAction} />)}
+                 {orders.filter(o => o.status === 'pending').length === 0 && (
+                   <div className="h-full flex flex-col items-center justify-center text-gray-600 italic text-sm py-20">
+                      <Utensils className="w-12 h-12 mb-4 opacity-10" />
+                      No incoming orders
+                   </div>
+                 )}
               </div>
            </div>
+           
            {/* Active Prep */}
-           <div className="flex flex-col h-full bg-[#0A0A0A]/80 rounded-[2rem] border border-orange-500/20 backdrop-blur-md overflow-hidden shadow-[0_0_30px_rgba(249,115,22,0.1)]">
-              <div className="flex-none p-4 border-b border-white/5 bg-orange-500/10 flex justify-between items-center">
+           <div className="flex flex-col h-full bg-[#0A0A0A]/80 rounded-[2.5rem] border border-orange-500/20 backdrop-blur-md overflow-hidden shadow-[0_0_50px_rgba(249,115,22,0.1)]">
+              <div className="flex-none p-5 border-b border-white/5 bg-orange-500/10 flex justify-between items-center">
                  <h3 className="font-bold text-orange-400 flex items-center gap-2 text-sm uppercase tracking-wider"><Flame className="w-4 h-4" /> Cooking</h3>
-                 <Badge className="bg-orange-500/20 text-orange-400">{orders.filter(o => ['accepted', 'preparing'].includes(o.status)).length}</Badge>
+                 <Badge className="bg-orange-500/20 text-orange-400 font-mono">{orders.filter(o => ['accepted', 'preparing'].includes(o.status)).length}</Badge>
               </div>
-              <div className="flex-1 overflow-y-auto p-3 space-y-3 custom-scrollbar">
+              <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar bg-black/20">
                  {orders.filter(o => ['accepted', 'preparing'].includes(o.status)).map(o => <OrderCard key={o.id} order={o} role="kitchen" onAction={handleOrderAction} />)}
               </div>
            </div>
+           
            {/* Ready */}
-           <div className="flex flex-col h-full bg-[#0A0A0A]/80 rounded-[2rem] border border-green-500/20 backdrop-blur-md overflow-hidden">
-              <div className="flex-none p-4 border-b border-white/5 bg-green-500/10 flex justify-between items-center">
+           <div className="flex flex-col h-full bg-[#0A0A0A]/80 rounded-[2.5rem] border border-green-500/20 backdrop-blur-md overflow-hidden shadow-[0_0_50px_rgba(34,197,94,0.05)]">
+              <div className="flex-none p-5 border-b border-white/5 bg-green-500/10 flex justify-between items-center">
                  <h3 className="font-bold text-green-500 flex items-center gap-2 text-sm uppercase tracking-wider"><CheckCircle2 className="w-4 h-4" /> Ready</h3>
-                 <Badge className="bg-green-500/20 text-green-500">{readyCount}</Badge>
+                 <Badge className="bg-green-500/20 text-green-500 font-mono">{readyCount}</Badge>
               </div>
-              <div className="flex-1 overflow-y-auto p-3 space-y-3 custom-scrollbar">
+              <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar bg-black/20">
                  {orders.filter(o => o.status === 'ready').map(o => <OrderCard key={o.id} order={o} role="kitchen" />)}
               </div>
            </div>
         </div>
 
         {/* Bottom Insights */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-48 flex-none overflow-hidden">
-           <SoshaCard className="h-full overflow-hidden p-0">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 pb-10">
+           <SoshaCard className="h-56 overflow-hidden p-0">
               <div className="flex flex-col h-full">
-                  <div className="p-4 border-b border-white/5"><h3 className="text-xs font-bold text-white flex items-center gap-2 uppercase tracking-wider"><ChefHat className="w-4 h-4 text-primary" /> Station Load</h3></div>
+                  <div className="p-4 border-b border-white/5 flex-none"><h3 className="text-xs font-bold text-white flex items-center gap-2 uppercase tracking-wider"><ChefHat className="w-4 h-4 text-primary" /> Station Load</h3></div>
                   <div className="flex-1 w-full p-2">
                      <ResponsiveContainer width="100%" height="100%">
                         <BarChart data={stationData} layout="vertical" margin={{ left: 10, right: 30, top: 5, bottom: 5 }}>
@@ -154,25 +163,25 @@ const KitchenDashboard: React.FC = () => {
               </div>
            </SoshaCard>
            
-           <SoshaCard className="h-full col-span-2">
-              <div className="flex flex-col h-full justify-center">
+           <SoshaCard className="h-56 col-span-2">
+              <div className="flex flex-col h-full justify-center p-6">
                   <div className="flex items-center gap-6 justify-around">
                       <div className="text-center">
-                         <AlertOctagon className="w-8 h-8 text-green-500 mx-auto mb-2" />
-                         <p className="text-sm font-bold text-white">System Healthy</p>
-                         <p className="text-xs text-gray-500">Real-time sync active</p>
+                         <AlertOctagon className="w-10 h-10 text-green-500 mx-auto mb-3" />
+                         <p className="text-base font-bold text-white tracking-tight">System Healthy</p>
+                         <p className="text-xs text-gray-500 font-medium">Real-time sync active</p>
                       </div>
-                      <div className="h-12 w-[1px] bg-white/10" />
+                      <div className="h-16 w-[1px] bg-white/10" />
                       <div className="text-center">
-                         <Bell className="w-8 h-8 text-blue-500 mx-auto mb-2" />
-                         <p className="text-sm font-bold text-white">Audio Alerts</p>
-                         <p className="text-xs text-gray-500">Enabled (Vol 80%)</p>
+                         <Bell className="w-10 h-10 text-blue-500 mx-auto mb-3" />
+                         <p className="text-base font-bold text-white tracking-tight">Audio Alerts</p>
+                         <p className="text-xs text-gray-500 font-medium">Enabled (Vol 80%)</p>
                       </div>
-                      <div className="h-12 w-[1px] bg-white/10" />
+                      <div className="h-16 w-[1px] bg-white/10" />
                       <div className="text-center">
-                         <ChefHat className="w-8 h-8 text-orange-500 mx-auto mb-2" />
-                         <p className="text-sm font-bold text-white">Staff Active</p>
-                         <p className="text-xs text-gray-500">4 Cooks Online</p>
+                         <ChefHat className="w-10 h-10 text-orange-500 mx-auto mb-3" />
+                         <p className="text-base font-bold text-white tracking-tight">Staff Active</p>
+                         <p className="text-xs text-gray-500 font-medium">Kitchen Team Online</p>
                       </div>
                   </div>
               </div>

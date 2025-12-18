@@ -7,6 +7,7 @@ import {
   MoreVertical, ShieldCheck, Timer, TrendingUp, Filter, RefreshCw
 } from 'lucide-react';
 import { supabase } from '../supabase';
+import { InviteStaffModal } from '../components/InviteStaffModal';
 
 interface StaffMember {
   id: string;
@@ -16,6 +17,15 @@ interface StaffMember {
   is_online: boolean;
   shift_start: string | null;
   phone: string | null;
+}
+
+interface ActiveShift {
+  id: string;
+  clock_in: string;
+  staff: {
+    full_name: string;
+    role: string;
+  }
 }
 
 interface LeaderboardItem {
@@ -28,9 +38,11 @@ interface LeaderboardItem {
 const AdminStaffPerformance: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [staff, setStaff] = useState<StaffMember[]>([]);
+  const [activeShifts, setActiveShifts] = useState<ActiveShift[]>([]);
   const [leaderboard, setLeaderboard] = useState<LeaderboardItem[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isInviteOpen, setIsInviteOpen] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -39,7 +51,7 @@ const AdminStaffPerformance: React.FC = () => {
   const fetchData = async () => {
     setIsRefreshing(true);
     try {
-      // 1. Fetch Staff Roster
+      // 1. Fetch Staff Roster from public.users
       const { data: userData, error: userError } = await supabase
         .from('users')
         .select('*')
@@ -48,47 +60,69 @@ const AdminStaffPerformance: React.FC = () => {
       if (userError) throw userError;
       setStaff(userData as StaffMember[]);
 
-      // 2. Fetch Top Waiters (Last 30 Days)
+      // 2. Fetch Active Shifts
+      const { data: shiftData, error: shiftError } = await supabase
+        .from('staff_shifts')
+        .select(`id, clock_in, staff_id`)
+        .eq('status', 'active');
+
+      if (!shiftError && shiftData) {
+        // Map names manually to ensure stability across different Supabase environments
+        const mappedShifts = shiftData.map(s => {
+           const staffMember = userData?.find(u => u.id === s.staff_id);
+           return {
+              id: s.id,
+              clock_in: s.clock_in,
+              staff: {
+                 full_name: staffMember?.full_name || 'Staff Member',
+                 role: staffMember?.role || 'User'
+              }
+           };
+        });
+        setActiveShifts(mappedShifts);
+      }
+
+      // 3. Fetch Top Waiters (Last 30 Days)
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
       const { data: orderData, error: orderError } = await supabase
         .from('orders')
-        .select('waiter_id, total_amount, users!waiter_id(full_name)')
+        .select('waiter_id, total_amount')
         .gte('created_at', thirtyDaysAgo.toISOString())
         .in('status', ['completed', 'paid', 'served']);
 
-      if (orderError) throw orderError;
+      if (!orderError && orderData) {
+          const salesMap = new Map<string, { name: string, orders: number, sales: number }>();
+          orderData.forEach((o) => {
+            if (!o.waiter_id) return;
+            const staffMember = userData?.find(u => u.id === o.waiter_id);
+            const current = salesMap.get(o.waiter_id) || { name: staffMember?.full_name || 'Staff', orders: 0, sales: 0 };
+            salesMap.set(o.waiter_id, {
+              ...current,
+              orders: current.orders + 1,
+              sales: current.sales + (o.total_amount || 0)
+            });
+          });
 
-      const salesMap = new Map<string, { name: string, orders: number, sales: number }>();
-      orderData?.forEach((o: any) => {
-        if (!o.waiter_id) return;
-        const current = salesMap.get(o.waiter_id) || { name: o.users?.full_name || 'Staff', orders: 0, sales: 0 };
-        salesMap.set(o.waiter_id, {
-          ...current,
-          orders: current.orders + 1,
-          sales: current.sales + (o.total_amount || 0)
-        });
-      });
+          setLeaderboard(Array.from(salesMap.entries())
+            .map(([id, data]) => ({ id, ...data }))
+            .sort((a, b) => b.sales - a.sales)
+            .slice(0, 10));
+      }
 
-      const lb = Array.from(salesMap.entries())
-        .map(([id, data]) => ({ id, ...data }))
-        .sort((a, b) => b.sales - a.sales)
-        .slice(0, 10);
-      
-      setLeaderboard(lb);
-
-    } catch (err) {
-      console.error("Staff Perf Fetch Error:", err);
-      showToast("Failed to load staff performance data", "error");
+    } catch (err: any) {
+      console.error("Staff Performance Fetch Error:", err);
+      // If table missing, notify user
+      if (err.message?.includes('does not exist')) {
+          showToast("Database tables missing. Run SQL in Setup Guide.", "error");
+      } else {
+          showToast("Failed to load staff performance data", "error");
+      }
     } finally {
       setLoading(false);
       setIsRefreshing(false);
     }
-  };
-
-  const handleInviteStaff = () => {
-    showToast("Invitation email sent to new staff member!", "success");
   };
 
   // Helper for duration
@@ -102,7 +136,6 @@ const AdminStaffPerformance: React.FC = () => {
     return `${h}h ${m}m`;
   };
 
-  const activeStaff = staff.filter(s => s.is_online);
   const filteredRoster = staff.filter(s => 
     s.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
     s.email?.toLowerCase().includes(searchTerm.toLowerCase())
@@ -117,7 +150,7 @@ const AdminStaffPerformance: React.FC = () => {
            <Button variant="outline" onClick={fetchData} disabled={isRefreshing} size="icon">
               <RefreshCw className={cn("w-4 h-4", isRefreshing && "animate-spin")} />
            </Button>
-           <Button onClick={handleInviteStaff} className="bg-primary text-black font-bold">
+           <Button onClick={() => setIsInviteOpen(true)} className="bg-primary text-black font-bold">
               <UserPlus className="w-4 h-4 mr-2" /> Add Staff
            </Button>
         </div>
@@ -137,23 +170,23 @@ const AdminStaffPerformance: React.FC = () => {
             </CardHeader>
             <CardContent className="p-0">
                <div className="divide-y divide-border max-h-[400px] overflow-y-auto custom-scrollbar">
-                  {activeStaff.length === 0 ? (
+                  {activeShifts.length === 0 ? (
                     <div className="p-10 text-center text-muted italic text-sm">No staff currently clocked in</div>
                   ) : (
-                    activeStaff.map(s => (
+                    activeShifts.map(s => (
                       <div key={s.id} className="p-4 flex items-center justify-between hover:bg-white/5 transition-colors">
                         <div className="flex items-center gap-3">
                            <div className="w-10 h-10 rounded-full bg-green-500/10 flex items-center justify-center border border-green-500/20">
-                              <span className="text-green-500 font-bold text-xs">{s.full_name?.charAt(0)}</span>
+                              <span className="text-green-500 font-bold text-xs">{s.staff?.full_name?.charAt(0)}</span>
                            </div>
                            <div>
-                              <p className="text-sm font-bold text-white">{s.full_name}</p>
-                              <p className="text-[10px] text-muted uppercase font-bold">{s.role}</p>
+                              <p className="text-sm font-bold text-white">{s.staff?.full_name}</p>
+                              <p className="text-[10px] text-muted uppercase font-bold">{s.staff?.role}</p>
                            </div>
                         </div>
                         <div className="text-right">
-                           <p className="text-xs font-mono text-green-400 font-bold">{getDuration(s.shift_start)}</p>
-                           <p className="text-[9px] text-gray-500">Since {s.shift_start ? new Date(s.shift_start).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : 'N/A'}</p>
+                           <p className="text-xs font-mono text-green-400 font-bold">{getDuration(s.clock_in)}</p>
+                           <p className="text-[9px] text-gray-500">Since {new Date(s.clock_in).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>
                         </div>
                       </div>
                     ))
@@ -286,6 +319,11 @@ const AdminStaffPerformance: React.FC = () => {
            </CardContent>
         </Card>
 
+        <InviteStaffModal 
+            isOpen={isInviteOpen} 
+            onClose={() => setIsInviteOpen(false)} 
+            onSuccess={fetchData} 
+        />
       </div>
     </DashboardLayout>
   );
