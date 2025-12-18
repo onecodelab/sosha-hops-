@@ -101,7 +101,7 @@ const KitchenDashboard: React.FC = () => {
           </SoshaCard>
         </div>
 
-        {/* Ticket Board - Explicit Height to accommodate more orders */}
+        {/* Ticket Board - Explicit Height for high-volume viewing */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 min-h-[700px] lg:h-[800px]">
            {/* Queue */}
            <div className="flex flex-col h-full bg-[#0A0A0A]/80 rounded-[2.5rem] border border-white/5 backdrop-blur-md overflow-hidden shadow-2xl">

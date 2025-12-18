@@ -51,7 +51,7 @@ const AdminStaffPerformance: React.FC = () => {
   const fetchData = async () => {
     setIsRefreshing(true);
     try {
-      // 1. Fetch Staff Roster from public.users
+      // 1. Fetch Staff Roster from public.users (NOT auth.users)
       const { data: userData, error: userError } = await supabase
         .from('users')
         .select('*')
@@ -60,14 +60,13 @@ const AdminStaffPerformance: React.FC = () => {
       if (userError) throw userError;
       setStaff(userData as StaffMember[]);
 
-      // 2. Fetch Active Shifts
+      // 2. Fetch Active Shifts and manually map staff data
       const { data: shiftData, error: shiftError } = await supabase
         .from('staff_shifts')
         .select(`id, clock_in, staff_id`)
         .eq('status', 'active');
 
       if (!shiftError && shiftData) {
-        // Map names manually to ensure stability across different Supabase environments
         const mappedShifts = shiftData.map(s => {
            const staffMember = userData?.find(u => u.id === s.staff_id);
            return {
@@ -113,7 +112,6 @@ const AdminStaffPerformance: React.FC = () => {
 
     } catch (err: any) {
       console.error("Staff Performance Fetch Error:", err);
-      // If table missing, notify user
       if (err.message?.includes('does not exist')) {
           showToast("Database tables missing. Run SQL in Setup Guide.", "error");
       } else {
@@ -125,7 +123,6 @@ const AdminStaffPerformance: React.FC = () => {
     }
   };
 
-  // Helper for duration
   const getDuration = (startTime: string | null) => {
     if (!startTime) return "-";
     const start = new Date(startTime).getTime();
@@ -157,11 +154,7 @@ const AdminStaffPerformance: React.FC = () => {
       }
     >
       <div className="space-y-8 animate-in fade-in duration-500">
-        
-        {/* Row 1: Active Shifts & Leaderboard */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          
-          {/* 1. Active Shifts Board */}
           <Card className="lg:col-span-1 bg-[#09090b] border-border">
             <CardHeader className="border-b border-border pb-4">
               <CardTitle className="text-lg flex items-center gap-2">
@@ -195,7 +188,6 @@ const AdminStaffPerformance: React.FC = () => {
             </CardContent>
           </Card>
 
-          {/* 2. Top Waiters Leaderboard (30 Days) */}
           <Card className="lg:col-span-2 bg-[#09090b] border-border">
              <CardHeader className="border-b border-border pb-4 flex flex-row items-center justify-between">
                 <CardTitle className="text-lg flex items-center gap-2">
@@ -245,7 +237,6 @@ const AdminStaffPerformance: React.FC = () => {
           </Card>
         </div>
 
-        {/* Row 2: Staff Roster Table */}
         <Card className="bg-[#09090b] border-border">
            <CardHeader className="flex flex-col md:flex-row md:items-center justify-between border-b border-border pb-4 gap-4">
               <div>

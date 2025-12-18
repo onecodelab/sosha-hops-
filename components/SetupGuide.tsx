@@ -20,7 +20,7 @@ create table if not exists public.restaurants (
 
 -- 3. Create Users Table (Public Profile)
 create table if not exists public.users (
-  id uuid primary key, -- Linked to auth.users.id
+  id uuid primary key,
   email text,
   full_name text,
   role text check (role in ('owner', 'admin', 'manager', 'waiter', 'kitchen', 'security')),
@@ -55,7 +55,7 @@ create table if not exists public.orders (
   total_amount numeric not null default 0,
   payment_method text,
   paid_at timestamp with time zone,
-  waiter_id uuid references public.users(id), -- Explicit FK for performance joins
+  waiter_id uuid references public.users(id),
   restaurant_id uuid references public.restaurants(id),
   created_at timestamp with time zone default timezone('utc'::text, now()) not null,
   order_type text default 'dine-in',
@@ -132,18 +132,13 @@ create trigger on_auth_user_created after insert on auth.users for each row exec
   return (
     <div className="min-h-screen bg-[#050505] flex items-center justify-center p-6 text-foreground">
       <div className="max-w-4xl w-full grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
-        
         <div className="space-y-6">
            <div className="w-20 h-20 mb-6">
               <SoshaLogo className="w-full h-full" />
            </div>
-           
            <h1 className="text-4xl font-bold text-white tracking-tight">System Setup <span className="text-primary">Required</span></h1>
-           
            <div className="space-y-4 text-gray-400">
-             <p className="text-lg">
-               Staff performance and operational tracking require updated schema. Please run the updated SQL script.
-             </p>
+             <p className="text-lg">Staff performance and operational tracking require updated schema. Please run the updated SQL script.</p>
              <div className="flex flex-col gap-4 pl-4 border-l-2 border-primary/30">
                 <div className="flex gap-3">
                    <div className="w-6 h-6 rounded-full bg-gray-800 flex items-center justify-center text-xs font-bold shrink-0">1</div>
@@ -155,48 +150,24 @@ create trigger on_auth_user_created after insert on auth.users for each row exec
                 </div>
              </div>
            </div>
-
-           <Button 
-             onClick={() => window.location.reload()} 
-             className="w-full h-12 text-base bg-white text-black hover:bg-gray-200 mt-4"
-           >
+           <Button onClick={() => window.location.reload()} className="w-full h-12 text-base bg-white text-black hover:bg-gray-200 mt-4">
              <RefreshCw className="w-4 h-4 mr-2" /> Refresh App
            </Button>
         </div>
-
         <Card className="bg-[#111] border-gray-800 shadow-2xl h-[600px] flex flex-col overflow-hidden">
            <CardHeader className="bg-black/40 border-b border-gray-800 py-3 flex flex-row items-center justify-between">
-              <div className="flex gap-2">
-                 <Button 
-                    size="sm" 
-                    variant={activeTab === 'sql' ? 'primary' : 'ghost'} 
-                    onClick={() => setActiveTab('sql')}
-                    className="text-xs h-8"
-                 >
-                    <Database className="w-3 h-3 mr-2" /> SQL Editor
-                 </Button>
-              </div>
-              <Button 
-                size="sm" 
-                variant={copied ? 'secondary' : 'outline'}
-                onClick={() => handleCopy(sqlCode)}
-                className={copied ? "bg-green-500/10 text-green-500" : ""}
-              >
+              <Button size="sm" variant={activeTab === 'sql' ? 'primary' : 'ghost'} onClick={() => setActiveTab('sql')} className="text-xs h-8">
+                 <Database className="w-3 h-3 mr-2" /> SQL Editor
+              </Button>
+              <Button size="sm" variant={copied ? 'secondary' : 'outline'} onClick={() => handleCopy(sqlCode)}>
                  {copied ? <Check className="w-4 h-4 mr-2" /> : <Copy className="w-4 h-4 mr-2" />}
                  {copied ? 'Copied' : 'Copy'}
               </Button>
            </CardHeader>
            <CardContent className="p-0 flex-1 overflow-hidden relative group">
-              <textarea 
-                readOnly 
-                value={sqlCode}
-                className="w-full h-full bg-[#0A0A0A] text-gray-300 font-mono text-xs p-4 resize-none focus:outline-none custom-scrollbar"
-                spellCheck={false}
-              />
-              <div className="absolute inset-0 pointer-events-none shadow-[inset_0_-20px_20px_rgba(0,0,0,0.5)]" />
+              <textarea readOnly value={sqlCode} className="w-full h-full bg-[#0A0A0A] text-gray-300 font-mono text-xs p-4 resize-none focus:outline-none custom-scrollbar" spellCheck={false} />
            </CardContent>
         </Card>
-
       </div>
     </div>
   );
