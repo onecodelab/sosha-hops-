@@ -7,8 +7,8 @@ import {
   LogOut, Menu, Search, Wallet,
   LayoutDashboard, ShoppingBag, 
   Users, 
-  Table2, Armchair, ClipboardList, Utensils, Flame,
-  ChevronDown, Bell, ChevronLeft, ChevronRight
+  Table2, ClipboardList, Utensils,
+  ChevronDown, Bell, ChevronLeft, ChevronRight, Trash2, Truck, PlusCircle, PackageCheck, FileText
 } from 'lucide-react';
 import { cn } from './ui';
 import ThemeToggle from './ThemeToggle';
@@ -97,11 +97,12 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, titl
       case 'owner':
       case 'admin' as any: 
         return [
-          { icon: LayoutDashboard, label: t('nav.overview'), path: '/admin' },
+          { icon: LayoutDashboard, label: t('nav.dashboard'), path: '/admin' },
           { icon: Utensils, label: t('nav.menuAnalytics'), path: '/menu-analytics' },
           { icon: ShoppingBag, label: t('nav.inventory'), path: '/inventory' },
-          { icon: Users, label: t('nav.staffPerf'), path: '/staff-performance' },
-          { icon: Table2, label: t('nav.tableMap'), path: '/orders-tables' },
+          { icon: Truck, label: t('nav.pendingRequests'), path: '/manager/pending-requests' },
+          { icon: Users, label: t('nav.staffPerf'), path: '/admin/staff-performance' },
+          { icon: Table2, label: t('nav.tableMap'), path: '/admin/table-map' },
           { icon: ClipboardList, label: t('nav.settings'), path: '/settings' },
         ];
       case 'manager':
@@ -109,6 +110,10 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, titl
           { icon: LayoutDashboard, label: t('nav.opsDashboard'), path: '/manager' },
           { icon: Users, label: t('nav.staff'), path: '/staff-performance' },
           { icon: ClipboardList, label: t('nav.orders'), path: '/orders-tables' },
+          { icon: PlusCircle, label: t('nav.createPO'), path: '/manager/create-po' },
+          { icon: FileText, label: t('nav.purchaseOrders'), path: '/manager/purchase-orders' },
+          { icon: PackageCheck, label: t('nav.receiveGoods'), path: '/manager/receive-goods' },
+          { icon: Truck, label: t('nav.pendingRequests'), path: '/manager/pending-requests' },
           { icon: ShoppingBag, label: t('nav.inventory'), path: '/inventory' },
         ];
       case 'waiter':
@@ -118,7 +123,9 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, titl
       case 'kitchen':
         return [
           { icon: LayoutDashboard, label: t('nav.kds'), path: '/kitchen' },
-          { icon: ShoppingBag, label: t('nav.pantry'), path: '/inventory' },
+          { icon: ShoppingBag, label: t('nav.stock'), path: '/kitchen/stock' },
+          { icon: Truck, label: t('nav.restock'), path: '/kitchen/restock' },
+          { icon: Trash2, label: t('nav.waste'), path: '/kitchen/waste' },
         ];
       default:
         return [

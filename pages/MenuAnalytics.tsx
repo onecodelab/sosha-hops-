@@ -4,54 +4,44 @@ import { DashboardLayout } from '../components/DashboardLayout';
 import { supabase } from '../supabase';
 import { useMenu } from '../hooks/useMenu';
 import { 
-  ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, ReferenceLine, Cell
+  ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Cell
 } from 'recharts';
-import { Card, CardContent, CardHeader, CardTitle, Badge, cn } from '../components/ui';
-import { ArrowUpRight, ArrowDownRight, TrendingUp, AlertOctagon, DollarSign, Clock } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle, Badge, cn, Button } from '../components/ui';
+import { TrendingUp, AlertOctagon, DollarSign, PieChart, Info, Filter } from 'lucide-react';
 
 interface MenuStat {
   id: string;
   name: string;
   category: string;
-  orders: number;
-  revenue: number;
-  margin: number;
-  matrixType: 'Star' | 'Dog' | 'Puzzle' | 'Plow Horse';
+  totalSold: number;
+  totalRevenue: number;
+  quadrant: 'Star' | 'Dog' | 'Puzzle' | 'Plowhorse';
 }
 
 const MenuAnalytics: React.FC = () => {
-  const [period, setPeriod] = useState<'today' | 'week' | 'month'>('week');
-  const { menuItems, loading: menuLoading } = useMenu(false); // Fetch all to check availability
+  const [period, setPeriod] = useState<'7d' | '30d' | '90d'>('30d');
+  const { menuItems, loading: menuLoading } = useMenu(false);
   const [analyticsData, setAnalyticsData] = useState<MenuStat[]>([]);
-  const [hourlyData, setHourlyData] = useState<{hour: string, value: number}[]>([]);
+  const [categoryBreakdown, setCategoryBreakdown] = useState<{name: string, percentage: number, revenue: number}[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (menuItems.length > 0) {
-      calculateAnalytics();
+    if (!menuLoading) {
+      fetchAnalytics();
     }
-  }, [menuItems, period]);
+  }, [menuItems, period, menuLoading]);
 
-  const calculateAnalytics = async () => {
+  const fetchAnalytics = async () => {
     setLoading(true);
-
     try {
-      // 1. Determine Date Range
       const now = new Date();
       let startDate = new Date();
-      startDate.setHours(0, 0, 0, 0); // Default to start of today
+      if (period === '7d') startDate.setDate(now.getDate() - 7);
+      else if (period === '30d') startDate.setDate(now.getDate() - 30);
+      else startDate.setDate(now.getDate() - 90);
 
-      if (period === 'week') {
-        startDate.setDate(now.getDate() - 7);
-      } else if (period === 'month') {
-        startDate.setDate(now.getDate() - 30);
-      }
-
-      const startDateISO = startDate.toISOString();
-
-      // 2. Fetch Order Items (Top Performers Logic)
-      // Join order_items with orders to filter by status and date
-      const { data: orderItems, error: oiError } = await supabase
+      // 1. Fetch Order Items joined with Orders to filter by status and date
+      const { data: orderItems, error } = await supabase
         .from('order_items')
         .select(`
           menu_item_id,
@@ -62,333 +52,298 @@ const MenuAnalytics: React.FC = () => {
             created_at
           )
         `)
-        .gte('orders.created_at', startDateISO)
-        .neq('orders.status', 'cancelled');
+        .gte('orders.created_at', startDate.toISOString())
+        .in('orders.status', ['completed', 'paid', 'served']);
 
-      if (oiError) throw oiError;
+      if (error) throw error;
 
-      // 3. Client-side Aggregation
-      const itemMap = new Map<string, { count: number; rev: number }>();
+      // 2. Aggregate Data
+      const itemMap = new Map<string, { sold: number; rev: number }>();
+      let totalPeriodRevenue = 0;
 
       orderItems?.forEach((item: any) => {
         const id = item.menu_item_id;
-        const current = itemMap.get(id) || { count: 0, rev: 0 };
+        const subtotal = (item.price_at_time || 0) * item.quantity;
+        const current = itemMap.get(id) || { sold: 0, rev: 0 };
         itemMap.set(id, {
-          count: current.count + item.quantity,
-          rev: current.rev + (item.price_at_time * item.quantity)
+          sold: current.sold + item.quantity,
+          rev: current.rev + subtotal
         });
+        totalPeriodRevenue += subtotal;
       });
 
+      // 3. Map back to menu items and calculate quadrants
       const stats: MenuStat[] = menuItems.map(menu => {
-        const data = itemMap.get(menu.id) || { count: 0, rev: 0 };
-        
-        // Mock Margin % for Matrix visualization (randomized slightly around 60% for demo purposes 
-        // since exact cost isn't in DB yet)
-        const estimatedMarginPct = 40 + Math.floor(Math.random() * 40); 
-
+        const data = itemMap.get(menu.id) || { sold: 0, rev: 0 };
         return {
           id: menu.id,
           name: menu.name,
           category: menu.category,
-          orders: data.count,
-          revenue: data.rev,
-          margin: estimatedMarginPct,
-          matrixType: 'Dog' // Placeholder
+          totalSold: data.sold,
+          totalRevenue: data.rev,
+          quadrant: 'Dog' // Placeholder
         };
       });
 
-      // 4. Matrix Classification
-      // Calculate averages to define quadrants
-      const activeStats = stats.filter(s => s.orders > 0); // Only analyze sold items for averages
-      const avgOrders = activeStats.reduce((acc, s) => acc + s.orders, 0) / (activeStats.length || 1);
-      const avgRev = activeStats.reduce((acc, s) => acc + s.revenue, 0) / (activeStats.length || 1);
+      // 4. Matrix Classification Logic
+      const activeStats = stats.filter(s => s.totalSold > 0);
+      const avgSold = activeStats.reduce((acc, s) => acc + s.totalSold, 0) / (activeStats.length || 1);
+      const avgRev = activeStats.reduce((acc, s) => acc + s.totalRevenue, 0) / (activeStats.length || 1);
 
-      const classifiedStats = stats.map(s => {
-        let type: any = 'Dog';
-        if (s.orders === 0) type = 'Dog';
-        else if (s.orders >= avgOrders && s.revenue >= avgRev) type = 'Star';
-        else if (s.orders >= avgOrders && s.revenue < avgRev) type = 'Plow Horse';
-        else if (s.orders < avgOrders && s.revenue >= avgRev) type = 'Puzzle';
-        
-        return { ...s, matrixType: type };
+      const finalStats = stats.map(s => {
+        let q: any = 'Dog';
+        if (s.totalSold >= avgSold && s.totalRevenue >= avgRev) q = 'Star';
+        else if (s.totalSold >= avgSold && s.totalRevenue < avgRev) q = 'Plowhorse';
+        else if (s.totalSold < avgSold && s.totalRevenue >= avgRev) q = 'Puzzle';
+        return { ...s, quadrant: q };
       });
 
-      setAnalyticsData(classifiedStats.sort((a, b) => b.revenue - a.revenue));
+      setAnalyticsData(finalStats);
 
-      // 5. Hourly Intensity Chart (Always for Today as requested)
-      const todayStart = new Date();
-      todayStart.setHours(0,0,0,0);
-      
-      const { data: todayOrders, error: ordersError } = await supabase
-        .from('orders')
-        .select('created_at')
-        .gte('created_at', todayStart.toISOString())
-        .neq('status', 'cancelled');
-
-      if (ordersError) throw ordersError;
-
-      const hoursMap = new Array(24).fill(0);
-      todayOrders?.forEach((o: any) => {
-        const h = new Date(o.created_at).getHours();
-        hoursMap[h]++;
+      // 5. Category Breakdown
+      const catMap = new Map<string, number>();
+      finalStats.forEach(s => {
+        catMap.set(s.category, (catMap.get(s.category) || 0) + s.totalRevenue);
       });
 
-      // Format for Chart (showing 8 AM to 11 PM)
-      const chartData = hoursMap.map((count, hour) => ({
-        hour: `${hour}:00`,
-        value: count
-      })).slice(8, 23); 
+      const breakdown = Array.from(catMap.entries())
+        .map(([name, revenue]) => ({
+          name,
+          revenue,
+          percentage: totalPeriodRevenue > 0 ? (revenue / totalPeriodRevenue) * 100 : 0
+        }))
+        .sort((a, b) => b.revenue - a.revenue);
 
-      setHourlyData(chartData);
+      setCategoryBreakdown(breakdown);
 
     } catch (err) {
-      console.error("Analytics Calculation Error:", err);
+      console.error("Analytics Fetch Error:", err);
     } finally {
       setLoading(false);
     }
   };
 
-  const topSellingItems = analyticsData.filter(i => i.orders > 0).slice(0, 10);
-  
-  // Real Out of Stock Logic: Checks unavailable flag OR zero stock
-  const outOfStockItems = menuItems.filter(i => !i.is_available || (i.stock_quantity !== undefined && i.stock_quantity <= 0));
-
-  // Matrix Data: x = Orders (Popularity), y = Revenue (Profitability Proxy)
-  const matrixData = analyticsData.filter(s => s.orders > 0).map(s => ({
+  const topPerformers = [...analyticsData].sort((a, b) => b.totalRevenue - a.totalRevenue).slice(0, 5);
+  const scatterData = analyticsData.filter(s => s.totalSold > 0).map(s => ({
     name: s.name,
-    x: s.orders,
-    y: s.revenue,
-    type: s.matrixType
+    x: s.totalSold,
+    y: s.totalRevenue,
+    quadrant: s.quadrant
   }));
 
-  const getIntensityColor = (value: number) => {
-    // Dynamic coloring based on max value in the set could be better, but using static thresholds for now
-    if (value >= 5) return 'bg-[#84CC16]'; // High
-    if (value >= 3) return 'bg-[#84CC16]/70';
-    if (value >= 1) return 'bg-[#FFB800]'; // Med
-    if (value > 0) return 'bg-[#FFB800]/50';
-    return 'bg-gray-800'; // Zero
+  const getQuadrantColor = (q: string) => {
+    switch (q) {
+      case 'Star': return '#84CC16'; // Green
+      case 'Plowhorse': return '#FFB800'; // Yellow
+      case 'Puzzle': return '#A855F7'; // Purple
+      default: return '#EF4444'; // Red (Dog)
+    }
   };
 
   return (
-    <DashboardLayout>
-      <div className="space-y-6 animate-in fade-in duration-500">
-        
-        {/* Header & Filter */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <div>
-            <h1 className="text-2xl font-bold text-foreground">Menu Analytics</h1>
-            <p className="text-muted text-sm">Real-time profitability and popularity insights</p>
-          </div>
-          
-          <div className="flex bg-card p-1 rounded-lg border border-border">
-            {(['today', 'week', 'month'] as const).map((p) => (
-              <button
-                key={p}
-                onClick={() => setPeriod(p)}
-                className={cn(
-                  "px-4 py-1.5 text-xs font-bold rounded-md capitalize transition-all",
-                  period === p 
-                    ? "bg-primary text-black shadow-md" 
-                    : "text-muted hover:text-foreground"
-                )}
-              >
-                {p}
-              </button>
-            ))}
-          </div>
+    <DashboardLayout 
+      title="Menu Analytics" 
+      subtitle="Optimize your menu performance and profitability"
+      actions={
+        <div className="flex bg-card/50 p-1 rounded-xl border border-border backdrop-blur-md">
+          {(['7d', '30d', '90d'] as const).map((p) => (
+            <button
+              key={p}
+              onClick={() => setPeriod(p)}
+              className={cn(
+                "px-4 py-1.5 text-xs font-bold rounded-lg transition-all",
+                period === p 
+                  ? "bg-primary text-black shadow-lg" 
+                  : "text-muted hover:text-foreground"
+              )}
+            >
+              Last {p === '7d' ? '7 Days' : p === '30d' ? '30 Days' : '90 Days'}
+            </button>
+          ))}
         </div>
-
-        {/* Top Section: Tables & Stock */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      }
+    >
+      <div className="space-y-8 animate-in fade-in duration-500">
+        
+        {/* Top Section: Table & Breakdown */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           
-          {/* Top Selling Items Table */}
-          <Card className="lg:col-span-2">
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="text-foreground">Top Performers</CardTitle>
-              <Badge variant="success" className="bg-[#84CC16]/10 text-[#84CC16] border-[#84CC16]/20">
-                <TrendingUp className="w-3 h-3 mr-1" /> Revenue Leaders
-              </Badge>
+          {/* Top Performers Table */}
+          <Card className="lg:col-span-2 bg-[#09090b] border-border">
+            <CardHeader className="flex flex-row items-center justify-between border-b border-border pb-4">
+              <CardTitle className="text-xl flex items-center gap-2">
+                <TrendingUp className="w-5 h-5 text-primary" /> Top Performers
+              </CardTitle>
+              <Badge variant="outline" className="border-primary/20 text-primary">By Revenue</Badge>
             </CardHeader>
-            <CardContent>
-              <div className="overflow-x-auto max-h-[300px] custom-scrollbar">
+            <CardContent className="p-0">
+              <div className="overflow-x-auto">
                 <table className="w-full text-sm text-left">
-                  <thead className="text-xs text-muted uppercase bg-black/20 border-b border-border sticky top-0 backdrop-blur-sm z-10">
+                  <thead className="text-xs text-muted uppercase bg-black/20">
                     <tr>
-                      <th className="px-4 py-3">Item Name</th>
-                      <th className="px-4 py-3">Category</th>
-                      <th className="px-4 py-3 text-right">Orders</th>
-                      <th className="px-4 py-3 text-right">Revenue</th>
-                      <th className="px-4 py-3 text-right">Est. Margin</th>
+                      <th className="px-6 py-4">Menu Item</th>
+                      <th className="px-6 py-4 text-center">Total Sold</th>
+                      <th className="px-6 py-4 text-right">Revenue Generated</th>
+                      <th className="px-6 py-4 text-center">Status</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">
-                    {loading && <tr><td colSpan={5} className="p-4 text-center">Loading...</td></tr>}
-                    {!loading && topSellingItems.length === 0 && <tr><td colSpan={5} className="p-4 text-center text-muted">No sales data for this period.</td></tr>}
-                    {topSellingItems.map((item) => (
-                      <tr key={item.id} className="hover:bg-white/5 transition-colors">
-                        <td className="px-4 py-3 font-medium text-foreground">{item.name}</td>
-                        <td className="px-4 py-3 text-muted">{item.category}</td>
-                        <td className="px-4 py-3 text-right text-gray-300">{item.orders}</td>
-                        <td className="px-4 py-3 text-right font-mono text-primary">ETB {item.revenue.toLocaleString()}</td>
-                        <td className="px-4 py-3 text-right">
-                          <span className={cn(
-                            "px-2 py-1 rounded text-xs font-bold",
-                            item.margin > 60 ? "bg-green-500/10 text-green-500" : "bg-yellow-500/10 text-yellow-500"
-                          )}>
-                            {item.margin}%
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
+                    {loading ? (
+                      <tr><td colSpan={4} className="p-8 text-center text-muted">Loading analytics...</td></tr>
+                    ) : topPerformers.length === 0 ? (
+                      <tr><td colSpan={4} className="p-12 text-center text-muted flex flex-col items-center gap-3">
+                        <AlertOctagon className="w-8 h-8 opacity-20" />
+                        No sales found for this period.
+                      </td></tr>
+                    ) : (
+                      topPerformers.map((item) => (
+                        <tr key={item.id} className="hover:bg-white/5 transition-colors group">
+                          <td className="px-6 py-4">
+                            <p className="font-bold text-white group-hover:text-primary transition-colors">{item.name}</p>
+                            <p className="text-xs text-muted">{item.category}</p>
+                          </td>
+                          <td className="px-6 py-4 text-center font-mono text-gray-300">{item.totalSold}</td>
+                          <td className="px-6 py-4 text-right font-mono text-primary font-bold">ETB {item.totalRevenue.toLocaleString()}</td>
+                          <td className="px-6 py-4 text-center">
+                            <span className={cn(
+                              "px-2 py-1 rounded text-[10px] font-bold uppercase border",
+                              item.quadrant === 'Star' ? "bg-green-500/10 text-green-500 border-green-500/20" : 
+                              item.quadrant === 'Plowhorse' ? "bg-yellow-500/10 text-yellow-500 border-yellow-500/20" : 
+                              "bg-purple-500/10 text-purple-500 border-purple-500/20"
+                            )}>
+                              {item.quadrant}
+                            </span>
+                          </td>
+                        </tr>
+                      ))
+                    )}
                   </tbody>
                 </table>
               </div>
             </CardContent>
           </Card>
 
-          {/* Out of Stock / Lost Revenue */}
-          <div className="space-y-6">
-             <Card className="border-l-4 border-l-red-500">
-                <CardHeader>
-                   <CardTitle className="text-foreground flex items-center gap-2">
-                      <AlertOctagon className="w-5 h-5 text-red-500" /> Out of Stock
-                   </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4 max-h-[220px] overflow-y-auto custom-scrollbar">
-                   {outOfStockItems.map(item => (
-                      <div key={item.id} className="p-3 bg-red-500/5 rounded-lg border border-red-500/10">
-                         <div className="flex justify-between items-start mb-1">
-                            <span className="font-bold text-foreground">{item.name}</span>
-                            <span className="text-xs bg-red-500 text-white px-1.5 py-0.5 rounded">Unavailable</span>
-                         </div>
-                         <div className="flex justify-between text-xs text-muted">
-                            <span>Category:</span>
-                            <span>{item.category}</span>
-                         </div>
-                      </div>
-                   ))}
-                   {outOfStockItems.length === 0 && <p className="text-muted text-sm">All items available.</p>}
-                </CardContent>
-             </Card>
-
-             {/* Matrix Highlights */}
-             <div className="grid grid-cols-2 gap-4">
-                <div className="bg-card border border-border p-4 rounded-xl flex flex-col justify-between">
-                   <div className="text-xs text-muted uppercase font-bold tracking-wider mb-2">Top Star</div>
-                   <div className="text-sm font-bold text-[#84CC16] line-clamp-2">
-                      {analyticsData.find(i => i.matrixType === 'Star')?.name || 'N/A'}
-                   </div>
-                   <div className="text-xs text-gray-400 mt-1 flex items-center gap-1">
-                      <ArrowUpRight className="w-3 h-3 text-[#84CC16]" /> High Rev/Vol
-                   </div>
-                </div>
-                <div className="bg-card border border-border p-4 rounded-xl flex flex-col justify-between">
-                   <div className="text-xs text-muted uppercase font-bold tracking-wider mb-2">Underperforming</div>
-                   <div className="text-sm font-bold text-red-400 line-clamp-2">
-                      {analyticsData.filter(i => i.orders > 0 && i.matrixType === 'Dog')[0]?.name || 'N/A'}
-                   </div>
-                   <div className="text-xs text-gray-400 mt-1 flex items-center gap-1">
-                      <ArrowDownRight className="w-3 h-3 text-red-400" /> Low Rev/Vol
-                   </div>
-                </div>
-             </div>
-          </div>
+          {/* Category Breakdown */}
+          <Card className="bg-[#09090b] border-border">
+            <CardHeader>
+              <CardTitle className="text-xl flex items-center gap-2">
+                <PieChart className="w-5 h-5 text-blue-400" /> Category Breakdown
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {loading ? (
+                 <div className="space-y-4 py-4">
+                    {[1,2,3].map(i => <div key={i} className="h-12 bg-white/5 rounded-xl animate-pulse" />)}
+                 </div>
+              ) : categoryBreakdown.length === 0 ? (
+                 <p className="text-center text-muted py-10 text-sm italic">Insufficient sales data</p>
+              ) : (
+                categoryBreakdown.map((cat) => (
+                  <div key={cat.name} className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="font-medium text-gray-300">{cat.name}</span>
+                      <span className="font-bold text-white">{cat.percentage.toFixed(1)}%</span>
+                    </div>
+                    <div className="h-2 w-full bg-gray-900 rounded-full overflow-hidden border border-white/5">
+                      <div 
+                        className="h-full bg-primary rounded-full transition-all duration-1000 shadow-[0_0_10px_rgba(255,184,0,0.3)]" 
+                        style={{ width: `${cat.percentage}%` }}
+                      />
+                    </div>
+                    <p className="text-[10px] text-right text-gray-500 font-mono">ETB {cat.revenue.toLocaleString()}</p>
+                  </div>
+                ))
+              )}
+            </CardContent>
+          </Card>
         </div>
 
-        {/* Middle Section: Matrix & Heatmap */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          
-          {/* Profit vs Popularity Matrix */}
-          <Card className="lg:col-span-2">
-             <CardHeader>
-                <CardTitle className="text-foreground flex items-center gap-2">
-                   <DollarSign className="w-5 h-5 text-primary" /> Menu Engineering Matrix
-                </CardTitle>
-             </CardHeader>
-             <CardContent>
-                <div className="h-[300px] w-full relative">
-                   {analyticsData.filter(i => i.orders > 0).length === 0 ? (
-                      <div className="h-full flex items-center justify-center text-muted">Need more sales data to build matrix</div>
-                   ) : (
-                   <ResponsiveContainer width="100%" height="100%">
-                      <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
-                         <CartesianGrid strokeDasharray="3 3" stroke="#333" />
-                         <XAxis type="number" dataKey="x" name="Orders" stroke="#666" label={{ value: 'Popularity (Orders)', position: 'bottom', fill: '#666', fontSize: 12 }} />
-                         <YAxis type="number" dataKey="y" name="Revenue" stroke="#666" label={{ value: 'Revenue (ETB)', angle: -90, position: 'left', fill: '#666', fontSize: 12 }} />
-                         <RechartsTooltip 
-                            cursor={{ strokeDasharray: '3 3' }} 
-                            content={({ active, payload }) => {
-                               if (active && payload && payload.length) {
-                                  const data = payload[0].payload;
-                                  return (
-                                     <div className="bg-card border border-border p-2 rounded shadow-xl text-xs z-50">
-                                        <p className="font-bold text-white mb-1">{data.name}</p>
-                                        <p className="text-gray-400">Type: <span className="text-primary">{data.type}</span></p>
-                                        <p className="text-gray-400">Orders: {data.x}</p>
-                                        <p className="text-gray-400">Rev: ETB {data.y.toLocaleString()}</p>
-                                     </div>
-                                  );
-                               }
-                               return null;
-                            }}
-                         />
-                         
-                         {/* Legend Text */}
-                         <text x="90%" y="10%" textAnchor="end" fill="#84CC16" fontSize="10" fontWeight="bold">STARS (High/High)</text>
-                         <text x="90%" y="90%" textAnchor="end" fill="#FFB800" fontSize="10" fontWeight="bold">PLOW HORSES (High Vol/Low Rev)</text>
-                         <text x="10%" y="10%" textAnchor="start" fill="#A855F7" fontSize="10" fontWeight="bold">PUZZLES (Low Vol/High Rev)</text>
-                         <text x="10%" y="90%" textAnchor="start" fill="#EF4444" fontSize="10" fontWeight="bold">DOGS (Low/Low)</text>
-
-                         <Scatter name="Items" data={matrixData} fill="#FFB800">
-                            {matrixData.map((entry, index) => (
-                               <Cell key={`cell-${index}`} fill={
-                                  entry.type === 'Star' ? '#84CC16' : 
-                                  entry.type === 'Dog' ? '#EF4444' : 
-                                  entry.type === 'Puzzle' ? '#A855F7' : '#FFB800'
-                               } />
-                            ))}
-                         </Scatter>
-                      </ScatterChart>
-                   </ResponsiveContainer>
-                   )}
+        {/* Matrix Section */}
+        <Card className="bg-[#09090b] border-border overflow-hidden">
+          <CardHeader className="border-b border-border">
+            <div className="flex justify-between items-center">
+              <CardTitle className="text-xl flex items-center gap-2">
+                <DollarSign className="w-5 h-5 text-green-400" /> Menu Engineering Matrix
+              </CardTitle>
+              <div className="group relative">
+                <Info className="w-5 h-5 text-muted hover:text-white cursor-help transition-colors" />
+                <div className="absolute right-0 top-full mt-2 w-64 bg-[#1a1a1a] border border-border p-4 rounded-xl shadow-2xl z-50 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity text-xs space-y-2">
+                   <p><strong className="text-green-400">Stars:</strong> High popularity & High revenue</p>
+                   <p><strong className="text-yellow-400">Plowhorses:</strong> High popularity but Lower revenue</p>
+                   <p><strong className="text-purple-400">Puzzles:</strong> Low popularity but High revenue</p>
+                   <p><strong className="text-red-400">Dogs:</strong> Low popularity & Low revenue</p>
                 </div>
-             </CardContent>
-          </Card>
-
-          {/* Hourly Heatmap */}
-          <Card>
-             <CardHeader>
-                <CardTitle className="text-foreground flex items-center gap-2">
-                   <Clock className="w-5 h-5 text-blue-400" /> Today's Intensity
-                </CardTitle>
-             </CardHeader>
-             <CardContent>
-                <div className="flex flex-col gap-2 h-full justify-center pb-4">
-                   {hourlyData.length === 0 && (
-                      <div className="text-center text-muted py-10">No orders today yet</div>
-                   )}
-                   {hourlyData.map((slot) => (
-                      <div key={slot.hour} className="flex items-center gap-3 group">
-                         <span className="text-xs font-mono text-muted w-12 text-right">
-                            {slot.hour}
-                         </span>
-                         <div className="flex-1 h-6 bg-black/20 rounded-md overflow-hidden relative">
-                            <div 
-                               className={cn("h-full transition-all duration-500", getIntensityColor(slot.value))} 
-                               style={{ width: `${Math.min(100, (slot.value / 10) * 100)}%` }} // Normalize for bar width
-                            />
-                            <div className="absolute inset-0 flex items-center px-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                               <span className="text-[10px] font-bold text-black drop-shadow-sm">{slot.value} Sales</span>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="p-6">
+            <div className="h-[450px] w-full relative">
+              {loading ? (
+                <div className="h-full flex items-center justify-center text-muted italic">Computing matrix...</div>
+              ) : scatterData.length === 0 ? (
+                <div className="h-full flex items-center justify-center text-muted">No sales data to plot</div>
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <ScatterChart margin={{ top: 20, right: 40, bottom: 40, left: 40 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#27272a" />
+                    <XAxis 
+                      type="number" 
+                      dataKey="x" 
+                      name="Popularity" 
+                      stroke="#71717a" 
+                      label={{ value: 'Popularity (Quantity Sold)', position: 'bottom', fill: '#71717a', fontSize: 12, dy: 10 }} 
+                    />
+                    <YAxis 
+                      type="number" 
+                      dataKey="y" 
+                      name="Revenue" 
+                      stroke="#71717a" 
+                      label={{ value: 'Revenue (ETB)', angle: -90, position: 'left', fill: '#71717a', fontSize: 12, dx: -20 }} 
+                    />
+                    <RechartsTooltip 
+                      cursor={{ strokeDasharray: '3 3' }}
+                      content={({ active, payload }) => {
+                        if (active && payload && payload.length) {
+                          const data = payload[0].payload;
+                          return (
+                            <div className="bg-[#111] border border-border p-3 rounded-xl shadow-2xl text-xs">
+                              <p className="font-bold text-white mb-2">{data.name}</p>
+                              <div className="space-y-1">
+                                <p className="text-gray-400">Quadrant: <span style={{ color: getQuadrantColor(data.quadrant) }} className="font-bold">{data.quadrant}</span></p>
+                                <p className="text-gray-400">Total Sold: <span className="text-white">{data.x}</span></p>
+                                <p className="text-gray-400">Revenue: <span className="text-primary">ETB {data.y.toLocaleString()}</span></p>
+                              </div>
                             </div>
-                         </div>
-                      </div>
-                   ))}
+                          );
+                        }
+                        return null;
+                      }}
+                    />
+                    <Scatter name="Items" data={scatterData}>
+                      {scatterData.map((entry, index) => (
+                        <Cell 
+                          key={`cell-${index}`} 
+                          fill={getQuadrantColor(entry.quadrant)} 
+                          className="drop-shadow-[0_0_8px_rgba(255,255,255,0.1)]"
+                        />
+                      ))}
+                    </Scatter>
+                  </ScatterChart>
+                </ResponsiveContainer>
+              )}
+              
+              {/* Overlay Quadrant Labels */}
+              {!loading && scatterData.length > 0 && (
+                <div className="absolute inset-0 pointer-events-none grid grid-cols-2 grid-rows-2 p-14 opacity-20">
+                   <div className="flex items-start justify-start p-4"><span className="text-xs font-bold text-purple-400 border border-purple-400/30 px-2 py-1 rounded">PUZZLES</span></div>
+                   <div className="flex items-start justify-end p-4"><span className="text-xs font-bold text-green-400 border border-green-400/30 px-2 py-1 rounded">STARS</span></div>
+                   <div className="flex items-end justify-start p-4"><span className="text-xs font-bold text-red-400 border border-red-400/30 px-2 py-1 rounded">DOGS</span></div>
+                   <div className="flex items-end justify-end p-4"><span className="text-xs font-bold text-yellow-400 border border-yellow-400/30 px-2 py-1 rounded">PLOWHORSES</span></div>
                 </div>
-             </CardContent>
-          </Card>
-
-        </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
 
       </div>
     </DashboardLayout>

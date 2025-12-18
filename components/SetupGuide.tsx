@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button, Card, CardContent, CardHeader, CardTitle } from './ui';
 import { Database, Copy, Check, RefreshCw, Terminal, Code } from 'lucide-react';
@@ -62,19 +63,30 @@ create table if not exists public.order_items (
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
--- 7. Create Inventory Table
-create table if not exists public.inventory (
+-- 7. Create Inventory Tables
+create table if not exists public.ingredients (
   id uuid default uuid_generate_v4() primary key,
+  sku text unique not null,
   name text not null,
-  quantity numeric not null default 0,
-  unit text not null,
-  par_level numeric default 10,
+  category text,
+  unit_type text not null,
+  current_stock numeric default 0,
+  par_min numeric default 10,
   cost_per_unit numeric default 0,
-  supplier text,
-  location text,
-  status text default 'ok',
-  restaurant_id uuid references public.restaurants(id),
-  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+  supplier_id uuid,
+  is_active boolean default true,
+  created_at timestamp with time zone default now()
+);
+
+create table if not exists public.tables (
+  id uuid default uuid_generate_v4() primary key,
+  table_number text not null,
+  capacity integer default 4,
+  x_position numeric default 0,
+  y_position numeric default 0,
+  shape text check (shape in ('square', 'round', 'rectangle')) default 'square',
+  status text default 'available',
+  created_at timestamp with time zone default now()
 );
 
 -- 8. Enable Row Level Security (RLS)
@@ -82,37 +94,46 @@ alter table public.users enable row level security;
 alter table public.menu enable row level security;
 alter table public.orders enable row level security;
 alter table public.order_items enable row level security;
-alter table public.inventory enable row level security;
+alter table public.ingredients enable row level security;
 alter table public.restaurants enable row level security;
+alter table public.tables enable row level security;
 
 -- 9. Create Permissive Policies (Base)
 create policy "Public menu access" on public.menu for all using (true) with check (true);
 create policy "Public orders access" on public.orders for all using (true) with check (true);
 create policy "Public order_items access" on public.order_items for all using (true) with check (true);
-create policy "Public inventory access" on public.inventory for all using (true) with check (true);
+create policy "Public ingredients access" on public.ingredients for all using (true) with check (true);
 create policy "Public restaurants access" on public.restaurants for all using (true) with check (true);
+create policy "Public tables access" on public.tables for all using (true) with check (true);
 
 -- 10. Seed Default Restaurant
 insert into public.restaurants (name)
 select 'Sosha Main Branch'
 where not exists (select 1 from public.restaurants);
 
--- 11. Add Analytics Columns
+-- 11. Helper Functions
+create or replace function public.increment_stock(row_id uuid, quantity numeric)
+returns void as $$
+begin
+  update public.ingredients 
+  set current_stock = current_stock + quantity
+  where id = row_id;
+end;
+$$ language plpgsql security definer;
+
+-- 12. Add Analytics Columns
 alter table public.orders add column if not exists order_type text default 'dine-in';
 alter table public.orders add column if not exists kitchen_accepted_at timestamp with time zone;
 alter table public.orders add column if not exists ready_at timestamp with time zone;
 alter table public.orders add column if not exists served_at timestamp with time zone;
-alter table public.orders add column if not exists notes text; -- Special instructions
+alter table public.orders add column if not exists notes text;
 
--- 12. Manager Dashboard & Staff Updates
+-- 13. Manager Dashboard & Staff Updates
 alter table public.users add column if not exists is_online boolean default false;
 alter table public.users add column if not exists shift_start timestamp with time zone;
 alter table public.users add column if not exists created_by uuid; 
 alter table public.users add column if not exists phone text;
 alter table public.users add column if not exists invitation_pending boolean default false;
-
--- Update existing users to have is_online false if null
-update public.users set is_online = false where is_online is null;
 
 create table if not exists public.operational_issues (
   id uuid default uuid_generate_v4() primary key,
@@ -129,124 +150,25 @@ create table if not exists public.operational_issues (
 alter table public.operational_issues enable row level security;
 create policy "Public operational_issues access" on public.operational_issues for all using (true) with check (true);
 
--- 13. Quality Control (Order Issues)
-create table if not exists public.order_issues (
-  id uuid default uuid_generate_v4() primary key,
-  order_id uuid references public.orders(id),
-  issue_type text not null, 
-  description text,
-  reported_by uuid references public.users(id),
-  assigned_to uuid references public.users(id),
-  status text default 'open',
-  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
-  resolved_at timestamp with time zone
-);
-alter table public.order_issues enable row level security;
-create policy "Public order_issues access" on public.order_issues for all using (true) with check (true);
-
--- 14. FIX: Manually Insert Kitchen User (raminsjourney@gmail.com)
-insert into public.users (id, email, full_name, role, is_online, created_at)
-values (
-  '71c4de6f-a78f-4e23-a4b9-e8beb6505436',
-  'raminsjourney@gmail.com',
-  'Kitchen Staff',
-  'kitchen',
-  true,
-  now()
-)
-on conflict (id) do nothing;
-
--- 15. AUTOMATION: Smart Trigger for Linking Invites
+-- 14. Smart Trigger for Linking Invites
 create or replace function public.handle_new_user()
 returns trigger as $$
 declare
   existing_user_id uuid;
 begin
-  -- Check if a user profile with this email already exists (invited user)
   select id into existing_user_id from public.users where email = new.email limit 1;
-
   if existing_user_id is not null then
-    -- Update the existing profile with the real Auth ID
-    update public.users 
-    set id = new.id, 
-        invitation_pending = false,
-        created_at = now() 
-    where id = existing_user_id;
+    update public.users set id = new.id, invitation_pending = false, created_at = now() where id = existing_user_id;
   else
-    -- Standard Insert
     insert into public.users (id, email, full_name, role, created_at)
-    values (
-      new.id,
-      new.email,
-      coalesce(new.raw_user_meta_data->>'full_name', 'New User'),
-      coalesce(new.raw_user_meta_data->>'role', 'waiter'),
-      now()
-    );
+    values (new.id, new.email, coalesce(new.raw_user_meta_data->>'full_name', 'New User'), coalesce(new.raw_user_meta_data->>'role', 'waiter'), now());
   end if;
-  
   return new;
 end;
 $$ language plpgsql security definer;
 
 drop trigger if exists on_auth_user_created on auth.users;
-create trigger on_auth_user_created
-  after insert on auth.users
-  for each row
-  execute function public.handle_new_user();
-
--- 16. OWNER-ONLY STAFF MANAGEMENT POLICIES
-drop policy if exists "Public users access" on public.users;
-
-create policy "Staff can view all users"
-on public.users for select
-to authenticated
-using (true);
-
-create policy "Only owner can create staff"
-on public.users for insert
-to authenticated
-with check (
-  exists (
-    select 1 from public.users
-    where id = auth.uid() and role = 'owner'
-  )
-);
-
-create policy "Only owner can update staff"
-on public.users for update
-to authenticated
-using (
-  exists (
-    select 1 from public.users
-    where id = auth.uid() and role = 'owner'
-  )
-);
-
-create policy "Only owner can delete staff"
-on public.users for delete
-to authenticated
-using (
-  exists (
-    select 1 from public.users
-    where id = auth.uid() and role = 'owner'
-  )
-);
-
--- 17. FIX FOREIGN KEY CONSTRAINTS
-ALTER TABLE public.users 
-ALTER COLUMN created_by DROP NOT NULL;
-
-ALTER TABLE public.users 
-DROP CONSTRAINT IF EXISTS users_id_fkey;
-
-ALTER TABLE public.users 
-DROP CONSTRAINT IF EXISTS users_created_by_fkey;
-
-ALTER TABLE public.users 
-ADD CONSTRAINT users_created_by_fkey 
-FOREIGN KEY (created_by) 
-REFERENCES public.users(id) 
-ON DELETE SET NULL;
+create trigger on_auth_user_created after insert on auth.users for each row execute function public.handle_new_user();
 `;
 
   const handleCopy = (text: string) => {
@@ -268,7 +190,7 @@ ON DELETE SET NULL;
            
            <div className="space-y-4 text-gray-400">
              <p className="text-lg">
-               We updated the schema to support direct invites. Please run the updated SQL script.
+               Floor layout data requires the new `tables` table. Please run the updated SQL script.
              </p>
              <div className="flex flex-col gap-4 pl-4 border-l-2 border-primary/30">
                 <div className="flex gap-3">

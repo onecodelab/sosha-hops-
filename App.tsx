@@ -16,10 +16,19 @@ import AdminDashboard from './pages/AdminDashboard';
 import MenuAnalytics from './pages/MenuAnalytics';
 import Inventory from './pages/Inventory';
 import StaffPerformance from './pages/StaffPerformance';
+import AdminStaffPerformance from './pages/AdminStaffPerformance';
+import AdminTableMap from './pages/AdminTableMap';
 import OrdersTables from './pages/OrdersTables';
 import ManagerDashboard from './pages/ManagerDashboard';
 import WaiterDashboard from './pages/WaiterDashboard';
 import KitchenDashboard from './pages/KitchenDashboard';
+import KitchenStockView from './pages/KitchenStockView';
+import KitchenLogWaste from './pages/KitchenLogWaste';
+import KitchenRestockRequests from './pages/KitchenRestockRequests';
+import ManagerPendingRequests from './pages/ManagerPendingRequests';
+import ManagerCreatePO from './pages/ManagerCreatePO';
+import ManagerReceiveGoods from './pages/ManagerReceiveGoods';
+import ManagerPurchaseOrders from './pages/ManagerPurchaseOrders';
 import ProtectedRoute from './components/ProtectedRoute';
 import Settings from './pages/Settings';
 
@@ -62,6 +71,18 @@ const App: React.FC = () => {
                 </ProtectedRoute>
               } />
 
+              <Route path="/admin/staff-performance" element={
+                <ProtectedRoute allowedRoles={['owner', 'admin' as any]}>
+                  <AdminStaffPerformance />
+                </ProtectedRoute>
+              } />
+
+              <Route path="/admin/table-map" element={
+                <ProtectedRoute allowedRoles={['owner', 'admin' as any]}>
+                  <AdminTableMap />
+                </ProtectedRoute>
+              } />
+
               <Route path="/staff-performance" element={
                 <ProtectedRoute allowedRoles={['owner', 'manager', 'admin' as any]}>
                   <StaffPerformance />
@@ -79,6 +100,30 @@ const App: React.FC = () => {
                   <ManagerDashboard />
                 </ProtectedRoute>
               } />
+
+              <Route path="/manager/pending-requests" element={
+                <ProtectedRoute allowedRoles={['manager', 'owner']}>
+                  <ManagerPendingRequests />
+                </ProtectedRoute>
+              } />
+
+              <Route path="/manager/create-po" element={
+                <ProtectedRoute allowedRoles={['manager', 'owner']}>
+                  <ManagerCreatePO />
+                </ProtectedRoute>
+              } />
+
+              <Route path="/manager/purchase-orders" element={
+                <ProtectedRoute allowedRoles={['manager', 'owner']}>
+                  <ManagerPurchaseOrders />
+                </ProtectedRoute>
+              } />
+
+              <Route path="/manager/receive-goods" element={
+                <ProtectedRoute allowedRoles={['manager', 'owner']}>
+                  <ManagerReceiveGoods />
+                </ProtectedRoute>
+              } />
               
               <Route path="/waiter" element={
                 <ProtectedRoute allowedRoles={['waiter']}>
@@ -89,6 +134,24 @@ const App: React.FC = () => {
               <Route path="/kitchen" element={
                 <ProtectedRoute allowedRoles={['kitchen', 'manager', 'owner']}>
                   <KitchenDashboard />
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/kitchen/stock" element={
+                <ProtectedRoute allowedRoles={['kitchen', 'manager', 'owner']}>
+                  <KitchenStockView />
+                </ProtectedRoute>
+              } />
+
+              <Route path="/kitchen/waste" element={
+                <ProtectedRoute allowedRoles={['kitchen', 'manager', 'owner']}>
+                  <KitchenLogWaste />
+                </ProtectedRoute>
+              } />
+
+              <Route path="/kitchen/restock" element={
+                <ProtectedRoute allowedRoles={['kitchen', 'manager', 'owner']}>
+                  <KitchenRestockRequests />
                 </ProtectedRoute>
               } />
 
