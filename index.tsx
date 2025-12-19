@@ -1,8 +1,7 @@
-import React from 'react';
+                                                                                import React from 'react';
 import ReactDOM from 'react-dom/client';
 import './index.css';
-// Temporarily disable full app to debug black screen
-// import App from './App';
+import App from './App';
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {
@@ -11,8 +10,10 @@ if (!rootElement) {
 
 const root = ReactDOM.createRoot(rootElement);
 
+console.log('index.tsx: mounting <App />');
+
 root.render(
-  <div style={{ color: 'white', padding: 40, fontSize: 24 }}>
-    TEST RENDER FROM INDEX.TSX
-  </div>
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>
 );
