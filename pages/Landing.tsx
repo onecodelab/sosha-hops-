@@ -52,7 +52,7 @@ const Landing: React.FC = () => {
           animation: fadeInUp 1s cubic-bezier(0.22, 1, 0.36, 1) forwards;
         }
         @keyframes fadeInUp {
-          from { opacity: 0; transform: translateY(30px); }
+          from { opacity: 0; transform: translateY(20px); }
           to { opacity: 1; transform: translateY(0); }
         }
       `}</style>
@@ -66,29 +66,31 @@ const Landing: React.FC = () => {
            </div>
         </div>
 
-        {/* Main Layout Container - pt-0 to start immediately at the top edge */}
-        <div className="relative z-0 flex h-screen flex-col items-center pt-0 p-4 md:p-8 animate-in fade-in duration-1000 overflow-hidden">
+        {/* Main Layout Container - Tightened spacing */}
+        <div className="relative z-0 flex h-screen flex-col items-center justify-start pt-4 md:pt-6 p-4 md:p-8 animate-in fade-in duration-1000 overflow-hidden">
            
-           {/* Header Title - Tiny margin to sit very close to top edge */}
-           <div className="mt-1 md:mt-2 text-center space-y-2 z-10 flex-none fade-in-up" style={{ animationDelay: '100ms' }}>
-              <SoshaLogo3D animate size="sm" className="mb-1" />
-              <div className="space-y-0.5">
-                <h1 className="text-4xl md:text-5xl font-bold text-foreground tracking-tighter">
+           {/* Header Title - Pulled to top */}
+           <div className="text-center space-y-1 z-10 flex-none fade-in-up" style={{ animationDelay: '100ms' }}>
+              <div className="scale-75 md:scale-90 origin-center mb-1">
+                <SoshaLogo3D animate size="sm" />
+              </div>
+              <div className="space-y-0">
+                <h1 className="text-4xl md:text-5xl font-bold text-foreground tracking-tighter leading-none">
                   {t('landing.title')}
                 </h1>
-                <p className="text-muted font-medium tracking-widest text-[10px] uppercase opacity-60">
+                <p className="text-muted font-bold tracking-[0.4em] text-[9px] uppercase opacity-40 mt-2">
                   {t('landing.subtitle')}
                 </p>
               </div>
            </div>
 
-           {/* Stack Selector - Reduced pt to close the gap between text and cards */}
-           <div className="relative z-0 flex-1 flex items-start justify-center w-full pt-1 md:pt-2 fade-in-up" style={{ animationDelay: '300ms' }}>
+           {/* Stack Selector - No flex-1, margin-top controlled */}
+           <div className="relative z-0 flex items-start justify-center w-full mt-2 md:mt-4 fade-in-up" style={{ animationDelay: '300ms' }}>
               <RoleStackSelector roles={roles} />
            </div>
            
-           {/* Footer */}
-           <div className="mt-auto mb-6 md:mb-8 text-muted text-[10px] font-mono uppercase tracking-[0.3em] opacity-40 fade-in-up z-10 flex-none" style={{ animationDelay: '500ms' }}>
+           {/* Fixed Footer */}
+           <div className="fixed bottom-8 left-0 right-0 text-center text-muted text-[9px] font-mono uppercase tracking-[0.4em] opacity-30 pointer-events-none">
              {t('landing.poweredBy')}
            </div>
         </div>
