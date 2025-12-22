@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Dialog, Button, Input, Badge, cn, Card } from './ui';
 import { supabase } from '../supabase';
@@ -37,7 +38,7 @@ export const ReceiptVerificationModal: React.FC<ReceiptVerificationModalProps> =
           *,
           order_items (
             quantity,
-            price_at_time,
+            price,
             menu_item:menu (name, category)
           )
         `)
@@ -166,7 +167,7 @@ export const ReceiptVerificationModal: React.FC<ReceiptVerificationModalProps> =
                     {orderData.order_items?.map((item: any, i: number) => (
                        <div key={i} className="flex justify-between text-sm py-1 border-b border-gray-800/50 last:border-0">
                           <span className="text-gray-300"><span className="text-primary font-bold text-xs mr-2">{item.quantity}x</span> {item.menu_item?.name || 'Unknown Item'}</span>
-                          <span className="text-gray-500 font-mono">{(item.price_at_time * item.quantity).toLocaleString()}</span>
+                          <span className="text-gray-500 font-mono">{(item.price * item.quantity).toLocaleString()}</span>
                        </div>
                     ))}
                  </div>

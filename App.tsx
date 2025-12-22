@@ -14,10 +14,12 @@ import Login from './pages/Login';
 import SignUp from './pages/SignUp';
 import AdminDashboard from './pages/AdminDashboard';
 import MenuAnalytics from './pages/MenuAnalytics';
+import MenuManagement from './pages/MenuManagement';
 import Inventory from './pages/Inventory';
 import StaffPerformance from './pages/StaffPerformance';
 import AdminStaffPerformance from './pages/AdminStaffPerformance';
 import AdminTableMap from './pages/AdminTableMap';
+import TableStatus from './pages/TableStatus';
 import OrdersTables from './pages/OrdersTables';
 import ManagerDashboard from './pages/ManagerDashboard';
 import WaiterDashboard from './pages/WaiterDashboard';
@@ -56,6 +58,18 @@ const App: React.FC = () => {
               <Route path="/admin" element={
                 <ProtectedRoute allowedRoles={['owner', 'admin' as any, 'manager']}>
                   <AdminDashboard />
+                </ProtectedRoute>
+              } />
+
+              <Route path="/admin/menu" element={
+                <ProtectedRoute allowedRoles={['owner', 'admin' as any, 'manager']}>
+                  <MenuManagement />
+                </ProtectedRoute>
+              } />
+
+              <Route path="/tables" element={
+                <ProtectedRoute allowedRoles={['owner', 'admin' as any, 'manager', 'waiter']}>
+                  <TableStatus />
                 </ProtectedRoute>
               } />
 

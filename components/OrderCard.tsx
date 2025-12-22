@@ -1,7 +1,8 @@
+
 import React, { useEffect, useState } from 'react';
 import { Order } from '../types';
 import { cn, Badge, Button } from './ui';
-import { Clock, Check, Bot, AlertTriangle, MessageSquare } from 'lucide-react';
+import { Clock, Check, Bot, AlertTriangle, MessageSquare, PlusCircle } from 'lucide-react';
 
 interface OrderCardProps {
   order: Order;
@@ -121,6 +122,12 @@ export const OrderCard: React.FC<OrderCardProps> = ({
              </Button>
           )}
 
+          {isWaiter && ['pending', 'accepted', 'preparing', 'ready', 'served'].includes(order.status) && (
+             <Button size="sm" onClick={() => onAction?.('append', order.id)} className="bg-primary text-black font-bold flex-1">
+                <PlusCircle className="w-3 h-3 mr-2" /> Add Items
+             </Button>
+          )}
+
           {/* Kitchen Actions */}
           {isKitchen && order.status === 'pending' && (
              <Button size="sm" onClick={() => onAction?.('accepted', order.id)} className="w-full bg-primary text-black hover:bg-primary/90">
@@ -133,9 +140,9 @@ export const OrderCard: React.FC<OrderCardProps> = ({
              </Button>
           )}
 
-          {/* Status Text for Waiters */}
+          {/* Status Text for Waiters (Only if no main action is available or as secondary) */}
           {isWaiter && ['pending', 'accepted', 'preparing'].includes(order.status) && (
-             <p className="text-xs text-gray-500 italic py-2 text-center w-full">
+             <p className="text-[10px] text-gray-500 italic py-1 text-center w-full block">
                 {order.status === 'preparing' ? 'Kitchen is preparing...' : 'Waiting for kitchen...'}
              </p>
           )}

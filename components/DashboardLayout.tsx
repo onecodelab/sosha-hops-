@@ -8,7 +8,7 @@ import {
   LayoutDashboard, ShoppingBag, 
   Users, 
   Table2, ClipboardList, Utensils,
-  ChevronDown, Bell, ChevronLeft, ChevronRight, Trash2, Truck, PlusCircle, PackageCheck, FileText
+  ChevronDown, Bell, ChevronLeft, ChevronRight, Trash2, Truck, PlusCircle, PackageCheck, FileText, Monitor, BookOpen
 } from 'lucide-react';
 import { cn } from './ui';
 import ThemeToggle from './ThemeToggle';
@@ -98,6 +98,8 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, titl
       case 'admin' as any: 
         return [
           { icon: LayoutDashboard, label: t('nav.dashboard'), path: '/admin' },
+          { icon: Monitor, label: 'Live Tables', path: '/tables' },
+          { icon: BookOpen, label: t('nav.menuManagement'), path: '/admin/menu' },
           { icon: Utensils, label: t('nav.menuAnalytics'), path: '/menu-analytics' },
           { icon: ShoppingBag, label: t('nav.inventory'), path: '/inventory' },
           { icon: Truck, label: t('nav.pendingRequests'), path: '/manager/pending-requests' },
@@ -108,6 +110,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, titl
       case 'manager':
         return [
           { icon: LayoutDashboard, label: t('nav.opsDashboard'), path: '/manager' },
+          { icon: Monitor, label: 'Live Tables', path: '/tables' },
           { icon: Users, label: t('nav.staff'), path: '/staff-performance' },
           { icon: ClipboardList, label: t('nav.orders'), path: '/orders-tables' },
           { icon: PlusCircle, label: t('nav.createPO'), path: '/manager/create-po' },
@@ -119,6 +122,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, titl
       case 'waiter':
         return [
           { icon: LayoutDashboard, label: t('nav.myStation'), path: '/waiter' },
+          { icon: Monitor, label: 'Live Tables', path: '/tables' },
         ];
       case 'kitchen':
         return [

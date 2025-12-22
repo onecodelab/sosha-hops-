@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button, Card, CardContent, CardHeader, CardTitle } from './ui';
 import { Database, Copy, Check, RefreshCw, Terminal, Code } from 'lucide-react';
@@ -46,15 +45,20 @@ create table if not exists public.menu (
   stock_quantity integer default 0
 );
 
--- 5. Create Orders Table
+-- 5. Create Orders Table with Rich Tracking
 create table if not exists public.orders (
   id uuid default uuid_generate_v4() primary key,
   order_number text,
   table_number text not null,
   status text not null default 'pending',
+  source text check (source in ('dine_in', 'takeaway', 'delivery', 'chatbot')) default 'dine_in',
+  payment_status text check (payment_status in ('unpaid', 'paid', 'split', 'failed')) default 'unpaid',
+  -- Updated payment_method check constraint to include 'abyssinia'
+  payment_method text check (payment_method in ('cash', 'cbe', 'abyssinia', 'telebirr', 'pos', 'chapa', 'none')),
+  order_handler_name text,
+  payment_handler_name text,
+  created_by_role text check (created_by_role in ('waiter', 'manager', 'system')),
   total_amount numeric not null default 0,
-  payment_method text,
-  paid_at timestamp with time zone,
   waiter_id uuid references public.users(id),
   restaurant_id uuid references public.restaurants(id),
   created_at timestamp with time zone default timezone('utc'::text, now()) not null,
@@ -62,6 +66,7 @@ create table if not exists public.orders (
   accepted_at timestamp with time zone,
   ready_at timestamp with time zone,
   served_at timestamp with time zone,
+  paid_at timestamp with time zone,
   customer_notes text
 );
 
@@ -71,7 +76,7 @@ create table if not exists public.order_items (
   order_id uuid references public.orders(id) on delete cascade not null,
   menu_item_id uuid references public.menu(id),
   quantity integer not null default 1,
-  price_at_time numeric not null,
+  price numeric not null,
   special_instructions text,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
@@ -165,7 +170,12 @@ create trigger on_auth_user_created after insert on auth.users for each row exec
               </Button>
            </CardHeader>
            <CardContent className="p-0 flex-1 overflow-hidden relative group">
-              <textarea readOnly value={sqlCode} className="w-full h-full bg-[#0A0A0A] text-gray-300 font-mono text-xs p-4 resize-none focus:outline-none custom-scrollbar" spellCheck={false} />
+              <textarea 
+                readOnly 
+                value={sqlCode} 
+                className="w-full h-full bg-[#0A0A0A] text-gray-300 font-mono text-xs p-4 resize-none focus:outline-none custom-scrollbar" 
+                spellCheck={false} 
+              />
            </CardContent>
         </Card>
       </div>

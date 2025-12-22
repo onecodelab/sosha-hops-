@@ -31,18 +31,27 @@ export type OrderStatus =
   | 'completed' 
   | 'cancelled';
 
-export type PaymentMethod = 'cash' | 'chapa' | 'cbe' | 'abyssinia';
+export type PaymentStatus = 'unpaid' | 'paid' | 'split' | 'failed';
+export type OrderSource = 'dine_in' | 'takeaway' | 'delivery' | 'chatbot';
+// Added 'abyssinia' to PaymentMethod type to align with UI and logic
+export type PaymentMethod = 'cash' | 'cbe' | 'abyssinia' | 'telebirr' | 'pos' | 'chapa' | 'none';
 
 export interface Order {
   id: string;
   order_number: string;
   table_number: string;
+  table_id?: string;
   waiter_id: string;
   status: OrderStatus;
-  order_type: 'dine-in' | 'takeout';
+  order_type: 'dine-in' | 'takeout'; // Legacy field
+  source: OrderSource;
+  payment_status: PaymentStatus;
+  payment_method?: PaymentMethod;
+  order_handler_name?: string;
+  payment_handler_name?: string;
+  created_by_role?: 'waiter' | 'manager' | 'system';
   total_amount: number;
   customer_notes?: string;
-  payment_method?: PaymentMethod;
   
   // Timestamps
   created_at: string;
@@ -75,6 +84,19 @@ export interface OrderItem {
 export interface CartItem extends MenuItem {
   quantity: number;
   instructions?: string;
+}
+
+export type TableStatusType = 'available' | 'occupied' | 'needs_cleaning' | 'reserved';
+
+export interface Table {
+  id: string;
+  table_number: number;
+  status: TableStatusType;
+  current_order_id?: string;
+  last_updated: string;
+  created_at: string;
+  // Optional Join
+  orders?: Order;
 }
 
 // Kitchen Inventory Types

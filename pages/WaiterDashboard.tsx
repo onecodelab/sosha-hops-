@@ -1,11 +1,12 @@
-import React, { useEffect, useState } from 'react';
+
+import React, { useEffect, useState, useCallback } from 'react';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { useAuth } from '../AuthContext';
 import { supabase } from '../supabase';
 import { Order } from '../types';
 import { Button, Badge, showToast, cn } from '../components/ui';
 import { SoshaCard, SoshaCardTitle } from '../components/SoshaCard';
-import { Plus, User, Bell, Utensils, TrendingUp, ScanLine, Clock, CreditCard } from 'lucide-react';
+import { Plus, User, Bell, Utensils, TrendingUp, ScanLine, Clock, CreditCard, RefreshCw } from 'lucide-react';
 import { PaymentVerificationModal, FloatingPaymentButton } from '../components/PaymentVerificationModal';
 import { ReceiptVerificationModal } from '../components/ReceiptVerificationModal';
 import { CreateOrderModal } from '../components/CreateOrderModal';
@@ -18,38 +19,93 @@ const WaiterDashboard: React.FC = () => {
   const [isPaymentOpen, setIsPaymentOpen] = useState(false);
   const [isVerifyOpen, setIsVerifyOpen] = useState(false);
   const [selectedTable, setSelectedTable] = useState('');
+  const [appendOrderId, setAppendOrderId] = useState<string | null>(null);
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [isLoading, setIsLoading] = useState(false);
+
+  const fetchOrders = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const { data, error } = await supabase
+        .from('orders')
+        .select(`
+          *, 
+          order_items (
+            quantity, 
+            price, 
+            special_instructions, 
+            menu_item:menu (name, category)
+          )
+        `)
+        .gte('created_at', `${today}T00:00:00`)
+        .order('created_at', { ascending: false });
+        
+      if (error) throw error;
+      if (data) setOrders(data as Order[]);
+    } catch (err) {
+      console.error("Fetch orders error:", err);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
+    // Initial fetch
     fetchOrders();
+    
+    // Timer for elapsed minutes
     const timer = setInterval(() => setCurrentTime(new Date()), 60000);
-    const channel = supabase.channel('waiter_orders').on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, (payload) => {
-           fetchOrders();
-           if (payload.eventType === 'UPDATE' && payload.new.status === 'ready' && payload.new.waiter_id === user?.id) {
-             showToast(`🔔 Order ${payload.new.order_number || ''} is READY!`, 'success');
-           }
-        }).subscribe();
-    return () => { supabase.removeChannel(channel); clearInterval(timer); }
-  }, [user]);
+    
+    // Real-time listener for orders and tables
+    const channel = supabase.channel('waiter_station_updates')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, (payload) => {
+        // Refresh orders on any change (insert, update, delete)
+        fetchOrders();
+        
+        // Notify waiter if their order is ready
+        if (payload.eventType === 'UPDATE' && payload.new.status === 'ready' && payload.new.waiter_id === user?.id) {
+          showToast(`🔔 Order for Table ${payload.new.table_number || ''} is READY!`, 'success');
+        }
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'tables' }, () => {
+        // Refresh orders because table status changes are tied to floor data
+        fetchOrders(); 
+      })
+      .subscribe();
 
-  const fetchOrders = async () => {
-    const today = new Date().toISOString().split('T')[0];
-    const { data } = await supabase.from('orders').select(`*, order_items (quantity, price, special_instructions, menu_item:menu (name, category))`).gte('created_at', `${today}T00:00:00`).order('created_at', { ascending: false });
-    if (data) setOrders(data as Order[]);
-  };
+    return () => { 
+      supabase.removeChannel(channel); 
+      clearInterval(timer); 
+    };
+  }, [user?.id, fetchOrders]);
 
   const handleOrderAction = async (action: string, orderId: string) => {
-    if (action === 'served') await supabase.from('orders').update({ status: 'served', served_at: new Date().toISOString() }).eq('id', orderId);
-    else if (action === 'pay') setIsPaymentOpen(true);
+    if (action === 'served') {
+      const { error } = await supabase.from('orders').update({ status: 'served', served_at: new Date().toISOString() }).eq('id', orderId);
+      if (error) showToast("Failed to mark as served", "error");
+    } else if (action === 'pay') {
+      setIsPaymentOpen(true);
+    } else if (action === 'append') {
+      setAppendOrderId(orderId);
+      setIsCreateOpen(true);
+    }
     fetchOrders();
+  };
+
+  const handleCloseModal = () => {
+    setIsCreateOpen(false);
+    setAppendOrderId(null);
+    setSelectedTable('');
   };
 
   const myOrders = orders.filter(o => o.waiter_id === user?.id);
-  const openTablesCount = new Set(myOrders.filter(o => ['pending', 'accepted', 'preparing', 'ready'].includes(o.status)).map(o => o.table_number)).size;
-  const activeOrdersCount = myOrders.filter(o => ['pending', 'accepted', 'preparing', 'ready'].includes(o.status)).length;
+  const myActiveOrdersList = myOrders.filter(o => ['pending', 'accepted', 'preparing', 'ready', 'served'].includes(o.status));
+  
+  const openTablesCount = new Set(myActiveOrdersList.map(o => o.table_number)).size;
+  const activeOrdersCount = myActiveOrdersList.length;
   const todaySales = myOrders.filter(o => ['served', 'completed', 'paid'].includes(o.status)).reduce((sum, o) => sum + (o.total_amount || 0), 0);
   
-  const myActiveOrdersList = myOrders.filter(o => ['pending', 'accepted', 'preparing', 'ready'].includes(o.status));
   const unpaidServedOrders = myOrders.filter(o => o.status === 'served');
 
   const myTables = Array.from(new Set(myActiveOrdersList.map(o => o.table_number))).map(tNo => {
@@ -57,18 +113,21 @@ const WaiterDashboard: React.FC = () => {
     const oldestOrder = [...tableOrders].sort((a,b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())[0];
     const totalBill = tableOrders.reduce((sum, o) => sum + (o.total_amount || 0), 0);
     const lastStatus = tableOrders[tableOrders.length - 1].status;
-    const elapsed = Math.floor((currentTime.getTime() - new Date(oldestOrder.created_at).getTime()) / 60000);
+    const elapsed = oldestOrder ? Math.floor((currentTime.getTime() - new Date(oldestOrder.created_at).getTime()) / 60000) : 0;
     return { tableNo: tNo, elapsed, orderCount: tableOrders.length, totalBill, status: lastStatus };
   }).sort((a,b) => a.elapsed - b.elapsed); 
 
   return (
-    <DashboardLayout title="Waiter Station" subtitle={`Shift Active • ${profile?.name || 'Staff'}`}
+    <DashboardLayout title="Waiter Station" subtitle={`Shift Active • ${profile?.full_name || 'Staff'}`}
       actions={
         <div className="flex gap-3">
+            <Button onClick={fetchOrders} variant="outline" size="icon" className="border-white/10 bg-white/5">
+               <RefreshCw className={cn("h-4 w-4", isLoading && "animate-spin")} />
+            </Button>
             <Button onClick={() => setIsVerifyOpen(true)} variant="secondary" className="bg-white/10 text-white hover:bg-white/20 border border-white/10 backdrop-blur-md">
                <ScanLine className="mr-2 h-4 w-4" /> Verify
             </Button>
-            <Button onClick={() => { setSelectedTable(''); setIsCreateOpen(true); }} className="bg-primary text-black font-bold hover:bg-primary/90 shadow-[0_0_20px_rgba(255,184,0,0.3)]">
+            <Button onClick={() => { setAppendOrderId(null); setSelectedTable(''); setIsCreateOpen(true); }} className="bg-primary text-black font-bold hover:bg-primary/90 shadow-[0_0_20px_rgba(255,184,0,0.3)]">
                <Plus className="mr-2 h-4 w-4" /> New Order
             </Button>
         </div>
@@ -120,10 +179,10 @@ const WaiterDashboard: React.FC = () => {
              </div>
              
              <div className="flex-1 overflow-y-auto space-y-4 pr-1 custom-scrollbar pb-10">
-                {myTables.length === 0 && (
+                {myTables.length === 0 && !isLoading && (
                    <div className="h-60 flex flex-col items-center justify-center text-gray-500 bg-white/5 rounded-[2rem] border border-white/5 border-dashed">
                       <p>No active tables</p>
-                      <Button variant="ghost" onClick={() => setIsCreateOpen(true)} className="mt-2 text-primary">Start New Table</Button>
+                      <Button variant="ghost" onClick={() => { setAppendOrderId(null); setIsCreateOpen(true); }} className="mt-2 text-primary">Start New Table</Button>
                    </div>
                 )}
                 {myTables.map((table) => (
@@ -152,7 +211,7 @@ const WaiterDashboard: React.FC = () => {
                          </div>
                          
                          <div className="grid grid-cols-2 gap-3">
-                            <Button size="sm" variant="secondary" className="bg-white/5 hover:bg-white/10 border-white/10" onClick={() => { setSelectedTable(table.tableNo); setIsCreateOpen(true); }}>
+                            <Button size="sm" variant="secondary" className="bg-white/5 hover:bg-white/10 border-white/10" onClick={() => { setSelectedTable(table.tableNo); setAppendOrderId(null); setIsCreateOpen(true); }}>
                                <Plus className="w-3 h-3 mr-2" /> Add Order
                             </Button>
                             <Button size="sm" className="bg-green-600/20 text-green-500 hover:bg-green-600/30 border border-green-600/20" onClick={() => setIsPaymentOpen(true)}>
@@ -177,7 +236,7 @@ const WaiterDashboard: React.FC = () => {
              </div>
 
              <div className="flex-1 overflow-y-auto space-y-4 pr-1 custom-scrollbar pb-10">
-                {myActiveOrdersList.length === 0 && (
+                {myActiveOrdersList.length === 0 && !isLoading && (
                    <div className="h-40 flex items-center justify-center text-gray-500 bg-white/5 rounded-[2rem] border border-white/5 border-dashed">
                       No active orders
                    </div>
@@ -193,7 +252,13 @@ const WaiterDashboard: React.FC = () => {
       <ReceiptVerificationModal isOpen={isVerifyOpen} onClose={() => setIsVerifyOpen(false)} />
       <PaymentVerificationModal isOpen={isPaymentOpen} onClose={() => setIsPaymentOpen(false)} orders={unpaidServedOrders} onPaymentSuccess={fetchOrders} />
       <FloatingPaymentButton count={unpaidServedOrders.length} onClick={() => setIsPaymentOpen(true)} />
-      <CreateOrderModal isOpen={isCreateOpen} onClose={() => setIsCreateOpen(false)} onOrderCreated={fetchOrders} initialTableNo={selectedTable} />
+      <CreateOrderModal 
+        isOpen={isCreateOpen} 
+        onClose={handleCloseModal} 
+        onOrderCreated={fetchOrders} 
+        initialTableNo={selectedTable} 
+        appendOrderId={appendOrderId}
+      />
     </DashboardLayout>
   );
 };

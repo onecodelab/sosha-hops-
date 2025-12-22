@@ -46,7 +46,7 @@ const MenuAnalytics: React.FC = () => {
         .select(`
           menu_item_id,
           quantity,
-          price_at_time,
+          price,
           orders!inner (
             status,
             created_at
@@ -63,7 +63,7 @@ const MenuAnalytics: React.FC = () => {
 
       orderItems?.forEach((item: any) => {
         const id = item.menu_item_id;
-        const subtotal = (item.price_at_time || 0) * item.quantity;
+        const subtotal = (item.price || 0) * item.quantity;
         const current = itemMap.get(id) || { sold: 0, rev: 0 };
         itemMap.set(id, {
           sold: current.sold + item.quantity,
