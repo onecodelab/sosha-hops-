@@ -19,7 +19,8 @@ const KitchenStockView: React.FC = () => {
   const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
 
   // Fetch ingredients
-  const { data: ingredients, isLoading, refetch } = useQuery({
+  /** Added explicit type to useQuery to fix unknown issues **/
+  const { data: ingredients, isLoading, refetch } = useQuery<Ingredient[]>({
     queryKey: ['kitchen-stock'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -40,8 +41,9 @@ const KitchenStockView: React.FC = () => {
   });
 
   // Extract unique categories
-  const categories = useMemo(() => {
-    if (!ingredients) return [];
+  /** Added explicit type to useMemo to fix unknown issues **/
+  const categories = useMemo<string[]>(() => {
+    if (!ingredients) return ['All'];
     const cats = new Set(ingredients.map(i => i.category).filter(Boolean));
     return ['All', ...Array.from(cats).sort()];
   }, [ingredients]);
@@ -133,6 +135,7 @@ const KitchenStockView: React.FC = () => {
                  onChange={(e) => setCategoryFilter(e.target.value)}
                >
                  {categories.map(cat => (
+                   /** cat is now correctly typed as string **/
                    <option key={cat} value={cat}>{cat === 'All' ? t('stock.allCategories') : cat}</option>
                  ))}
                </select>

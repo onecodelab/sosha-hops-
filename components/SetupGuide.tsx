@@ -1,12 +1,11 @@
 
 import React, { useState } from 'react';
 import { Button, Card, CardContent, CardHeader, CardTitle } from './ui';
-import { Database, Copy, Check, RefreshCw, Terminal, Code } from 'lucide-react';
+import { Database, Copy, Check, RefreshCw, Terminal } from 'lucide-react';
 import { SoshaLogo } from './SoshaLogo';
 
 export const SetupGuide: React.FC = () => {
   const [copied, setCopied] = useState(false);
-  const [activeTab, setActiveTab] = useState<'sql' | 'function'>('sql');
 
   const sqlCode = `-- 1. Enable UUID extension
 create extension if not exists "uuid-ossp";
@@ -33,99 +32,70 @@ create table if not exists public.users (
   created_by uuid
 );
 
--- 4. Create Menu Table
-create table if not exists public.menu (
-  id uuid default uuid_generate_v4() primary key,
-  name text not null,
-  category text not null,
-  price numeric not null,
-  image_url text,
-  is_available boolean default true,
-  restaurant_id uuid references public.restaurants(id),
-  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
-  stock_quantity integer default 0
-);
-
--- 5. Create Orders Table with Rich Tracking
-create table if not exists public.orders (
-  id uuid default uuid_generate_v4() primary key,
-  order_number text,
-  table_number text not null,
-  status text not null check (status in ('pending', 'accepted', 'preparing', 'ready', 'served', 'paid', 'closed', 'cancelled')) default 'pending',
-  source text check (source in ('dine_in', 'takeaway', 'delivery', 'chatbot')) default 'dine_in',
-  payment_status text check (payment_status in ('unpaid', 'paid', 'split', 'failed')) default 'unpaid',
-  payment_method text check (payment_method in ('cash', 'cbe', 'abyssinia', 'telebirr', 'pos', 'chapa', 'none')),
-  order_handler_name text,
-  payment_handler_name text,
-  created_by_role text check (created_by_role in ('waiter', 'manager', 'system')),
-  total_amount numeric not null default 0,
-  waiter_id uuid references public.users(id),
-  restaurant_id uuid references public.restaurants(id),
-  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
-  order_type text default 'dine-in',
-  accepted_at timestamp with time zone,
-  ready_at timestamp with time zone,
-  served_at timestamp with time zone,
-  paid_at timestamp with time zone,
-  customer_notes text
-);
-
--- 6. Create Order Items Table
-create table if not exists public.order_items (
-  id uuid default uuid_generate_v4() primary key,
-  order_id uuid references public.orders(id) on delete cascade not null,
-  menu_item_id uuid references public.menu(id),
-  quantity integer not null default 1,
-  price numeric not null,
-  special_instructions text,
-  created_at timestamp with time zone default timezone('utc'::text, now()) not null
-);
-
--- 7. Create Staff Shifts Table
+-- 4. Create Staff Shifts Table (Ensuring staff_id exists)
 create table if not exists public.staff_shifts (
   id uuid default uuid_generate_v4() primary key,
   staff_id uuid references public.users(id) on delete cascade,
-  clock_in timestamp with time zone default now(),
-  clock_out timestamp with time zone,
+  staff_name text,
+  role text,
+  clock_in_time timestamp with time zone default now(),
+  clock_out_time timestamp with time zone,
+  shift_duration_minutes integer,
   status text check (status in ('active', 'completed')) default 'active',
   created_at timestamp with time zone default now()
 );
 
--- 8. Enable Row Level Security (RLS)
-alter table public.users enable row level security;
-alter table public.menu enable row level security;
-alter table public.orders enable row level security;
-alter table public.order_items enable row level security;
-alter table public.restaurants enable row level security;
-alter table public.staff_shifts enable row level security;
-
--- 9. Create Permissive Policies
-create policy "Public access" on public.users for all using (true) with check (true);
-create policy "Public access" on public.menu for all using (true) with check (true);
-create policy "Public access" on public.orders for all using (true) with check (true);
-create policy "Public access" on public.order_items for all using (true) with check (true);
-create policy "Public access" on public.restaurants for all using (true) with check (true);
-create policy "Public access" on public.staff_shifts for all using (true) with check (true);
-
--- 10. Smart Trigger for Linking Invites
-create or replace function public.handle_new_user()
-returns trigger as $$
-declare
-  existing_user_id uuid;
-begin
-  select id into existing_user_id from public.users where email = new.email limit 1;
-  if existing_user_id is not null then
-    update public.users set id = new.id, invitation_pending = false, created_at = now() where id = existing_user_id;
-  else
-    insert into public.users (id, email, full_name, role, created_at)
-    values (new.id, new.email, coalesce(new.raw_user_meta_data->>'full_name', 'New User'), coalesce(new.raw_user_meta_data->>'role', 'waiter'), now());
+-- REPAIR SCRIPT (Run this if you get "column not found" errors)
+do $$ 
+begin 
+  if not exists (select 1 from information_schema.columns where table_name='staff_shifts' and column_name='staff_id') then
+    alter table public.staff_shifts add column staff_id uuid references public.users(id);
   end if;
-  return new;
-end;
-$$ language plpgsql security definer;
+end $$;
 
-drop trigger if exists on_auth_user_created on auth.users;
-create trigger on_auth_user_created after insert on auth.users for each row execute function public.handle_new_user();
+-- 5. Create Staff Actions Table
+create table if not exists public.staff_actions (
+  id uuid default uuid_generate_v4() primary key,
+  staff_id uuid references public.users(id) on delete cascade,
+  staff_name text,
+  role text,
+  action_type text not null,
+  entity_type text,
+  entity_id uuid,
+  details jsonb,
+  shift_id uuid references public.staff_shifts(id),
+  created_at timestamp with time zone default now()
+);
+
+-- 6. Create Daily Performance Table
+create table if not exists public.staff_performance_daily (
+  id uuid default uuid_generate_v4() primary key,
+  staff_id uuid references public.users(id) on delete cascade,
+  staff_name text,
+  role text,
+  date date default current_date,
+  revenue_attributed numeric default 0,
+  cash_handled numeric default 0,
+  orders_taken integer default 0,
+  orders_served integer default 0,
+  total_shift_minutes integer default 0,
+  idle_time_minutes integer default 0,
+  created_at timestamp with time zone default now(),
+  unique(staff_id, date)
+);
+
+-- 7. Enable RLS
+alter table public.staff_shifts enable row level security;
+alter table public.staff_actions enable row level security;
+alter table public.staff_performance_daily enable row level security;
+
+-- 8. Create Permissive Policies
+create policy "Public access shifts" on public.staff_shifts for all using (true) with check (true);
+create policy "Public access actions" on public.staff_actions for all using (true) with check (true);
+create policy "Public access performance" on public.staff_performance_daily for all using (true) with check (true);
+
+-- 9. IMPORTANT: Reload PostgREST schema cache
+NOTIFY pgrst, 'reload schema';
 `;
 
   const handleCopy = (text: string) => {
@@ -141,29 +111,21 @@ create trigger on_auth_user_created after insert on auth.users for each row exec
            <div className="w-20 h-20 mb-6">
               <SoshaLogo className="w-full h-full" />
            </div>
-           <h1 className="text-4xl font-bold text-white tracking-tight">System Setup <span className="text-primary">Required</span></h1>
+           <h1 className="text-4xl font-bold text-white tracking-tight">Fix Schema <span className="text-primary">Cache</span></h1>
            <div className="space-y-4 text-gray-400">
-             <p className="text-lg">Staff performance and operational tracking require updated schema. Please run the updated SQL script.</p>
-             <div className="flex flex-col gap-4 pl-4 border-l-2 border-primary/30">
-                <div className="flex gap-3">
-                   <div className="w-6 h-6 rounded-full bg-gray-800 flex items-center justify-center text-xs font-bold shrink-0">1</div>
-                   <p>Run the SQL migration script in your Supabase SQL Editor.</p>
-                </div>
-                <div className="flex gap-3">
-                   <div className="w-6 h-6 rounded-full bg-gray-800 flex items-center justify-center text-xs font-bold shrink-0">2</div>
-                   <p>Refresh the application to enable all features.</p>
-                </div>
+             <p className="text-lg">Your database is out of sync. Please run the repair script to ensure the <code className="text-primary">staff_id</code> column is recognized.</p>
+             <div className="flex gap-3 items-center bg-white/5 p-3 rounded-xl border border-white/10">
+                <Terminal className="w-5 h-5 text-primary" />
+                <span className="text-xs font-mono">Includes NOTIFY pgrst reload command</span>
              </div>
            </div>
            <Button onClick={() => window.location.reload()} className="w-full h-12 text-base bg-white text-black hover:bg-gray-200 mt-4">
              <RefreshCw className="w-4 h-4 mr-2" /> Refresh App
            </Button>
         </div>
-        <Card className="bg-[#111] border-gray-800 shadow-2xl h-[600px] flex flex-col overflow-hidden">
+        <Card className="bg-[#111] border-gray-800 shadow-2xl h-[500px] flex flex-col overflow-hidden">
            <CardHeader className="bg-black/40 border-b border-gray-800 py-3 flex flex-row items-center justify-between">
-              <Button size="sm" variant={activeTab === 'sql' ? 'primary' : 'ghost'} onClick={() => setActiveTab('sql')} className="text-xs h-8">
-                 <Database className="w-3 h-3 mr-2" /> SQL Editor
-              </Button>
+              <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">SQL Repair Script</span>
               <Button size="sm" variant={copied ? 'secondary' : 'outline'} onClick={() => handleCopy(sqlCode)}>
                  {copied ? <Check className="w-4 h-4 mr-2" /> : <Copy className="w-4 h-4 mr-2" />}
                  {copied ? 'Copied' : 'Copy'}
@@ -173,7 +135,7 @@ create trigger on_auth_user_created after insert on auth.users for each row exec
               <textarea 
                 readOnly 
                 value={sqlCode} 
-                className="w-full h-full bg-[#0A0A0A] text-gray-300 font-mono text-xs p-4 resize-none focus:outline-none custom-scrollbar" 
+                className="w-full h-full bg-[#0A0A0A] text-gray-300 font-mono text-[10px] p-4 resize-none focus:outline-none custom-scrollbar" 
                 spellCheck={false} 
               />
            </CardContent>

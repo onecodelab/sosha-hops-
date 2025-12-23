@@ -21,7 +21,7 @@ interface StaffMember {
 
 interface ActiveShift {
   id: string;
-  clock_in: string;
+  clock_in_time: string;
   staff: {
     full_name: string;
     role: string;
@@ -51,7 +51,6 @@ const AdminStaffPerformance: React.FC = () => {
   const fetchData = async () => {
     setIsRefreshing(true);
     try {
-      // 1. Fetch Staff Roster from public.users (NOT auth.users)
       const { data: userData, error: userError } = await supabase
         .from('users')
         .select('*')
@@ -60,10 +59,9 @@ const AdminStaffPerformance: React.FC = () => {
       if (userError) throw userError;
       setStaff(userData as StaffMember[]);
 
-      // 2. Fetch Active Shifts and manually map staff data
       const { data: shiftData, error: shiftError } = await supabase
         .from('staff_shifts')
-        .select(`id, clock_in, staff_id`)
+        .select(`id, clock_in_time, staff_id`)
         .eq('status', 'active');
 
       if (!shiftError && shiftData) {
@@ -71,17 +69,16 @@ const AdminStaffPerformance: React.FC = () => {
            const staffMember = userData?.find(u => u.id === s.staff_id);
            return {
               id: s.id,
-              clock_in: s.clock_in,
+              clock_in_time: s.clock_in_time,
               staff: {
                  full_name: staffMember?.full_name || 'Staff Member',
                  role: staffMember?.role || 'User'
               }
            };
         });
-        setActiveShifts(mappedShifts);
+        setActiveShifts(mappedShifts as ActiveShift[]);
       }
 
-      // 3. Fetch Top Waiters (Last 30 Days)
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
@@ -112,11 +109,7 @@ const AdminStaffPerformance: React.FC = () => {
 
     } catch (err: any) {
       console.error("Staff Performance Fetch Error:", err);
-      if (err.message?.includes('does not exist')) {
-          showToast("Database tables missing. Run SQL in Setup Guide.", "error");
-      } else {
-          showToast("Failed to load staff performance data", "error");
-      }
+      showToast(err.message || "Sync failed", "error");
     } finally {
       setLoading(false);
       setIsRefreshing(false);
@@ -178,8 +171,8 @@ const AdminStaffPerformance: React.FC = () => {
                            </div>
                         </div>
                         <div className="text-right">
-                           <p className="text-xs font-mono text-green-400 font-bold">{getDuration(s.clock_in)}</p>
-                           <p className="text-[9px] text-gray-500">Since {new Date(s.clock_in).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>
+                           <p className="text-xs font-mono text-green-400 font-bold">{getDuration(s.clock_in_time)}</p>
+                           <p className="text-[9px] text-gray-500">Since {new Date(s.clock_in_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>
                         </div>
                       </div>
                     ))

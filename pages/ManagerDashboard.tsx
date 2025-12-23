@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabase';
 import { DashboardLayout } from '../components/DashboardLayout';
@@ -13,6 +14,7 @@ import {
 import { Order } from '../types';
 import { PaymentVerificationModal, FloatingPaymentButton } from '../components/PaymentVerificationModal';
 import { OrderCard } from '../components/OrderCard';
+import { ClockInWidget } from '../components/ClockInWidget';
 
 const ManagerDashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
@@ -53,7 +55,6 @@ const ManagerDashboard: React.FC = () => {
 
         setKpi({ revenue, orders: activeOrders.length, issues: issuesCount, staffActive: activeStaffCount });
 
-        // Service Flow
         const stageCounts = { order: 0, prep: 0, pickup: 0, pay: 0 };
         let totalServedTime = 0, servedCount = 0;
         activeOrders.forEach(o => {
@@ -71,7 +72,6 @@ const ManagerDashboard: React.FC = () => {
         setServiceFlow([{ step: 'Order', time: stageCounts.order, target: 5 }, { step: 'Prep', time: stageCounts.prep, target: 8 }, { step: 'Pickup', time: stageCounts.pickup, target: 4 }, { step: 'Pay', time: stageCounts.pay > 20 ? 20 : stageCounts.pay, target: 10 }]);
         setAvgServiceTime(servedCount > 0 ? `${Math.round(totalServedTime / servedCount)}m` : "0m");
 
-        // Staff Perf
         const staffMap: Record<string, any> = {};
         allStaff?.forEach((u: any) => { staffMap[u.id] = { id: u.id, name: u.full_name || u.email.split('@')[0], role: u.role, orders: 0, sales: 0, errors: 0 }; });
         activeOrders.forEach(o => {
@@ -90,53 +90,35 @@ const ManagerDashboard: React.FC = () => {
   const unpaidServedOrders = orders.filter(o => o.status === 'served');
 
   return (
-    <DashboardLayout title="Ops Dashboard" subtitle="Daily operations and staff oversight" 
-      actions={
-         <div className="flex items-center gap-3">
-             <div className="text-right">
-                <p className="text-xs text-gray-500 uppercase tracking-widest font-bold">Today</p>
-                <p className="text-lg font-bold text-white">{new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</p>
-             </div>
-         </div>
-      }
-    >
+    <DashboardLayout title="Ops Dashboard" subtitle="Daily operations and staff oversight">
       <div className="space-y-6">
+        
+        {/* Shift Control */}
+        <ClockInWidget />
+
         {/* 1. KPI Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <SoshaCard className="p-6">
              <div className="flex justify-between items-start">
-                <div>
-                   <p className="text-xs text-gray-500 uppercase font-bold tracking-wider">Revenue Today</p>
-                   <h3 className="text-3xl font-bold text-white mt-2">ETB {kpi.revenue.toLocaleString()}</h3>
-                </div>
+                <div><p className="text-xs text-gray-500 uppercase font-bold tracking-wider">Revenue Today</p><h3 className="text-3xl font-bold text-white mt-2">ETB {kpi.revenue.toLocaleString()}</h3></div>
                 <div className="p-3 bg-primary/10 rounded-xl text-primary"><TrendingUp className="w-6 h-6" /></div>
              </div>
           </SoshaCard>
           <SoshaCard className="p-6">
              <div className="flex justify-between items-start">
-                <div>
-                   <p className="text-xs text-gray-500 uppercase font-bold tracking-wider">Total Orders</p>
-                   <h3 className="text-3xl font-bold text-white mt-2">{kpi.orders}</h3>
-                </div>
+                <div><p className="text-xs text-gray-500 uppercase font-bold tracking-wider">Total Orders</p><h3 className="text-3xl font-bold text-white mt-2">{kpi.orders}</h3></div>
                 <div className="p-3 bg-blue-500/10 rounded-xl text-blue-500"><BarChart3 className="w-6 h-6" /></div>
              </div>
           </SoshaCard>
-          <SoshaCard className={cn("p-6", kpi.issues > 0 && "border-red-500/30 shadow-[0_0_30px_rgba(239,68,68,0.1)]")}>
+          <SoshaCard className={cn("p-6", kpi.issues > 0 && "border-red-500/30")}>
              <div className="flex justify-between items-start">
-                <div>
-                   <p className="text-xs text-gray-500 uppercase font-bold tracking-wider">Issues</p>
-                   <h3 className={cn("text-3xl font-bold mt-2", kpi.issues > 0 ? "text-red-500" : "text-white")}>{kpi.issues}</h3>
-                   {kpi.issues > 0 && <span className="text-xs text-red-400 font-bold bg-red-500/10 px-2 py-0.5 rounded mt-1 inline-block">Action Required</span>}
-                </div>
+                <div><p className="text-xs text-gray-500 uppercase font-bold tracking-wider">Issues</p><h3 className={cn("text-3xl font-bold mt-2", kpi.issues > 0 ? "text-red-500" : "text-white")}>{kpi.issues}</h3></div>
                 <div className="p-3 bg-red-500/10 rounded-xl text-red-500"><AlertCircle className="w-6 h-6" /></div>
              </div>
           </SoshaCard>
           <SoshaCard className="p-6">
              <div className="flex justify-between items-start">
-                <div>
-                   <p className="text-xs text-gray-500 uppercase font-bold tracking-wider">Staff On Shift</p>
-                   <h3 className="text-3xl font-bold text-white mt-2">{kpi.staffActive}</h3>
-                </div>
+                <div><p className="text-xs text-gray-500 uppercase font-bold tracking-wider">Staff On Shift</p><h3 className="text-3xl font-bold text-white mt-2">{kpi.staffActive}</h3></div>
                 <div className="p-3 bg-green-500/10 rounded-xl text-green-500"><Users className="w-6 h-6" /></div>
              </div>
           </SoshaCard>
@@ -145,109 +127,45 @@ const ManagerDashboard: React.FC = () => {
         {/* 2. Live Active Orders */}
         <SoshaCard indicatorColor="purple">
            <div className="flex flex-row items-center justify-between mb-6">
-              <SoshaCardTitle className="flex items-center gap-2">
-                 <List className="w-5 h-5 text-blue-400" /> Live Active Orders
-              </SoshaCardTitle>
+              <SoshaCardTitle className="flex items-center gap-2"><List className="w-5 h-5 text-blue-400" /> Live Active Orders</SoshaCardTitle>
               <Badge variant="outline" className="border-gray-700 text-gray-300">{liveActiveOrders.length} Active</Badge>
            </div>
-           
-           {liveActiveOrders.length === 0 ? (
-               <div className="h-32 flex items-center justify-center text-gray-500 bg-white/5 rounded-2xl border border-white/5 border-dashed">
-                   No active orders.
-               </div>
-           ) : (
+           {liveActiveOrders.length === 0 ? (<div className="h-32 flex items-center justify-center text-gray-500 bg-white/5 rounded-2xl border border-white/5 border-dashed">No active orders.</div>) : (
                <div className="flex gap-4 overflow-x-auto pb-4 custom-scrollbar">
-                  {liveActiveOrders.map(order => (
-                     <div key={order.id} className="min-w-[320px]">
-                        <OrderCard order={order} role="manager" />
-                     </div>
-                  ))}
+                  {liveActiveOrders.map(order => (<div key={order.id} className="min-w-[320px]"><OrderCard order={order} role="manager" /></div>))}
                </div>
            )}
         </SoshaCard>
 
-        {/* 3. Service Flow & Shift */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
            <SoshaCard className="lg:col-span-2">
-              <SoshaCardTitle className="flex items-center gap-2 mb-6">
-                 <Timer className="w-5 h-5 text-orange-400" /> Service Flow
-              </SoshaCardTitle>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                 <div className="h-[200px] w-full">
-                    <ResponsiveContainer width="100%" height="100%">
-                       <BarChart data={serviceFlow} layout="vertical" margin={{ left: 10, right: 10 }}>
-                          <XAxis type="number" hide />
-                          <YAxis dataKey="step" type="category" width={50} tick={{fill: '#9CA3AF', fontSize: 12}} />
-                          <Tooltip cursor={{fill: 'rgba(255,255,255,0.05)'}} contentStyle={{ backgroundColor: '#1A1A1A', border: '1px solid #333', borderRadius: '8px' }} />
-                          <Bar dataKey="time" barSize={24} radius={[0, 6, 6, 0]}>
-                             {serviceFlow.map((entry, index) => (
-                                <Cell key={`cell-${index}`} fill={entry.time > entry.target ? '#EF4444' : '#8B5CF6'} />
-                             ))}
-                          </Bar>
-                       </BarChart>
-                    </ResponsiveContainer>
-                 </div>
-                 <div className="grid grid-cols-2 gap-4 h-fit">
-                    <div className="p-4 bg-white/5 rounded-2xl border border-white/5 text-center">
-                        <p className="text-xs text-gray-500 uppercase font-bold mb-1">Pending</p>
-                        <p className="text-2xl font-bold text-white">{serviceFlow.find(f => f.step === 'Order')?.time || 0}</p>
-                    </div>
-                    <div className="p-4 bg-white/5 rounded-2xl border border-white/5 text-center">
-                        <p className="text-xs text-gray-500 uppercase font-bold mb-1">Avg Time</p>
-                        <p className="text-2xl font-bold text-primary">{avgServiceTime}</p>
-                    </div>
-                 </div>
+              <SoshaCardTitle className="flex items-center gap-2 mb-6"><Timer className="w-5 h-5 text-orange-400" /> Service Flow</SoshaCardTitle>
+              <div className="h-[200px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={serviceFlow} layout="vertical" margin={{ left: 10, right: 10 }}>
+                        <XAxis type="number" hide />
+                        <YAxis dataKey="step" type="category" width={50} tick={{fill: '#9CA3AF', fontSize: 12}} />
+                        <Tooltip cursor={{fill: 'rgba(255,255,255,0.05)'}} contentStyle={{ backgroundColor: '#1A1A1A', border: '1px solid #333' }} />
+                        <Bar dataKey="time" barSize={24} radius={[0, 6, 6, 0]}>
+                            {serviceFlow.map((entry, index) => (<Cell key={`cell-${index}`} fill={entry.time > entry.target ? '#EF4444' : '#8B5CF6'} />))}
+                        </Bar>
+                    </BarChart>
+                </ResponsiveContainer>
               </div>
            </SoshaCard>
-
            <SoshaCard className="h-[400px]">
-              <div className="flex flex-col h-full">
-                  <SoshaCardTitle className="flex items-center gap-2 mb-4">
-                     <Clock className="w-5 h-5 text-green-500" /> Active Shift
-                  </SoshaCardTitle>
-                  <div className="flex-1 overflow-y-auto pr-2 space-y-3 custom-scrollbar">
-                     {shiftStaff.map((staff, i) => (
-                        <div key={i} className="flex items-center justify-between p-3 rounded-xl bg-white/5 hover:bg-white/10 transition-colors border border-white/5">
-                           <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center text-xs font-bold text-gray-300 capitalize">
-                                 {staff.name.charAt(0)}
-                              </div>
-                              <div>
-                                 <p className="text-sm font-bold text-white capitalize">{staff.name}</p>
-                                 <p className="text-[10px] text-gray-500 capitalize font-bold">{staff.role} • {staff.duration}</p>
-                              </div>
-                           </div>
-                           <div className="w-2.5 h-2.5 rounded-full bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.5)]" />
-                        </div>
-                     ))}
-                  </div>
+              <SoshaCardTitle className="flex items-center gap-2 mb-4"><Clock className="w-5 h-5 text-green-500" /> Active Team</SoshaCardTitle>
+              <div className="flex-1 overflow-y-auto pr-2 space-y-3 custom-scrollbar">
+                 {shiftStaff.map((staff, i) => (
+                    <div key={i} className="flex items-center justify-between p-3 rounded-xl bg-white/5 hover:bg-white/10 transition-colors border border-white/5">
+                       <div><p className="text-sm font-bold text-white capitalize">{staff.name}</p><p className="text-[10px] text-gray-500 capitalize font-bold">{staff.role} • {staff.duration}</p></div>
+                       <div className="w-2.5 h-2.5 rounded-full bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.5)]" />
+                    </div>
+                 ))}
               </div>
            </SoshaCard>
         </div>
-
-        {/* 4. Staff Performance Table */}
-        <SoshaCard>
-           <SoshaCardTitle className="mb-6">Staff Performance (Live)</SoshaCardTitle>
-           <div className="overflow-x-auto">
-              <table className="w-full text-sm text-left">
-                 <thead className="text-xs text-gray-500 uppercase bg-black/20 border-b border-white/5">
-                    <tr><th className="px-6 py-4">Staff Member</th><th className="px-6 py-4">Orders</th><th className="px-6 py-4">Sales (ETB)</th><th className="px-6 py-4 text-right">Errors</th></tr>
-                 </thead>
-                 <tbody className="divide-y divide-white/5">
-                    {staffPerf.map((staff) => (
-                       <tr key={staff.id} className="hover:bg-white/5 transition-colors">
-                          <td className="px-6 py-4"><span className="font-bold text-white capitalize">{staff.name}</span><span className="ml-2 text-xs text-gray-500 capitalize">{staff.role}</span></td>
-                          <td className="px-6 py-4 text-gray-300">{staff.orders}</td>
-                          <td className="px-6 py-4 text-primary font-mono font-bold">{staff.sales.toLocaleString()}</td>
-                          <td className="px-6 py-4 text-right">{staff.errors > 0 ? <span className="text-red-400 font-bold">{staff.errors}</span> : <span className="text-gray-600">-</span>}</td>
-                       </tr>
-                    ))}
-                 </tbody>
-              </table>
-           </div>
-        </SoshaCard>
       </div>
-
       <PaymentVerificationModal isOpen={isPaymentOpen} onClose={() => setIsPaymentOpen(false)} orders={unpaidServedOrders} onPaymentSuccess={fetchDashboardData} />
       <FloatingPaymentButton count={unpaidServedOrders.length} onClick={() => setIsPaymentOpen(true)} />
     </DashboardLayout>

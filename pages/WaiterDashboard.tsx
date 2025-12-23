@@ -11,6 +11,7 @@ import { PaymentVerificationModal, FloatingPaymentButton } from '../components/P
 import { ReceiptVerificationModal } from '../components/ReceiptVerificationModal';
 import { CreateOrderModal } from '../components/CreateOrderModal';
 import { OrderCard } from '../components/OrderCard';
+import { ClockInWidget } from '../components/ClockInWidget';
 
 const WaiterDashboard: React.FC = () => {
   const { profile, user } = useAuth();
@@ -133,8 +134,11 @@ const WaiterDashboard: React.FC = () => {
         </div>
       }
     >
-      <div className="space-y-8">
+      <div className="space-y-6">
         
+        {/* Shift Control */}
+        <ClockInWidget />
+
         {/* KPI Cards */}
         <div className="grid grid-cols-2 lg:grid-cols-3 gap-6">
           <SoshaCard className="p-5" indicatorColor="orange">

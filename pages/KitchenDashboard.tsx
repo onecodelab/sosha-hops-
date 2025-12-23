@@ -8,6 +8,7 @@ import { Clock, CheckCircle2, Flame, Bell, AlertTriangle, Utensils, ChefHat, Tim
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { Order } from '../types';
 import { OrderCard } from '../components/OrderCard';
+import { ClockInWidget } from '../components/ClockInWidget';
 
 const playNotificationSound = () => {
     try {
@@ -29,7 +30,7 @@ const KitchenDashboard: React.FC = () => {
     const timer = setInterval(() => setCurrentTime(new Date()), 60000);
     const sub = supabase.channel('kitchen_orders_sub').on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, (payload) => {
           fetchOrders();
-          if (payload.eventType === 'INSERT') { playNotificationSound(); showToast('🔔 New Ticket Received!', 'success'); }
+          if (payload.eventType === 'INSERT') { playNotificationSound(); showToast('New Ticket Received!', 'success'); }
         }).subscribe();
     return () => { supabase.removeChannel(sub); clearInterval(timer); }
   }, []);
@@ -71,8 +72,11 @@ const KitchenDashboard: React.FC = () => {
 
   return (
     <DashboardLayout title="Kitchen Display" subtitle="Live Production Board">
-      <div className="flex flex-col gap-8 w-full animate-in fade-in duration-700">
+      <div className="flex flex-col gap-6 w-full animate-in fade-in duration-700">
         
+        {/* Shift Control */}
+        <ClockInWidget />
+
         {/* KPI Cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 flex-none">
           <SoshaCard className="p-5" indicatorColor="red">
@@ -101,7 +105,7 @@ const KitchenDashboard: React.FC = () => {
           </SoshaCard>
         </div>
 
-        {/* Ticket Board - Explicit Height for high-volume viewing */}
+        {/* Ticket Board */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 min-h-[700px] lg:h-[800px]">
            {/* Queue */}
            <div className="flex flex-col h-full bg-[#0A0A0A]/80 rounded-[2.5rem] border border-white/5 backdrop-blur-md overflow-hidden shadow-2xl">
@@ -111,12 +115,6 @@ const KitchenDashboard: React.FC = () => {
               </div>
               <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar bg-black/20">
                  {orders.filter(o => o.status === 'pending').map(o => <OrderCard key={o.id} order={o} role="kitchen" onAction={handleOrderAction} />)}
-                 {orders.filter(o => o.status === 'pending').length === 0 && (
-                   <div className="h-full flex flex-col items-center justify-center text-gray-600 italic text-sm py-20">
-                      <Utensils className="w-12 h-12 mb-4 opacity-10" />
-                      No incoming orders
-                   </div>
-                 )}
               </div>
            </div>
            
@@ -141,51 +139,6 @@ const KitchenDashboard: React.FC = () => {
                  {orders.filter(o => o.status === 'ready').map(o => <OrderCard key={o.id} order={o} role="kitchen" />)}
               </div>
            </div>
-        </div>
-
-        {/* Bottom Insights */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 pb-10">
-           <SoshaCard className="h-56 overflow-hidden p-0">
-              <div className="flex flex-col h-full">
-                  <div className="p-4 border-b border-white/5 flex-none"><h3 className="text-xs font-bold text-white flex items-center gap-2 uppercase tracking-wider"><ChefHat className="w-4 h-4 text-primary" /> Station Load</h3></div>
-                  <div className="flex-1 w-full p-2">
-                     <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={stationData} layout="vertical" margin={{ left: 10, right: 30, top: 5, bottom: 5 }}>
-                           <XAxis type="number" hide />
-                           <YAxis dataKey="name" type="category" width={80} tick={{fill: '#9CA3AF', fontSize: 10}} />
-                           <Tooltip cursor={{fill: 'rgba(255,255,255,0.05)'}} contentStyle={{ backgroundColor: '#1A1A1A', border: '1px solid #333' }} />
-                           <Bar dataKey="count" fill="#FFB800" radius={[0, 4, 4, 0]} barSize={20}>
-                             {stationData.map((e, i) => <Cell key={i} fill={e.count > 10 ? '#EF4444' : e.count > 5 ? '#FFB800' : '#84CC16'} />)}
-                           </Bar>
-                        </BarChart>
-                     </ResponsiveContainer>
-                  </div>
-              </div>
-           </SoshaCard>
-           
-           <SoshaCard className="h-56 col-span-2">
-              <div className="flex flex-col h-full justify-center p-6">
-                  <div className="flex items-center gap-6 justify-around">
-                      <div className="text-center">
-                         <AlertOctagon className="w-10 h-10 text-green-500 mx-auto mb-3" />
-                         <p className="text-base font-bold text-white tracking-tight">System Healthy</p>
-                         <p className="text-xs text-gray-500 font-medium">Real-time sync active</p>
-                      </div>
-                      <div className="h-16 w-[1px] bg-white/10" />
-                      <div className="text-center">
-                         <Bell className="w-10 h-10 text-blue-500 mx-auto mb-3" />
-                         <p className="text-base font-bold text-white tracking-tight">Audio Alerts</p>
-                         <p className="text-xs text-gray-500 font-medium">Enabled (Vol 80%)</p>
-                      </div>
-                      <div className="h-16 w-[1px] bg-white/10" />
-                      <div className="text-center">
-                         <ChefHat className="w-10 h-10 text-orange-500 mx-auto mb-3" />
-                         <p className="text-base font-bold text-white tracking-tight">Staff Active</p>
-                         <p className="text-xs text-gray-500 font-medium">Kitchen Team Online</p>
-                      </div>
-                  </div>
-              </div>
-           </SoshaCard>
         </div>
       </div>
     </DashboardLayout>
