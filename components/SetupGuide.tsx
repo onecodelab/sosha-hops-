@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button, Card, CardContent, CardHeader, CardTitle } from './ui';
 import { Database, Copy, Check, RefreshCw, Terminal, Code } from 'lucide-react';
@@ -50,10 +51,9 @@ create table if not exists public.orders (
   id uuid default uuid_generate_v4() primary key,
   order_number text,
   table_number text not null,
-  status text not null default 'pending',
+  status text not null check (status in ('pending', 'accepted', 'preparing', 'ready', 'served', 'paid', 'closed', 'cancelled')) default 'pending',
   source text check (source in ('dine_in', 'takeaway', 'delivery', 'chatbot')) default 'dine_in',
   payment_status text check (payment_status in ('unpaid', 'paid', 'split', 'failed')) default 'unpaid',
-  -- Updated payment_method check constraint to include 'abyssinia'
   payment_method text check (payment_method in ('cash', 'cbe', 'abyssinia', 'telebirr', 'pos', 'chapa', 'none')),
   order_handler_name text,
   payment_handler_name text,

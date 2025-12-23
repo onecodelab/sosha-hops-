@@ -66,10 +66,10 @@ const AdminDashboard: React.FC = () => {
       setActiveOrdersList(activeOrders as Order[] || []);
       setStats(prev => ({ ...prev, totalRevenue, activeOrdersCount: activeOrders?.length || 0 }));
 
-      // 2. Fetch Rich Feed
+      // 2. Fetch Rich Feed with Waiter Join
       const { data: recentFeed } = await supabase
         .from('orders')
-        .select('*')
+        .select('*, waiter:users(full_name)')
         .order('created_at', { ascending: false })
         .limit(50);
       setAllRecentOrders(recentFeed as Order[] || []);
@@ -121,7 +121,7 @@ const AdminDashboard: React.FC = () => {
 
   useEffect(() => {
     fetchDashboardData();
-    const channel = supabase.channel('admin_realtime')
+    const channel = supabase.channel('admin_realtime_sync')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => fetchDashboardData())
       .subscribe();
     return () => { supabase.removeChannel(channel); };
@@ -147,7 +147,9 @@ const AdminDashboard: React.FC = () => {
     return allRecentOrders.filter(order => {
       const matchesPayment = paymentFilter === 'all' || order.payment_status === paymentFilter;
       const matchesSource = sourceFilter === 'all' || order.source === sourceFilter;
-      const matchesStaff = !staffSearch || order.order_handler_name?.toLowerCase().includes(staffSearch.toLowerCase());
+      const matchesStaff = !staffSearch || 
+                           order.order_handler_name?.toLowerCase().includes(staffSearch.toLowerCase()) ||
+                           order.waiter?.full_name?.toLowerCase().includes(staffSearch.toLowerCase());
       
       let matchesTime = true;
       if (timeFilter !== 'all') {
@@ -165,7 +167,8 @@ const AdminDashboard: React.FC = () => {
     const diff = Math.floor((Date.now() - new Date(dateStr).getTime()) / 60000);
     if (diff < 1) return 'Just now';
     if (diff < 60) return `${diff}m ago`;
-    return `${Math.floor(diff / 60)}h ago`;
+    if (diff < 1440) return `${Math.floor(diff / 60)}h ago`;
+    return new Date(dateStr).toLocaleDateString();
   };
 
   const getSourceIcon = (source: OrderSource) => {
@@ -262,7 +265,6 @@ const AdminDashboard: React.FC = () => {
           </SoshaCard>
         </div>
 
-        {/* --- Rich Activity Feed Section --- */}
         <div className="grid grid-cols-1 gap-6 pb-20">
            <SoshaCard className="p-6 overflow-visible" indicatorColor="purple">
               <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
@@ -273,9 +275,7 @@ const AdminDashboard: React.FC = () => {
                     <p className="text-xs text-muted mt-1 uppercase tracking-widest font-bold">Real-time throughput audit</p>
                  </div>
                  
-                 {/* Feed Filters */}
                  <div className="flex flex-wrap gap-2">
-                    {/* Time Tabs */}
                     <div className="flex bg-black/40 p-1 rounded-xl border border-white/5">
                         {(['15m', '1h', 'all'] as const).map(f => (
                            <button 
@@ -288,14 +288,12 @@ const AdminDashboard: React.FC = () => {
                         ))}
                     </div>
                     
-                    {/* Source Chips */}
                     <div className="flex bg-black/40 p-1 rounded-xl border border-white/5">
                         <button onClick={() => setSourceFilter('all')} className={cn("px-3 py-1 text-[10px] font-black uppercase rounded-lg transition-all", sourceFilter === 'all' ? "bg-white/10 text-white" : "text-gray-500")}>All</button>
                         <button onClick={() => setSourceFilter('chatbot')} className={cn("px-3 py-1 text-[10px] font-black uppercase rounded-lg transition-all", sourceFilter === 'chatbot' ? "bg-purple-500/20 text-purple-400" : "text-gray-500")}>Chatbot</button>
                         <button onClick={() => setSourceFilter('dine_in')} className={cn("px-3 py-1 text-[10px] font-black uppercase rounded-lg transition-all", sourceFilter === 'dine_in' ? "bg-yellow-500/20 text-yellow-500" : "text-gray-500")}>Dine-In</button>
                     </div>
 
-                    {/* Payment Select */}
                     <select 
                       value={paymentFilter} 
                       onChange={(e: any) => setPaymentFilter(e.target.value)}
@@ -307,7 +305,6 @@ const AdminDashboard: React.FC = () => {
                         <option value="failed">Failed Only</option>
                     </select>
 
-                    {/* Staff Search */}
                     <div className="relative">
                         <Search className="absolute left-2.5 top-1.5 w-3 h-3 text-gray-500" />
                         <Input 
@@ -329,11 +326,8 @@ const AdminDashboard: React.FC = () => {
                  ) : (
                     filteredFeed.map((order) => (
                        <div key={order.id} className="relative p-5 rounded-[2rem] bg-black/40 border border-white/5 hover:border-primary/20 transition-all group overflow-hidden flex flex-col gap-4">
-                          
-                          {/* Inner Top Glass Glow */}
                           <div className="absolute inset-0 bg-gradient-to-br from-white/[0.02] to-transparent pointer-events-none" />
 
-                          {/* Order ID & Time */}
                           <div className="flex justify-between items-start">
                              <div className="flex flex-col">
                                 <span className="text-[10px] font-mono text-gray-500 uppercase tracking-widest">Order Reference</span>
@@ -344,7 +338,6 @@ const AdminDashboard: React.FC = () => {
                              </div>
                           </div>
 
-                          {/* Badges Row */}
                           <div className="flex flex-wrap gap-2">
                              <Badge className={cn("text-[9px] uppercase font-black px-2 py-0.5 gap-1.5 border flex items-center", getSourceColor(order.source || 'dine_in'))}>
                                 {getSourceIcon(order.source || 'dine_in')}
@@ -358,7 +351,6 @@ const AdminDashboard: React.FC = () => {
                              </Badge>
                           </div>
 
-                          {/* Responsibility Row */}
                           <div className="space-y-1 mt-auto">
                              <div className="flex justify-between items-center text-[10px] text-gray-500">
                                 <span>Handler</span>
@@ -367,7 +359,7 @@ const AdminDashboard: React.FC = () => {
                              {order.payment_status === 'paid' && (
                                 <div className="flex justify-between items-center text-[10px] text-gray-500">
                                    <span>Payment</span>
-                                   <span className="text-green-500 font-bold uppercase">{order.payment_method} • {order.payment_handler_name || 'Verifed'}</span>
+                                   <span className="text-green-500 font-bold uppercase">{order.payment_method} • {order.payment_handler_name || 'Verified'}</span>
                                 </div>
                              )}
                              <div className="flex justify-between items-baseline pt-2 border-t border-white/5 mt-2">
@@ -387,7 +379,6 @@ const AdminDashboard: React.FC = () => {
 
       <ActiveOrdersModal isOpen={isOrdersModalOpen} onClose={() => setIsOrdersModalOpen(false)} orders={activeOrdersList} />
       
-      {/* Cleanup Confirmation Modal */}
       <Dialog isOpen={isCleanupModalOpen} onClose={() => setIsCleanupModalOpen(false)} title="Cleanup Old Orders">
         <div className="space-y-6 pt-2">
            <div className="p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-2xl flex gap-4 items-start">

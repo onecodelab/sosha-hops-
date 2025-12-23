@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Dialog, Button, Input, Badge, showToast, cn, Card } from './ui';
 import { supabase } from '../supabase';
@@ -20,17 +21,15 @@ type PaymentStage = 'select-order' | 'select-method' | 'process-cash' | 'process
 export const PaymentVerificationModal: React.FC<PaymentVerificationModalProps> = ({ 
   isOpen, onClose, orders, onPaymentSuccess 
 }) => {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const [stage, setStage] = useState<PaymentStage>('select-order');
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [bankTab, setBankTab] = useState<'cbe' | 'abyssinia'>('cbe');
   
-  // Bank Form State
   const [refNumber, setRefNumber] = useState('');
   const [accountDigits, setAccountDigits] = useState('');
 
-  // Reset state when modal opens
   useEffect(() => {
     if (isOpen) {
       setStage('select-order');
@@ -40,17 +39,16 @@ export const PaymentVerificationModal: React.FC<PaymentVerificationModalProps> =
     }
   }, [isOpen]);
 
-  // --- Logic ---
-
   const handleOrderSelect = async (order: Order) => {
-    // Claiming Logic: If order is unclaimed (bot), assign to current user before proceeding
     if (!order.waiter_id) {
         setIsLoading(true);
         try {
-            // Optimistic concurrency check: ensure it is still null
             const { data, error } = await supabase
                 .from('orders')
-                .update({ waiter_id: user?.id })
+                .update({ 
+                  waiter_id: user?.id,
+                  order_handler_name: profile?.full_name || profile?.email || 'Staff'
+                })
                 .eq('id', order.id)
                 .is('waiter_id', null)
                 .select()
@@ -59,20 +57,17 @@ export const PaymentVerificationModal: React.FC<PaymentVerificationModalProps> =
             if (error || !data) {
                 showToast("Order was already claimed by another waiter.", 'error');
                 setIsLoading(false);
-                return; // Stop flow
+                return;
             }
-
-            // Update local object to reflect claim
             order.waiter_id = user?.id as string; 
             showToast("Order claimed successfully!");
         } catch (err: any) {
-            showToast("Failed to claim order. Please try again.", 'error');
+            showToast("Failed to claim order.", 'error');
             setIsLoading(false);
             return;
         }
         setIsLoading(false);
     }
-
     setSelectedOrder(order);
     setStage('select-method');
   };
@@ -82,22 +77,21 @@ export const PaymentVerificationModal: React.FC<PaymentVerificationModalProps> =
     setIsLoading(true);
 
     try {
-      // Mock API latency
       await new Promise(resolve => setTimeout(resolve, 1500));
 
       if (method === 'cbe' || method === 'abyssinia') {
-        // Mock verification logic
         if (refNumber.length < 4 || accountDigits.length < 4) {
           throw new Error("Invalid reference or account number.");
         }
       }
 
-      // Update Database
       const { error } = await supabase
         .from('orders')
         .update({
-          status: 'paid', // Or 'completed' if that's the final state
+          status: 'paid',
+          payment_status: 'paid',
           payment_method: method,
+          payment_handler_name: profile?.full_name || profile?.email || 'Staff',
           paid_at: new Date().toISOString()
         })
         .eq('id', selectedOrder.id);
@@ -115,15 +109,13 @@ export const PaymentVerificationModal: React.FC<PaymentVerificationModalProps> =
     }
   };
 
-  // --- Render Sections ---
-
   const renderOrderList = () => (
     <div className="space-y-3 relative">
       {isLoading && (
         <div className="absolute inset-0 bg-black/60 flex items-center justify-center z-10 rounded-xl">
              <div className="flex flex-col items-center">
                 <Loader2 className="w-8 h-8 animate-spin text-primary mb-2" />
-                <span className="text-white text-sm font-bold">Claiming Order...</span>
+                <span className="text-white text-sm font-bold">Processing...</span>
              </div>
         </div>
       )}
@@ -245,7 +237,6 @@ export const PaymentVerificationModal: React.FC<PaymentVerificationModalProps> =
   const renderChapaProcess = () => (
     <div className="text-center py-4 space-y-6">
        <div className="bg-white p-4 rounded-xl w-48 h-48 mx-auto relative overflow-hidden">
-          {/* Mock QR */}
           <div className="absolute inset-0 bg-[url('https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=SoshaPayment')] bg-contain bg-center bg-no-repeat" />
           <div className="absolute inset-0 flex items-center justify-center bg-white/90" style={{display: isLoading ? 'flex' : 'none'}}>
              <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
@@ -265,7 +256,6 @@ export const PaymentVerificationModal: React.FC<PaymentVerificationModalProps> =
 
        <Button variant="ghost" size="sm" onClick={() => setStage('select-method')} className="text-gray-500">Cancel</Button>
        
-       {/* Simulation Button for Demo */}
        <div className="pt-4 border-t border-gray-800">
          <button onClick={() => processPayment('chapa')} className="text-xs text-gray-600 hover:text-white underline">
             Simulate Webhook Success
@@ -354,8 +344,6 @@ export const PaymentVerificationModal: React.FC<PaymentVerificationModalProps> =
              <span>{selectedOrder?.total_amount.toLocaleString()}</span>
           </div>
           <div className="text-xs text-gray-500 text-center uppercase">Paid via {selectedOrder?.payment_method || 'Cash'}</div>
-          
-          {/* Receipt jagged edge */}
           <div className="absolute -bottom-2 left-0 right-0 h-2 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMCAxMCIgcHJlc2VydmVBc3BlY3RSYXRpbz0ibm9uZSI+PHBhdGggZD0iTTAgMTBMMTAgMEwyMCAxMEgwWiIgZmlsbD0id2hpdGUiLz48L3N2Zz4=')] bg-repeat-x bg-[length:10px_10px]" />
        </div>
 

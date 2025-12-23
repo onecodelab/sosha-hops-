@@ -28,12 +28,12 @@ export type OrderStatus =
   | 'preparing' 
   | 'ready' 
   | 'served' 
-  | 'completed' 
+  | 'paid'
+  | 'closed'
   | 'cancelled';
 
 export type PaymentStatus = 'unpaid' | 'paid' | 'split' | 'failed';
 export type OrderSource = 'dine_in' | 'takeaway' | 'delivery' | 'chatbot';
-// Added 'abyssinia' to PaymentMethod type to align with UI and logic
 export type PaymentMethod = 'cash' | 'cbe' | 'abyssinia' | 'telebirr' | 'pos' | 'chapa' | 'none';
 
 export interface Order {
