@@ -129,6 +129,7 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
   };
 
   const addToCart = (item: any) => {
+    console.log('[CreateOrderModal] Adding to cart. menu_item_id:', item.id, 'name:', item.name);
     setCart(prev => {
       const existing = prev.find(i => i.id === item.id);
       if (existing) return prev.map(i => i.id === item.id ? { ...i, quantity: i.quantity + 1 } : i);
@@ -150,11 +151,55 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
     }, [] as CartItem[]));
   };
 
+  // Validate that every menu_item_id in the cart exists in menu_items
+  const validateMenuItemsExist = async () => {
+    if (cart.length === 0) return true;
+
+    const menuItemIds = cart.map(i => i.id);
+    console.log('[CreateOrderModal] Validating menu_item_ids before insert:', menuItemIds);
+
+    const { data, error } = await supabase
+      .from('menu_items')
+      .select('id, name, price')
+      .in('id', menuItemIds);
+
+    if (error) {
+      console.error('[CreateOrderModal] Menu item validation error:', error);
+      showToast('Could not validate menu items. Please try again.', 'error');
+      return false;
+    }
+
+    if (!data || data.length === 0) {
+      console.warn('[CreateOrderModal] menu_items table appears empty.');
+      showToast('Please add menu items first in Menu Management', 'error');
+      return false;
+    }
+
+    const existingIds = new Set(data.map(row => row.id as string));
+    const missing = menuItemIds.filter(id => !existingIds.has(id));
+
+    if (missing.length > 0) {
+      console.warn('[CreateOrderModal] Missing menu_item_ids in database:', missing);
+      showToast('This menu item is no longer available', 'error');
+      return false;
+    }
+
+    return true;
+  };
+
   const submitOrder = async () => {
     if (isButtonDisabled) return;
     setSubmitting(true);
 
     try {
+      console.log('[CreateOrderModal] Submitting order. Cart contents:', cart);
+
+      const menuValid = await validateMenuItemsExist();
+      if (!menuValid) {
+        setSubmitting(false);
+        return;
+      }
+
       if (isAppendMode) {
         // --- APPEND LOGIC ---
         const { data: order, error: orderError } = await supabase
@@ -178,6 +223,8 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
           special_instructions: i.instructions || null
         }));
 
+        console.log('[CreateOrderModal] Inserting order_items (append mode):', itemsPayload);
+
         const { error: itemsError } = await supabase.from('order_items').insert(itemsPayload);
         if (itemsError) throw itemsError;
 
@@ -198,6 +245,7 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
           return;
         }
 
+        // Step 1: Insert into orders
         const { data: order, error: orderError } = await supabase
           .from('orders')
           .insert({
@@ -214,6 +262,7 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
 
         if (orderError || !order) throw orderError;
 
+        // Step 2: Build order_items payload using the new order_id
         const itemsPayload = cart.map(i => ({
           order_id: order.id,
           menu_item_id: i.id,
@@ -222,6 +271,9 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
           special_instructions: i.instructions || null
         }));
 
+        console.log('[CreateOrderModal] Inserting order_items (new order):', itemsPayload);
+
+        // Step 3: Insert into order_items
         const { error: itemsError } = await supabase.from('order_items').insert(itemsPayload);
         if (itemsError) throw itemsError;
 
@@ -240,8 +292,13 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
       if (onOrderCreated) await onOrderCreated();
       onClose();
     } catch (err: any) {
-      console.error(err);
-      showToast(err.message || 'Failed to process order', 'error');
+      console.error('[CreateOrderModal] submitOrder error:', err);
+
+      if (err?.message?.includes('order_items_menu_item_id_fkey')) {
+        showToast('Some menu items are invalid or missing. Please refresh the menu or contact your manager.', 'error');
+      } else {
+        showToast(err?.message || 'Failed to process order', 'error');
+      }
     } finally {
       setSubmitting(false);
     }
@@ -383,50 +440,57 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
               <div className="flex-1 overflow-y-auto p-4 custom-scrollbar pb-24">
                 {menuLoading ? (
                   <div className="flex flex-col items-center justify-center h-64 text-muted gap-4">
-                     <Loader2 className="w-8 h-8 animate-spin text-primary" />
-                     <p className="text-xs font-bold uppercase tracking-widest text-center">Loading Fresh Menu...</p>
+                    <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                    <p className="text-xs font-bold uppercase tracking-widest text-center">Loading Fresh Menu...</p>
+                  </div>
+                ) : !menuLoading && menuItems.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center h-64 text-muted gap-4 opacity-30">
+                    <Utensils className="w-12 h-12" />
+                    <p className="text-xs font-bold uppercase tracking-widest text-center">
+                      Please add menu items first in Menu Management
+                    </p>
                   </div>
                 ) : filteredMenu.length === 0 ? (
                   <div className="flex flex-col items-center justify-center h-64 text-muted gap-4 opacity-30">
-                     <Utensils className="w-12 h-12" />
-                     <p className="text-xs font-bold uppercase tracking-widest text-center">No items found</p>
+                    <Utensils className="w-12 h-12" />
+                    <p className="text-xs font-bold uppercase tracking-widest text-center">No items found</p>
                   </div>
                 ) : (
                   <div className="flex flex-col gap-2">
                     {filteredMenu.map(item => {
-                       const isAdded = lastAddedId === item.id;
-                       return (
-                        <div 
-                          key={item.id} 
+                      const isAdded = lastAddedId === item.id;
+                      return (
+                        <div
+                          key={item.id}
                           className={cn(
                             "flex items-center h-16 p-2 rounded-lg bg-zinc-900 border transition-all cursor-pointer group active:scale-95",
                             isAdded ? "border-primary ring-1 ring-primary/40 pulse-add" : "border-zinc-800 hover:border-zinc-700",
                             submitting && "opacity-50 pointer-events-none"
-                          )} 
+                          )}
                           onClick={() => addToCart(item)}
                         >
-                           <div className="h-12 w-12 rounded-md overflow-hidden bg-black/60 flex-shrink-0">
-                              {item.image_url ? (
-                                 <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" />
-                              ) : (
-                                 <div className="w-full h-full flex items-center justify-center">
-                                    <Armchair className="w-6 h-6 text-zinc-700" />
-                                 </div>
-                              )}
-                           </div>
-                           <div className="flex-grow ml-3 min-w-0">
-                              <p className="text-sm font-bold text-gray-100 truncate group-hover:text-primary transition-colors">
-                                {item.name}
-                              </p>
-                              <p className="text-xs text-yellow-500 font-medium mt-0.5">
-                                ETB {item.price.toLocaleString()}
-                              </p>
-                           </div>
-                           <div className="h-8 w-8 rounded-md bg-primary flex items-center justify-center shadow-lg shadow-primary/10 flex-shrink-0 transition-transform group-active:scale-90">
-                              <Plus className="w-4 h-4 text-black" />
-                           </div>
+                          <div className="h-12 w-12 rounded-md overflow-hidden bg-black/60 flex-shrink-0">
+                            {item.image_url ? (
+                              <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center">
+                                <Armchair className="w-6 h-6 text-zinc-700" />
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex-grow ml-3 min-w-0">
+                            <p className="text-sm font-bold text-gray-100 truncate group-hover:text-primary transition-colors">
+                              {item.name}
+                            </p>
+                            <p className="text-xs text-yellow-500 font-medium mt-0.5">
+                              ETB {item.price.toLocaleString()}
+                            </p>
+                          </div>
+                          <div className="h-8 w-8 rounded-md bg-primary flex items-center justify-center shadow-lg shadow-primary/10 flex-shrink-0 transition-transform group-active:scale-90">
+                            <Plus className="w-4 h-4 text-black" />
+                          </div>
                         </div>
-                       );
+                      );
                     })}
                   </div>
                 )}

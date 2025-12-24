@@ -11,13 +11,17 @@ export const useMenu = (filterAvailable = false) => {
     setLoading(true);
     try {
       let query = supabase
-        .from('menu')
+        .from('menu_items')
+        // We select all columns to preserve existing UI/UX that relies on category, image_url, etc.
         .select('*')
         .order('category', { ascending: true })
         .order('name', { ascending: true });
 
       if (filterAvailable) {
-        query = query.eq('is_available', true); // Corrected column name
+        // Prefer the boolean availability flag; this matches the MenuItem type.
+        // If your schema also has a `status` column, the backend view for menu_items
+        // should ensure only available rows are exposed.
+        query = query.eq('is_available', true);
       }
 
       const { data, error: fetchError } = await query;
@@ -35,10 +39,10 @@ export const useMenu = (filterAvailable = false) => {
   useEffect(() => {
     fetchMenu();
 
-    // Subscribe to realtime changes on the menu table
+    // Subscribe to realtime changes on the menu_items table
     const subscription = supabase
-      .channel('menu_updates')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'menu' }, () => {
+      .channel('menu_items_updates')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'menu_items' }, () => {
         fetchMenu();
       })
       .subscribe();
