@@ -17,10 +17,31 @@ export interface MenuItem {
   name: string;
   price: number;
   category: string;
+  description?: string;
   image_url?: string;
   is_available: boolean;
   stock_quantity?: number;
   created_at: string;
+  recipe?: Recipe;
+}
+
+export interface Recipe {
+  id: string;
+  menu_item_id: string;
+  prep_time: number;
+  cook_time: number;
+  servings: number;
+  instructions?: string;
+  ingredients?: RecipeIngredient[];
+}
+
+export interface RecipeIngredient {
+  id: string;
+  recipe_id: string;
+  ingredient_id: string;
+  quantity: number;
+  unit: string;
+  ingredient?: Ingredient;
 }
 
 export type OrderStatus = 
@@ -76,6 +97,39 @@ export interface Order {
   // Joins
   waiter?: UserProfile; 
   order_items?: OrderItem[];
+}
+
+export type TableZone = 'indoor' | 'outdoor' | 'vip' | 'bar';
+
+export interface TableSession {
+  id: string;
+  table_id: string;
+  order_id?: string;
+  assigned_waiter_id?: string;
+  seated_at: string;
+  closed_at?: string;
+  is_active: boolean;
+  session_revenue?: number;
+  // Joins
+  order?: Order;
+  assigned_waiter?: UserProfile;
+}
+
+export interface Table {
+  id: string;
+  table_number: string;
+  capacity: number;
+  zone: TableZone;
+  status: 'available' | 'occupied' | 'needs_cleaning' | 'reserved';
+  current_order_id?: string;
+  x_position?: number;
+  y_position?: number;
+  shape?: 'square' | 'round' | 'rectangle';
+  last_updated: string;
+  created_at: string;
+  // Joins
+  orders?: Order;
+  current_session?: TableSession[];
 }
 
 // Staff Performance Tracking
@@ -159,18 +213,6 @@ export interface CartItem extends MenuItem {
   instructions?: string;
 }
 
-export type TableStatusType = 'available' | 'occupied' | 'needs_cleaning' | 'reserved';
-
-export interface Table {
-  id: string;
-  table_number: number;
-  status: TableStatusType;
-  current_order_id?: string;
-  last_updated: string;
-  created_at: string;
-  orders?: Order;
-}
-
 export interface Supplier {
   id: string;
   name: string;
@@ -195,7 +237,6 @@ export interface Ingredient {
   supplier?: Supplier;
 }
 
-/** Added types to fix exported member errors **/
 export type Urgency = 'low' | 'medium' | 'critical';
 
 export type RestockRequestStatus = 'pending' | 'approved' | 'rejected' | 'ordered';

@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle, Button, showToast } from '../components/ui';
@@ -19,8 +20,16 @@ const Settings: React.FC = () => {
       if (!rData) throw new Error("No restaurant found. Please log out and back in to auto-create one.");
 
       // 2. Insert Seed Data
-      const menuPayload = MENU_SEED_DATA.map(item => ({ ...item, restaurant_id: rData.id }));
-      const { error } = await supabase.from('menu').insert(menuPayload);
+      const menuPayload = MENU_SEED_DATA.map(item => ({ 
+        name: item.name,
+        category: item.category,
+        price: item.price,
+        image_url: item.image_url,
+        status: 'available',
+        restaurant_id: rData.id 
+      }));
+      
+      const { error } = await supabase.from('menu_items').insert(menuPayload);
       if (error) throw error;
 
       showToast('Menu seeded successfully!', 'success');
@@ -41,8 +50,18 @@ const Settings: React.FC = () => {
         if (!rData) throw new Error("No restaurant found.");
 
         // 2. Insert Inventory Data
-        const invPayload = INVENTORY_SEED_DATA.map(item => ({ ...item, restaurant_id: rData.id }));
-        const { error } = await supabase.from('inventory').insert(invPayload);
+        const invPayload = INVENTORY_SEED_DATA.map(item => ({ 
+          name: item.name,
+          current_stock: item.quantity,
+          unit_type: item.unit,
+          par_min: item.par_level,
+          location: item.location,
+          cost_per_unit: item.cost_per_unit,
+          restaurant_id: rData.id,
+          is_active: true
+        }));
+        
+        const { error } = await supabase.from('ingredients').insert(invPayload);
         if (error) throw error;
 
         showToast('Inventory seeded successfully!', 'success');

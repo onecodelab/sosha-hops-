@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from 'react';
 import { supabase } from '../supabase';
 import { MenuItem } from '../types';
@@ -11,22 +12,28 @@ export const useMenu = (filterAvailable = false) => {
     setLoading(true);
     try {
       let query = supabase
-        .from('menu')
+        .from('menu_items')
         .select('*')
         .order('category', { ascending: true })
         .order('name', { ascending: true });
 
       if (filterAvailable) {
-        query = query.eq('is_available', true); // Corrected column name
+        query = query.eq('status', 'available');
       }
 
       const { data, error: fetchError } = await query;
 
       if (fetchError) throw fetchError;
-      setMenuItems(data as MenuItem[]);
+      
+      const mapped = (data || []).map((item: any) => ({
+        ...item,
+        is_available: item.status === 'available'
+      }));
+      
+      setMenuItems(mapped as MenuItem[]);
     } catch (err: any) {
       console.error('Error fetching menu:', err);
-      setError(err.message);
+      setError(err.message || String(err));
     } finally {
       setLoading(false);
     }
@@ -35,10 +42,10 @@ export const useMenu = (filterAvailable = false) => {
   useEffect(() => {
     fetchMenu();
 
-    // Subscribe to realtime changes on the menu table
+    // Subscribe to realtime changes on the menu_items table
     const subscription = supabase
       .channel('menu_updates')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'menu' }, () => {
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'menu_items' }, () => {
         fetchMenu();
       })
       .subscribe();

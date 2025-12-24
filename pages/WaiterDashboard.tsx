@@ -36,7 +36,7 @@ const WaiterDashboard: React.FC = () => {
             quantity, 
             price, 
             special_instructions, 
-            menu_item:menu (name, category)
+            menu_item:menu_items (name, category)
           )
         `)
         .gte('created_at', `${today}T00:00:00`)

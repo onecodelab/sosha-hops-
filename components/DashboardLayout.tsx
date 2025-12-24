@@ -8,9 +8,10 @@ import {
   LayoutDashboard, ShoppingBag, 
   Users, 
   Table2, ClipboardList, Utensils,
-  ChevronDown, Bell, ChevronLeft, ChevronRight, Trash2, Truck, PlusCircle, PackageCheck, FileText, Monitor, BookOpen
+  ChevronDown, Bell, ChevronLeft, ChevronRight, Trash2, Truck, PlusCircle, PackageCheck, FileText, Monitor, BookOpen, X
 } from 'lucide-react';
-import { cn } from './ui';
+// Added Button to imports from ./ui
+import { cn, Button } from './ui';
 import ThemeToggle from './ThemeToggle';
 import { LanguageSwitcher } from './LanguageSwitcher';
 import { LeafBubbleBackground } from './LeafBubbleBackground';
@@ -71,7 +72,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, titl
         .subscribe();
         
     return () => { supabase.removeChannel(sub); };
-  }, [profile, t]); // Add t to dependency
+  }, [profile, t]);
 
   useEffect(() => {
     const handleProfile = (e: MouseEvent) => {
@@ -98,19 +99,18 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, titl
       case 'admin' as any: 
         return [
           { icon: LayoutDashboard, label: t('nav.dashboard'), path: '/admin' },
-          { icon: Monitor, label: 'Live Tables', path: '/tables' },
+          { icon: Monitor, label: 'Floor Status', path: '/tables' },
           { icon: BookOpen, label: t('nav.menuManagement'), path: '/admin/menu' },
           { icon: Utensils, label: t('nav.menuAnalytics'), path: '/menu-analytics' },
           { icon: ShoppingBag, label: t('nav.inventory'), path: '/inventory' },
           { icon: Truck, label: t('nav.pendingRequests'), path: '/manager/pending-requests' },
           { icon: Users, label: t('nav.staffPerf'), path: '/admin/staff-performance' },
-          { icon: Table2, label: t('nav.tableMap'), path: '/admin/table-map' },
           { icon: ClipboardList, label: t('nav.settings'), path: '/settings' },
         ];
       case 'manager':
         return [
           { icon: LayoutDashboard, label: t('nav.opsDashboard'), path: '/manager' },
-          { icon: Monitor, label: 'Live Tables', path: '/tables' },
+          { icon: Monitor, label: 'Floor Status', path: '/tables' },
           { icon: Users, label: t('nav.staff'), path: '/staff-performance' },
           { icon: ClipboardList, label: t('nav.orders'), path: '/orders-tables' },
           { icon: PlusCircle, label: t('nav.createPO'), path: '/manager/create-po' },
@@ -122,7 +122,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, titl
       case 'waiter':
         return [
           { icon: LayoutDashboard, label: t('nav.myStation'), path: '/waiter' },
-          { icon: Monitor, label: 'Live Tables', path: '/tables' },
+          { icon: Monitor, label: 'Floor Status', path: '/tables' },
         ];
       case 'kitchen':
         return [
@@ -151,202 +151,213 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, titl
   const displayName = profile?.full_name || profile?.name || profile?.email?.split('@')[0] || 'User';
 
   return (
-    <div className="min-h-screen bg-background text-foreground flex flex-col md:flex-row font-sans overflow-hidden selection:bg-primary selection:text-black transition-colors duration-500">
-      
-      {/* Global Background */}
-      <div className="fixed inset-0 z-0 bg-background transition-colors duration-500">
-         <LeafBubbleBackground />
-         <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.03]" />
+    <div className="flex h-screen bg-background overflow-hidden selection:bg-primary selection:text-black">
+      {/* Background */}
+      <LeafBubbleBackground />
+      <div className="fixed inset-0 z-0 bg-gradient-to-b from-background via-background to-transparent transition-colors duration-500 pointer-events-none">
          <BackgroundMascots variant={mascotVariant} />
       </div>
 
-      {/* Mobile Header */}
-      <div className="md:hidden flex items-center justify-between p-4 bg-card/80 backdrop-blur-md border-b border-border z-50 sticky top-0">
-        <div className="flex items-center gap-2">
-           <div className="w-8 h-8"><SoshaLogo /></div>
-           <span className="font-bold text-lg text-foreground tracking-tight">Sosha OS</span>
-        </div>
-        <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="text-muted hover:text-foreground">
-          <Menu />
-        </button>
-      </div>
-
-      {/* Sidebar */}
+      {/* Sidebar - Desktop */}
       <aside 
         className={cn(
-          "fixed inset-y-0 left-0 z-40 bg-card/95 border-r border-border shadow-[20px_0_40px_rgba(0,0,0,0.5)] backdrop-blur-md transition-all duration-300 ease-in-out flex flex-col",
-          isMobileMenuOpen ? "translate-x-0 w-72" : "-translate-x-full md:translate-x-0",
-          !isMobileMenuOpen && (isCollapsed ? "md:w-[88px]" : "md:w-[280px]")
+          "hidden md:flex flex-col relative z-20 bg-card/60 backdrop-blur-3xl border-r border-border transition-all duration-500",
+          isCollapsed ? "w-20" : "w-72"
         )}
       >
+        <div className="flex items-center justify-between p-6 h-24">
+          {!isCollapsed && (
+             <div className="flex items-center gap-3 animate-in fade-in duration-500">
+               <SoshaLogo className="w-10 h-10" />
+               <div>
+                  <h1 className="text-xl font-bold tracking-tighter text-foreground leading-none">Sosha OS</h1>
+                  <span className="text-[9px] font-black uppercase text-primary tracking-[0.3em]">Master Unit</span>
+               </div>
+             </div>
+          )}
+          {isCollapsed && <SoshaLogo className="w-10 h-10 mx-auto" />}
+        </div>
+
+        <nav className="flex-1 px-4 space-y-2 py-4 overflow-y-auto custom-scrollbar">
+          {menuItems.map((item) => {
+            const isActive = location.pathname === item.path;
+            return (
+              <button
+                key={item.path}
+                onClick={() => navigate(item.path)}
+                className={cn(
+                  "w-full flex items-center gap-4 px-4 py-3 rounded-2xl transition-all duration-300 group",
+                  isActive 
+                    ? "bg-primary text-black shadow-lg shadow-primary/20" 
+                    : "text-muted hover:text-foreground hover:bg-white/5"
+                )}
+              >
+                <item.icon className={cn("w-5 h-5", isActive ? "text-black" : "text-muted group-hover:text-primary")} />
+                {!isCollapsed && <span className="font-bold text-sm tracking-tight">{item.label}</span>}
+              </button>
+            );
+          })}
+        </nav>
+
+        <div className="p-4 border-t border-border">
+          <button 
+            onClick={handleLogout}
+            className="w-full flex items-center gap-4 px-4 py-3 rounded-2xl text-red-400 hover:bg-red-500/10 transition-all duration-300 group"
+          >
+            <LogOut className="w-5 h-5 group-hover:scale-110 transition-transform" />
+            {!isCollapsed && <span className="font-bold text-sm">{t('common.logout')}</span>}
+          </button>
+        </div>
+
+        {/* Collapse Button */}
         <button 
           onClick={() => setIsCollapsed(!isCollapsed)}
-          className="hidden md:flex absolute -right-3 top-10 z-50 w-6 h-6 items-center justify-center bg-card border border-border text-muted rounded-full hover:bg-primary hover:text-black hover:border-primary transition-all shadow-lg"
+          className="absolute -right-3 top-24 w-6 h-6 bg-card border border-border rounded-full flex items-center justify-center text-muted hover:text-primary transition-colors shadow-lg z-30"
         >
-          {isCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
+          {isCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
         </button>
-
-        <div className="flex flex-col h-full px-4 py-6">
-            
-            {/* Logo Area */}
-            <div className={cn("flex items-center mb-10 transition-all duration-300", isCollapsed ? "justify-center" : "px-2 gap-3")}>
-                 <div className="w-10 h-10 shrink-0 transition-transform duration-300 hover:scale-110 drop-shadow-[0_0_15px_rgba(255,184,0,0.3)]">
-                    <SoshaLogo />
-                 </div>
-                 <div className={cn("overflow-hidden transition-all duration-300", isCollapsed ? "w-0 opacity-0" : "w-auto opacity-100")}>
-                    <span className="text-xl font-bold text-foreground tracking-tighter">Sosha OS</span>
-                 </div>
-            </div>
-
-            {/* User Profile */}
-            <div className="mb-8 relative group">
-                <div 
-                  className={cn(
-                    "flex items-center rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/10 transition-all cursor-pointer overflow-hidden",
-                    isCollapsed ? "justify-center p-2 bg-transparent border-transparent hover:bg-white/5" : "p-3 gap-3"
-                  )}
-                  onClick={() => isCollapsed && setIsCollapsed(false)} 
-                >
-                    <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center border border-primary/30 text-primary font-bold text-sm overflow-hidden shrink-0">
-                         <img 
-                           src={`https://ui-avatars.com/api/?name=${displayName}&background=FFB800&color=000`} 
-                           alt="Avatar" 
-                           className="w-full h-full object-cover opacity-90"
-                         />
-                    </div>
-                    
-                    <div className={cn("flex-1 min-w-0 transition-all duration-300", isCollapsed ? "w-0 opacity-0 hidden" : "w-auto opacity-100 block")}>
-                        <span className="block text-foreground text-sm font-bold truncate">{displayName}</span>
-                        <span className="block text-muted text-xs truncate capitalize">{t(`roles.${role}`)}</span>
-                    </div>
-                    
-                    <button
-                        type="button"
-                        ref={profileRef}
-                        onClick={(e) => { e.stopPropagation(); if(!isCollapsed) setIsProfileActive(!isProfileActive); else setIsCollapsed(false); }}
-                        className={cn("p-1 rounded-md text-muted hover:text-foreground transition-all", isCollapsed ? "hidden" : "block")}
-                    >
-                       <ChevronDown className={cn("w-4 h-4 transition-transform", isProfileActive && "rotate-180")} />
-                    </button>
-                </div>
-
-                {/* Profile Dropdown */}
-                {isProfileActive && !isCollapsed && (
-                    <div className="absolute top-full left-0 right-0 mt-2 z-50 bg-card border border-border rounded-xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-100">
-                         <button 
-                            type="button"
-                            onClick={handleLogout} 
-                            className="w-full text-left px-4 py-3 text-sm text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-colors flex items-center gap-2"
-                         >
-                            <LogOut className="w-4 h-4" /> {t('common.logout')}
-                         </button>
-                    </div>
-                )}
-            </div>
-
-            {/* Navigation */}
-            <div className="flex-1 overflow-y-auto space-y-1.5 custom-scrollbar overflow-x-hidden">
-                {menuItems.map((item, idx) => {
-                    const isActive = location.pathname === item.path;
-                    return (
-                      <button
-                          key={idx}
-                          onClick={() => { navigate(item.path); setIsMobileMenuOpen(false); }}
-                          className={cn(
-                              "w-full flex items-center transition-all duration-300 group relative",
-                              isCollapsed ? "justify-center p-3 rounded-xl" : "gap-x-3 px-4 py-3 rounded-xl text-sm font-medium",
-                              isActive
-                                  ? "bg-primary text-black shadow-[0_0_20px_rgba(255,184,0,0.3)] font-bold"
-                                  : "text-muted hover:text-foreground hover:bg-white/5"
-                          )}
-                          title={isCollapsed ? item.label : undefined}
-                      >
-                          <item.icon className={cn("w-5 h-5 transition-colors shrink-0", isActive ? "text-black" : "text-gray-500 group-hover:text-foreground")} />
-                          <span className={cn("whitespace-nowrap transition-all duration-300", isCollapsed ? "w-0 opacity-0 overflow-hidden" : "w-auto opacity-100")}>
-                            {item.label}
-                          </span>
-                      </button>
-                    )
-                })}
-            </div>
-
-            {/* Footer */}
-            {!isCollapsed && (
-              <div className="pt-6 mt-auto">
-                 <div className="p-4 rounded-2xl bg-gradient-to-br from-white/5 to-transparent border border-white/5">
-                    <p className="text-xs text-muted mb-2">{t('common.needHelp')}</p>
-                    <button className="text-xs text-primary hover:underline">{t('common.contactSupport')}</button>
-                 </div>
-              </div>
-            )}
-        </div>
       </aside>
 
-      {/* Main Content */}
-      <main 
-        className={cn(
-          "flex-1 h-screen overflow-y-auto transition-all duration-300 ease-in-out relative z-10",
-          isCollapsed ? "md:ml-[88px]" : "md:ml-[280px]"
-        )}
-      >
-        <div className="p-4 md:p-8 lg:p-10 max-w-[1600px] mx-auto space-y-10 min-h-[calc(100vh-2rem)]">
-          
-          {/* Top Bar */}
-          <header className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-            <div className="relative flex-1 max-w-md hidden md:block">
-               <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                  <Search className="h-4 w-4 text-muted" />
+      {/* Mobile Nav Trigger */}
+      <div className="md:hidden fixed top-0 left-0 right-0 h-16 bg-card/80 backdrop-blur-xl border-b border-border z-[100] px-4 flex items-center justify-between">
+         <div className="flex items-center gap-2">
+            <SoshaLogo className="w-8 h-8" />
+            <span className="font-bold text-sm tracking-tighter">Sosha OS</span>
+         </div>
+         <Button variant="ghost" size="icon" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
+            {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+         </Button>
+      </div>
+
+      {/* Mobile Sidebar */}
+      {isMobileMenuOpen && (
+         <div className="md:hidden fixed inset-0 z-[90] bg-background">
+            <div className="flex flex-col h-full pt-20 px-6">
+                <nav className="flex-1 space-y-4">
+                    {menuItems.map((item) => (
+                        <button
+                          key={item.path}
+                          onClick={() => { navigate(item.path); setIsMobileMenuOpen(false); }}
+                          className={cn(
+                            "w-full flex items-center gap-4 px-6 py-4 rounded-2xl transition-all",
+                            location.pathname === item.path ? "bg-primary text-black" : "text-gray-400"
+                          )}
+                        >
+                           <item.icon className="w-6 h-6" />
+                           <span className="font-bold text-lg">{item.label}</span>
+                        </button>
+                    ))}
+                </nav>
+                <div className="pb-10 space-y-4">
+                   <div className="flex justify-between p-4 bg-white/5 rounded-2xl">
+                      <ThemeToggle />
+                      <LanguageSwitcher />
+                   </div>
+                   <Button variant="destructive" className="w-full h-14 rounded-2xl text-lg font-bold" onClick={handleLogout}>
+                      {t('common.logout')}
+                   </Button>
+                </div>
+            </div>
+         </div>
+      )}
+
+      {/* Main Content Area */}
+      <main className="flex-1 flex flex-col h-full overflow-hidden relative z-10 pt-16 md:pt-0">
+        
+        {/* Header Navigation */}
+        <header className="flex-none h-24 flex items-center justify-between px-8 border-b border-white/5 bg-card/40 backdrop-blur-md">
+          <div className="flex flex-col">
+            <h2 className="text-2xl font-bold tracking-tight text-white">{title || t('nav.overview')}</h2>
+            {subtitle && <p className="text-xs font-medium text-gray-500 uppercase tracking-widest">{subtitle}</p>}
+          </div>
+
+          <div className="flex items-center gap-6">
+            
+            {/* Header Metrics */}
+            <div className="hidden lg:flex items-center gap-8 mr-4">
+               <div className="flex flex-col items-end">
+                  <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">{headerStats.label}</span>
+                  <span className="text-xl font-black text-white font-mono tracking-tighter">ETB {headerStats.value.toLocaleString()}</span>
                </div>
-               <input 
-                 type="text" 
-                 placeholder={t('common.search')} 
-                 className="block w-full pl-11 pr-4 py-2.5 bg-card/50 backdrop-blur-md border border-white/10 rounded-full text-sm text-foreground shadow-sm focus:ring-2 focus:ring-primary/50 focus:border-primary/50 placeholder:text-muted transition-all hover:bg-card/80 hover:border-white/20"
-               />
             </div>
 
-            <div className="flex items-center gap-4 md:gap-6 justify-end w-full md:w-auto">
-               <LanguageSwitcher />
-               <ThemeToggle />
-               
-               <button className="relative p-2.5 bg-card/50 border border-white/10 rounded-full text-muted hover:text-foreground hover:bg-white/5 transition-all group">
-                  <Bell className="w-5 h-5 group-hover:animate-swing" />
-                  <span className="absolute top-2 right-2.5 w-2 h-2 bg-red-500 rounded-full shadow-[0_0_8px_rgba(239,68,68,0.8)] animate-pulse" />
-               </button>
+            <div className="flex items-center gap-3">
+              <ThemeToggle />
+              <LanguageSwitcher />
+              
+              <div className="h-10 w-px bg-border mx-2 hidden sm:block" />
 
-               {/* Stats Pill - Dynamic */}
-               <div className="hidden md:flex items-center gap-3 bg-card/80 border border-white/10 px-4 py-1.5 rounded-full shadow-lg backdrop-blur-md">
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-yellow-600 flex items-center justify-center shadow-[0_0_10px_rgba(255,184,0,0.4)]">
-                     <Wallet className="w-4 h-4 text-black" />
+              {/* Profile Dropdown */}
+              <div className="relative">
+                <button 
+                  ref={profileRef}
+                  onClick={() => setIsProfileActive(!isProfileActive)}
+                  className="flex items-center gap-3 pl-2 pr-4 py-1.5 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 transition-all group"
+                >
+                  <div className="w-10 h-10 rounded-full overflow-hidden bg-primary shadow-[0_0_15px_rgba(255,184,0,0.3)] border-2 border-primary/20">
+                     {profile?.avatar_url ? (
+                       <img src={profile.avatar_url} className="w-full h-full object-cover" />
+                     ) : (
+                       <div className="w-full h-full flex items-center justify-center text-black font-black text-lg bg-primary">
+                          {displayName.charAt(0).toUpperCase()}
+                       </div>
+                     )}
                   </div>
-                  <div className="flex flex-col">
-                     <span className="text-[10px] text-muted font-bold uppercase tracking-wider">{headerStats.label}</span>
-                     <span className="text-sm font-bold text-foreground">ETB {headerStats.value.toLocaleString()}</span>
+                  <div className="hidden sm:flex flex-col items-start leading-tight">
+                    <span className="text-sm font-bold text-white group-hover:text-primary transition-colors">{displayName}</span>
+                    <span className="text-[9px] font-black text-gray-500 uppercase tracking-wider">{role}</span>
                   </div>
-               </div>
-            </div>
-          </header>
+                  <ChevronDown className={cn("w-4 h-4 text-gray-600 transition-transform duration-300", isProfileActive && "rotate-180")} />
+                </button>
 
-          {/* Page Title Area */}
-          {(title || subtitle) && (
-            <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 animate-in fade-in slide-in-from-bottom-2 duration-700">
-              <div>
-                <h1 className="text-4xl font-bold text-foreground tracking-tight drop-shadow-lg">{title}</h1>
-                {subtitle && <p className="text-muted text-base mt-2 font-medium">{subtitle}</p>}
+                {isProfileActive && (
+                  <div className="absolute top-full right-0 mt-3 w-64 bg-card border border-border rounded-3xl shadow-2xl overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-300">
+                     <div className="p-4 bg-primary text-black">
+                        <p className="font-black text-lg tracking-tight truncate">{displayName}</p>
+                        <p className="text-[10px] font-bold uppercase opacity-60 tracking-widest">{role}</p>
+                     </div>
+                     <div className="p-2">
+                        <button className="w-full text-left px-4 py-3 rounded-xl text-sm font-bold text-gray-300 hover:bg-white/5 hover:text-white transition-colors flex items-center gap-3">
+                           <Users className="w-4 h-4" /> My Profile
+                        </button>
+                        <button className="w-full text-left px-4 py-3 rounded-xl text-sm font-bold text-gray-300 hover:bg-white/5 hover:text-white transition-colors flex items-center gap-3">
+                           <Bell className="w-4 h-4" /> Notifications
+                        </button>
+                        <div className="h-px bg-border my-2 mx-2" />
+                        <button 
+                          onClick={handleLogout}
+                          className="w-full text-left px-4 py-3 rounded-xl text-sm font-bold text-red-400 hover:bg-red-500/10 transition-colors flex items-center gap-3"
+                        >
+                           <LogOut className="w-4 h-4" /> {t('common.logout')}
+                        </button>
+                     </div>
+                  </div>
+                )}
               </div>
-              {actions}
             </div>
-          )}
+          </div>
+        </header>
 
+        {/* Content Header Actions */}
+        {actions && (
+          <div className="flex-none px-8 py-4 bg-black/10 border-b border-white/5">
+             {actions}
+          </div>
+        )}
+
+        {/* Page Container */}
+        <div className="flex-1 overflow-y-auto p-8 relative custom-scrollbar">
           {children}
         </div>
       </main>
-      
-      {isMobileMenuOpen && (
-        <div 
-          className="fixed inset-0 z-30 bg-black/80 md:hidden backdrop-blur-sm"
-          onClick={() => setIsMobileMenuOpen(false)}
-        />
-      )}
+
+      <style>{`
+        .scrollbar-none::-webkit-scrollbar { display: none; }
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; height: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.05); border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.1); }
+      `}</style>
     </div>
   );
 };

@@ -40,7 +40,7 @@ const ManagerDashboard: React.FC = () => {
   const fetchDashboardData = async () => {
      try {
         const todayStr = new Date().toISOString().split('T')[0];
-        const { data: todayOrders } = await supabase.from('orders').select(`*, order_items (quantity, menu_item:menu (name))`).gte('created_at', `${todayStr}T00:00:00`).order('created_at', { ascending: false });
+        const { data: todayOrders } = await supabase.from('orders').select(`*, order_items (quantity, menu_item:menu_items (name))`).gte('created_at', `${todayStr}T00:00:00`).order('created_at', { ascending: false });
         setOrders(todayOrders as Order[] || []);
         
         const { data: allStaff } = await supabase.from('users').select('*').in('role', ['waiter', 'kitchen', 'manager', 'security']);
