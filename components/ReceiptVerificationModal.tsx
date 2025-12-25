@@ -150,7 +150,7 @@ export const ReceiptVerificationModal: React.FC<ReceiptVerificationModalProps> =
                     <div className="p-3 bg-black/40 rounded-lg">
                        <p className="text-xs text-gray-500 uppercase font-bold mb-1">Table</p>
                        <div className="flex items-center gap-2 text-white font-bold">
-                          <MapPin className="w-4 h-4 text-primary" /> {orderData.table_no}
+                          <MapPin className="w-4 h-4 text-primary" /> {orderData.table_number}
                        </div>
                     </div>
                     <div className="p-3 bg-black/40 rounded-lg">

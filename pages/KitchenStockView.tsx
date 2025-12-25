@@ -44,7 +44,8 @@ const KitchenStockView: React.FC = () => {
   /** Added explicit type to useMemo to fix unknown issues **/
   const categories = useMemo<string[]>(() => {
     if (!ingredients) return ['All'];
-    const cats = new Set(ingredients.map(i => i.category).filter(Boolean));
+    // Fix: Explicitly type the Set as string to ensure return type is string[]
+    const cats = new Set<string>(ingredients.map(i => i.category).filter(Boolean));
     return ['All', ...Array.from(cats).sort()];
   }, [ingredients]);
 

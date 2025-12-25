@@ -83,7 +83,10 @@ const ManagerDashboard: React.FC = () => {
         });
         setStaffPerf(Object.values(staffMap).filter((s: any) => s.orders > 0).sort((a: any, b: any) => b.orders - a.orders).slice(0, 10));
         setShiftStaff(allStaff?.filter((u: any) => u.is_online || staffActivityMap.has(u.id)).map((u: any) => ({ name: u.full_name || u.email.split('@')[0], role: u.role, duration: u.shift_start ? `${Math.round((new Date().getTime() - new Date(u.shift_start).getTime()) / 3600000 * 10) / 10}h` : 'Active' })) || []);
-     } catch (err) { console.error(err); } finally { setLoading(false); }
+     } catch (err: any) { 
+        const errorMsg = err?.message || (typeof err === 'string' ? err : JSON.stringify(err));
+        console.error("Manager Dashboard Error:", errorMsg);
+     } finally { setLoading(false); }
   };
 
   const liveActiveOrders = orders.filter(o => ['pending', 'accepted', 'preparing', 'ready'].includes(o.status));

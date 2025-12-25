@@ -44,8 +44,9 @@ const WaiterDashboard: React.FC = () => {
         
       if (error) throw error;
       if (data) setOrders(data as Order[]);
-    } catch (err) {
-      console.error("Fetch orders error:", err);
+    } catch (err: any) {
+      const errorMsg = err?.message || (typeof err === 'string' ? err : JSON.stringify(err));
+      console.error("Fetch orders error:", errorMsg);
     } finally {
       setIsLoading(false);
     }

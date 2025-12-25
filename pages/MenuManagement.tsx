@@ -13,17 +13,17 @@ const MenuManagement: React.FC = () => {
   const { t } = useLanguage();
   const { menuItems, categories, loading: menuLoading, refreshMenu } = useMenu(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('All');
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string>('all');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<MenuItem | null>(null);
 
   const filteredItems = useMemo(() => {
     return menuItems.filter(item => {
       const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesCategory = selectedCategory === 'All' || item.category === selectedCategory;
+      const matchesCategory = selectedCategoryId === 'all' || item.category_id === selectedCategoryId;
       return matchesSearch && matchesCategory;
     });
-  }, [menuItems, searchTerm, selectedCategory]);
+  }, [menuItems, searchTerm, selectedCategoryId]);
 
   const handleDelete = async (e: React.MouseEvent, menuItemId: string) => {
     e.stopPropagation();
@@ -31,7 +31,7 @@ const MenuManagement: React.FC = () => {
     
     try {
       const { error } = await supabase
-        .from('menu_items')
+        .from('menu')
         .delete()
         .eq('id', menuItemId);
       
@@ -40,7 +40,7 @@ const MenuManagement: React.FC = () => {
       }
       
       showToast('Dish deleted successfully!', 'success');
-      refreshMenu(); // Refresh the list
+      refreshMenu();
     } catch (err: any) {
       console.error('Error deleting dish:', err);
       showToast('Error deleting dish: ' + (err.message || String(err)), 'error');
@@ -74,26 +74,24 @@ const MenuManagement: React.FC = () => {
         <div className="flex flex-col md:flex-row justify-between gap-4 items-center">
           <div className="flex bg-[#1A1A1A] p-1 rounded-xl border border-gray-800 w-full md:w-auto overflow-x-auto custom-scrollbar">
             <button
-              onClick={() => setSelectedCategory('All')}
+              onClick={() => setSelectedCategoryId('all')}
               className={cn(
-                "px-4 py-2 text-xs font-bold rounded-lg transition-all whitespace-nowrap",
-                selectedCategory === 'All' ? "bg-primary text-black" : "text-gray-400 hover:text-white"
+                "px-4 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all whitespace-nowrap",
+                selectedCategoryId === 'all' ? "bg-primary text-black" : "text-gray-500 hover:text-white"
               )}
             >
               All Items
             </button>
-            {categories
-              .filter(cat => cat && cat.toUpperCase() !== 'TAJAWEED FORCUSED')
-              .map(cat => (
+            {categories.map(cat => (
               <button
-                key={cat}
-                onClick={() => setSelectedCategory(cat)}
+                key={cat.id}
+                onClick={() => setSelectedCategoryId(cat.id)}
                 className={cn(
-                  "px-4 py-2 text-xs font-bold rounded-lg transition-all whitespace-nowrap",
-                  selectedCategory === cat ? "bg-primary text-black" : "text-gray-400 hover:text-white"
+                  "px-4 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all whitespace-nowrap",
+                  selectedCategoryId === cat.id ? "bg-primary text-black" : "text-gray-500 hover:text-white"
                 )}
               >
-                {cat}
+                {cat.name}
               </button>
             ))}
           </div>
@@ -137,7 +135,7 @@ const MenuManagement: React.FC = () => {
                    </div>
                    <div className="absolute inset-0 bg-gradient-to-t from-black to-transparent opacity-60" />
                    <div className="absolute bottom-3 left-3">
-                      <p className="text-[10px] font-black text-primary uppercase tracking-widest">{item.category}</p>
+                      <p className="text-[10px] font-black text-primary uppercase tracking-widest">{item.category_name}</p>
                    </div>
                 </div>
                 <CardContent className="p-4 flex-1 flex flex-col justify-between">

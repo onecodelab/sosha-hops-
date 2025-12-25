@@ -250,7 +250,8 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
   const filteredMenu = useMemo(() => {
     return menuItems.filter(m => {
       const matchesSearch = m.name.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesCategory = selectedCategory === 'All' || m.category === selectedCategory;
+      /** Changed m.category to m.category_name to fix string comparison error **/
+      const matchesCategory = selectedCategory === 'All' || m.category_name === selectedCategory;
       return matchesSearch && matchesCategory;
     });
   }, [menuItems, searchTerm, selectedCategory]);
@@ -359,15 +360,16 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
              All
           </Button>
           {categories.map(cat => (
+             /** Changed usage of cat object to cat.id and cat.name to fix type comparison errors **/
              <Button 
-                key={cat}
+                key={cat.id}
                 size="sm"
-                variant={selectedCategory === cat ? 'primary' : 'outline'}
-                onClick={() => setSelectedCategory(cat)}
+                variant={selectedCategory === cat.name ? 'primary' : 'outline'}
+                onClick={() => setSelectedCategory(cat.name)}
                 className="rounded-full px-5 whitespace-nowrap text-[10px] font-black uppercase tracking-wider h-8 border-white/10"
                 disabled={submitting}
              >
-                {cat}
+                {cat.name}
              </Button>
           ))}
         </div>

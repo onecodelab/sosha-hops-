@@ -73,12 +73,13 @@ const MenuAnalytics: React.FC = () => {
       });
 
       // 3. Map back to menu items and calculate quadrants
+      /** Changed menu.category to menu.category_name to fix string assignment error **/
       const stats: MenuStat[] = menuItems.map(menu => {
         const data = itemMap.get(menu.id) || { sold: 0, rev: 0 };
         return {
           id: menu.id,
           name: menu.name,
-          category: menu.category,
+          category: menu.category_name || 'Uncategorized',
           totalSold: data.sold,
           totalRevenue: data.rev,
           quadrant: 'Dog' // Placeholder

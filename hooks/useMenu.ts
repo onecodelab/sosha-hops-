@@ -1,38 +1,48 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '../supabase';
-import { MenuItem } from '../types';
+import { MenuItem, Category } from '../types';
 
 export const useMenu = (filterAvailable = false) => {
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchMenu = async () => {
+  const fetchData = async () => {
     setLoading(true);
     try {
-      let query = supabase
-        .from('menu_items')
+      // 1. Fetch Categories
+      const { data: catData, error: catError } = await supabase
+        .from('categories')
         .select('*')
-        .order('category', { ascending: true })
+        .order('name', { ascending: true });
+
+      if (catError) throw catError;
+      setCategories(catData || []);
+
+      // 2. Fetch Menu with Category Join
+      let query = supabase
+        .from('menu')
+        .select('*, category:categories(name)')
         .order('name', { ascending: true });
 
       if (filterAvailable) {
-        query = query.eq('status', 'available');
+        query = query.eq('is_available', true);
       }
 
-      const { data, error: fetchError } = await query;
+      const { data: menuData, error: menuError } = await query;
 
-      if (fetchError) throw fetchError;
+      if (menuError) throw menuError;
       
-      const mapped = (data || []).map((item: any) => ({
+      const mappedData = (menuData as any[] || []).map(item => ({
         ...item,
-        is_available: item.status === 'available'
+        category_name: item.category?.name || 'Uncategorized'
       }));
       
-      setMenuItems(mapped as MenuItem[]);
+      setMenuItems(mappedData);
     } catch (err: any) {
-      console.error('Error fetching menu:', err);
+      console.error('Error fetching menu data:', err);
       setError(err.message || String(err));
     } finally {
       setLoading(false);
@@ -40,29 +50,25 @@ export const useMenu = (filterAvailable = false) => {
   };
 
   useEffect(() => {
-    fetchMenu();
+    fetchData();
 
-    // Subscribe to realtime changes on the menu_items table
-    const subscription = supabase
-      .channel('menu_updates')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'menu_items' }, () => {
-        fetchMenu();
-      })
+    // Subscribe to updates for both tables
+    const menuSub = supabase
+      .channel('menu_sync')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'menu' }, () => fetchData())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'categories' }, () => fetchData())
       .subscribe();
 
     return () => {
-      supabase.removeChannel(subscription);
+      supabase.removeChannel(menuSub);
     };
   }, [filterAvailable]);
-
-  // Derived state: Group items by category
-  const categories = Array.from(new Set(menuItems.map(i => i.category)));
 
   return { 
     menuItems, 
     categories,
     loading, 
     error, 
-    refreshMenu: fetchMenu 
+    refreshMenu: fetchData 
   };
 };

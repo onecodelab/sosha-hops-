@@ -4,7 +4,7 @@ export type Role = 'owner' | 'manager' | 'waiter' | 'kitchen';
 export interface UserProfile {
   id: string;
   full_name?: string;
-  name?: string; // Kept for backward compatibility
+  name?: string;
   email?: string;
   role: Role;
   created_at: string;
@@ -12,11 +12,19 @@ export interface UserProfile {
   avatar_url?: string;
 }
 
+export interface Category {
+  id: string;
+  name: string;
+  created_at: string;
+}
+
 export interface MenuItem {
   id: string;
   name: string;
   price: number;
-  category: string;
+  category_id?: string;
+  category_name?: string; // Derived field
+  category?: Category;    // Joined object
   description?: string;
   image_url?: string;
   is_available: boolean;
@@ -74,16 +82,12 @@ export interface Order {
   created_by_role?: 'waiter' | 'manager' | 'system';
   total_amount: number;
   customer_notes?: string;
-  
-  // Staff Accountability Fields
   created_by_id?: string;
   created_by_name?: string;
   handled_by_id?: string;
   approved_by_id?: string;
   closed_by_id?: string;
   payment_processed_by_id?: string;
-  
-  // Timestamps
   created_at: string;
   accepted_at?: string;
   preparing_at?: string;
@@ -93,27 +97,11 @@ export interface Order {
   paid_at?: string;
   cancelled_at?: string;
   cancelled_reason?: string;
-  
-  // Joins
   waiter?: UserProfile; 
   order_items?: OrderItem[];
 }
 
 export type TableZone = 'indoor' | 'outdoor' | 'vip' | 'bar';
-
-export interface TableSession {
-  id: string;
-  table_id: string;
-  order_id?: string;
-  assigned_waiter_id?: string;
-  seated_at: string;
-  closed_at?: string;
-  is_active: boolean;
-  session_revenue?: number;
-  // Joins
-  order?: Order;
-  assigned_waiter?: UserProfile;
-}
 
 export interface Table {
   id: string;
@@ -127,74 +115,21 @@ export interface Table {
   shape?: 'square' | 'round' | 'rectangle';
   last_updated: string;
   created_at: string;
-  // Joins
   orders?: Order;
-  current_session?: TableSession[];
 }
 
-// Staff Performance Tracking
-export interface StaffShift {
+export interface Ingredient {
   id: string;
-  staff_id: string;
-  staff_name: string;
-  role: string;
-  clock_in_time: string;
-  clock_out_time?: string;
-  shift_duration_minutes?: number;
-  status?: 'active' | 'completed';
-  created_at: string;
-}
-
-export type StaffActionType = 
-  | 'clock_in'
-  | 'clock_out'
-  | 'order_created' 
-  | 'payment_processed' 
-  | 'order_cancelled' 
-  | 'table_cleared' 
-  | 'waste_logged' 
-  | 'override_used';
-
-export interface StaffAction {
-  id: string;
-  staff_id: string;
-  staff_name?: string;
-  role?: string;
-  action_type: StaffActionType;
-  entity_type?: string;
-  entity_id?: string;
-  details?: any;
-  shift_id?: string;
-  created_at: string;
-  // Joins
-  staff?: UserProfile;
-}
-
-export interface StaffPerformanceDaily {
-  id: string;
-  staff_id: string;
-  staff_name: string;
-  role: string;
-  date: string;
-  revenue_attributed: number;
-  cash_handled: number;
-  orders_taken: number;
-  orders_served: number;
-  total_shift_minutes: number;
-  idle_time_minutes: number;
-  created_at: string;
-  // Joins
-  staff?: UserProfile;
-}
-
-export interface InventoryWaste {
-  id: string;
-  staff_id: string;
-  item_id: string;
-  quantity: number;
-  reason: string;
-  cost: number;
-  created_at: string;
+  sku: string;
+  name: string;
+  category: string;
+  unit_type: string;
+  current_stock: number;
+  par_min: number;
+  par_max?: number;
+  cost_per_unit?: number;
+  supplier_id?: string;
+  is_active: boolean;
 }
 
 export interface OrderItem {
@@ -222,23 +157,7 @@ export interface Supplier {
   is_active?: boolean;
 }
 
-export interface Ingredient {
-  id: string;
-  sku: string;
-  name: string;
-  category: string;
-  unit_type: string;
-  current_stock: number;
-  par_min: number;
-  par_max?: number;
-  cost_per_unit?: number;
-  supplier_id?: string;
-  is_active: boolean;
-  supplier?: Supplier;
-}
-
 export type Urgency = 'low' | 'medium' | 'critical';
-
 export type RestockRequestStatus = 'pending' | 'approved' | 'rejected' | 'ordered';
 
 export interface RestockRequest {
@@ -252,7 +171,6 @@ export interface RestockRequest {
   reviewed_by?: string;
   reviewed_at?: string;
   created_at: string;
-  // Joins
   ingredient?: Ingredient;
   requester?: UserProfile;
   reviewer?: {
@@ -272,7 +190,6 @@ export interface WasteLog {
   cost?: number;
   logged_by: string;
   created_at: string;
-  // Joins
   ingredient?: Ingredient;
   staff?: UserProfile;
 }
@@ -289,7 +206,6 @@ export interface PurchaseOrder {
   status: PurchaseOrderStatus;
   created_by: string;
   created_at: string;
-  // Joins
   supplier?: Supplier;
   creator?: UserProfile;
   items?: PurchaseOrderItem[];
@@ -302,6 +218,39 @@ export interface PurchaseOrderItem {
   ordered_quantity: number;
   unit_price: number;
   created_at: string;
-  // Joins
   ingredient?: Ingredient;
+}
+
+/** Added StaffShift, StaffAction and StaffPerformanceDaily to resolve import errors **/
+export interface StaffShift {
+  id: string;
+  staff_id: string;
+  staff_name?: string;
+  role: Role;
+  clock_in_time: string;
+  clock_out_time?: string;
+  shift_duration_minutes?: number;
+  status: 'active' | 'completed';
+}
+
+export interface StaffAction {
+  id: string;
+  staff_id: string;
+  staff_name?: string;
+  role: Role;
+  action_type: string;
+  entity_type: string;
+  shift_id?: string;
+  details?: any;
+  created_at: string;
+}
+
+export interface StaffPerformanceDaily {
+  id: string;
+  staff_id: string;
+  staff_name?: string;
+  date: string;
+  orders_taken: number;
+  revenue_attributed: number;
+  cash_handled: number;
 }
