@@ -26,9 +26,9 @@ export const InviteStaffModal: React.FC<InviteStaffModalProps> = ({ isOpen, onCl
       // Generate a UUID for the invited user
       const newUserId = crypto.randomUUID();
       
-      // Insert directly into users table (no auth user creation)
+      // Insert directly into profiles table (no auth user creation)
       const { error } = await supabase
-        .from('users')
+        .from('profiles')
         .insert({
           id: newUserId,
           email: email,

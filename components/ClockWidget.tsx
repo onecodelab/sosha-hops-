@@ -101,7 +101,7 @@ export const ClockWidget: React.FC = () => {
         details: { timestamp: now }
       });
 
-      await supabase.from('users').update({ is_online: true }).eq('id', user.id);
+      await supabase.from('profiles').update({ is_online: true }).eq('id', user.id);
 
       setCurrentShift(newShift as StaffShift);
       showToast('Shift started. Good luck!', 'success');
@@ -141,7 +141,7 @@ export const ClockWidget: React.FC = () => {
         details: { duration_minutes: diffMins, timestamp: now }
       });
 
-      await supabase.from('users').update({ is_online: false }).eq('id', user.id);
+      await supabase.from('profiles').update({ is_online: false }).eq('id', user.id);
 
       setCurrentShift(null);
       showToast(`Shift ended. Total: ${diffMins} minutes.`, 'success');

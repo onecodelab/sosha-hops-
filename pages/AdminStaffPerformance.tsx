@@ -52,7 +52,7 @@ const AdminStaffPerformance: React.FC = () => {
     setIsRefreshing(true);
     try {
       const { data: userData, error: userError } = await supabase
-        .from('users')
+        .from('profiles')
         .select('*')
         .order('is_online', { ascending: false });
       

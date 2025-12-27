@@ -57,13 +57,13 @@ const StaffPerformance: React.FC = () => {
     try {
       const todayStr = new Date().toISOString().split('T')[0];
 
-      // 1. Fetch Users + Performance
-      const { data: usersData } = await supabase.from('users').select('*');
+      // 1. Fetch Profiles + Performance
+      const { data: usersData } = await supabase.from('profiles').select('*');
       const { data: perfData } = await supabase.from('staff_performance_daily').select('*').eq('date', todayStr);
       const { data: shiftsData } = await supabase.from('staff_shifts').select('*').is('clock_out_time', null);
-      const { data: actionsData } = await supabase.from('staff_actions').select('*, staff:users(full_name, role)').order('created_at', { ascending: false }).limit(50);
+      const { data: actionsData } = await supabase.from('staff_actions').select('*, staff:profiles(full_name, role)').order('created_at', { ascending: false }).limit(50);
       
-      const leaderboardData = await supabase.from('staff_performance_daily').select('*, staff:users(full_name, role)').eq('date', todayStr).order('revenue_attributed', { ascending: false });
+      const leaderboardData = await supabase.from('staff_performance_daily').select('*, staff:profiles(full_name, role)').eq('date', todayStr).order('revenue_attributed', { ascending: false });
 
       // Combine for Overview Cards
       const combined = (usersData || []).map(u => {
