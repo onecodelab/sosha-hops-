@@ -101,6 +101,8 @@ export const ClockWidget: React.FC = () => {
         details: { timestamp: now }
       });
 
+      // Keep staff online status in sync on profiles (primary) and users (legacy)
+      await supabase.from('profiles').update({ is_online: true }).eq('id', user.id);
       await supabase.from('users').update({ is_online: true }).eq('id', user.id);
 
       setCurrentShift(newShift as StaffShift);
@@ -141,6 +143,8 @@ export const ClockWidget: React.FC = () => {
         details: { duration_minutes: diffMins, timestamp: now }
       });
 
+      // Keep staff online status in sync on profiles (primary) and users (legacy)
+      await supabase.from('profiles').update({ is_online: false }).eq('id', user.id);
       await supabase.from('users').update({ is_online: false }).eq('id', user.id);
 
       setCurrentShift(null);
