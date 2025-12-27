@@ -37,7 +37,7 @@ const TableStatus: React.FC = () => {
             seated_at,
             is_active,
             session_revenue,
-            waiter:users(full_name)
+            waiter:profiles(id, full_name, email)
           )
         `)
         .order('table_number', { ascending: true });
