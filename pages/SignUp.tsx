@@ -18,9 +18,9 @@ const SignUp: React.FC = () => {
     setLoading(true);
 
     try {
-      // 1. Check if user was invited
+      // 1. Check if user was invited in profiles table
       const { data: invitation, error: inviteError } = await supabase
-        .from('users')
+        .from('profiles')
         .select('*')
         .eq('email', email)
         .eq('invitation_pending', true)
@@ -31,8 +31,6 @@ const SignUp: React.FC = () => {
       }
 
       // 2. Create auth account
-      // The database trigger 'handle_new_user' will automatically detect the existing 
-      // pending profile by email and update the ID to match the new Auth ID.
       const { data: authData, error: signUpError } = await supabase.auth.signUp({
         email,
         password,
@@ -47,12 +45,11 @@ const SignUp: React.FC = () => {
       if (signUpError) throw signUpError;
 
       if (authData.user) {
-        // Wait and verify the trigger worked
+        // Wait and verify the trigger linked the profile
         await new Promise(resolve => setTimeout(resolve, 1500));
 
-        // Verify the profile was created/linked correctly
         const { data: profile, error: profileError } = await supabase
-          .from('users')
+          .from('profiles')
           .select('id, role, email')
           .eq('id', authData.user.id)
           .single();

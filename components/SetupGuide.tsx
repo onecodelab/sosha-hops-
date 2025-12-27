@@ -1,77 +1,100 @@
 
 import React, { useState } from 'react';
-import { Button, Card, CardContent, CardHeader, CardTitle } from './ui';
-import { Database, Copy, Check, RefreshCw, Terminal } from 'lucide-react';
+import { Button, Card, CardContent, CardHeader } from './ui';
+import { Copy, Check, RefreshCw, ShieldAlert, Lock } from 'lucide-react';
 import { SoshaLogo } from './SoshaLogo';
 
 export const SetupGuide: React.FC = () => {
   const [copied, setCopied] = useState(false);
 
-  const sqlCode = `-- 1. Category System Migration
-create table if not exists public.categories (
-  id uuid default uuid_generate_v4() primary key,
-  name text not null unique,
-  created_at timestamp with time zone default now()
-);
+  const sqlCode = `-- 1. ERP ENUMS & CONSTRAINTS
+DO $$ 
+BEGIN 
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'event_type') THEN
+        CREATE TYPE public.event_type AS ENUM ('purchase', 'consumption', 'waste', 'adjustment', 'shortage');
+    END IF;
+END $$;
 
--- Ensure category_id exists on menu table
-do $$ 
-begin 
-  if not exists (select 1 from information_schema.columns where table_name='menu' and column_name='category_id') then
-    alter table public.menu add column category_id uuid references public.categories(id) on delete set null;
-  end if;
-end $$;
+ALTER TABLE public.ingredients 
+    ADD CONSTRAINT IF NOT EXISTS qty_non_negative CHECK (current_stock >= 0),
+    ADD CONSTRAINT IF NOT EXISTS par_logic CHECK (par_min <= par_max);
 
--- 2. Repair Table: recipe_items
-drop table if exists public.recipe_items cascade;
-create table public.recipe_items (
-  id uuid default uuid_generate_v4() primary key,
-  menu_id uuid references public.menu(id) on delete cascade,
-  ingredient_id uuid references public.ingredients(id) on delete cascade,
-  qty_per_item numeric not null default 0,
-  created_at timestamp with time zone default now()
-);
+-- 2. CORE SYNC TRIGGER (Audit Trail -> Stock)
+CREATE OR REPLACE FUNCTION public.fn_sync_ingredient_stock()
+RETURNS TRIGGER AS $$
+BEGIN
+    UPDATE public.ingredients
+    SET current_stock = current_stock + NEW.qty_change
+    WHERE id = NEW.ingredient_id;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- 3. Security Policies (RLS)
-alter table public.categories enable row level security;
-alter table public.menu enable row level security;
-alter table public.recipe_items enable row level security;
+DROP TRIGGER IF EXISTS tr_inventory_sync ON public.inventory_events;
+CREATE TRIGGER tr_inventory_sync
+AFTER INSERT ON public.inventory_events
+FOR EACH ROW EXECUTE FUNCTION public.fn_sync_ingredient_stock();
 
-drop policy if exists "Allow all to view categories" on public.categories;
-create policy "Allow all to view categories" on public.categories for select using (true);
+-- 3. AUTOMATED CONSUMPTION (Order -> Audit Trail)
+CREATE OR REPLACE FUNCTION public.consume_order_inventory(p_order_id UUID)
+RETURNS VOID AS $$
+DECLARE
+    item_record RECORD;
+    recipe_record RECORD;
+BEGIN
+    FOR item_record IN (SELECT menu_item_id, quantity FROM public.order_items WHERE order_id = p_order_id) LOOP
+        FOR recipe_record IN (
+            SELECT ri.ingredient_id, (ri.quantity / NULLIF(r.yield_servings, 0)) as unit_qty
+            FROM public.recipe_ingredients ri
+            JOIN public.recipes r ON ri.recipe_id = r.id
+            WHERE r.menu_item_id = item_record.menu_item_id
+        ) LOOP
+            INSERT INTO public.inventory_events (ingredient_id, event_type, qty_change, reason)
+            VALUES (recipe_record.ingredient_id, 'consumption', -(recipe_record.unit_qty * item_record.quantity), 'Order #' || p_order_id);
+        END LOOP;
+    END LOOP;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
-drop policy if exists "Managers manage categories" on public.categories;
-create policy "Managers manage categories" on public.categories for all using (
-  auth.uid() in (select id from public.users where role in ('owner', 'manager'))
-);
+CREATE OR REPLACE FUNCTION public.fn_on_order_fulfilled()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF (NEW.status IN ('completed', 'paid', 'served') AND OLD.status NOT IN ('completed', 'paid', 'served')) THEN
+        PERFORM public.consume_order_inventory(NEW.id);
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
 
--- 4. Inventory Intelligence View
-create or replace view public.ingredient_overview as
-with usage_stats as (
-    select 
-        ingredient_id,
-        abs(sum(case when event_type = 'deduction' then qty_change else 0 end)) / 7.0 as avg_daily_usage
-    from public.inventory_events
-    where created_at > now() - interval '7 days'
-    group by ingredient_id
-)
-select 
+DROP TRIGGER IF EXISTS tr_order_fulfillment ON public.orders;
+CREATE TRIGGER tr_order_fulfillment AFTER UPDATE ON public.orders
+FOR EACH ROW EXECUTE FUNCTION public.fn_on_order_fulfilled();
+
+-- 4. WASTE SYNC (Waste -> Audit Trail)
+CREATE OR REPLACE FUNCTION public.fn_sync_waste_to_events()
+RETURNS TRIGGER AS $$
+BEGIN
+    INSERT INTO public.inventory_events (ingredient_id, event_type, qty_change, reason)
+    VALUES (NEW.ingredient_id, 'waste', -NEW.quantity, 'Waste Log: ' || NEW.waste_category);
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS tr_waste_sync ON public.waste_logs;
+CREATE TRIGGER tr_waste_sync AFTER INSERT ON public.waste_logs
+FOR EACH ROW EXECUTE FUNCTION public.fn_sync_waste_to_events();
+
+-- 5. ANALYTICS VIEW
+CREATE OR REPLACE VIEW public.ingredient_overview AS
+SELECT 
     i.*,
-    coalesce(u.avg_daily_usage, 0) as avg_7d_usage,
-    case 
-        when coalesce(u.avg_daily_usage, 0) > 0 
-        then floor(i.current_stock / u.avg_daily_usage)::int 
-        else null 
-    end as est_days_left_by_usage,
-    case 
-        when i.current_stock <= 0 then 'EMPTY'
-        when i.current_stock <= i.par_min then 'LOW'
-        else 'HEALTHY'
-    end as stock_status
-from public.ingredients i
-left join usage_stats u on i.id = u.ingredient_id;
+    CASE 
+        WHEN i.current_stock = 0 THEN 'EMPTY'
+        WHEN i.current_stock <= i.par_min THEN 'LOW'
+        ELSE 'HEALTHY'
+    END as stock_status
+FROM public.ingredients i;
 
--- 5. Reload schema cache
 NOTIFY pgrst, 'reload schema';
 `;
 
@@ -85,37 +108,24 @@ NOTIFY pgrst, 'reload schema';
     <div className="min-h-screen bg-[#050505] flex items-center justify-center p-6 text-foreground font-sans">
       <div className="max-w-4xl w-full grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
         <div className="space-y-6">
-           <div className="w-20 h-20 mb-6">
-              <SoshaLogo className="w-full h-full" />
+           <div className="w-20 h-20 mb-6"><SoshaLogo className="w-full h-full" /></div>
+           <div className="flex items-center gap-2 text-primary bg-primary/10 border border-primary/20 px-3 py-1 rounded-full w-fit">
+              <Lock className="w-3.5 h-3.5" /><span className="text-[10px] font-black uppercase tracking-widest">ERP Integrity Sync</span>
            </div>
-           <h1 className="text-4xl font-bold text-white tracking-tight leading-tight">Relational <span className="text-primary">Schema Ready</span></h1>
-           <div className="space-y-4 text-gray-400">
-             <p className="text-lg">This upgrade links your <b>Menu</b> to a dedicated <b>Categories</b> table. Any category you delete in Supabase will instantly disappear from the app.</p>
-             <div className="flex gap-3 items-center bg-white/5 p-4 rounded-2xl border border-white/10 shadow-xl">
-                <Terminal className="w-5 h-5 text-primary" />
-                <span className="text-xs font-mono">Ensures category_id exists on 'menu' table</span>
-             </div>
-           </div>
-           <Button onClick={() => window.location.reload()} className="w-full h-14 text-lg bg-white text-black hover:bg-gray-200 mt-4 rounded-2xl shadow-2xl font-black uppercase tracking-widest">
-             <RefreshCw className="w-5 h-5 mr-2" /> Sync System Now
+           <h1 className="text-4xl font-bold text-white tracking-tight">Harden <span className="text-primary">Business Logic</span></h1>
+           <p className="text-gray-400 text-sm">This script installs the automated triggers that ensure inventory is deducted exactly when food is served.</p>
+           <Button onClick={() => window.location.reload()} className="w-full h-14 bg-white text-black font-black rounded-2xl">
+             Refresh App After Running SQL
            </Button>
         </div>
-        <Card className="bg-[#111] border-gray-800 shadow-2xl h-[600px] flex flex-col overflow-hidden rounded-[2.5rem]">
-           <CardHeader className="bg-black/40 border-b border-gray-800 py-4 flex flex-row items-center justify-between px-6">
-              <span className="text-xs font-black text-gray-500 uppercase tracking-widest">Relational Engine (SQL)</span>
+        <Card className="bg-[#111] border-gray-800 h-[500px] flex flex-col overflow-hidden rounded-3xl shadow-2xl">
+           <div className="p-4 border-b border-gray-800 flex justify-between items-center">
+              <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Master Hardening Script</span>
               <Button size="sm" variant={copied ? 'secondary' : 'outline'} onClick={() => handleCopy(sqlCode)} className="rounded-xl h-8">
                  {copied ? <Check className="w-4 h-4 mr-2" /> : <Copy className="w-4 h-4 mr-2" />}
-                 {copied ? 'Copied' : 'Copy'}
               </Button>
-           </CardHeader>
-           <CardContent className="p-0 flex-1 overflow-hidden relative group">
-              <textarea 
-                readOnly 
-                value={sqlCode} 
-                className="w-full h-full bg-[#0A0A0A] text-gray-300 font-mono text-[10px] p-6 resize-none focus:outline-none custom-scrollbar" 
-                spellCheck={false} 
-              />
-           </CardContent>
+           </div>
+           <textarea readOnly value={sqlCode} className="w-full h-full bg-[#0A0A0A] text-gray-300 font-mono text-[10px] p-6 resize-none focus:outline-none custom-scrollbar" />
         </Card>
       </div>
     </div>

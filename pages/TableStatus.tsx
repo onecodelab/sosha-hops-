@@ -27,7 +27,7 @@ const TableStatus: React.FC = () => {
   const { data: tables, isLoading, refetch } = useQuery({
     queryKey: ['live-floor-simple'],
     queryFn: async () => {
-      // Fetch tables with active sessions
+      // Fetch tables with active sessions - ensure users view is used through underlying relationship if needed
       const { data, error } = await supabase
         .from('tables')
         .select(`
@@ -37,19 +37,17 @@ const TableStatus: React.FC = () => {
             seated_at,
             is_active,
             session_revenue,
-            waiter:users(full_name)
+            waiter:profiles(full_name)
           )
         `)
         .order('table_number', { ascending: true });
       
       if (error) {
         console.error('Floor fetch error:', error.message);
-        // Fallback to basic fetch if the join fails due to relationship caching issues
+        // Fallback to basic fetch if relationship caching issues occur
         const { data: basicData } = await supabase.from('tables').select('*').order('table_number');
         return (basicData || []).map(t => ({ ...t, sessions: [] }));
       }
-
-      console.log('Tables found:', data?.length);
 
       return (data || []).map(t => ({
         ...t,
@@ -79,8 +77,7 @@ const TableStatus: React.FC = () => {
       const { data, error } = await supabase.rpc('get_table_metrics', { p_table_id: tableId });
       if (!error) setTableMetrics(data);
       else {
-        console.error("RPC Error:", error);
-        // Mock data for demo if RPC missing
+        // Fallback for demo
         setTableMetrics({
             total_revenue: 12450,
             total_sessions: 156,
@@ -294,15 +291,6 @@ const TableStatus: React.FC = () => {
             </div>
          )}
       </Dialog>
-      <style>{`
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .pulse-alert { animation: border-pulse 2s infinite; }
-        @keyframes border-pulse {
-          0% { border-color: rgba(239, 68, 68, 0.2); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
-          50% { border-color: rgba(239, 68, 68, 0.6); box-shadow: 0 0 20px 0 rgba(239, 68, 68, 0.2); }
-          100% { border-color: rgba(239, 68, 68, 0.2); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
-        }
-      `}</style>
     </DashboardLayout>
   );
 };

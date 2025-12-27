@@ -31,7 +31,7 @@ const MenuManagement: React.FC = () => {
     
     try {
       const { error } = await supabase
-        .from('menu')
+        .from('menu_items')
         .delete()
         .eq('id', menuItemId);
       

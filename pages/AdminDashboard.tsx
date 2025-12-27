@@ -240,7 +240,7 @@ const AdminDashboard: React.FC = () => {
         .from('orders')
         .select(`
           *, 
-          waiter:users(id, full_name), 
+          waiter:profiles(id, full_name), 
           order_items(
             quantity, 
             menu_item:menu_items(name)
@@ -252,7 +252,7 @@ const AdminDashboard: React.FC = () => {
       // 6. Active Orders for Modal (Full data)
       const { data: activeList } = await supabase
         .from('orders')
-        .select('*, order_items(quantity, menu_item:menu_items(name)), waiter:users(full_name)')
+        .select('*, order_items(quantity, menu_item:menu_items(name)), waiter:profiles(full_name)')
         .in('status', ['pending', 'accepted', 'preparing', 'ready', 'served'])
         .gte('created_at', last24hISO)
         .order('created_at', { ascending: false });
@@ -268,7 +268,7 @@ const AdminDashboard: React.FC = () => {
       setActiveOrdersList(activeList as Order[] || []);
 
       const { data: staff } = await supabase
-        .from('users')
+        .from('profiles')
         .select('id, full_name, role')
         .in('role', ['waiter', 'manager', 'owner']);
       setStaffList(staff || []);
@@ -457,7 +457,8 @@ const AdminDashboard: React.FC = () => {
                     ))}
                 </div>
              </div>
-             <div className={cn("h-[300px] w-full transition-opacity duration-300", revenueLoading ? "opacity-50" : "opacity-100")}>
+             {/* Added min-h-[300px] to fix width/height warning */}
+             <div className={cn("h-[300px] min-h-[300px] w-full transition-opacity duration-300", revenueLoading ? "opacity-50" : "opacity-100")}>
                 <ResponsiveContainer width="100%" height="100%">
                    <BarChart data={revenueChartData}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#27272a" vertical={false} />

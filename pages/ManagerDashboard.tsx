@@ -31,7 +31,7 @@ const ManagerDashboard: React.FC = () => {
     const subs = [
        supabase.channel('mgr_orders').on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => fetchDashboardData()),
        supabase.channel('mgr_issues').on('postgres_changes', { event: '*', schema: 'public', table: 'operational_issues' }, () => fetchDashboardData()),
-       supabase.channel('mgr_users').on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, () => fetchDashboardData()),
+       supabase.channel('mgr_profiles').on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => fetchDashboardData()),
     ];
     subs.forEach(s => s.subscribe());
     return () => { subs.forEach(s => supabase.removeChannel(s)); }
@@ -43,7 +43,7 @@ const ManagerDashboard: React.FC = () => {
         const { data: todayOrders } = await supabase.from('orders').select(`*, order_items (quantity, menu_item:menu_items (name))`).gte('created_at', `${todayStr}T00:00:00`).order('created_at', { ascending: false });
         setOrders(todayOrders as Order[] || []);
         
-        const { data: allStaff } = await supabase.from('users').select('*').in('role', ['waiter', 'kitchen', 'manager', 'security']);
+        const { data: allStaff } = await supabase.from('profiles').select('*').in('role', ['waiter', 'kitchen', 'manager', 'security']);
         const { data: issuesData } = await supabase.from('operational_issues').select('*').gte('created_at', `${todayStr}T00:00:00`);
 
         const activeOrders = todayOrders || [];
