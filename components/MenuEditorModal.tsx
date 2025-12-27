@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../supabase';
 import { Dialog, Button, Input, cn, showToast } from './ui';
 import { Info, BookOpen, Loader2, ListTree } from 'lucide-react';
@@ -20,6 +20,9 @@ export const MenuEditorModal: React.FC<MenuEditorModalProps> = ({
   const [activeTab, setActiveTab] = useState<'basic' | 'recipe'>('basic');
   const [internalItem, setInternalItem] = useState<MenuItem | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
+  
+  // Track modal open state to handle initialization
+  const wasOpen = useRef(false);
 
   // Basic Info State
   const [name, setName] = useState('');
@@ -28,25 +31,33 @@ export const MenuEditorModal: React.FC<MenuEditorModalProps> = ({
   const [imageUrl, setImageUrl] = useState('');
   const [isAvailable, setIsAvailable] = useState(true);
 
+  // Initialize state when modal opens or editingItem changes
   useEffect(() => {
     if (isOpen) {
       fetchCategories();
-      setActiveTab('basic');
-      if (editingItem) {
-        setInternalItem(editingItem);
-        setName(editingItem.name);
-        setCategoryId(editingItem.category_id || '');
-        setPrice(editingItem.price);
-        setImageUrl(editingItem.image_url || '');
-        setIsAvailable(editingItem.is_available);
-      } else {
-        setInternalItem(null);
-        setName('');
-        setCategoryId('');
-        setPrice(0);
-        setImageUrl('');
-        setIsAvailable(true);
+      
+      // If modal just opened OR a different item was selected for editing
+      if (!wasOpen.current || (editingItem && editingItem.id !== internalItem?.id)) {
+        setActiveTab('basic');
+        if (editingItem) {
+          setInternalItem(editingItem);
+          setName(editingItem.name);
+          setCategoryId(editingItem.category_id || '');
+          setPrice(editingItem.price);
+          setImageUrl(editingItem.image_url || '');
+          setIsAvailable(editingItem.is_available);
+        } else {
+          setInternalItem(null);
+          setName('');
+          setCategoryId('');
+          setPrice(0);
+          setImageUrl('');
+          setIsAvailable(true);
+        }
       }
+      wasOpen.current = true;
+    } else {
+      wasOpen.current = false;
     }
   }, [isOpen, editingItem]);
 
@@ -63,9 +74,13 @@ export const MenuEditorModal: React.FC<MenuEditorModalProps> = ({
 
     setLoading(true);
     try {
+      const selectedCategory = categories.find(c => c.id === categoryId);
+      const categoryName = selectedCategory?.name || 'Uncategorized';
+
       const payload = {
         name: name.trim(),
         category_id: categoryId,
+        category: categoryName, // Backward compatibility for NOT NULL constraint
         price: parseFloat(price.toString()),
         image_url: imageUrl.trim() || null,
         is_available: isAvailable
@@ -78,14 +93,18 @@ export const MenuEditorModal: React.FC<MenuEditorModalProps> = ({
       } else {
         const { data, error } = await supabase.from('menu').insert(payload).select().single();
         if (error) throw error;
-        setInternalItem(data as MenuItem);
+        
+        // Critical: Set internalItem to the newly created dish so the Recipe tab works
+        const newItem = data as MenuItem;
+        setInternalItem(newItem);
         showToast("Dish created! You can now map recipes.", "success");
         setActiveTab('recipe');
       }
 
+      // Notify parent to refresh list, but our local internalItem preserves the ID
       onSuccess();
     } catch (err: any) {
-      showToast(err.message, "error");
+      showToast(err.message || "Failed to save dish", "error");
     } finally {
       setLoading(false);
     }

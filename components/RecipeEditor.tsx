@@ -30,9 +30,11 @@ export const RecipeEditor: React.FC<RecipeEditorProps> = ({ menuItem }) => {
   const [adding, setAdding] = useState(false);
 
   useEffect(() => {
-    fetchRecipe();
-    fetchAllIngredients();
-  }, [menuItem.id]);
+    if (menuItem?.id) {
+      fetchRecipe();
+      fetchAllIngredients();
+    }
+  }, [menuItem?.id]);
 
   const fetchRecipe = async () => {
     setLoading(true);
@@ -76,7 +78,10 @@ export const RecipeEditor: React.FC<RecipeEditorProps> = ({ menuItem }) => {
   }, [allIngredients, searchTerm, selectedIngredient]);
 
   const handleAddIngredient = async () => {
-    if (!selectedIngredient || !qty) return;
+    if (!selectedIngredient || !qty || !menuItem?.id) {
+        showToast("Missing required data to link ingredient", "error");
+        return;
+    }
     setAdding(true);
 
     try {
@@ -176,7 +181,7 @@ export const RecipeEditor: React.FC<RecipeEditorProps> = ({ menuItem }) => {
                </div>
                <Button 
                   onClick={handleAddIngredient} 
-                  disabled={!selectedIngredient || adding}
+                  disabled={!selectedIngredient || adding || !menuItem?.id}
                   className="bg-primary text-black font-black w-10 h-10 p-0 rounded-xl"
                >
                   {adding ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}

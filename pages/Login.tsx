@@ -48,13 +48,13 @@ const Login: React.FC = () => {
       if (!authData.user) throw new Error("Authentication failed.");
 
       let { data: existingProfile, error: fetchError } = await supabase
-        .from('users')
+        .from('profiles')
         .select('*')
         .eq('id', authData.user.id)
         .maybeSingle();
 
       if (fetchError) {
-         if (fetchError.message.includes('does not exist') || fetchError.message.includes('relation "public.users" does not exist')) {
+         if (fetchError.message.includes('does not exist') || fetchError.message.includes('relation "public.profiles" does not exist')) {
             markDatabaseAsMissing();
             setLoading(false);
             return;
@@ -65,7 +65,7 @@ const Login: React.FC = () => {
       if (!existingProfile) {
         const targetRole = role ? role.toLowerCase() : 'waiter';
         const fullName = authData.user.user_metadata?.full_name || email.split('@')[0];
-        const { error: insertError } = await supabase.from('users').insert([{
+        const { error: insertError } = await supabase.from('profiles').insert([{
             id: authData.user.id,
             email: authData.user.email,
             full_name: fullName,

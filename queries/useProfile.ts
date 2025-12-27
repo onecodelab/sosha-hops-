@@ -1,3 +1,4 @@
+
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '../supabase';
 import { UserProfile } from '../types';
@@ -12,7 +13,7 @@ export function useProfile() {
       if (!user) throw new Error('Not authenticated');
 
       const { data, error } = await supabase
-        .from('users')
+        .from('profiles')
         .select('*')
         .eq('id', user.id)
         .single();

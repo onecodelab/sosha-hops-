@@ -10,6 +10,20 @@ export interface UserProfile {
   created_at: string;
   is_online?: boolean;
   avatar_url?: string;
+  // Compensation Fields
+  base_salary?: number;
+  pay_period?: 'monthly' | 'weekly' | 'hourly';
+  is_salary_approved?: boolean;
+  currency?: string;
+}
+
+export interface TipsLedger {
+  id: string;
+  staff_id: string;
+  amount: number;
+  tip_type: 'cash' | 'digital';
+  order_id?: string;
+  created_at: string;
 }
 
 export interface Category {
