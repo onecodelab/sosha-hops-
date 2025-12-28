@@ -46,7 +46,7 @@ const KitchenRestockRequests: React.FC = () => {
         .select(`
           *,
           ingredient:ingredients(name, unit_type),
-          reviewer:users!reviewed_by(full_name, email)
+          reviewer:profiles!reviewed_by(full_name, email)
         `)
         .eq('requested_by', user.id)
         .order('created_at', { ascending: false });
@@ -179,7 +179,6 @@ const KitchenRestockRequests: React.FC = () => {
                                    <p className="font-bold text-sm text-white group-hover:text-primary">{ing.name}</p>
                                    <p className="text-xs text-gray-500 font-mono">{ing.sku}</p>
                                 </div>
-                                /** Fixed property name to current_stock to match Ingredient interface **/
                                 <span className="text-xs text-gray-400 bg-black/40 px-2 py-1 rounded">{ing.current_stock} {ing.unit_type}</span>
                              </button>
                           ))}

@@ -21,9 +21,9 @@ export const useMenu = (filterAvailable = false) => {
       if (catError) throw catError;
       setCategories(catData || []);
 
-      // 2. Fetch Menu with Category Join
+      // 2. Fetch Menu with Category Join - Changed 'menu' to 'menu_items'
       let query = supabase
-        .from('menu')
+        .from('menu_items')
         .select('*, category:categories(name)')
         .order('name', { ascending: true });
 
@@ -52,10 +52,10 @@ export const useMenu = (filterAvailable = false) => {
   useEffect(() => {
     fetchData();
 
-    // Subscribe to updates for both tables
+    // Subscribe to updates for both tables - Changed 'menu' to 'menu_items'
     const menuSub = supabase
       .channel('menu_sync')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'menu' }, () => fetchData())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'menu_items' }, () => fetchData())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'categories' }, () => fetchData())
       .subscribe();
 

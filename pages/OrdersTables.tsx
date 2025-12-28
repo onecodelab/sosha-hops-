@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { 
@@ -62,12 +63,12 @@ const OrdersTables: React.FC = () => {
           }
           const startISO = startDate.toISOString();
 
-          // 2. Fetch Users (Client-side join preparation)
-          const { data: users, error: userError } = await supabase.from('users').select('*');
-          if (userError) console.error("Error fetching users:", userError);
+          // 2. Fetch Users from Profiles
+          const { data: profiles, error: userError } = await supabase.from('profiles').select('*');
+          if (userError) console.error("Error fetching staff profiles:", userError);
           
-          const userMap = new Map();
-          users?.forEach(u => userMap.set(u.id, u));
+          const profileMap = new Map();
+          profiles?.forEach(u => profileMap.set(u.id, u));
 
           // 3. Fetch Orders
           const { data: orders, error } = await supabase
@@ -180,7 +181,7 @@ const OrdersTables: React.FC = () => {
               const uid = o.waiter_id;
               if (!uid) return;
               
-              const u = userMap.get(uid);
+              const u = profileMap.get(uid);
 
               if (!staffMap[uid]) staffMap[uid] = { name: u?.full_name || 'Unknown', role: u?.role || 'Staff', orders: 0, cancelled: 0, speedTotal: 0, speedCount: 0 };
               
@@ -213,7 +214,7 @@ const OrdersTables: React.FC = () => {
 
           safeOrders.forEach(o => {
                const created = new Date(o.created_at).getTime();
-               if (o.accepted_at) { // Was kitchen_accepted_at
+               if (o.accepted_at) { 
                    flowSums.k += (new Date(o.accepted_at).getTime() - created) / 60000;
                    flowCounts.k++;
                    if (o.ready_at) {

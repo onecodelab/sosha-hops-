@@ -54,13 +54,8 @@ export const ClockWidget: React.FC = () => {
         .maybeSingle();
 
       if (error) {
-        // Log clean error message, not [object Object]
         const errorMsg = error.message || (typeof error === 'string' ? error : JSON.stringify(error));
         console.error('Shift fetch error:', errorMsg);
-        
-        if (errorMsg.includes('staff_id')) {
-           showToast("Database out of sync. Please run Repair Script in Setup Guide.", "error");
-        }
         return;
       }
       setCurrentShift(data as StaffShift);
@@ -101,7 +96,7 @@ export const ClockWidget: React.FC = () => {
         details: { timestamp: now }
       });
 
-      await supabase.from('users').update({ is_online: true }).eq('id', user.id);
+      await supabase.from('profiles').update({ is_online: true }).eq('id', user.id);
 
       setCurrentShift(newShift as StaffShift);
       showToast('Shift started. Good luck!', 'success');
@@ -141,7 +136,7 @@ export const ClockWidget: React.FC = () => {
         details: { duration_minutes: diffMins, timestamp: now }
       });
 
-      await supabase.from('users').update({ is_online: false }).eq('id', user.id);
+      await supabase.from('profiles').update({ is_online: false }).eq('id', user.id);
 
       setCurrentShift(null);
       showToast(`Shift ended. Total: ${diffMins} minutes.`, 'success');

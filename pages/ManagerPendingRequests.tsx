@@ -1,180 +1,104 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../supabase';
 import { DashboardLayout } from '../components/DashboardLayout';
-import { Card, CardContent, CardHeader, CardTitle, Button, Badge, cn, showToast, Dialog, Input } from '../components/ui';
-import { Truck, Check, X, Clock, AlertCircle, MessageSquare } from 'lucide-react';
-import { useLanguage } from '../contexts/LanguageContext';
+import { Card, CardContent, CardHeader, CardTitle, Button, Badge, cn, showToast } from '../components/ui';
+import { Truck, Check, X, Clock, AlertCircle } from 'lucide-react';
 import { useAuth } from '../AuthContext';
-import { RestockRequest, Urgency } from '../types';
+import { PurchaseRequest, Urgency } from '../types';
 
 const ManagerPendingRequests: React.FC = () => {
-  const { t } = useLanguage();
   const { user } = useAuth();
   const queryClient = useQueryClient();
   
-  const [rejectId, setRejectId] = useState<string | null>(null);
-  const [rejectReason, setRejectReason] = useState('');
-
-  // Fetch Pending Requests
-  const { data: pendingRequests, isLoading } = useQuery({
-    queryKey: ['pending-restock-requests'],
+  const { data: requests, isLoading } = useQuery({
+    queryKey: ['pending-purchase-requests'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('restock_requests')
-        .select(`
-          *,
-          ingredient:ingredients(name, unit_type),
-          requester:users!requested_by(email, full_name)
-        `)
+        .from('purchase_requests')
+        .select(`*, ingredient:ingredients(name, unit_type), requester:profiles!created_by(full_name, email)`)
         .eq('status', 'pending')
         .order('created_at', { ascending: false });
-        
       if (error) throw error;
-      return data as RestockRequest[];
+      return data as (PurchaseRequest & { requester: any })[];
     }
   });
 
-  // Approve Mutation
-  const { mutate: approveRequest, isPending: isApproving } = useMutation({
-    mutationFn: async (id: string) => {
-      if (!user) throw new Error("Not authenticated");
+  const { mutate: updateStatus, isPending } = useMutation({
+    mutationFn: async ({ id, status }: { id: string, status: 'approved' | 'rejected' }) => {
       const { error } = await supabase
-        .from('restock_requests')
-        .update({
-          status: 'approved',
-          reviewed_by: user.id,
-          reviewed_at: new Date().toISOString()
+        .from('purchase_requests')
+        .update({ 
+          status, 
+          approved_by: user?.id, 
+          approved_at: new Date().toISOString() 
         })
         .eq('id', id);
       if (error) throw error;
     },
-    onSuccess: () => {
-      showToast(t('restock.manager.approvedToast'), 'success');
-      queryClient.invalidateQueries({ queryKey: ['pending-restock-requests'] });
+    onSuccess: (_, variables) => {
+      showToast(`Request ${variables.status}`, 'success');
+      queryClient.invalidateQueries({ queryKey: ['pending-purchase-requests'] });
     },
     onError: (err: any) => showToast(err.message, 'error')
   });
-
-  // Reject Mutation
-  const { mutate: rejectRequest, isPending: isRejecting } = useMutation({
-    mutationFn: async () => {
-      if (!user || !rejectId) throw new Error("Missing data");
-      
-      // We'll append rejection note to the existing reason for simple auditing since schema is fixed
-      const request = pendingRequests?.find(r => r.id === rejectId);
-      const updatedReason = request 
-        ? `${request.reason || ''} [REJECTED: ${rejectReason}]`.trim() 
-        : rejectReason;
-
-      const { error } = await supabase
-        .from('restock_requests')
-        .update({
-          status: 'rejected',
-          reason: updatedReason, 
-          reviewed_by: user.id,
-          reviewed_at: new Date().toISOString()
-        })
-        .eq('id', rejectId);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      showToast(t('restock.manager.rejectedToast'), 'success');
-      queryClient.invalidateQueries({ queryKey: ['pending-restock-requests'] });
-      setRejectId(null);
-      setRejectReason('');
-    },
-    onError: (err: any) => showToast(err.message, 'error')
-  });
-
-  const getUrgencyBadge = (u: Urgency) => {
-    switch (u) {
-      case 'critical': return <Badge variant="destructive" className="animate-pulse">{t('restock.urgencyLevels.critical')}</Badge>;
-      case 'medium': return <Badge className="bg-yellow-500/10 text-yellow-500 border-yellow-500/20">{t('restock.urgencyLevels.medium')}</Badge>;
-      default: return <Badge variant="outline">{t('restock.urgencyLevels.low')}</Badge>;
-    }
-  };
-
-  const getTimeAgo = (dateStr: string) => {
-    const minutes = Math.floor((new Date().getTime() - new Date(dateStr).getTime()) / 60000);
-    if (minutes < 60) return `${minutes}m ago`;
-    const hours = Math.floor(minutes / 60);
-    if (hours < 24) return `${hours}h ago`;
-    return `${Math.floor(hours / 24)}d ago`;
-  };
 
   return (
-    <DashboardLayout title={t('restock.manager.pendingTitle')} subtitle="Review inventory requests">
-      <Card className="bg-[#1A1A1A] border-gray-800 animate-in fade-in duration-500">
-        <CardHeader>
+    <DashboardLayout title="Supply Chain Oversight" subtitle="Approve or reject replenishment requests">
+      <Card className="bg-[#1A1A1A] border-gray-800 animate-in fade-in duration-500 overflow-hidden">
+        <CardHeader className="bg-black/20 border-b border-gray-800 flex flex-row items-center justify-between py-4">
            <CardTitle className="text-white flex items-center gap-2">
-              <Truck className="w-5 h-5 text-blue-500" /> {t('nav.pendingRequests')}
-              <Badge className="bg-blue-600 ml-2">{pendingRequests?.length || 0}</Badge>
+              <Truck className="w-5 h-5 text-blue-500" /> Pending Requests
+              <Badge className="bg-blue-600 ml-2">{requests?.length || 0}</Badge>
            </CardTitle>
         </CardHeader>
         <CardContent className="p-0 overflow-auto">
            <table className="w-full text-sm text-left">
-              <thead className="text-xs text-gray-500 uppercase bg-black/20 border-b border-gray-800 sticky top-0 backdrop-blur-md z-10">
+              <thead className="text-[10px] text-gray-500 uppercase bg-black/40 border-b border-gray-800 font-black tracking-widest">
                  <tr>
-                    <th className="px-6 py-4">{t('restock.ingredient')}</th>
-                    <th className="px-6 py-4">{t('restock.quantity')}</th>
-                    <th className="px-6 py-4">{t('restock.reason')}</th>
-                    <th className="px-6 py-4">{t('restock.urgency')}</th>
-                    <th className="px-6 py-4">{t('restock.manager.requestedBy')}</th>
-                    <th className="px-6 py-4 text-right">Actions</th>
+                    <th className="px-6 py-4">Ingredient</th>
+                    <th className="px-6 py-4">Request Detail</th>
+                    <th className="px-6 py-4">Urgency</th>
+                    <th className="px-6 py-4">Requester</th>
+                    <th className="px-6 py-4 text-right">Audit Action</th>
                  </tr>
               </thead>
               <tbody className="divide-y divide-gray-800">
-                 {isLoading && (
-                    <tr><td colSpan={6} className="p-8 text-center text-gray-500">{t('common.loading')}</td></tr>
-                 )}
-                 {!isLoading && (!pendingRequests || pendingRequests.length === 0) && (
-                    <tr><td colSpan={6} className="p-8 text-center text-gray-500">
-                       <AlertCircle className="w-10 h-10 mx-auto mb-2 opacity-20" />
-                       {t('restock.manager.emptyPending')}
+                 {requests?.length === 0 && !isLoading && (
+                    <tr><td colSpan={5} className="p-20 text-center text-gray-500">
+                       <AlertCircle className="w-12 h-12 mx-auto mb-4 opacity-10" />
+                       No pending supply requests
                     </td></tr>
                  )}
-                 {pendingRequests?.map((req) => (
-                    <tr key={req.id} className="hover:bg-white/5 transition-colors group">
-                       <td className="px-6 py-4 font-bold text-white">
-                          {req.ingredient?.name || 'Unknown'}
-                       </td>
-                       <td className="px-6 py-4 text-gray-300">
-                          {req.requested_quantity} <span className="text-xs text-gray-500">{req.ingredient?.unit_type}</span>
-                       </td>
-                       <td className="px-6 py-4 text-gray-400 max-w-[200px] truncate" title={req.reason}>
-                          {req.reason}
+                 {requests?.map((req) => (
+                    <tr key={req.id} className="hover:bg-white/[0.02] transition-colors group">
+                       <td className="px-6 py-4 font-bold text-white">{req.ingredient?.name}</td>
+                       <td className="px-6 py-4">
+                          <p className="text-gray-200 font-bold">{req.quantity} {req.unit}</p>
+                          <p className="text-xs text-gray-500 italic mt-0.5 line-clamp-1">"{req.reason}"</p>
                        </td>
                        <td className="px-6 py-4">
-                          {getUrgencyBadge(req.urgency)}
+                          <Badge className={cn("text-[9px] uppercase font-black", 
+                            req.urgency === 'critical' ? "bg-red-500/10 text-red-500" : 
+                            req.urgency === 'high' ? "bg-orange-500/10 text-orange-500" : "bg-zinc-800 text-gray-400"
+                          )}>
+                             {req.urgency}
+                          </Badge>
                        </td>
                        <td className="px-6 py-4">
                           <div className="flex flex-col">
-                             <span className="text-white font-medium">{req.requester?.full_name || 'Staff'}</span>
-                             <span className="text-[10px] text-gray-500 flex items-center gap-1">
-                                <Clock className="w-3 h-3" /> {getTimeAgo(req.created_at)}
-                             </span>
+                             <span className="text-white font-bold">{req.requester?.full_name || 'Staff'}</span>
+                             <span className="text-[10px] text-gray-600 font-mono">{new Date(req.created_at).toLocaleDateString()}</span>
                           </div>
                        </td>
                        <td className="px-6 py-4 text-right">
                           <div className="flex justify-end gap-2">
-                             <Button 
-                                size="sm" 
-                                className="bg-green-600 hover:bg-green-700 text-white w-24"
-                                onClick={() => approveRequest(req.id)}
-                                disabled={isApproving}
-                             >
-                                <Check className="w-4 h-4 mr-1" /> {t('restock.manager.approve')}
+                             <Button size="sm" onClick={() => updateStatus({ id: req.id, status: 'approved' })} disabled={isPending} className="bg-green-600 hover:bg-green-700 text-white font-bold h-9">
+                                <Check className="w-4 h-4 mr-1.5" /> Approve
                              </Button>
-                             <Button 
-                                size="sm" 
-                                variant="destructive"
-                                className="w-24 bg-red-500/10 text-red-500 border border-red-500/20 hover:bg-red-500/20"
-                                onClick={() => setRejectId(req.id)}
-                                disabled={isRejecting}
-                             >
-                                <X className="w-4 h-4 mr-1" /> {t('restock.manager.reject')}
+                             <Button size="sm" variant="destructive" onClick={() => updateStatus({ id: req.id, status: 'rejected' })} disabled={isPending} className="bg-red-500/10 text-red-500 border-red-500/20 h-9">
+                                <X className="w-4 h-4 mr-1.5" /> Reject
                              </Button>
                           </div>
                        </td>
@@ -184,38 +108,6 @@ const ManagerPendingRequests: React.FC = () => {
            </table>
         </CardContent>
       </Card>
-
-      {/* Reject Modal */}
-      <Dialog isOpen={!!rejectId} onClose={() => setRejectId(null)} title={t('restock.manager.confirmReject')}>
-         <div className="space-y-4 pt-2">
-            <p className="text-gray-400 text-sm">
-               Please provide a reason for rejecting this request. This will be visible to the kitchen staff.
-            </p>
-            <div className="space-y-2">
-               <label className="text-xs font-bold text-gray-500 uppercase">{t('restock.manager.rejectionReason')}</label>
-               <div className="relative">
-                  <MessageSquare className="absolute left-3 top-3 h-4 w-4 text-gray-500" />
-                  <Input 
-                     value={rejectReason}
-                     onChange={(e) => setRejectReason(e.target.value)}
-                     placeholder="e.g. Current stock is sufficient..."
-                     className="pl-9"
-                     autoFocus
-                  />
-               </div>
-            </div>
-            <div className="flex justify-end gap-3 pt-4">
-               <Button variant="ghost" onClick={() => setRejectId(null)}>{t('common.cancel')}</Button>
-               <Button 
-                  variant="destructive" 
-                  onClick={() => rejectRequest()}
-                  disabled={!rejectReason.trim() || isRejecting}
-               >
-                  {isRejecting ? 'Rejecting...' : t('restock.manager.reject')}
-               </Button>
-            </div>
-         </div>
-      </Dialog>
     </DashboardLayout>
   );
 };
