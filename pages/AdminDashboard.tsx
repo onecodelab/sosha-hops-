@@ -171,7 +171,7 @@ const AdminDashboard: React.FC = () => {
         .select(`
           quantity, 
           price, 
-          menu_item:menu_items(name), 
+          menu_items(*), 
           orders!inner(created_at, status)
         `)
         .gte('orders.created_at', startDate.toISOString())
@@ -182,7 +182,7 @@ const AdminDashboard: React.FC = () => {
 
       const salesMap = new Map();
       orderItems?.forEach((item: any) => {
-        const name = item.menu_item?.name || 'Unknown';
+        const name = item.menu_items?.name || 'Unknown';
         const current = salesMap.get(name) || { count: 0, revenue: 0 };
         salesMap.set(name, { 
           count: current.count + item.quantity, 

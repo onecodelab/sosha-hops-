@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '../supabase';
@@ -37,7 +36,7 @@ const TableStatus: React.FC = () => {
             seated_at,
             is_active,
             session_revenue,
-            waiter:profiles(full_name)
+            waiter:profiles(id, full_name, email)
           )
         `)
         .order('table_number', { ascending: true });
@@ -285,150 +284,4 @@ const TableStatus: React.FC = () => {
                   </div>
                </div>
 
-               <div className="pt-6 border-t border-white/10">
-                  <Button variant="outline" className="w-full" onClick={() => setSelectedTableId(null)}>Close Analytics</Button>
-               </div>
-            </div>
-         )}
-      </Dialog>
-    </DashboardLayout>
-  );
-};
-
-const StatPill = ({ label, value, icon: Icon, color }: any) => {
-   const colors: any = {
-      default: 'bg-white/5 border-white/10 text-gray-400',
-      green: 'bg-green-500/10 border-green-500/20 text-green-500',
-      red: 'bg-red-500/10 border-red-500/20 text-red-500',
-      yellow: 'bg-yellow-500/10 border-yellow-500/20 text-yellow-500',
-      purple: 'bg-purple-500/10 border-purple-500/20 text-purple-500',
-      blue: 'bg-blue-500/10 border-blue-500/20 text-blue-400',
-   };
-   return (
-      <div className={cn("px-4 py-3 rounded-2xl border flex flex-col gap-1 transition-all", colors[color || 'default'])}>
-         <div className="flex items-center justify-between">
-            <span className="text-[9px] font-black uppercase tracking-widest opacity-60">{label}</span>
-            <Icon className="w-3 h-3 opacity-60" />
-         </div>
-         <span className="text-lg font-black tracking-tight">{value}</span>
-      </div>
-   );
-};
-
-const MetricBox = ({ label, value, icon: Icon, color }: any) => {
-   const colors: any = {
-      primary: 'text-primary bg-primary/5 border-primary/10',
-      blue: 'text-blue-400 bg-blue-400/5 border-blue-400/10',
-      green: 'text-green-400 bg-green-400/5 border-green-400/10',
-      purple: 'text-purple-400 bg-purple-400/5 border-purple-400/10',
-      orange: 'text-orange-400 bg-orange-400/5 border-orange-400/10',
-      yellow: 'text-yellow-400 bg-yellow-400/5 border-yellow-400/10',
-   };
-   return (
-      <div className={cn("p-4 border rounded-2xl", colors[color || 'primary'])}>
-         <div className="flex items-center gap-2 mb-2 opacity-60">
-            {Icon && <Icon className="w-3 h-3" />}
-            <p className="text-[8px] font-black uppercase tracking-widest leading-none">{label}</p>
-         </div>
-         <p className="text-sm font-black text-white">{value}</p>
-      </div>
-   );
-};
-
-const TableCard: React.FC<{ 
-   table: any; 
-   currentTime: Date; 
-   onClick: () => void;
-   onStatusUpdate: (id: string, status: string) => void;
-}> = ({ table, currentTime, onClick, onStatusUpdate }) => {
-   const statusColors: any = {
-      available: 'border-green-500/20 bg-green-500/5 text-green-500',
-      occupied: 'border-red-500/30 bg-red-500/5 text-red-500',
-      needs_cleaning: 'border-yellow-500/30 bg-yellow-500/5 text-yellow-500',
-      reserved: 'border-blue-500/30 bg-blue-500/5 text-blue-400',
-   };
-
-   const elapsedMins = table.active_session ? Math.floor((currentTime.getTime() - new Date(table.active_session.seated_at).getTime()) / 60000) : 0;
-   const isLate = table.status === 'occupied' && elapsedMins > 60;
-
-   return (
-      <SoshaCard 
-         isInteractive 
-         className={cn(
-            "p-0 flex flex-col h-64 border-2 transition-all duration-500 group relative",
-            statusColors[table.status],
-            isLate && "pulse-alert ring-1 ring-red-500/40"
-         )}
-      >
-         <div className="p-6 h-full flex flex-col" onClick={onClick}>
-            <div className="flex justify-between items-start mb-4">
-               <div className="flex flex-col">
-                  <h3 className="text-4xl font-black text-white tracking-tighter">{table.table_number}</h3>
-                  <Badge variant="outline" className="mt-2 bg-black/20 border-white/5 text-[8px] font-black uppercase tracking-[0.2em] w-fit">
-                     {table.zone}
-                  </Badge>
-               </div>
-               <div className="flex flex-col items-end gap-2">
-                  <Badge className={cn("text-[9px] font-black uppercase tracking-widest px-2 py-1", statusColors[table.status])}>
-                     {table.status.replace('_', ' ')}
-                  </Badge>
-                  <span className="text-[10px] font-bold text-gray-500 flex items-center gap-1">
-                     <Users className="w-3 h-3" /> {table.capacity} Seats
-                  </span>
-               </div>
-            </div>
-
-            <div className="flex-1 flex flex-col justify-center">
-               {table.status === 'occupied' && table.active_session ? (
-                  <div className="space-y-2 animate-in fade-in duration-300">
-                     <div className="flex items-center gap-2 text-xs text-white font-bold">
-                        <User className="w-3 h-3 text-primary" />
-                        <span className="truncate">{table.active_session.waiter?.full_name || 'Staff'}</span>
-                     </div>
-                     <div className="flex justify-between items-end">
-                        <div className="flex flex-col">
-                           <span className="text-[9px] text-gray-500 font-black uppercase tracking-widest">Elapsed</span>
-                           <span className={cn("text-lg font-black font-mono leading-none", isLate ? "text-red-500" : "text-white")}>
-                              {elapsedMins}m
-                           </span>
-                        </div>
-                     </div>
-                  </div>
-               ) : (
-                  <div className="text-center opacity-10 py-2">
-                     <Armchair className="w-12 h-12 mx-auto" />
-                  </div>
-               )}
-            </div>
-
-            <div className="pt-4 border-t border-white/5 flex items-center justify-between mt-auto">
-               <span className="text-[8px] text-gray-500 flex items-center gap-1 font-bold uppercase tracking-tighter">
-                  <History className="w-2.5 h-2.5" /> Updated {getTimeAgo(table.last_updated || table.created_at)}
-               </span>
-               <Eye className="w-3 h-3 text-white opacity-0 group-hover:opacity-40" />
-            </div>
-         </div>
-
-         <div className="absolute inset-0 bg-black/90 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center p-6 gap-2 z-20">
-            <p className="text-[10px] font-black text-gray-500 uppercase mb-2">Quick Status</p>
-            <div className="grid grid-cols-2 gap-2 w-full">
-               <Button size="sm" variant="outline" className="text-[9px] h-8 bg-green-500/10 border-green-500/20 text-green-500" onClick={(e) => { e.stopPropagation(); onStatusUpdate(table.id, 'available'); }}>Available</Button>
-               <Button size="sm" variant="outline" className="text-[9px] h-8 bg-red-500/10 border-red-500/20 text-red-500" onClick={(e) => { e.stopPropagation(); onStatusUpdate(table.id, 'occupied'); }}>Occupied</Button>
-               <Button size="sm" variant="outline" className="text-[9px] h-8 bg-yellow-500/10 border-yellow-500/20 text-yellow-500" onClick={(e) => { e.stopPropagation(); onStatusUpdate(table.id, 'needs_cleaning'); }}>Dirty</Button>
-               <Button size="sm" variant="outline" className="text-[9px] h-8 bg-blue-500/10 border-blue-500/20 text-blue-500" onClick={(e) => { e.stopPropagation(); onStatusUpdate(table.id, 'reserved'); }}>Reserved</Button>
-            </div>
-            <button onClick={(e) => { e.stopPropagation(); onClick(); }} className="mt-2 text-primary text-[10px] font-bold uppercase hover:underline">Full Analytics →</button>
-         </div>
-      </SoshaCard>
-   );
-};
-
-const getTimeAgo = (dateStr: string) => {
-  if (!dateStr) return 'N/A';
-  const diff = Math.floor((Date.now() - new Date(dateStr).getTime()) / 60000);
-  if (diff < 1) return 'Just now';
-  if (diff < 60) return `${diff}m ago`;
-  return `${Math.floor(diff/60)}h ago`;
-};
-
-export default TableStatus;
+               <div className="pt-
