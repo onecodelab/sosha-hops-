@@ -3,8 +3,10 @@ import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../supabase';
 import { Dialog, Button, Input, cn, showToast } from './ui';
 import { Info, BookOpen, Loader2, ListTree } from 'lucide-react';
-import { MenuItem, Category } from '../types';
+import { MenuItem } from '../types';
 import { RecipeEditor } from './RecipeEditor';
+
+const CATEGORY_OPTIONS = ['BREAKFAST', 'MAIN', 'SALADS', 'SOUP', 'DRINKS', 'DESSERT', 'OTHER'];
 
 interface MenuEditorModalProps {
   isOpen: boolean;
@@ -19,14 +21,13 @@ export const MenuEditorModal: React.FC<MenuEditorModalProps> = ({
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<'basic' | 'recipe'>('basic');
   const [internalItem, setInternalItem] = useState<MenuItem | null>(null);
-  const [categories, setCategories] = useState<Category[]>([]);
   
   // Track modal open state to handle initialization
   const wasOpen = useRef(false);
 
   // Basic Info State
   const [name, setName] = useState('');
-  const [categoryId, setCategoryId] = useState('');
+  const [category, setCategory] = useState('');
   const [price, setPrice] = useState<number>(0);
   const [imageUrl, setImageUrl] = useState('');
   const [isAvailable, setIsAvailable] = useState(true);
@@ -34,22 +35,20 @@ export const MenuEditorModal: React.FC<MenuEditorModalProps> = ({
   // Initialize state when modal opens or editingItem changes
   useEffect(() => {
     if (isOpen) {
-      fetchCategories();
-      
       // If modal just opened OR a different item was selected for editing
       if (!wasOpen.current || (editingItem && editingItem.id !== internalItem?.id)) {
         setActiveTab('basic');
         if (editingItem) {
           setInternalItem(editingItem);
           setName(editingItem.name);
-          setCategoryId(editingItem.category_id || '');
+          setCategory(editingItem.category || '');
           setPrice(editingItem.price);
           setImageUrl(editingItem.image_url || '');
           setIsAvailable(editingItem.is_available);
         } else {
           setInternalItem(null);
           setName('');
-          setCategoryId('');
+          setCategory('');
           setPrice(0);
           setImageUrl('');
           setIsAvailable(true);
@@ -59,28 +58,21 @@ export const MenuEditorModal: React.FC<MenuEditorModalProps> = ({
     } else {
       wasOpen.current = false;
     }
-  }, [isOpen, editingItem]);
-
-  const fetchCategories = async () => {
-    const { data } = await supabase.from('categories').select('*').order('name');
-    if (data) setCategories(data);
-  };
+  }, [isOpen, editingItem, internalItem?.id]);
 
   const handleSaveBasic = async () => {
-    if (!name || price <= 0 || !categoryId) {
+    if (!name || price <= 0 || !category) {
       showToast("Please provide name, price, and category", "error");
       return;
     }
 
     setLoading(true);
     try {
-      const selectedCategory = categories.find(c => c.id === categoryId);
-      const categoryName = selectedCategory?.name || 'Uncategorized';
+      const normalizedCategory = category.trim() || 'Uncategorized';
 
       const payload = {
         name: name.trim(),
-        category_id: categoryId,
-        category: categoryName, // Backward compatibility for NOT NULL constraint
+        category: normalizedCategory,
         price: parseFloat(price.toString()),
         image_url: imageUrl.trim() || null,
         is_available: isAvailable
@@ -154,19 +146,19 @@ export const MenuEditorModal: React.FC<MenuEditorModalProps> = ({
                </div>
                <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                     <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Category</label>
-                     <div className="relative">
-                        <select 
-                          value={categoryId} 
-                          onChange={e => setCategoryId(e.target.value)}
+                    <<label className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Catego</</label>
+                    <<div className="relative">
+                       <<select 
+                          value={category} 
+                          onChange={e => setCategory(e.target.value)}
                           className="w-full h-11 bg-black/40 border border-gray-700 rounded-lg px-3 text-sm text-white outline-none focus:border-primary/50 appearance-none"
                         >
-                           <option value="" disabled>Select category...</option>
-                           {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                        </select>
-                        <ListTree className="absolute right-3 top-3.5 w-4 h-4 text-gray-600 pointer-events-none" />
-                     </div>
-                  </div>
+                          < option value="" disabled>Select catego...</y.option>
+                           {CATEGORY_OPTIONS.map(option => (
+                            <eoption key={option} value={option}>{opti}</ctoption>
+                           ))}
+                      </ tselect>
+                       <nListTree className="absolute right-3 top-3.5 w-4 h-4 text-gray-600</div>
                   <div className="space-y-2">
                      <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Price (ETB)</label>
                      <Input 

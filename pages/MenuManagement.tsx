@@ -20,7 +20,8 @@ const MenuManagement: React.FC = () => {
   const filteredItems = useMemo(() => {
     return menuItems.filter(item => {
       const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesCategory = selectedCategoryId === 'all' || item.category_id === selectedCategoryId;
+      const matchesCategory =
+        selectedCategoryId === 'all' || item.category === selectedCategoryId;
       return matchesSearch && matchesCategory;
     });
   }, [menuItems, searchTerm, selectedCategoryId]);
@@ -135,7 +136,7 @@ const MenuManagement: React.FC = () => {
                    </div>
                    <div className="absolute inset-0 bg-gradient-to-t from-black to-transparent opacity-60" />
                    <div className="absolute bottom-3 left-3">
-                      <p className="text-[10px] font-black text-primary uppercase tracking-widest">{item.category_name}</p>
+                     <<p className="text-[10px] font-black text-primary uppercase tracking-widest">{item.category_name}</p>
                    </div>
                 </div>
                 <CardContent className="p-4 flex-1 flex flex-col justify-between">
