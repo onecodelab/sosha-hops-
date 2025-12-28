@@ -96,7 +96,7 @@ export const OrderCard: React.FC<OrderCardProps> = ({
                 <div className="flex justify-between">
                     <span>
                         <span className="text-primary font-bold mr-2">{item.quantity}x</span> 
-                        {item.menu_item?.name}
+                        {item.menu_items?.name}
                     </span>
                     {!isKitchen && <span className="text-gray-600">ETB {item.price * item.quantity}</span>}
                 </div>

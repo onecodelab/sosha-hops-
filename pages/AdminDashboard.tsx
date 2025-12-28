@@ -171,7 +171,14 @@ const AdminDashboard: React.FC = () => {
         .select(`
           quantity, 
           price, 
-          menu_item:menu_items(name), 
+          menu_items (
+            id,
+            name,
+            price,
+            category,
+            description,
+            image_url
+          ), 
           orders!inner(created_at, status)
         `)
         .gte('orders.created_at', startDate.toISOString())
@@ -182,7 +189,7 @@ const AdminDashboard: React.FC = () => {
 
       const salesMap = new Map();
       orderItems?.forEach((item: any) => {
-        const name = item.menu_item?.name || 'Unknown';
+        const name = item.menu_items?.name || 'Unknown';
         const current = salesMap.get(name) || { count: 0, revenue: 0 };
         salesMap.set(name, { 
           count: current.count + item.quantity, 
@@ -243,7 +250,7 @@ const AdminDashboard: React.FC = () => {
           waiter:profiles(id, full_name), 
           order_items(
             quantity, 
-            menu_item:menu_items(name)
+            menu_items(name)
           )
         `)
         .order('created_at', { ascending: false })
@@ -252,7 +259,7 @@ const AdminDashboard: React.FC = () => {
       // 6. Active Orders for Modal (Full data)
       const { data: activeList } = await supabase
         .from('orders')
-        .select('*, order_items(quantity, menu_item:menu_items(name)), waiter:profiles(full_name)')
+        .select('*, order_items(quantity, menu_items(name)), waiter:profiles(full_name)')
         .in('status', ['pending', 'accepted', 'preparing', 'ready', 'served'])
         .gte('created_at', last24hISO)
         .order('created_at', { ascending: false });
@@ -642,7 +649,7 @@ const AdminDashboard: React.FC = () => {
                  ) : (
                     filteredFeed.map((order) => {
                        const source = getSourceConfig(order.source);
-                       const itemsSummary = order.order_items?.map((i: any) => `${i.menu_item?.name} x${i.quantity}`).join(', ') || 'No items';
+                       const itemsSummary = order.order_items?.map((i: any) => `${i.menu_items?.name} x${i.quantity}`).join(', ') || 'No items';
                        
                        return (
                           <div 

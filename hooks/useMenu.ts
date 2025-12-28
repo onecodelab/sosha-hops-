@@ -12,19 +12,10 @@ export const useMenu = (filterAvailable = false) => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      // 1. Fetch Categories
-      const { data: catData, error: catError } = await supabase
-        .from('categories')
-        .select('*')
-        .order('name', { ascending: true });
-
-      if (catError) throw catError;
-      setCategories(catData || []);
-
-      // 2. Fetch Menu with Category Join - Changed 'menu' to 'menu_items'
+      // Fetch menu items directly; category is a TEXT field on menu_items
       let query = supabase
         .from('menu_items')
-        .select('*, category:categories(name)')
+        .select('*')
         .order('name', { ascending: true });
 
       if (filterAvailable) {
@@ -34,13 +25,22 @@ export const useMenu = (filterAvailable = false) => {
       const { data: menuData, error: menuError } = await query;
 
       if (menuError) throw menuError;
-      
-      const mappedData = (menuData as any[] || []).map(item => ({
-        ...item,
-        category_name: item.category?.name || 'Uncategorized'
+
+      const items = (menuData as MenuItem[] | null) || [];
+      setMenuItems(items);
+
+      // Derive category list from existing menu items
+      const uniqueCategories = Array.from(
+        new Set(items.map(item => item.category || 'Uncategorized'))
+      );
+
+      const derivedCategories: Category[] = uniqueCategories.map(name => ({
+        id: name,
+        name,
       }));
-      
-      setMenuItems(mappedData);
+
+      setCategories(derivedCategories);
+      setError(null);
     } catch (err: any) {
       console.error('Error fetching menu data:', err);
       setError(err.message || String(err));
@@ -52,11 +52,10 @@ export const useMenu = (filterAvailable = false) => {
   useEffect(() => {
     fetchData();
 
-    // Subscribe to updates for both tables - Changed 'menu' to 'menu_items'
+    // Subscribe to menu item changes only
     const menuSub = supabase
       .channel('menu_sync')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'menu_items' }, () => fetchData())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'categories' }, () => fetchData())
       .subscribe();
 
     return () => {

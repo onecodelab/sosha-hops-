@@ -63,7 +63,7 @@ export const ActiveOrdersModal: React.FC<ActiveOrdersModalProps> = ({ isOpen, on
                     <div key={idx} className="flex justify-between text-xs">
                       <span className="text-gray-300 font-medium">
                         <span className="text-primary font-bold mr-2">{item.quantity}x</span>
-                        {item.menu_item?.name}
+                        {item.menu_items?.name}
                       </span>
                     </div>
                   ))}

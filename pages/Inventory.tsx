@@ -40,16 +40,45 @@ const Inventory: React.FC = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const { data: stockData } = await supabase.from('ingredient_overview').select('*');
-      setIngredients(stockData || []);
+      const { data: stockData, error: stockError } = await supabase
+        .from('ingredients')
+        .select('*')
+        .order('name', { ascending: true });
 
-      const { data: eventData } = await supabase
+      if (stockError) {
+        console.error('Error fetching inventory:', stockError);
+        showToast('Failed to load inventory items', 'error');
+        setIngredients([]);
+      } else {
+        const enriched = (stockData || []).map((item: any) => {
+          const status =
+            item.current_stock === 0
+              ? 'EMPTY'
+              : item.current_stock <= item.par_min
+              ? 'LOW'
+              : 'HEALTHY';
+          return { ...item, stock_status: status };
+        });
+        setIngredients(enriched);
+      }
+
+      const { data: eventData, error: eventError } = await supabase
         .from('inventory_events')
         .select(`*, ingredient:ingredients(name, unit_type), performer:profiles(full_name)`)
-        .order('created_at', { ascending: false }).limit(50);
-      setEvents(eventData || []);
+        .order('created_at', { ascending: false })
+        .limit(50);
+
+      if (eventError) {
+        console.error('Error fetching inventory events:', eventError);
+        setEvents([]);
+      } else {
+        setEvents(eventData || []);
+      }
     } catch (err: any) {
-      console.error("Sync error:", err);
+      console.error('Sync error:', err);
+      showToast('Failed to sync inventory data', 'error');
+      setIngredients([]);
+      setEvents([]);
     } finally {
       setLoading(false);
     }
@@ -165,6 +194,13 @@ const Inventory: React.FC = () => {
                        </tr>
                     </thead>
                     <tbody className="divide-y divide-white/5">
+                       {!loading && sortedAndFiltered.length === 0 && (
+                         <tr>
+                           <td colSpan={5} className="px-6 py-8 text-center text-gray-500">
+                             No inventory items found.
+                           </td>
+                         </tr>
+                       )}
                        {sortedAndFiltered.map((item) => (
                           <tr key={item.id} className="hover:bg-white/[0.02] transition-colors group">
                              <td className="px-6 py-4 font-bold text-white">{item.name}<p className="text-[9px] text-gray-500 font-mono">{item.sku || 'NO-SKU'}</p></td>
@@ -191,6 +227,13 @@ const Inventory: React.FC = () => {
                        <tr><th>Timestamp</th><th>Ingredient</th><th>Type</th><th>Change</th><th>Performer</th></tr>
                     </thead>
                     <tbody className="divide-y divide-white/5">
+                       {!loading && events.length === 0 && (
+                         <tr>
+                           <td colSpan={5} className="px-6 py-8 text-center text-gray-500">
+                             No inventory events recorded yet.
+                           </td>
+                         </tr>
+                       )}
                        {events.map((e) => (
                           <tr key={e.id} className="hover:bg-white/[0.01]">
                              <td className="px-6 py-4 text-gray-500 font-mono text-[10px]">{new Date(e.created_at).toLocaleString()}</td>

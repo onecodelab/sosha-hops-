@@ -2,15 +2,19 @@
 
 export type Role = 'owner' | 'manager' | 'waiter' | 'kitchen';
 
-export interface UserProfile {
+export interface Profile {
   id: string;
-  full_name?: string;
-  name?: string;
-  email?: string;
+  full_name: string;
+  is_online: boolean;
   role: Role;
-  created_at: string;
-  is_online?: boolean;
+  email: string;
   avatar_url?: string;
+  created_at: string;
+  updated_at?: string;
+}
+
+export interface UserProfile extends Profile {
+  name?: string;
   base_salary?: number;
   pay_period?: 'monthly' | 'weekly' | 'hourly';
   is_salary_approved?: boolean;
@@ -19,20 +23,19 @@ export interface UserProfile {
 export interface Category {
   id: string;
   name: string;
-  created_at: string;
+  created_at?: string;
 }
 
 export interface MenuItem {
   id: string;
   name: string;
-  price: number;
-  category_id?: string;
-  category_name?: string;
-  category?: Category;
   description?: string;
-  image_url?: string;
+  category: string;
+  price: number;
   is_available: boolean;
+  image_url?: string;
   created_at: string;
+  updated_at?: string;
   recipe?: ERPRecipe;
 }
 

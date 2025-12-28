@@ -38,7 +38,12 @@ const KitchenDashboard: React.FC = () => {
   const fetchOrders = async () => {
     try {
       const today = new Date().toISOString().split('T')[0];
-      const { data, error } = await supabase.from('orders').select(`*, order_items (quantity, special_instructions, menu_item:menu_items (name, category))`).gte('created_at', `${today}T00:00:00`).in('status', ['pending', 'accepted', 'preparing', 'ready']).order('created_at', { ascending: true });
+      const { data, error } = await supabase
+        .from('orders')
+        .select(`*, order_items (quantity, special_instructions, menu_items (name, category))`)
+        .gte('created_at', `${today}T00:00:00`)
+        .in('status', ['pending', 'accepted', 'preparing', 'ready'])
+        .order('created_at', { ascending: true });
       if (error) throw error;
       if (data) setOrders(data as Order[]);
     } catch (err: any) {
