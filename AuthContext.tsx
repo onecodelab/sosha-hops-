@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User } from '@supabase/supabase-js';
 import { supabase } from './supabase';
@@ -35,7 +36,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [needsSetup, setNeedsSetup] = useState(false);
   const navigate = useNavigate();
 
-  // Integrated React Query Profile Hook
   const { 
     data: profile, 
     isLoading, 
@@ -45,18 +45,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   } = useProfile();
 
   useEffect(() => {
-    // Initial visual state from session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setUser(session?.user ?? null);
-      
-      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-        refetch();
-      }
-      if (event === 'SIGNED_OUT') {
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'SIGNED_OUT') {
         refetch();
       }
     });
@@ -76,68 +71,39 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const markDatabaseAsMissing = () => {
-    setNeedsSetup(true);
-  };
+  const markDatabaseAsMissing = () => setNeedsSetup(true);
+  const refreshProfile = async () => { await refetch(); };
 
-  const refreshProfile = async () => {
-    await refetch();
-  };
-
-  // Check for specific DB errors to trigger setup guide
   useEffect(() => {
     if (error) {
-        const msg = error.message || '';
-        if (msg.includes('relation "public.users" does not exist') || msg.includes('does not exist')) {
+        const msg = (error as any).message || '';
+        if (msg.includes('relation "public.profiles" does not exist')) {
             setNeedsSetup(true);
         }
     }
   }, [error]);
 
-  if (needsSetup) {
-    return <SetupGuide />;
-  }
+  if (needsSetup) return <SetupGuide />;
 
-  // Determine error type
-  const isGuestError = error instanceof Error && (
+  const isAuthMissing = error instanceof Error && (
       error.message === 'Not authenticated' || 
       error.message.includes('Auth session missing')
   );
 
-  // 1. Guest Logic: If specifically "Not authenticated", allow access as guest (User/Profile null)
-  if (isGuestError) {
-      return (
-          <AuthContext.Provider value={{ 
-              user: null, 
-              profile: null, 
-              loading: false,
-              isProfileStale: false, 
-              signOut, 
-              refreshProfile, 
-              markDatabaseAsMissing 
-          }}>
-            {children}
-          </AuthContext.Provider>
-      );
-  }
-
-  // 2. Loading Logic: Only block with spinner if we have NO cached profile data
-  // If we have profile data but are 'isLoading' (background refetch), we render the app (optimistic).
-  if (isLoading && !profile) {
+  // If loading and we have no cached data, show spinner
+  if (isLoading && !profile && !isAuthMissing) {
     return (
       <LoadingSpinner 
         timeout={8000} 
         onTimeout={() => {
-          console.error('Profile load timeout');
-          // If we appear to be logged in but profile is hanging, redirect to login
           if (user) navigate('/login?error=timeout');
         }} 
       />
     );
   }
 
-  // 3. Critical Error Logic: Only show full ErrorScreen if we have NO profile data AND an error occurred
-  if (isError && !profile) {
+  // Match the screenshot text and behavior
+  if (isError && !isAuthMissing && !profile) {
     return (
       <ErrorScreen 
         message="Failed to load your profile" 
@@ -147,9 +113,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     );
   }
 
-  // 4. Success / Stale Logic: Render App
-  // If we are here, we either have data, or we are idle. 
-  // 'isError' being true here implies we have stale data from a cache but the latest fetch failed.
   return (
     <AuthContext.Provider value={{ 
         user, 

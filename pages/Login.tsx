@@ -7,18 +7,19 @@ import { SoshaLogo3D } from '../components/SoshaLogo3D';
 import { SoshaBackground } from '../components/SoshaBackground';
 import { useAuth } from '../AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Loader2 } from 'lucide-react';
 
 const Login: React.FC = () => {
   const { role } = useParams<{ role: string }>();
   const navigate = useNavigate();
-  const { user, profile, refreshProfile, markDatabaseAsMissing } = useAuth();
+  const { user, profile, refreshProfile } = useAuth();
   const { t } = useLanguage();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [syncing, setSyncing] = useState(false);
 
-  // Auto-redirect if already logged in with a profile
+  // Auto-redirect if already logged in with a valid profile
   useEffect(() => {
     if (user && profile) {
       redirectUser(profile.role);
@@ -39,68 +40,82 @@ const Login: React.FC = () => {
     setLoading(true);
 
     try {
+      // 1. Authenticate with Supabase Auth
       const { data: authData, error: signInError } = await supabase.auth.signInWithPassword({
         email: email.trim(),
         password: password.trim(),
       });
 
-      if (signInError) throw new Error("Invalid login credentials.");
+      if (signInError) throw new Error(signInError.message || "Invalid email or password.");
       if (!authData.user) throw new Error("Authentication failed.");
 
-      let { data: existingProfile, error: fetchError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', authData.user.id)
-        .maybeSingle();
+      setSyncing(true);
+      
+      // 2. Profile Verification Loop (Wait for DB Triggers)
+      let currentProfile = null;
+      for (let i = 0; i < 4; i++) {
+        const { data, error: fetchError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', authData.user.id)
+          .maybeSingle();
+        
+        if (data) {
+          currentProfile = data;
+          break;
+        }
+        
+        if (fetchError && fetchError.code === '42P17') {
+           throw new Error("Database recursion error detected. Please run the SQL fix provided in the dashboard.");
+        }
 
-      if (fetchError) {
-         if (fetchError.message.includes('does not exist') || fetchError.message.includes('relation "public.profiles" does not exist')) {
-            markDatabaseAsMissing();
-            setLoading(false);
-            return;
-         }
-         throw fetchError;
+        // Wait 1 second before retrying to allow DB triggers to finish
+        await new Promise(r => setTimeout(r, 1000));
       }
 
-      if (!existingProfile) {
+      // 3. Manual Sync (Only if trigger failed and record is missing)
+      if (!currentProfile) {
         const targetRole = role ? role.toLowerCase() : 'waiter';
-        const fullName = authData.user.user_metadata?.full_name || email.split('@')[0];
-        const { error: insertError } = await supabase.from('profiles').insert([{
+        const displayName = authData.user.user_metadata?.full_name || email.split('@')[0];
+        
+        const { error: upsertError } = await supabase.from('profiles').upsert({
             id: authData.user.id,
             email: authData.user.email,
-            full_name: fullName,
+            full_name: displayName,
+            name: displayName,
             role: targetRole,
             is_online: true
-        }]);
+        }, { onConflict: 'id' });
 
-        if (insertError) {
-          await supabase.auth.signOut();
-          throw new Error(`Access denied: Staff profile not found and could not be created.`);
+        if (upsertError) {
+          console.error("Sync object error:", JSON.stringify(upsertError, null, 2));
+          throw new Error(`Profile sync failed: ${upsertError.message || 'Unknown RLS error'}`);
         }
-        showToast("Profile created automatically.", "success");
+      } else {
+        // Just mark as online if already exists
+        await supabase.from('profiles').update({ is_online: true }).eq('id', authData.user.id);
       }
 
+      // 4. Update local context and navigate
       await refreshProfile();
       showToast(t('login.welcomeBack'), "success");
       
     } catch (err: any) {
-      console.error("Login Error:", err);
-      showToast(err.message || t('login.error'), 'error');
+      const errorMessage = err.message || JSON.stringify(err);
+      console.error("Critical Login Error:", errorMessage);
+      showToast(errorMessage || t('login.error'), 'error');
+    } finally {
       setLoading(false);
+      setSyncing(false);
     }
   };
 
-  // Helper to translate role name
-  const displayRole = role ? (t(`roles.${role.toLowerCase()}`) || role) : 'User';
+  const displayRole = role ? (t(`roles.${role.toLowerCase()}`) || role) : 'Staff';
 
   return (
     <SoshaBackground variant="landing">
       <div className="flex-1 flex flex-col items-center justify-center p-4">
-        
-        {/* Floating Card */}
-        <div className="w-full max-w-md bg-card/90 border border-border rounded-3xl shadow-[0_24px_80px_rgba(0,0,0,0.85)] p-8 space-y-6 backdrop-blur-md transition-all duration-500 hover:-translate-y-1 hover:shadow-[0_32px_90px_rgba(0,0,0,0.95)]">
-          
-          {/* Header */}
+        <div className="w-full max-w-md bg-card/90 border border-border rounded-3xl shadow-[0_24px_80px_rgba(0,0,0,0.85)] p-8 space-y-6 backdrop-blur-md">
           <div className="flex flex-col items-center text-center space-y-4">
             <SoshaLogo3D size="sm" />
             <div>
@@ -108,12 +123,11 @@ const Login: React.FC = () => {
                 {displayRole} {t('login.title')}
               </h1>
               <p className="text-muted text-sm font-medium mt-1">
-                {t('login.subtitle')}
+                {syncing ? "Verifying secure database link..." : t('login.subtitle')}
               </p>
             </div>
           </div>
 
-          {/* Form */}
           <form onSubmit={handleLogin} className="space-y-5">
             <div className="space-y-2">
               <label className="text-xs font-bold text-muted uppercase tracking-wider ml-1">{t('login.email')}</label>
@@ -123,7 +137,8 @@ const Login: React.FC = () => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="bg-black/20 border-border text-foreground placeholder:text-muted focus:border-primary focus:ring-1 focus:ring-primary/60 rounded-xl h-12 text-sm transition-all"
+                disabled={loading}
+                className="bg-black/20 border-border text-foreground rounded-xl h-12"
               />
             </div>
             <div className="space-y-2">
@@ -133,17 +148,18 @@ const Login: React.FC = () => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                className="bg-black/20 border-border text-foreground focus:border-primary focus:ring-1 focus:ring-primary/60 rounded-xl h-12 transition-all"
+                disabled={loading}
+                className="bg-black/20 border-border text-foreground rounded-xl h-12"
               />
             </div>
             
             <Button 
               type="submit" 
-              className="w-full bg-primary hover:bg-primary/90 text-black font-bold rounded-xl h-12 shadow-[0_16px_40px_var(--primary-glow)] transition-all transform active:scale-95 text-base" 
+              className="w-full bg-primary hover:bg-primary/90 text-black font-bold rounded-xl h-12 shadow-[0_16px_40px_var(--primary-glow)] transition-all active:scale-95" 
               isLoading={loading} 
               disabled={loading}
             >
-              {loading ? t('login.verifying') : t('login.signIn')}
+              {syncing ? "Finalizing..." : (loading ? t('login.verifying') : t('login.signIn'))}
             </Button>
             
             <div className="flex flex-col gap-3 pt-2 text-center">
@@ -153,14 +169,13 @@ const Login: React.FC = () => {
                 <button 
                   type="button" 
                   onClick={() => navigate('/')} 
-                  className="text-sm text-muted hover:text-foreground hover:underline transition-colors flex items-center justify-center gap-2"
+                  className="text-sm text-muted hover:text-foreground hover:underline flex items-center justify-center gap-2"
                 >
                     <ArrowLeft className="w-3 h-3" /> {t('login.backToRoles')}
                 </button>
             </div>
           </form>
         </div>
-
       </div>
     </SoshaBackground>
   );

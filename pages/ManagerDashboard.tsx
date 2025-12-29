@@ -14,7 +14,6 @@ import {
 import { Order } from '../types';
 import { PaymentVerificationModal, FloatingPaymentButton } from '../components/PaymentVerificationModal';
 import { OrderCard } from '../components/OrderCard';
-import { ClockInWidget } from '../components/ClockInWidget';
 
 const ManagerDashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
@@ -96,9 +95,6 @@ const ManagerDashboard: React.FC = () => {
     <DashboardLayout title="Ops Dashboard" subtitle="Daily operations and staff oversight">
       <div className="space-y-6">
         
-        {/* Shift Control */}
-        <ClockInWidget />
-
         {/* 1. KPI Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <SoshaCard className="p-6">

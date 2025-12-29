@@ -24,7 +24,7 @@ const SignUp: React.FC = () => {
         .select('*')
         .eq('email', email)
         .eq('invitation_pending', true)
-        .single();
+        .maybeSingle();
 
       if (inviteError || !invitation) {
         throw new Error('No pending invitation found for this email. Please contact your manager.');
@@ -36,7 +36,7 @@ const SignUp: React.FC = () => {
         password,
         options: {
           data: {
-            full_name: invitation.full_name,
+            full_name: invitation.full_name || invitation.name,
             role: invitation.role
           }
         }
@@ -45,20 +45,28 @@ const SignUp: React.FC = () => {
       if (signUpError) throw signUpError;
 
       if (authData.user) {
-        // Wait and verify the trigger linked the profile
-        await new Promise(resolve => setTimeout(resolve, 1500));
+        // Wait for trigger to create profile
+        await new Promise(resolve => setTimeout(resolve, 2000));
 
-        const { data: profile, error: profileError } = await supabase
+        // Attempt manual link if trigger didn't finish
+        const { data: profile } = await supabase
           .from('profiles')
           .select('id, role, email')
           .eq('id', authData.user.id)
-          .single();
+          .maybeSingle();
 
-        if (profileError || !profile) {
-          throw new Error('Account created but profile linking failed. Please contact support.');
+        if (!profile) {
+           const displayName = invitation.full_name || invitation.name || email.split('@')[0];
+           await supabase.from('profiles').upsert({
+              id: authData.user.id,
+              email: email,
+              full_name: displayName,
+              name: displayName,
+              role: invitation.role,
+              invitation_pending: false
+           });
         }
 
-        console.log('Profile linked successfully:', profile);
         showToast('Account created successfully!', 'success');
         navigate(`/login/${invitation.role}`);
       }
@@ -74,7 +82,7 @@ const SignUp: React.FC = () => {
   return (
     <SoshaBackground variant="landing">
       <div className="flex-1 flex items-center justify-center p-4">
-        <Card className="w-full max-w-md bg-card/90 border-border backdrop-blur-md">
+        <Card className="w-full max-w-md bg-card/90 border-border backdrop-blur-md rounded-3xl">
           <CardHeader className="space-y-1 flex flex-col items-center">
             <div className="w-20 h-20 mb-4 flex items-center justify-center">
                 <SoshaLogo className="w-full h-full" />
@@ -89,18 +97,18 @@ const SignUp: React.FC = () => {
           <CardContent>
             <form onSubmit={handleSignUp} className="space-y-4">
               <div className="space-y-2">
-                <label className="text-sm font-medium text-muted">Email Address</label>
+                <label className="text-xs font-bold text-muted uppercase tracking-wider">Email Address</label>
                 <Input 
                   type="email" 
                   placeholder="name@example.com" 
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
-                  className="bg-black/20 border-border text-foreground placeholder:text-muted focus:border-primary"
+                  className="bg-black/20 border-border text-foreground placeholder:text-muted focus:border-primary rounded-xl"
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium text-muted">Create Password</label>
+                <label className="text-xs font-bold text-muted uppercase tracking-wider">Create Password</label>
                 <Input 
                   type="password" 
                   value={password}
@@ -108,11 +116,11 @@ const SignUp: React.FC = () => {
                   required
                   minLength={6}
                   placeholder="Min 6 characters"
-                  className="bg-black/20 border-border text-foreground focus:border-primary"
+                  className="bg-black/20 border-border text-foreground focus:border-primary rounded-xl"
                 />
               </div>
               
-              <Button type="submit" className="w-full font-bold text-black" isLoading={loading} disabled={loading}>
+              <Button type="submit" className="w-full font-bold text-black h-12 rounded-xl mt-2" isLoading={loading} disabled={loading}>
                 {loading ? 'Creating Account...' : 'Complete Sign Up'}
               </Button>
               

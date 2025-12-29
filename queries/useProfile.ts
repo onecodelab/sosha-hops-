@@ -12,23 +12,25 @@ export function useProfile() {
       if (authError) throw authError;
       if (!user) throw new Error('Not authenticated');
 
+      // Attempt to get the profile
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', user.id)
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
-      if (!data) throw new Error('Profile not found');
-
-      return data as UserProfile;
+      
+      // If we are logged in but have no profile record, we return null 
+      // instead of throwing to let the UI handle the "missing profile" state
+      return data as UserProfile | null;
     },
-    staleTime: Infinity,
-    retry: (failureCount, error) => {
-      // Don't retry if user is not authenticated to avoid slow guest loading
-      if (error.message === 'Not authenticated') return false;
-      return failureCount < 2;
+    staleTime: 1000 * 60 * 5, // 5 minutes
+    retry: (failureCount, error: any) => {
+      if (error?.message === 'Not authenticated') return false;
+      // Retry up to 3 times for database connection/sync issues
+      return failureCount < 3;
     },
-    retryDelay: 1000,
+    retryDelay: (attempt) => Math.min(attempt * 1000, 3000),
   });
 }
