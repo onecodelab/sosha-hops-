@@ -19,13 +19,33 @@ export interface MenuDish {
   id: string;
   name: string;
   price: number;
+  /**
+   * Category display name used across dashboards.
+   * For legacy menu_items rows this may be a denormalized string,
+   * while newer flows use category_id + categories.name.
+   */
   category: string;
+  /**
+   * Optional foreign key to categories table (used by the new menu editor).
+   */
+  category_id?: string;
+  /**
+   * Optional friendly category name when joined from categories.
+   */
   category_name?: string;
   image_url?: string;
-  stock_quantity: number;
-  is_available: boolean;
+  /**
+   * Inventory-facing props are optional because simple menu views
+   * (e.g. useMenu hook backed by the bare `menu` table) do not provide them.
+   */
+  stock_quantity?: number;
+  is_available?: boolean;
   recipe_id?: string | null;
-  created_at: string;
+  /**
+   * Some menu sources (like the bare `menu` table) do not include created_at,
+   * so we keep this optional to satisfy both shapes.
+   */
+  created_at?: string;
 }
 
 // Added MenuItem as an alias for MenuDish as used in MenuEditorModal
