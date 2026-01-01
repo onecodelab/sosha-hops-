@@ -199,7 +199,8 @@ export const MenuEditorModal: React.FC<MenuEditorModalProps> = ({
                </div>
             </div>
           ) : (
-            internalItem && <RecipeEditor menuItem={internalItem} />
+            // Fixed: passed correct prop 'dish' and added missing 'onSaved' callback
+            internalItem && <RecipeEditor dish={internalItem} onSaved={onSuccess} />
           )}
         </div>
       </div>

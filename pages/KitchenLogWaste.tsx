@@ -76,7 +76,7 @@ const KitchenLogWaste: React.FC = () => {
       const qtyNum = parseFloat(quantity);
       if (isNaN(qtyNum) || qtyNum <= 0) throw new Error("Invalid quantity");
 
-      // Calculate cost (fallback to 0 if cost_per_unit is missing)
+      // Calculate cost
       const cost = (selectedIngredient.cost_per_unit || 0) * qtyNum;
 
       const { error } = await supabase
@@ -95,7 +95,7 @@ const KitchenLogWaste: React.FC = () => {
     onSuccess: () => {
       showToast(t('waste.success'), 'success');
       queryClient.invalidateQueries({ queryKey: ['waste_logs'] });
-      queryClient.invalidateQueries({ queryKey: ['kitchen-ingredients'] }); // To update stock if trigger exists
+      queryClient.invalidateQueries({ queryKey: ['kitchen-ingredients'] }); 
       
       // Reset Form
       setSelectedIngredient(null);
@@ -123,7 +123,7 @@ const KitchenLogWaste: React.FC = () => {
 
   const isFormValid = selectedIngredient && quantity && parseFloat(quantity) > 0 && reason.length >= 10;
 
-  const categories: WasteCategory[] = ['spoiled', 'burnt', 'dropped', 'expired', 'overproduction', 'other'];
+  const wasteCategories: WasteCategory[] = ['spoiled', 'burnt', 'dropped', 'expired', 'overproduction', 'other'];
 
   return (
     <DashboardLayout title={t('waste.title')} subtitle={t('waste.subtitle')}>
@@ -171,8 +171,7 @@ const KitchenLogWaste: React.FC = () => {
                                    <p className="font-bold text-sm text-white group-hover:text-primary">{ing.name}</p>
                                    <p className="text-xs text-gray-500 font-mono">{ing.sku}</p>
                                 </div>
-                                /** Fixed property name to current_stock to match Ingredient interface **/
-                                <span className="text-xs text-gray-400 bg-black/40 px-2 py-1 rounded">{ing.current_stock} {ing.unit_type}</span>
+                                <span className="text-xs text-gray-400 bg-black/40 px-2 py-1 rounded">{(ing.current_stock || 0).toLocaleString()} {ing.unit_type}</span>
                              </button>
                           ))}
                        </div>
@@ -203,7 +202,7 @@ const KitchenLogWaste: React.FC = () => {
                  <div className="space-y-2">
                     <label className="text-xs font-bold text-gray-500 uppercase">{t('waste.category')}</label>
                     <div className="grid grid-cols-2 gap-2">
-                       {categories.map(cat => (
+                       {wasteCategories.map(cat => (
                           <button
                              key={cat}
                              onClick={() => setCategory(cat)}
@@ -294,7 +293,7 @@ const KitchenLogWaste: React.FC = () => {
                                 {log.reason}
                              </td>
                              <td className="px-6 py-4 text-right font-mono text-gray-300">
-                                ETB {log.cost?.toLocaleString() || '0'}
+                                ETB {(log.cost || 0).toLocaleString()}
                              </td>
                           </tr>
                        ))}

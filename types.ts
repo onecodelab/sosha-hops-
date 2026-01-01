@@ -1,5 +1,4 @@
 
-
 export type Role = 'owner' | 'manager' | 'waiter' | 'kitchen';
 
 export interface UserProfile {
@@ -16,168 +15,161 @@ export interface UserProfile {
   is_salary_approved?: boolean;
 }
 
-export interface Category {
-  id: string;
-  name: string;
-  created_at: string;
-}
-
-export interface MenuItem {
+export interface MenuDish {
   id: string;
   name: string;
   price: number;
-  category_id?: string;
+  category: string;
   category_name?: string;
-  category?: Category;
-  description?: string;
   image_url?: string;
+  stock_quantity: number;
   is_available: boolean;
-  created_at: string;
-  recipe?: ERPRecipe;
-}
-
-export interface ERPRecipe {
-  id: string;
-  menu_item_id: string;
-  name: string;
-  description?: string;
-  yield_servings: number;
-  prep_time_minutes: number;
-  ingredients?: ERPRecipeIngredient[];
-}
-
-export interface ERPRecipeIngredient {
-  id: string;
-  recipe_id: string;
-  ingredient_id: string;
-  quantity: number;
-  unit: string;
-  ingredient?: Ingredient;
-}
-
-export interface Ingredient {
-  id: string;
-  sku: string;
-  name: string;
-  unit_type: string;
-  current_stock: number;
-  par_min: number;
-  par_max?: number;
-  cost_per_unit?: number;
-  location?: string;
-  category?: string;
-  supplier_id?: string;
-  is_active: boolean;
-}
-
-// Hardened Procurement Pipeline
-export type Urgency = 'low' | 'medium' | 'high' | 'critical';
-export type RequestStatus = 'pending' | 'approved' | 'rejected' | 'converted';
-export type POStatus = 'draft' | 'approved' | 'sent' | 'received' | 'cancelled' | 'partial_received';
-export type InventoryEventType = 'purchase' | 'consumption' | 'waste' | 'adjustment' | 'shortage';
-
-export interface RestockRequest {
-  id: string;
-  ingredient_id: string;
-  requested_quantity: number;
-  reason: string;
-  urgency: Urgency;
-  status: RequestStatus;
-  requested_by: string;
-  reviewed_by?: string;
-  created_at: string;
-  ingredient?: Ingredient;
-  requester?: UserProfile;
-  reviewer?: UserProfile;
-}
-
-export interface Supplier {
-  id: string;
-  name: string;
-  contact_person?: string;
-  email?: string;
-  phone?: string;
-  address?: string;
-  category?: string;
-  is_active: boolean;
+  recipe_id?: string | null;
   created_at: string;
 }
 
-export interface PurchaseOrderItem {
-  id: string;
-  po_id: string;
-  ingredient_id: string;
-  ordered_quantity: number;
-  unit_price: number;
-  received_quantity?: number;
-  ingredient?: Ingredient;
-}
-
-export interface PurchaseOrder {
-  id: string;
-  po_number: string;
-  supplier_id: string;
-  supplier_name?: string;
-  total_amount: number;
-  status: POStatus;
-  expected_delivery: string;
-  received_date?: string;
-  created_by: string;
-  created_at: string;
-  supplier?: Supplier;
-  items?: PurchaseOrderItem[];
-}
+// Added MenuItem as an alias for MenuDish as used in MenuEditorModal
+export type MenuItem = MenuDish;
 
 export type OrderStatus = 'pending' | 'accepted' | 'preparing' | 'ready' | 'served' | 'paid' | 'closed' | 'cancelled';
-export type PaymentStatus = 'unpaid' | 'paid' | 'split' | 'failed';
-export type PaymentMethod = 'cash' | 'cbe' | 'abyssinia' | 'chapa' | 'telebirr' | 'bank';
+export type PaymentStatus = 'unpaid' | 'pending' | 'paid' | 'split' | 'failed';
 export type OrderSource = 'dine_in' | 'takeaway' | 'delivery' | 'chatbot';
 
 export interface Order {
   id: string;
   order_number: string;
+  table_id: string;
   table_number: string;
-  table_id?: string;
   waiter_id: string;
   status: OrderStatus;
   source: OrderSource;
   payment_status: PaymentStatus;
-  payment_method?: PaymentMethod;
   total_amount: number;
-  tip_amount: number;
-  customer_notes?: string;
+  amount_paid?: number;
+  tip_amount?: number;
+  transaction_reference?: string;
   created_at: string;
+  order_items?: OrderItem[];
+  customer_notes?: string;
+  accepted_at?: string;
+  ready_at?: string;
   served_at?: string;
   paid_at?: string;
-  order_items?: OrderItem[];
-  waiter?: UserProfile;
+  completed_at?: string;
+  closed_at?: string;
+  closed_by_id?: string;
+  payment_method?: string;
+  waiter?: { full_name: string };
+  last_updated?: string;
 }
 
 export interface OrderItem {
   id: string;
   order_id: string;
-  menu_item_id: string;
+  menu_id: string;
+  menu_item_id?: string;
   quantity: number;
   price: number;
   special_instructions?: string;
-  menu_item?: MenuItem;
+  menu_dish?: MenuDish;
+  menu_item?: { name: string; category?: string };
 }
 
-export interface CartItem extends MenuItem {
-  quantity: number;
-  instructions?: string;
+export interface TipsLog {
+  id: string;
+  order_id: string;
+  waiter_id: string;
+  amount: number;
+  tip_type: 'cash' | 'digital';
+  created_at: string;
 }
 
+export interface Table {
+  id: string;
+  table_number: string;
+  status: 'available' | 'occupied' | 'needs_cleaning' | 'reserved';
+  capacity_min: number;
+  capacity_max: number;
+  zone?: string;
+  current_order_id?: string | null;
+  current_session_id?: string | null;
+  last_updated?: string;
+  created_at: string;
+}
+
+export type PaymentMethod = 'cash' | 'cbe' | 'telebirr' | 'chapa' | 'abyssinia';
+
+// Added missing Ingredient type
+export interface Ingredient {
+  id: string;
+  sku: string;
+  name: string;
+  category: string;
+  current_stock: number;
+  unit_type: string;
+  unittype?: string; // Support for variations in field naming across components
+  par_min: number;
+  par_max: number;
+  cost_per_unit: number;
+  expiry_days: number;
+  is_active: boolean;
+  supplier_id?: string;
+  supplier?: { name: string };
+  created_at: string;
+  updated_at: string;
+}
+
+// Added missing StaffShift type
 export interface StaffShift {
   id: string;
   staff_id: string;
-  staff_name?: string;
-  role: Role;
+  staff_name: string;
+  role: string;
   clock_in_time: string;
-  clock_out_time?: string;
+  clock_out_time?: string | null;
+  shift_duration_minutes?: number | null;
   status: 'active' | 'completed';
 }
 
+// Added missing StaffAction type
+export interface StaffAction {
+  id: string;
+  staff_id: string;
+  staff_name: string;
+  role: string;
+  action_type: string;
+  entity_type: string;
+  entity_id?: string;
+  shift_id?: string;
+  details?: any;
+  created_at: string;
+  staff?: { full_name: string; role: string };
+}
+
+// Added missing StaffPerformanceDaily type
+export interface StaffPerformanceDaily {
+  id: string;
+  staff_id: string;
+  staff_name: string;
+  date: string;
+  revenue_attributed: number;
+  orders_completed: number;
+  avg_service_time?: number;
+  tips_collected?: number;
+  staff?: { full_name: string; role: string };
+}
+
+// Added missing TipsLedger type
+export interface TipsLedger {
+  id: string;
+  staff_id: string;
+  order_id: string;
+  amount: number;
+  tip_type: 'cash' | 'digital';
+  created_at: string;
+}
+
+// Added missing Waste related types
 export type WasteCategory = 'spoiled' | 'burnt' | 'dropped' | 'expired' | 'overproduction' | 'other';
 
 export interface WasteLog {
@@ -189,59 +181,27 @@ export interface WasteLog {
   cost: number;
   logged_by: string;
   created_at: string;
-  ingredient?: Ingredient;
+  ingredient?: { name: string; unit_type: string };
 }
 
-export interface StaffAction {
+// Added missing Restock related types
+export type Urgency = 'low' | 'medium' | 'high' | 'critical';
+
+export interface RestockRequest {
   id: string;
-  staff_id: string;
-  staff_name?: string;
-  role: string;
-  action_type: string;
-  entity_type: string;
-  entity_id?: string;
-  shift_id?: string;
-  details?: any;
+  ingredient_id: string;
+  requested_quantity: number;
+  reason: string;
+  urgency: Urgency;
+  requested_by: string;
+  status: 'pending' | 'approved' | 'rejected' | 'ordered';
   created_at: string;
+  reviewed_by?: string;
+  ingredient?: { name: string; unit_type: string };
+  reviewer?: { full_name: string; email: string };
 }
 
-export interface StaffPerformanceDaily {
-  id: string;
-  staff_id: string;
-  staff_name?: string;
-  date: string;
-  revenue_attributed: number;
-  orders_completed: number;
-  avg_service_time_mins: number;
-  created_at: string;
-}
-
-export interface TipsLedger {
-  id: string;
-  order_id?: string;
-  staff_id: string;
-  amount: number;
-  tip_type: 'cash' | 'digital';
-  created_at: string;
-}
-
-export type TableStatus = 'available' | 'occupied' | 'reserved' | 'needs_cleaning';
-export type TableZone = 'indoor' | 'outdoor' | 'vip' | 'bar';
-
-export interface Table {
-  id: string;
-  table_number: string;
-  capacity: number;
-  status: TableStatus;
-  zone: TableZone;
-  x_position: number;
-  y_position: number;
-  shape: 'square' | 'round' | 'rectangle';
-  current_order_id?: string;
-  last_updated?: string;
-  created_at: string;
-}
-
+// Added missing PurchaseRequest type
 export interface PurchaseRequest {
   id: string;
   ingredient_id: string;
@@ -249,10 +209,54 @@ export interface PurchaseRequest {
   unit: string;
   reason: string;
   urgency: Urgency;
-  status: RequestStatus;
+  status: 'pending' | 'approved' | 'rejected';
   created_by: string;
+  created_at: string;
   approved_by?: string;
   approved_at?: string;
-  created_at: string;
-  ingredient?: Ingredient;
+  ingredient?: { name: string; unittype: string };
 }
+
+// Added missing Supplier type
+export interface Supplier {
+  id: string;
+  name: string;
+  contact_name?: string;
+  email?: string;
+  phone?: string;
+  is_active: boolean;
+}
+
+// Added missing PurchaseOrder types
+export interface PurchaseOrder {
+  id: string;
+  po_number: string;
+  supplier_id: string;
+  total_amount: number;
+  status: 'draft' | 'sent' | 'partial_received' | 'received';
+  expected_delivery: string;
+  received_date?: string;
+  created_by: string;
+  created_at: string;
+  supplier?: { name: string };
+  items?: PurchaseOrderItem[];
+}
+
+export interface PurchaseOrderItem {
+  id: string;
+  po_id: string;
+  ingredient_id: string;
+  ordered_quantity: number;
+  unit_price: number;
+  ingredient?: { name: string; unit_type: string };
+}
+
+// Added missing Category type
+export interface Category {
+  id: string;
+  name: string;
+  description?: string;
+}
+
+// Added missing TableZone type
+export type TableZone = 'indoor' | 'outdoor' | 'vip' | 'bar';

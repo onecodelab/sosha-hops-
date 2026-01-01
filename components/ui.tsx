@@ -109,20 +109,21 @@ interface DialogProps {
   onClose: () => void;
   title: string;
   children: React.ReactNode;
+  maxWidth?: string;
 }
 
-export const Dialog: React.FC<DialogProps> = ({ isOpen, onClose, title, children }) => {
+export const Dialog: React.FC<DialogProps> = ({ isOpen, onClose, title, children, maxWidth = "max-w-lg" }) => {
   if (!isOpen) return null;
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-      <div className="w-full max-w-lg rounded-xl bg-card border border-border shadow-xl animate-in fade-in zoom-in duration-200">
-        <div className="flex items-center justify-between p-6 border-b border-border">
-          <h2 className="text-lg font-semibold text-foreground">{title}</h2>
-          <button onClick={onClose} className="text-muted hover:text-foreground">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+      <div className={cn("w-full rounded-[2rem] bg-card border border-border shadow-2xl animate-in fade-in zoom-in duration-200 overflow-hidden flex flex-col", maxWidth)}>
+        <div className="flex items-center justify-between px-8 py-6 border-b border-border bg-black/20">
+          <h2 className="text-xl font-bold text-white tracking-tight">{title}</h2>
+          <button onClick={onClose} className="p-2 rounded-full hover:bg-white/10 text-muted hover:text-white transition-colors">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
           </button>
         </div>
-        <div className="p-6 overflow-y-auto max-h-[80vh]">
+        <div className="flex-1 overflow-hidden">
           {children}
         </div>
       </div>
@@ -131,7 +132,7 @@ export const Dialog: React.FC<DialogProps> = ({ isOpen, onClose, title, children
 };
 
 // --- Toast (Simplified) ---
-export const ToastContainer = () => <div id="toast-container" className="fixed top-4 right-4 z-50 flex flex-col gap-2 pointer-events-none" />;
+export const ToastContainer = () => <div id="toast-container" className="fixed top-4 right-4 z-[110] flex flex-col gap-2 pointer-events-none" />;
 
 export const showToast = (message: string, type: 'success' | 'error' | 'warning' = 'success') => {
   const container = document.getElementById('toast-container');

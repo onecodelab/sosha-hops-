@@ -3,245 +3,398 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle, Button, Input, cn, showToast, Badge, Dialog } from '../components/ui';
 import { 
-  Search, AlertTriangle, Package, Calendar, RefreshCw, 
-  Plus, Edit3, PackagePlus, History, BarChart3, ClipboardCheck, Check, Truck, ArrowRight
+  Search, RefreshCw, Edit3, Database, Scale, 
+  AlertTriangle, Package, ArrowUpDown, Info, Tag, Calendar, DollarSign, Loader2
 } from 'lucide-react';
 import { supabase } from '../supabase';
-import { useAuth } from '../AuthContext';
+import { Ingredient } from '../types';
+
+type SortField = 'name' | 'current_stock' | 'total_value';
+type SortOrder = 'asc' | 'desc';
+
+interface FormData {
+  current_stock: number;
+  par_min: number;
+  par_max: number;
+  cost_per_unit: number;
+  expiry_days: number;
+}
 
 const Inventory: React.FC = () => {
-  const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<'stock' | 'logs'>('stock');
   const [searchTerm, setSearchTerm] = useState('');
-  const [ingredients, setIngredients] = useState<any[]>([]);
-  const [events, setEvents] = useState<any[]>([]);
+  const [inventory, setInventory] = useState<Ingredient[]>([]);
   const [loading, setLoading] = useState(true);
-  
-  const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' }>({ key: 'name', direction: 'asc' });
-  const [isParModalOpen, setIsParModalOpen] = useState(false);
-  const [isRestockOpen, setIsRestockOpen] = useState(false);
-  const [isStocktakeOpen, setIsStocktakeOpen] = useState(false);
-  const [selectedIngredient, setSelectedIngredient] = useState<any>(null);
-  
-  const [parForm, setParForm] = useState({ par_min: 0, par_max: 0 });
-  const [restockForm, setRestockForm] = useState({ qty_received: '', note: '' });
-  const [stocktakeData, setStocktakeData] = useState<Record<string, number>>({});
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<Ingredient | null>(null);
+  const [linkedRecipes, setLinkedRecipes] = useState<any[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  
+  const [formData, setFormData] = useState<FormData>({
+    current_stock: 0,
+    par_min: 0,
+    par_max: 0,
+    cost_per_unit: 0,
+    expiry_days: 0
+  });
+
+  const [sortField, setSortField] = useState<SortField>('name');
+  const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
 
   useEffect(() => {
-    fetchData();
-    const channel = supabase.channel('inventory_realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'ingredients' }, () => fetchData())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'inventory_events' }, () => fetchData())
+    fetchInventory();
+    const sub = supabase.channel('ingredients_sync_v2')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'ingredients' }, () => fetchInventory())
       .subscribe();
-    return () => { supabase.removeChannel(channel); };
+    return () => { supabase.removeChannel(sub); };
   }, []);
 
-  const fetchData = async () => {
+  const fetchInventory = async () => {
     setLoading(true);
     try {
-      const { data: stockData } = await supabase.from('ingredient_overview').select('*');
-      setIngredients(stockData || []);
-
-      const { data: eventData } = await supabase
-        .from('inventory_events')
-        .select(`*, ingredient:ingredients(name, unit_type), performer:profiles(full_name)`)
-        .order('created_at', { ascending: false }).limit(50);
-      setEvents(eventData || []);
+      const { data, error } = await supabase
+        .from('ingredients')
+        .select('*')
+        .eq('is_active', true);
+      if (error) throw error;
+      setInventory(data as Ingredient[]);
     } catch (err: any) {
-      console.error("Sync error:", err);
+      showToast(err.message, "error");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleSort = (key: string) => {
-    setSortConfig(prev => ({
-      key,
-      direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc'
-    }));
-  };
-
-  const submitParUpdate = async () => {
-    setSubmitting(true);
+  const handleEditClick = async (ingredient: Ingredient) => {
+    setSelectedItem(ingredient);
+    setFormData({
+      current_stock: Number(ingredient.current_stock) || 0,
+      par_min: Number(ingredient.par_min) || 0,
+      par_max: Number(ingredient.par_max) || 0,
+      cost_per_unit: Number(ingredient.cost_per_unit) || 0,
+      expiry_days: Number(ingredient.expiry_days) || 0
+    });
+    
     try {
-      const { error } = await supabase.from('ingredients').update({ 
-        par_min: parForm.par_min, 
-        par_max: parForm.par_max 
-      }).eq('id', selectedIngredient.id);
-      if (error) throw error;
-      showToast(`${selectedIngredient.name} thresholds updated`, "success");
-      setIsParModalOpen(false);
-      fetchData();
-    } catch (err: any) { showToast(err.message, "error"); } finally { setSubmitting(false); }
-  };
-
-  const submitRestock = async () => {
-    if (!restockForm.qty_received || !selectedIngredient) return;
-    setSubmitting(true);
-    try {
-      const qty = parseFloat(restockForm.qty_received);
-      // HARDENED: Only insert event. Trigger tr_inventory_sync handles stock calculation.
-      const { error } = await supabase.from('inventory_events').insert({
-        ingredient_id: selectedIngredient.id, 
-        event_type: 'purchase', 
-        qty_change: qty, 
-        reason: restockForm.note || 'Manual receipt', 
-        performed_by: user?.id
-      });
-      if (error) throw error;
-      showToast(`Stock increased by ${qty} ${selectedIngredient.unit_type}`, "success");
-      setIsRestockOpen(false);
-    } catch (err: any) { showToast(err.message, "error"); } finally { setSubmitting(false); }
-  };
-
-  const submitStocktake = async () => {
-    setSubmitting(true);
-    try {
-      const adjustmentEvents = [];
-      for (const ing of ingredients) {
-        const counted = stocktakeData[ing.id] ?? ing.current_stock;
-        const delta = counted - ing.current_stock;
-        if (delta !== 0) {
-          adjustmentEvents.push({ 
-            ingredient_id: ing.id, 
-            event_type: 'adjustment', 
-            qty_change: delta, 
-            reason: 'Physical stocktake adjustment', 
-            performed_by: user?.id 
-          });
-        }
+      const { data } = await supabase
+        .from('recipe_ingredients')
+        .select(`recipe_id, recipes(name)`)
+        .eq('ingredient_id', ingredient.id);
+      
+      if (data) {
+        setLinkedRecipes(data.map((d: any) => d.recipes));
+      } else {
+        setLinkedRecipes([]);
       }
-      if (adjustmentEvents.length > 0) {
-        const { error } = await supabase.from('inventory_events').insert(adjustmentEvents);
-        if (error) throw error;
-      }
-      showToast("Inventory reconciled successfully", "success");
-      setIsStocktakeOpen(false);
-    } catch (err: any) { showToast(err.message, "error"); } finally { setSubmitting(false); }
+    } catch (e) {
+      setLinkedRecipes([]);
+    }
+    
+    setIsModalOpen(true);
   };
 
-  const sortedAndFiltered = useMemo(() => {
-    let list = ingredients.filter(i => i.name.toLowerCase().includes(searchTerm.toLowerCase()));
-    list.sort((a, b) => {
-      let aVal = a[sortConfig.key];
-      let bVal = b[sortConfig.key];
-      if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1;
-      if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1;
+  const handleSave = async () => {
+    if (!selectedItem) return;
+    setSubmitting(true);
+
+    try {
+      const updatePayload = {
+        current_stock: Number(formData.current_stock),
+        par_min: Number(formData.par_min),
+        par_max: Number(formData.par_max),
+        cost_per_unit: Number(formData.cost_per_unit),
+        expiry_days: Math.floor(Number(formData.expiry_days)),
+        updated_at: new Date().toISOString()
+      };
+
+      if (updatePayload.par_max < updatePayload.par_min && updatePayload.par_max > 0) {
+        throw new Error("Par Max cannot be less than Par Min");
+      }
+
+      const { error } = await supabase
+        .from('ingredients')
+        .update(updatePayload)
+        .eq('id', selectedItem.id);
+      
+      if (error) {
+        console.error("Database Save Error:", error);
+        throw new Error(`DB Error: ${error.message}. Please run the SQL Hardening Script.`);
+      }
+      
+      await fetchInventory();
+      showToast(`Master record for ${selectedItem.name} updated!`, "success");
+      setIsModalOpen(false);
+      setSelectedItem(null);
+
+    } catch (err: any) {
+      console.error("Critical Save failure:", err);
+      showToast(err.message || "Failed to save changes", "error");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const toggleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortOrder('asc');
+    }
+  };
+
+  const processedInventory = useMemo(() => {
+    let result = inventory.filter(i => (i.name || '').toLowerCase().includes(searchTerm.toLowerCase()));
+    
+    result.sort((a, b) => {
+      let valA: any, valB: any;
+      if (sortField === 'name') {
+        valA = (a.name || '').toLowerCase();
+        valB = (b.name || '').toLowerCase();
+      } else if (sortField === 'current_stock') {
+        valA = Number(a.current_stock) || 0;
+        valB = Number(b.current_stock) || 0;
+      } else if (sortField === 'total_value') {
+        valA = (Number(a.current_stock) || 0) * (Number(a.cost_per_unit) || 0);
+        valB = (Number(b.current_stock) || 0) * (Number(b.cost_per_unit) || 0);
+      }
+      if (valA < valB) return sortOrder === 'asc' ? -1 : 1;
+      if (valA > valB) return sortOrder === 'asc' ? 1 : -1;
       return 0;
     });
-    return list;
-  }, [ingredients, searchTerm, sortConfig]);
+
+    return result;
+  }, [inventory, searchTerm, sortField, sortOrder]);
+
+  const stats = useMemo(() => {
+    const totalValue = inventory.reduce((sum, i) => sum + ((Number(i.current_stock) || 0) * (Number(i.cost_per_unit) || 0)), 0);
+    const lowStockCount = inventory.filter(i => (Number(i.current_stock) || 0) < (Number(i.par_min) || 0)).length;
+    return { totalValue, lowStockCount };
+  }, [inventory]);
+
+  const getStockStatus = (item: Ingredient) => {
+    const current = Number(item.current_stock) || 0;
+    const min = Number(item.par_min) || 0;
+    const max = Number(item.par_max) || 0;
+    if (current < min) return 'low';
+    if (current > max && max > 0) return 'high';
+    return 'healthy';
+  };
 
   return (
-    <DashboardLayout title="Inventory Core" subtitle="Deterministic stock levels and audit logs"
-      actions={
-        <div className="flex gap-2">
-           <Button variant="outline" onClick={() => { 
-             const initial = {}; ingredients.forEach(i => initial[i.id] = i.current_stock);
-             setStocktakeData(initial); setIsStocktakeOpen(true); 
-           }} className="border-primary/20 text-primary bg-black/40"><ClipboardCheck className="w-4 h-4 mr-2" /> Stocktake</Button>
-           <Button variant="outline" onClick={fetchData} size="icon" className="bg-white/5"><RefreshCw className={cn("w-4 h-4", loading && "animate-spin")} /></Button>
-        </div>
-      }
-    >
-      <div className="space-y-6">
-        <div className="flex justify-between items-center bg-black/40 p-1 rounded-xl border border-white/5 w-fit">
-            <button onClick={() => setActiveTab('stock')} className={cn("px-6 py-2 text-[10px] font-black uppercase rounded-lg transition-all", activeTab === 'stock' ? "bg-primary text-black" : "text-gray-500")}>Stock Levels</button>
-            <button onClick={() => setActiveTab('logs')} className={cn("px-6 py-2 text-[10px] font-black uppercase rounded-lg transition-all", activeTab === 'logs' ? "bg-primary text-black" : "text-gray-500")}>Audit Ledger</button>
+    <DashboardLayout title="Inventory Management" subtitle="Master Registry Control">
+      <div className="space-y-6 animate-in fade-in duration-500">
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+           <Card className="bg-primary/5 border-primary/20 p-5 rounded-2xl shadow-sm">
+              <p className="text-[10px] font-black text-gray-500 uppercase tracking-[0.1em]">Total Asset Valuation</p>
+              <h3 className="text-2xl font-black text-white mt-1">ETB {(stats.totalValue || 0).toLocaleString()}</h3>
+           </Card>
+           <Card className={cn("p-5 rounded-2xl border shadow-sm transition-colors", stats.lowStockCount > 0 ? "bg-red-500/5 border-red-500/20" : "bg-white/5 border-white/5")}>
+              <p className="text-[10px] font-black text-gray-500 uppercase tracking-[0.1em]">Re-order Alerts</p>
+              <h3 className={cn("text-2xl font-black mt-1", stats.lowStockCount > 0 ? "text-red-400" : "text-white")}>{stats.lowStockCount} Low SKUs</h3>
+           </Card>
         </div>
 
-        <Card className="bg-[#080808]/60 border-white/5 overflow-hidden">
-           {activeTab === 'stock' ? (
-              <div className="overflow-x-auto">
-                 <table className="w-full text-sm text-left">
-                    <thead className="text-[10px] text-gray-500 uppercase bg-black/60 border-b border-white/5 font-black">
-                       <tr>
-                          <th className="px-6 py-5 cursor-pointer" onClick={() => handleSort('name')}>Ingredient</th>
-                          <th className="px-6 py-5">Current Stock</th>
-                          <th className="px-6 py-5">Status</th>
-                          <th className="px-6 py-5">Thresholds</th>
-                          <th className="px-6 py-5"></th>
+        <div className="flex flex-col md:flex-row justify-between gap-4 bg-card/40 p-3 rounded-[1.5rem] border border-white/5 backdrop-blur-xl">
+           <div className="relative w-full md:w-96">
+              <Search className="absolute left-3 top-3.5 h-4 w-4 text-gray-500" />
+              <Input 
+                placeholder="Search by name or SKU..." 
+                value={searchTerm}
+                onChange={e => setSearchTerm(e.target.value)}
+                className="pl-11 bg-black/40 border-white/10 h-11 rounded-xl"
+              />
+           </div>
+           <Button onClick={fetchInventory} variant="outline" size="icon" className="h-11 w-11 bg-white/5 border-white/10">
+              <RefreshCw className={cn("h-4 w-4 text-gray-400", loading && "animate-spin")} />
+           </Button>
+        </div>
+
+        <Card className="bg-card/30 border-white/5 rounded-[2rem] overflow-hidden backdrop-blur-sm shadow-2xl">
+           <div className="overflow-x-auto">
+              <table className="w-full text-sm text-left">
+                 <thead className="text-[10px] text-gray-500 uppercase bg-black/60 border-b border-white/5 font-black tracking-widest">
+                    <tr>
+                       <th className="px-8 py-5 cursor-pointer hover:text-white transition-colors" onClick={() => toggleSort('name')}>
+                          <div className="flex items-center gap-2">Ingredient {sortField === 'name' && <ArrowUpDown className="w-3 h-3" />}</div>
+                       </th>
+                       <th className="px-8 py-5 cursor-pointer hover:text-white transition-colors text-center" onClick={() => toggleSort('current_stock')}>
+                          <div className="flex items-center gap-2 justify-center">Stock Level {sortField === 'current_stock' && <ArrowUpDown className="w-3 h-3" />}</div>
+                       </th>
+                       <th className="px-8 py-5 text-center">Unit</th>
+                       <th className="px-8 py-5 text-right">Cost/Unit</th>
+                       <th className="px-8 py-5 cursor-pointer hover:text-white transition-colors text-right" onClick={() => toggleSort('total_value')}>
+                          <div className="flex items-center gap-2 justify-end">Value {sortField === 'total_value' && <ArrowUpDown className="w-3 h-3" />}</div>
+                       </th>
+                       <th className="px-8 py-5 text-right"></th>
+                    </tr>
+                 </thead>
+                 <tbody className="divide-y divide-white/5">
+                    {processedInventory.map((item) => {
+                       const status = getStockStatus(item);
+                       const stockVal = Number(item?.current_stock) || 0;
+                       const costVal = Number(item?.cost_per_unit) || 0;
+                       return (
+                       <tr key={item.id} className="hover:bg-white/[0.02] transition-colors group">
+                          <td className="px-8 py-5">
+                             <p className="font-bold text-white text-base">{item.name || 'Unnamed'}</p>
+                             <p className="text-[9px] text-gray-500 uppercase font-black mt-1">SKU: {item.sku || 'N/A'}</p>
+                          </td>
+                          <td className="px-8 py-5 text-center">
+                             <div className="flex flex-col items-center gap-1">
+                                <span className={cn(
+                                   "font-mono font-black text-xl",
+                                   status === 'low' ? "text-red-500" : 
+                                   status === 'high' ? "text-blue-400" : "text-white"
+                                )}>
+                                   {stockVal.toLocaleString()}
+                                </span>
+                                {status === 'low' && <span className="text-[8px] font-black text-red-500 uppercase flex items-center gap-1"><AlertTriangle className="w-2.5 h-2.5" /> LOW</span>}
+                             </div>
+                          </td>
+                          <td className="px-8 py-5 text-center">
+                             <Badge variant="outline" className="text-[10px] font-black uppercase text-gray-500 border-white/10">{item.unit_type || 'unit'}</Badge>
+                          </td>
+                          <td className="px-8 py-5 text-right">
+                             <span className="font-mono text-gray-300">ETB {costVal.toLocaleString()}</span>
+                          </td>
+                          <td className="px-8 py-5 text-right">
+                             <span className="font-mono text-white font-black text-lg">
+                                {(stockVal * costVal).toLocaleString()}
+                             </span>
+                          </td>
+                          <td className="px-8 py-5 text-right">
+                             <Button size="sm" variant="ghost" onClick={() => handleEditClick(item)} className="h-10 px-4 rounded-xl hover:bg-primary/10 hover:text-primary transition-all font-bold text-xs uppercase">
+                                <Edit3 className="w-4 h-4 mr-2" /> Adjust
+                             </Button>
+                          </td>
                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-white/5">
-                       {sortedAndFiltered.map((item) => (
-                          <tr key={item.id} className="hover:bg-white/[0.02] transition-colors group">
-                             <td className="px-6 py-4 font-bold text-white">{item.name}<p className="text-[9px] text-gray-500 font-mono">{item.sku || 'NO-SKU'}</p></td>
-                             <td className="px-6 py-4 font-mono text-primary font-bold">{item.current_stock} {item.unit_type}</td>
-                             <td className="px-6 py-4">
-                                <Badge className={cn("text-[9px] font-black", item.stock_status === 'LOW' ? "bg-yellow-500/10 text-yellow-500" : item.stock_status === 'EMPTY' ? "bg-red-500/10 text-red-500" : "bg-green-500/10 text-green-500")}>{item.stock_status}</Badge>
-                             </td>
-                             <td className="px-6 py-4 text-xs text-gray-500">Min: {item.par_min} / Max: {item.par_max}</td>
-                             <td className="px-6 py-4 text-right">
-                                <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                   <button onClick={() => { setSelectedIngredient(item); setParForm({ par_min: item.par_min, par_max: item.par_max }); setIsParModalOpen(true); }} className="p-2 bg-white/5 rounded-xl hover:text-primary"><Edit3 className="w-4 h-4" /></button>
-                                   <button onClick={() => { setSelectedIngredient(item); setRestockForm({ qty_received: '', note: '' }); setIsRestockOpen(true); }} className="p-2 bg-primary/10 text-primary rounded-xl"><PackagePlus className="w-4 h-4" /></button>
-                                </div>
-                             </td>
-                          </tr>
-                       ))}
-                    </tbody>
-                 </table>
-              </div>
-           ) : (
-              <div className="overflow-x-auto">
-                 <table className="w-full text-sm text-left">
-                    <thead className="text-[10px] text-gray-500 uppercase bg-black/60 border-b border-white/5 font-black">
-                       <tr><th>Timestamp</th><th>Ingredient</th><th>Type</th><th>Change</th><th>Performer</th></tr>
-                    </thead>
-                    <tbody className="divide-y divide-white/5">
-                       {events.map((e) => (
-                          <tr key={e.id} className="hover:bg-white/[0.01]">
-                             <td className="px-6 py-4 text-gray-500 font-mono text-[10px]">{new Date(e.created_at).toLocaleString()}</td>
-                             <td className="px-6 py-4 font-bold text-white">{e.ingredient?.name}</td>
-                             <td className="px-6 py-4"><Badge className="capitalize text-[9px]">{e.event_type}</Badge></td>
-                             <td className="px-6 py-4 font-mono font-black text-white">{e.qty_change > 0 ? '+' : ''}{e.qty_change}</td>
-                             <td className="px-6 py-4 text-xs text-gray-400">{e.performer?.full_name || 'System'}</td>
-                          </tr>
-                       ))}
-                    </tbody>
-                 </table>
-              </div>
-           )}
+                    )})}
+                    {processedInventory.length === 0 && !loading && (
+                      <tr>
+                        <td colSpan={6} className="py-32 text-center text-gray-600">
+                           <Database className="w-16 h-16 mx-auto mb-4 opacity-10" />
+                           <p className="font-black uppercase tracking-[0.2em] text-xs">No SKUs Matched</p>
+                        </td>
+                      </tr>
+                    )}
+                 </tbody>
+              </table>
+           </div>
         </Card>
       </div>
 
-      <Dialog isOpen={isParModalOpen} onClose={() => setIsParModalOpen(false)} title="Threshold Configuration">
-         <div className="space-y-4 pt-2">
-            <div className="grid grid-cols-2 gap-4">
-               <div className="space-y-2"><label className="text-[10px] font-black uppercase text-gray-500">Min Par</label><Input type="number" value={parForm.par_min} onChange={e => setParForm({...parForm, par_min: parseFloat(e.target.value) || 0})} /></div>
-               <div className="space-y-2"><label className="text-[10px] font-black uppercase text-gray-500">Max Target</label><Input type="number" value={parForm.par_max} onChange={e => setParForm({...parForm, par_max: parseFloat(e.target.value) || 0})} /></div>
+      <Dialog isOpen={isModalOpen} onClose={() => !submitting && setIsModalOpen(false)} title="Ingredient Master Adjustment">
+         <div className="space-y-6 max-h-[75vh] overflow-y-auto pr-2 custom-scrollbar">
+            
+            <div className="grid grid-cols-2 gap-4 p-5 bg-white/5 border border-white/10 rounded-2xl">
+               <div className="space-y-1">
+                  <p className="text-[9px] font-black text-gray-500 uppercase tracking-widest">SKU Identity</p>
+                  <p className="text-sm font-mono text-primary font-bold">{selectedItem?.sku || 'N/A'}</p>
+               </div>
+               <div className="space-y-1">
+                  <p className="text-[9px] font-black text-gray-500 uppercase tracking-widest">Unit Type</p>
+                  <p className="text-sm text-white font-bold">{selectedItem?.unit_type}</p>
+               </div>
+               <div className="space-y-1">
+                  <p className="text-[9px] font-black text-gray-500 uppercase tracking-widest">Ingredient Name</p>
+                  <p className="text-sm text-white font-bold">{selectedItem?.name}</p>
+               </div>
+               <div className="space-y-1">
+                  <p className="text-[9px] font-black text-gray-500 uppercase tracking-widest">Category</p>
+                  <p className="text-sm text-white font-bold">{selectedItem?.category}</p>
+               </div>
             </div>
-            <Button onClick={submitParUpdate} className="w-full bg-primary text-black font-black" isLoading={submitting}>Update Thresholds</Button>
-         </div>
-      </Dialog>
 
-      <Dialog isOpen={isRestockOpen} onClose={() => setIsRestockOpen(false)} title={`Receive Stock: ${selectedIngredient?.name}`}>
-         <div className="space-y-4 pt-2">
-            <div className="space-y-2"><label className="text-[10px] font-black uppercase text-gray-500">Qty Received ({selectedIngredient?.unit_type})</label><Input type="number" value={restockForm.qty_received} onChange={e => setRestockForm({...restockForm, qty_received: e.target.value})} className="text-primary font-bold text-lg" /></div>
-            <div className="space-y-2"><label className="text-[10px] font-black uppercase text-gray-500">Note</label><Input value={restockForm.note} onChange={e => setRestockForm({...restockForm, note: e.target.value})} placeholder="e.g. Delivery from Meat Masters" /></div>
-            <Button onClick={submitRestock} className="w-full bg-primary text-black font-black" isLoading={submitting} disabled={!restockForm.qty_received}>Commit Audit Entry</Button>
-         </div>
-      </Dialog>
+            <div className="space-y-4">
+               <h4 className="text-[11px] font-black text-white uppercase tracking-[0.2em] flex items-center gap-2">
+                  <Scale className="w-4 h-4 text-primary" /> Stock Configuration
+               </h4>
+               <div className="grid grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                     <label className="text-[10px] font-bold text-gray-500 uppercase">Current Stock</label>
+                     <Input 
+                       type="number" 
+                       step="any"
+                       value={formData.current_stock} 
+                       onChange={e => setFormData({...formData, current_stock: parseFloat(e.target.value) || 0})}
+                       className="bg-black/60 border-white/10 text-primary font-mono font-bold"
+                     />
+                  </div>
+                  <div className="space-y-2">
+                     <label className="text-[10px] font-bold text-gray-500 uppercase">Par Min</label>
+                     <Input 
+                       type="number" 
+                       value={formData.par_min} 
+                       onChange={e => setFormData({...formData, par_min: parseFloat(e.target.value) || 0})}
+                       className="bg-black/60 border-white/10 font-mono"
+                     />
+                  </div>
+                  <div className="space-y-2">
+                     <label className="text-[10px] font-bold text-gray-500 uppercase">Par Max</label>
+                     <Input 
+                       type="number" 
+                       value={formData.par_max} 
+                       onChange={e => setFormData({...formData, par_max: parseFloat(e.target.value) || 0})}
+                       className="bg-black/60 border-white/10 font-mono"
+                     />
+                  </div>
+               </div>
+            </div>
 
-      <Dialog isOpen={isStocktakeOpen} onClose={() => setIsStocktakeOpen(false)} title="Physical Stocktake Adjustment">
-         <div className="flex flex-col h-[60vh] gap-4">
-            <div className="flex-1 overflow-y-auto space-y-2 pr-2 custom-scrollbar">
-               {ingredients.map(i => (
-                  <div key={i.id} className="p-3 bg-white/5 rounded-xl flex items-center justify-between border border-white/5">
-                     <span className="text-xs font-bold text-white truncate max-w-[150px]">{i.name}</span>
-                     <div className="flex items-center gap-2">
-                        <span className="text-[9px] text-gray-500 font-mono">System: {i.current_stock}</span>
-                        <Input type="number" value={stocktakeData[i.id] ?? i.current_stock} onChange={e => setStocktakeData({...stocktakeData, [i.id]: parseFloat(e.target.value) || 0})} className="w-20 h-8 text-center font-mono" />
+            <div className="space-y-4">
+               <h4 className="text-[11px] font-black text-white uppercase tracking-[0.2em] flex items-center gap-2">
+                  <DollarSign className="w-4 h-4 text-green-500" /> Valuation & Life
+               </h4>
+               <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                     <label className="text-[10px] font-bold text-gray-500 uppercase">Cost Per Unit (ETB)</label>
+                     <div className="relative">
+                        <Tag className="absolute left-3 top-3 w-4 h-4 text-gray-600" />
+                        <Input 
+                          type="number" 
+                          step="any"
+                          value={formData.cost_per_unit} 
+                          onChange={e => setFormData({...formData, cost_per_unit: parseFloat(e.target.value) || 0})}
+                          className="pl-9 bg-black/60 border-white/10 font-mono"
+                        />
                      </div>
                   </div>
-               ))}
+                  <div className="space-y-2">
+                     <label className="text-[10px] font-bold text-gray-500 uppercase">Expiry Days</label>
+                     <div className="relative">
+                        <Calendar className="absolute left-3 top-3 w-4 h-4 text-gray-600" />
+                        <Input 
+                          type="number" 
+                          value={formData.expiry_days} 
+                          onChange={e => setFormData({...formData, expiry_days: parseInt(e.target.value) || 0})}
+                          className="pl-9 bg-black/60 border-white/10 font-mono"
+                        />
+                     </div>
+                  </div>
+               </div>
             </div>
-            <Button onClick={submitStocktake} className="bg-primary text-black font-black h-12" isLoading={submitting}><Check className="w-4 h-4 mr-2" /> Reconcile All Counts</Button>
+
+            <div className="pt-6 flex flex-col gap-3">
+              <Button 
+                onClick={handleSave} 
+                className="w-full bg-primary text-black font-black h-14 rounded-2xl shadow-xl shadow-primary/10 text-sm uppercase tracking-widest transition-all hover:scale-[1.01]" 
+                isLoading={submitting}
+              >
+                 {submitting ? "Processing Update..." : "Finalize Audit Updates"}
+              </Button>
+              <Button 
+                variant="ghost" 
+                onClick={() => setIsModalOpen(false)} 
+                className="text-gray-500 text-xs font-bold uppercase tracking-widest"
+                disabled={submitting}
+              >
+                Discard Changes
+              </Button>
+            </div>
          </div>
       </Dialog>
-    </DashboardLayout>
+    </div>
   );
 };
 

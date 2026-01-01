@@ -1,266 +1,230 @@
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { useAuth } from '../AuthContext';
 import { supabase } from '../supabase';
-import { Order } from '../types';
-import { Button, Badge, showToast, cn } from '../components/ui';
-import { SoshaCard, SoshaCardTitle } from '../components/SoshaCard';
-import { Plus, User, Bell, Utensils, TrendingUp, ScanLine, Clock, CreditCard, RefreshCw } from 'lucide-react';
+import { Order, Table } from '../types';
+/* Added Badge to the imports from ./ui */
+import { Button, showToast, cn, Badge } from '../components/ui';
+import { 
+  Clock, 
+  RefreshCw,
+  LayoutGrid,
+  Lock,
+  Receipt,
+  PlusCircle,
+  Timer
+} from 'lucide-react';
 import { PaymentVerificationModal, FloatingPaymentButton } from '../components/PaymentVerificationModal';
 import { ReceiptVerificationModal } from '../components/ReceiptVerificationModal';
 import { CreateOrderModal } from '../components/CreateOrderModal';
 import { OrderCard } from '../components/OrderCard';
+import { BillModal } from '../components/BillModal';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const WaiterDashboard: React.FC = () => {
   const { profile, user } = useAuth();
+  const [tables, setTables] = useState<Table[]>([]);
   const [orders, setOrders] = useState<Order[]>([]); 
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isPaymentOpen, setIsPaymentOpen] = useState(false);
   const [isVerifyOpen, setIsVerifyOpen] = useState(false);
-  const [selectedTable, setSelectedTable] = useState('');
+  const [isBillModalOpen, setIsBillModalOpen] = useState(false);
+  
+  const [selectedTableData, setSelectedTableData] = useState<{id: string, number: string} | null>(null);
   const [appendOrderId, setAppendOrderId] = useState<string | null>(null);
-  const [currentTime, setCurrentTime] = useState(new Date());
+  const [activeBillOrder, setActiveBillOrder] = useState<Order | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [viewMode, setViewMode] = useState<'floor' | 'my-orders'>('floor');
 
-  const fetchOrders = useCallback(async () => {
+  const fetchData = useCallback(async () => {
+    if (!user?.id) return;
     setIsLoading(true);
     try {
-      const today = new Date().toISOString().split('T')[0];
-      const { data, error } = await supabase
+      const { data: tableData } = await supabase.from('tables').select('*').order('table_number');
+      if (tableData) setTables(tableData as Table[]);
+
+      const { data: orderData } = await supabase
         .from('orders')
         .select(`
-          *, 
+          *,
           order_items (
-            quantity, 
-            price, 
-            special_instructions, 
-            menu_item:menu_items (name, category)
+            id, quantity, price, 
+            menu_item:menu (name)
           )
         `)
-        .gte('created_at', `${today}T00:00:00`)
-        .order('created_at', { ascending: false });
+        .eq('waiter_id', user.id)
+        .is('closed_at', null)
+        .in('status', ['pending', 'accepted', 'preparing', 'ready', 'served', 'paid'])
+        .order('created_at', { ascending: true });
         
-      if (error) throw error;
-      if (data) setOrders(data as Order[]);
+      if (orderData) setOrders(orderData as Order[]);
     } catch (err: any) {
-      const errorMsg = err?.message || (typeof err === 'string' ? err : JSON.stringify(err));
-      console.error("Fetch orders error:", errorMsg);
+      showToast("Sync Failed: " + err.message, "error");
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [user?.id]);
 
   useEffect(() => {
-    // Initial fetch
-    fetchOrders();
-    
-    // Timer for elapsed minutes
-    const timer = setInterval(() => setCurrentTime(new Date()), 60000);
-    
-    // Real-time listener for orders and tables
-    const channel = supabase.channel('waiter_station_updates')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, (payload) => {
-        // Refresh orders on any change (insert, update, delete)
-        fetchOrders();
-        
-        // Notify waiter if their order is ready
-        if (payload.eventType === 'UPDATE' && payload.new.status === 'ready' && payload.new.waiter_id === user?.id) {
-          showToast(`🔔 Order for Table ${payload.new.table_number || ''} is READY!`, 'success');
-        }
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'tables' }, () => {
-        // Refresh orders because table status changes are tied to floor data
-        fetchOrders(); 
-      })
+    fetchData();
+    const sub = supabase.channel('waiter_sync_v22')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => fetchData())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'tables' }, () => fetchData())
       .subscribe();
+    return () => { supabase.removeChannel(sub); };
+  }, [fetchData]);
 
-    return () => { 
-      supabase.removeChannel(channel); 
-      clearInterval(timer); 
-    };
-  }, [user?.id, fetchOrders]);
+  const handleTableAction = (table: Table) => {
+    setSelectedTableData({ id: table.id, number: table.table_number });
+    setAppendOrderId(table.current_order_id || null);
+    setIsCreateOpen(true);
+  };
 
   const handleOrderAction = async (action: string, orderId: string) => {
-    if (action === 'served') {
-      const { error } = await supabase.from('orders').update({ status: 'served', served_at: new Date().toISOString() }).eq('id', orderId);
-      if (error) showToast("Failed to mark as served", "error");
-    } else if (action === 'pay') {
-      setIsPaymentOpen(true);
-    } else if (action === 'append') {
-      setAppendOrderId(orderId);
+    const target = orders.find(o => o.id === orderId);
+    
+    if (action === 'append' && target) {
+      setSelectedTableData({ id: target.table_id, number: target.table_number });
+      setAppendOrderId(target.id);
       setIsCreateOpen(true);
+    } else if (action === 'pay') {
+      if (target) {
+        setActiveBillOrder(target);
+        setIsBillModalOpen(true);
+      } else {
+        setIsPaymentOpen(true);
+      }
+    } else if (action === 'served' && target) {
+      // INSTANT BILL POPUP LOGIC
+      setActiveBillOrder(target);
+      setIsBillModalOpen(true);
+      await fetchData();
+    } else {
+      await fetchData();
     }
-    fetchOrders();
   };
 
-  const handleCloseModal = () => {
-    setIsCreateOpen(false);
-    setAppendOrderId(null);
-    setSelectedTable('');
-  };
+  const kitchenPipeline = useMemo(() => 
+    orders.filter(o => ['pending', 'accepted', 'preparing', 'ready'].includes(o.status)), 
+  [orders]);
 
-  const myOrders = orders.filter(o => o.waiter_id === user?.id);
-  const myActiveOrdersList = myOrders.filter(o => ['pending', 'accepted', 'preparing', 'ready', 'served'].includes(o.status));
-  
-  const openTablesCount = new Set(myActiveOrdersList.map(o => o.table_number)).size;
-  const activeOrdersCount = myActiveOrdersList.length;
-  const todaySales = myOrders.filter(o => ['served', 'completed', 'paid'].includes(o.status)).reduce((sum, o) => sum + (o.total_amount || 0), 0);
-  
-  const unpaidServedOrders = myOrders.filter(o => o.status === 'served');
+  const billingQueue = useMemo(() => 
+    orders.filter(o => ['served', 'paid'].includes(o.status)), 
+  [orders]);
 
-  const myTables = Array.from(new Set(myActiveOrdersList.map(o => o.table_number))).map(tNo => {
-    const tableOrders = myActiveOrdersList.filter(o => o.table_number === tNo);
-    const oldestOrder = [...tableOrders].sort((a,b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())[0];
-    const totalBill = tableOrders.reduce((sum, o) => sum + (o.total_amount || 0), 0);
-    const lastStatus = tableOrders[tableOrders.length - 1].status;
-    const elapsed = oldestOrder ? Math.floor((currentTime.getTime() - new Date(oldestOrder.created_at).getTime()) / 60000) : 0;
-    return { tableNo: tNo, elapsed, orderCount: tableOrders.length, totalBill, status: lastStatus };
-  }).sort((a,b) => a.elapsed - b.elapsed); 
+  const groupedTables = useMemo(() => {
+    const groups: Record<string, Table[]> = {};
+    tables.forEach(t => {
+      const zone = t.zone || 'Main Hall';
+      if (!groups[zone]) groups[zone] = [];
+      groups[zone].push(t);
+    });
+    return groups;
+  }, [tables]);
 
   return (
-    <DashboardLayout title="Waiter Station" subtitle={`Live Overview • ${profile?.full_name || 'Staff'}`}
+    <DashboardLayout title="Waiter Station" subtitle={`Floor • ${profile?.full_name || 'Staff'}`}
       actions={
         <div className="flex gap-3">
-            <Button onClick={fetchOrders} variant="outline" size="icon" className="border-white/10 bg-white/5">
-               <RefreshCw className={cn("h-4 w-4", isLoading && "animate-spin")} />
-            </Button>
-            <Button onClick={() => setIsVerifyOpen(true)} variant="secondary" className="bg-white/10 text-white hover:bg-white/20 border border-white/10 backdrop-blur-md">
-               <ScanLine className="mr-2 h-4 w-4" /> Verify
-            </Button>
-            <Button onClick={() => { setAppendOrderId(null); setSelectedTable(''); setIsCreateOpen(true); }} className="bg-primary text-black font-bold hover:bg-primary/90 shadow-[0_0_20px_rgba(255,184,0,0.3)]">
-               <Plus className="mr-2 h-4 w-4" /> New Order
-            </Button>
+            <Button onClick={fetchData} variant="outline" size="icon" className="border-white/10 bg-white/5 h-10 w-10"><RefreshCw className={cn("h-4 w-4", isLoading && "animate-spin")} /></Button>
+            <div className="flex bg-black/40 p-1 rounded-xl border border-white/5 h-10">
+               <button onClick={() => setViewMode('floor')} className={cn("px-6 text-[10px] font-black uppercase rounded-lg transition-all", viewMode === 'floor' ? "bg-primary text-black" : "text-gray-500 hover:text-white")}>Floor Map</button>
+               <button onClick={() => setViewMode('my-orders')} className={cn("px-6 text-[10px] font-black uppercase rounded-lg transition-all", viewMode === 'my-orders' ? "bg-primary text-black" : "text-gray-500 hover:text-white")}>Active Tasks ({orders.length})</button>
+            </div>
         </div>
       }
     >
-      <div className="space-y-6">
-        
-        {/* KPI Cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-3 gap-6">
-          <SoshaCard className="p-5" indicatorColor="orange">
-            <div className="flex flex-col justify-between h-full">
-                <p className="text-xs text-gray-500 font-bold uppercase tracking-wider">My Tables</p>
-                <div className="flex justify-between items-end">
-                  <h3 className="text-4xl font-bold text-white tracking-tighter">{openTablesCount}</h3>
-                  <User className="w-6 h-6 text-primary opacity-80" />
-                </div>
-            </div>
-          </SoshaCard>
-          <SoshaCard className="p-5">
-            <div className="flex flex-col justify-between h-full">
-                <p className="text-xs text-gray-500 font-bold uppercase tracking-wider">Active Orders</p>
-                <div className="flex justify-between items-end">
-                  <h3 className="text-4xl font-bold text-white tracking-tighter">{activeOrdersCount}</h3>
-                  <Utensils className="w-6 h-6 text-blue-400 opacity-80" />
-                </div>
-            </div>
-          </SoshaCard>
-          <SoshaCard className="p-5 col-span-2 lg:col-span-1">
-            <div className="flex flex-col justify-between h-full">
-                <p className="text-xs text-gray-500 font-bold uppercase tracking-wider">My Sales</p>
-                <div className="flex justify-between items-end">
-                  <h3 className="text-4xl font-bold text-white tracking-tighter">ETB {todaySales.toLocaleString()}</h3>
-                  <TrendingUp className="w-6 h-6 text-green-500 opacity-80" />
-                </div>
-            </div>
-          </SoshaCard>
-        </div>
-
-        {/* Main Content Split */}
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 h-[calc(100vh-340px)] min-h-[500px]">
-          
-          {/* Left: My Tables */}
-          <div className="flex flex-col gap-4">
-             <div className="flex items-center justify-between px-1">
-                <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                   <User className="w-5 h-5 text-primary" /> My Tables
-                </h3>
-                <span className="text-sm font-bold bg-white/10 px-3 py-1 rounded-full text-white">{myTables.length} Active</span>
-             </div>
-             
-             <div className="flex-1 overflow-y-auto space-y-4 pr-1 custom-scrollbar pb-10">
-                {myTables.length === 0 && !isLoading && (
-                   <div className="h-60 flex flex-col items-center justify-center text-gray-500 bg-white/5 rounded-[2rem] border border-white/5 border-dashed">
-                      <p>No active tables</p>
-                      <Button variant="ghost" onClick={() => { setAppendOrderId(null); setIsCreateOpen(true); }} className="mt-2 text-primary">Start New Table</Button>
-                   </div>
-                )}
-                {myTables.map((table) => (
-                   <div key={table.tableNo} className="relative p-5 rounded-[1.5rem] bg-[#0A0A0A] border border-white/10 shadow-lg group hover:border-primary/30 transition-all">
-                         <div className="flex justify-between items-start mb-4">
-                            <div className="flex items-center gap-4">
-                               <div className="w-14 h-14 rounded-2xl bg-white/5 flex items-center justify-center border border-white/10 text-2xl font-bold text-white shadow-inner">
-                                  {table.tableNo}
-                               </div>
-                               <div>
-                                  <div className="flex items-center gap-2">
-                                     <p className="text-xs text-gray-400 font-mono font-bold flex items-center bg-black/40 px-2 py-0.5 rounded">
-                                        <Clock className="w-3 h-3 mr-1" /> {table.elapsed}m
-                                     </p>
-                                     {table.elapsed > 45 && <span className="text-[10px] text-red-500 font-bold px-1.5 py-0.5 bg-red-500/10 rounded animate-pulse">Late</span>}
-                                  </div>
-                                  <p className="text-sm font-medium text-gray-300 mt-1">{table.orderCount} Orders</p>
-                               </div>
-                            </div>
-                            <div className="text-right">
-                               <p className="text-lg font-bold text-primary font-mono">ETB {table.totalBill.toLocaleString()}</p>
-                               <span className={cn("text-[10px] uppercase font-bold px-2 py-0.5 rounded border", table.status === 'ready' ? "bg-green-500/20 text-green-400 border-green-500/30" : "bg-gray-800 text-gray-400 border-gray-700")}>
-                                  {table.status}
+      <div className="space-y-8 animate-in fade-in duration-500">
+        <AnimatePresence mode="wait">
+          {viewMode === 'floor' ? (
+            <div className="space-y-10">
+               {(Object.entries(groupedTables) as [string, Table[]][]).map(([zone, zoneTables]) => (
+                 <div key={zone} className="space-y-6">
+                    <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-zinc-600 flex items-center gap-3">
+                       <div className="h-px flex-1 bg-white/5" />
+                       <LayoutGrid className="w-3 h-3" /> {zone}
+                       <div className="h-px flex-1 bg-white/5" />
+                    </h3>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-6">
+                       {zoneTables.map((table) => {
+                          const isOccupied = table.status === 'occupied';
+                          const isDirty = table.status === 'needs_cleaning';
+                          return (
+                            <motion.div 
+                              key={table.id} 
+                              whileHover={{ scale: 1.02 }} 
+                              onClick={() => !isDirty && handleTableAction(table)}
+                              className={cn(
+                                "group relative h-48 rounded-[2.5rem] border-2 flex flex-col items-center justify-center gap-1 transition-all duration-300 cursor-pointer", 
+                                table.status === 'available' && "bg-white/[0.02] border-white/5 hover:border-white/20",
+                                isOccupied && "bg-red-500/10 border-red-500 shadow-[0_0_50px_rgba(239,68,68,0.15)] ring-4 ring-red-500/5",
+                                isDirty && "bg-yellow-500/10 border-yellow-500/50 border-dashed cursor-not-allowed"
+                              )}
+                            >
+                               <span className={cn("text-5xl font-black transition-colors", isOccupied ? "text-red-500" : isDirty ? "text-yellow-500" : "text-white")}>
+                                  {table.table_number}
                                </span>
-                            </div>
-                         </div>
-                         
-                         <div className="grid grid-cols-2 gap-3">
-                            <Button size="sm" variant="secondary" className="bg-white/5 hover:bg-white/10 border-white/10" onClick={() => { setSelectedTable(table.tableNo); setAppendOrderId(null); setIsCreateOpen(true); }}>
-                               <Plus className="w-3 h-3 mr-2" /> Add Order
-                            </Button>
-                            <Button size="sm" className="bg-green-600/20 text-green-500 hover:bg-green-600/30 border border-green-600/20" onClick={() => setIsPaymentOpen(true)}>
-                               <CreditCard className="w-3 h-3 mr-2" /> Pay Bill
-                            </Button>
-                         </div>
-                   </div>
-                ))}
-             </div>
-          </div>
-
-          {/* Right: Active Orders */}
-          <div className="flex flex-col gap-4">
-             <div className="flex items-center justify-between px-1">
-                <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                   <Bell className="w-5 h-5 text-blue-400" /> Active Orders
-                </h3>
-                <div className="flex gap-2">
-                  <Badge className="bg-green-500/10 text-green-500 border-green-500/20 px-3">{myActiveOrdersList.filter(o => o.status === 'ready').length} Ready</Badge>
-                  <Badge className="bg-orange-500/10 text-orange-500 border-orange-500/20 px-3">{myActiveOrdersList.filter(o => o.status === 'preparing').length} Cooking</Badge>
-                </div>
-             </div>
-
-             <div className="flex-1 overflow-y-auto space-y-4 pr-1 custom-scrollbar pb-10">
-                {myActiveOrdersList.length === 0 && !isLoading && (
-                   <div className="h-40 flex items-center justify-center text-gray-500 bg-white/5 rounded-[2rem] border border-white/5 border-dashed">
-                      No active orders
-                   </div>
-                )}
-                {myActiveOrdersList.map(order => (
-                   <OrderCard key={order.id} order={order} role="waiter" onAction={handleOrderAction} />
-                ))}
-             </div>
-          </div>
-        </div>
+                               <span className={cn("text-[9px] font-black uppercase tracking-widest opacity-60", isOccupied ? "text-red-400" : isDirty ? "text-yellow-500" : "text-zinc-500")}>
+                                  {table.status.replace('_', ' ')}
+                               </span>
+                               {isDirty && <Lock className="w-4 h-4 text-yellow-500 mt-2 opacity-40" />}
+                            </motion.div>
+                          );
+                       })}
+                    </div>
+                 </div>
+               ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-10">
+              <div className="space-y-6">
+                 <div className="flex items-center justify-between px-2">
+                    <h3 className="text-sm font-black text-white uppercase tracking-widest flex items-center gap-3">
+                       <Timer className="w-5 h-5 text-orange-500" /> Kitchen Pipeline
+                    </h3>
+                    <Badge variant="outline" className="bg-orange-500/10 text-orange-500 border-orange-500/20">{kitchenPipeline.length}</Badge>
+                 </div>
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {kitchenPipeline.map(order => <OrderCard key={order.id} order={order} role="waiter" onAction={handleOrderAction} />)}
+                    {kitchenPipeline.length === 0 && <div className="h-40 flex items-center justify-center border border-dashed border-white/5 rounded-3xl opacity-20 text-[10px] font-black uppercase tracking-widest">Pipeline Empty</div>}
+                 </div>
+              </div>
+              
+              <div className="space-y-6">
+                 <div className="flex items-center justify-between px-2">
+                    <h3 className="text-sm font-black text-white uppercase tracking-widest flex items-center gap-3">
+                       <Receipt className="w-5 h-5 text-green-500" /> Billing Queue
+                    </h3>
+                    <Badge variant="outline" className="bg-green-500/10 text-green-500 border-green-500/20">{billingQueue.length}</Badge>
+                 </div>
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {billingQueue.map(order => <OrderCard key={order.id} order={order} role="waiter" onAction={handleOrderAction} />)}
+                    {billingQueue.length === 0 && <div className="h-40 flex items-center justify-center border border-dashed border-white/5 rounded-3xl opacity-20 text-[10px] font-black uppercase tracking-widest">No Active Bills</div>}
+                 </div>
+              </div>
+            </div>
+          )}
+        </AnimatePresence>
       </div>
 
-      <ReceiptVerificationModal isOpen={isVerifyOpen} onClose={() => setIsVerifyOpen(false)} />
-      <PaymentVerificationModal isOpen={isPaymentOpen} onClose={() => setIsPaymentOpen(false)} orders={unpaidServedOrders} onPaymentSuccess={fetchOrders} />
-      <FloatingPaymentButton count={unpaidServedOrders.length} onClick={() => setIsPaymentOpen(true)} />
-      <CreateOrderModal 
-        isOpen={isCreateOpen} 
-        onClose={handleCloseModal} 
-        onOrderCreated={fetchOrders} 
-        initialTableNo={selectedTable} 
-        appendOrderId={appendOrderId}
+      <BillModal 
+        isOpen={isBillModalOpen} 
+        onClose={() => setIsBillModalOpen(false)} 
+        order={activeBillOrder} 
+        onSuccess={() => fetchData()} 
       />
-    </DashboardLayout>
+
+      <ReceiptVerificationModal isOpen={isVerifyOpen} onClose={() => setIsVerifyOpen(false)} />
+      <PaymentVerificationModal 
+        isOpen={isPaymentOpen} 
+        onClose={() => setIsPaymentOpen(false)} 
+        orders={billingQueue.filter(o => o.payment_status !== 'paid')} 
+        onPaymentSuccess={() => fetchData()} 
+      />
+      <FloatingPaymentButton count={billingQueue.filter(o => o.payment_status === 'pending').length} onClick={() => setIsPaymentOpen(true)} />
+      <CreateOrderModal isOpen={isCreateOpen} onClose={() => { setIsCreateOpen(false); setSelectedTableData(null); }} onOrderCreated={fetchData} initialTableId={selectedTableData?.id} initialTableNo={selectedTableData?.number} appendOrderId={appendOrderId} />
+    </div>
   );
 };
 

@@ -19,7 +19,6 @@ const KitchenStockView: React.FC = () => {
   const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
 
   // Fetch ingredients
-  /** Added explicit type to useQuery to fix unknown issues **/
   const { data: ingredients, isLoading, refetch } = useQuery<Ingredient[]>({
     queryKey: ['kitchen-stock'],
     queryFn: async () => {
@@ -32,8 +31,7 @@ const KitchenStockView: React.FC = () => {
         .eq('is_active', true);
         
       if (error) {
-        // Fallback for demo if table doesn't exist yet
-        console.warn("Ingredients fetch error (table might not exist yet):", error);
+        console.warn("Ingredients fetch error:", error);
         return [];
       }
       return data as Ingredient[];
@@ -41,10 +39,8 @@ const KitchenStockView: React.FC = () => {
   });
 
   // Extract unique categories
-  /** Added explicit type to useMemo to fix unknown issues **/
   const categories = useMemo<string[]>(() => {
     if (!ingredients) return ['All'];
-    // Fix: Explicitly type the Set as string to ensure return type is string[]
     const cats = new Set<string>(ingredients.map(i => i.category).filter(Boolean));
     return ['All', ...Array.from(cats).sort()];
   }, [ingredients]);
@@ -91,13 +87,16 @@ const KitchenStockView: React.FC = () => {
   };
 
   const getStatusBadge = (item: Ingredient) => {
-    if (item.current_stock < (item.par_min * 0.5)) {
+    const current = item.current_stock || 0;
+    const min = item.par_min || 0;
+    
+    if (current < (min * 0.5)) {
       return (
         <Badge variant="destructive" className="bg-red-500/10 text-red-500 border-red-500/20 flex items-center gap-1 w-fit">
           <AlertOctagon className="w-3 h-3" /> {t('stock.statusCritical')}
         </Badge>
       );
-    } else if (item.current_stock < item.par_min) {
+    } else if (current < min) {
       return (
         <Badge variant="warning" className="bg-yellow-500/10 text-yellow-500 border-yellow-500/20 flex items-center gap-1 w-fit">
           <AlertTriangle className="w-3 h-3" /> {t('stock.statusLow')}
@@ -136,7 +135,6 @@ const KitchenStockView: React.FC = () => {
                  onChange={(e) => setCategoryFilter(e.target.value)}
                >
                  {categories.map(cat => (
-                   /** cat is now correctly typed as string **/
                    <option key={cat} value={cat}>{cat === 'All' ? t('stock.allCategories') : cat}</option>
                  ))}
                </select>
@@ -196,7 +194,7 @@ const KitchenStockView: React.FC = () => {
                           <td className="px-6 py-4 text-gray-300">
                              <span className="bg-gray-800 px-2 py-1 rounded text-xs border border-gray-700">{item.category}</span>
                           </td>
-                          <td className="px-6 py-4 text-white font-mono text-base">{item.current_stock}</td>
+                          <td className="px-6 py-4 text-white font-mono text-base">{(item.current_stock || 0).toLocaleString()}</td>
                           <td className="px-6 py-4 text-gray-400">{item.unit_type}</td>
                           <td className="px-6 py-4">
                              {getStatusBadge(item)}

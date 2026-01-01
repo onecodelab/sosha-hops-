@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../supabase';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { SoshaCard, SoshaCardTitle } from '../components/SoshaCard';
@@ -25,21 +25,22 @@ const ManagerDashboard: React.FC = () => {
   const [serviceFlow, setServiceFlow] = useState<any[]>([]);
   const [avgServiceTime, setAvgServiceTime] = useState("0m");
 
-  useEffect(() => {
-    fetchDashboardData();
-    const subs = [
-       supabase.channel('mgr_orders').on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => fetchDashboardData()),
-       supabase.channel('mgr_issues').on('postgres_changes', { event: '*', schema: 'public', table: 'operational_issues' }, () => fetchDashboardData()),
-       supabase.channel('mgr_profiles').on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => fetchDashboardData()),
-    ];
-    subs.forEach(s => s.subscribe());
-    return () => { subs.forEach(s => supabase.removeChannel(s)); }
-  }, []);
-
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = useCallback(async () => {
      try {
         const todayStr = new Date().toISOString().split('T')[0];
-        const { data: todayOrders } = await supabase.from('orders').select(`*, order_items (quantity, menu_item:menu_items (name))`).gte('created_at', `${todayStr}T00:00:00`).order('created_at', { ascending: false });
+        const { data: todayOrders } = await supabase
+          .from('orders')
+          .select(`
+            *, 
+            waiter:profiles!orders_waiter_id_fkey (full_name),
+            order_items (
+              quantity, 
+              menu_item:menu (name)
+            )
+          `)
+          .gte('created_at', `${todayStr}T00:00:00`)
+          .order('created_at', { ascending: false });
+          
         setOrders(todayOrders as Order[] || []);
         
         const { data: allStaff } = await supabase.from('profiles').select('*').in('role', ['waiter', 'kitchen', 'manager', 'security']);
@@ -83,19 +84,32 @@ const ManagerDashboard: React.FC = () => {
         setStaffPerf(Object.values(staffMap).filter((s: any) => s.orders > 0).sort((a: any, b: any) => b.orders - a.orders).slice(0, 10));
         setShiftStaff(allStaff?.filter((u: any) => u.is_online || staffActivityMap.has(u.id)).map((u: any) => ({ name: u.full_name || u.email.split('@')[0], role: u.role, duration: u.shift_start ? `${Math.round((new Date().getTime() - new Date(u.shift_start).getTime()) / 3600000 * 10) / 10}h` : 'Active' })) || []);
      } catch (err: any) { 
-        const errorMsg = err?.message || (typeof err === 'string' ? err : JSON.stringify(err));
-        console.error("Manager Dashboard Error:", errorMsg);
+        console.error("Manager Dashboard Error:", err);
      } finally { setLoading(false); }
+  }, []);
+
+  useEffect(() => {
+    fetchDashboardData();
+    const subs = [
+       supabase.channel('mgr_orders_v4').on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => fetchDashboardData()),
+    ];
+    subs.forEach(s => s.subscribe());
+    return () => { subs.forEach(s => supabase.removeChannel(subs[0])); }
+  }, [fetchDashboardData]);
+
+  const handleOrderAction = async (action: string, orderId: string) => {
+    if (action === 'served') {
+      // Internal logic handled by OrderCard. Simply refresh dashboards to show update.
+      fetchDashboardData();
+    }
   };
 
   const liveActiveOrders = orders.filter(o => ['pending', 'accepted', 'preparing', 'ready'].includes(o.status));
-  const unpaidServedOrders = orders.filter(o => o.status === 'served');
+  const unpaidServedOrders = orders.filter(o => o.status === 'served' && o.payment_status === 'unpaid');
 
   return (
     <DashboardLayout title="Ops Dashboard" subtitle="Daily operations and staff oversight">
       <div className="space-y-6">
-        
-        {/* 1. KPI Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <SoshaCard className="p-6">
              <div className="flex justify-between items-start">
@@ -123,7 +137,6 @@ const ManagerDashboard: React.FC = () => {
           </SoshaCard>
         </div>
 
-        {/* 2. Live Active Orders */}
         <SoshaCard indicatorColor="purple">
            <div className="flex flex-row items-center justify-between mb-6">
               <SoshaCardTitle className="flex items-center gap-2"><List className="w-5 h-5 text-blue-400" /> Live Active Orders</SoshaCardTitle>
@@ -131,7 +144,11 @@ const ManagerDashboard: React.FC = () => {
            </div>
            {liveActiveOrders.length === 0 ? (<div className="h-32 flex items-center justify-center text-gray-500 bg-white/5 rounded-2xl border border-white/5 border-dashed">No active orders.</div>) : (
                <div className="flex gap-4 overflow-x-auto pb-4 custom-scrollbar">
-                  {liveActiveOrders.map(order => (<div key={order.id} className="min-w-[320px]"><OrderCard order={order} role="manager" /></div>))}
+                  {liveActiveOrders.map(order => (
+                    <div key={order.id} className="min-w-[320px]">
+                      <OrderCard order={order} role="manager" onAction={handleOrderAction} />
+                    </div>
+                  ))}
                </div>
            )}
         </SoshaCard>

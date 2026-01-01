@@ -179,7 +179,7 @@ const KitchenRestockRequests: React.FC = () => {
                                    <p className="font-bold text-sm text-white group-hover:text-primary">{ing.name}</p>
                                    <p className="text-xs text-gray-500 font-mono">{ing.sku}</p>
                                 </div>
-                                <span className="text-xs text-gray-400 bg-black/40 px-2 py-1 rounded">{ing.current_stock} {ing.unit_type}</span>
+                                <span className="text-xs text-gray-400 bg-black/40 px-2 py-1 rounded">{(ing.current_stock || 0).toLocaleString()} {ing.unit_type}</span>
                              </button>
                           ))}
                        </div>
@@ -275,7 +275,8 @@ const KitchenRestockRequests: React.FC = () => {
                                 <span className="text-xs text-gray-500 truncate block max-w-[150px]">{req.reason}</span>
                              </td>
                              <td className="px-6 py-4 text-gray-300">
-                                {req.requested_quantity} <span className="text-xs text-gray-500">{req.ingredient?.unit_type}</span>
+                                {req.requested_quantity} 
+                                <span className="text-xs text-gray-500">{req.ingredient?.unit_type}</span>
                              </td>
                              <td className="px-6 py-4">
                                 <span className={cn("text-xs px-2 py-1 rounded border capitalize", getUrgencyColor(req.urgency))}>

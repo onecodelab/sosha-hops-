@@ -113,7 +113,6 @@ const ManagerReceiveGoods: React.FC = () => {
       if (itemsError) throw itemsError;
 
       // 3. Update Inventory (Create Transactions)
-      // Note: Triggers might handle this in a real app, but doing it manually as requested
       const transactions = receiveItems.map(item => ({
         ingredient_id: item.ingredient_id,
         transaction_type: 'purchase',
@@ -125,7 +124,6 @@ const ManagerReceiveGoods: React.FC = () => {
 
       const { error: transError } = await supabase.from('inventory_transactions').insert(transactions);
       if (transError) {
-         // Fallback if transactions table isn't set up: try updating ingredients directly
          console.warn("Transaction log failed, updating ingredients directly", transError);
          for (const item of receiveItems) {
             await supabase.rpc('increment_stock', { 
@@ -167,7 +165,7 @@ const ManagerReceiveGoods: React.FC = () => {
            </CardHeader>
            <CardContent className="p-0 overflow-auto">
               <table className="w-full text-sm text-left">
-                 <thead className="text-xs text-gray-500 uppercase bg-black/20 border-b border-gray-800">
+                 <thead className="text-xs text-gray-500 uppercase bg-black/40 border-b border-gray-800">
                     <tr>
                        <th className="px-6 py-4">{t('grn.poNumber')}</th>
                        <th className="px-6 py-4">{t('stock.supplier')}</th>
@@ -203,7 +201,6 @@ const ManagerReceiveGoods: React.FC = () => {
         <Dialog isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={t('grn.receiveModalTitle')}>
            <div className="space-y-6 max-h-[80vh] overflow-y-auto pr-2 custom-scrollbar">
               
-              {/* Header Info */}
               <div className="grid grid-cols-2 gap-4 p-4 bg-black/20 rounded-lg border border-gray-800">
                  <div>
                     <p className="text-xs text-gray-500 uppercase font-bold">{t('grn.poNumber')}</p>
@@ -215,7 +212,6 @@ const ManagerReceiveGoods: React.FC = () => {
                  </div>
               </div>
 
-              {/* Form Fields */}
               <div className="grid grid-cols-2 gap-4">
                  <div className="space-y-2">
                     <label className="text-xs font-bold text-gray-500 uppercase">{t('grn.receivedDate')}</label>
@@ -243,7 +239,6 @@ const ManagerReceiveGoods: React.FC = () => {
                  </div>
               </div>
 
-              {/* Verification Table */}
               <div className="border border-gray-800 rounded-lg overflow-hidden">
                  <table className="w-full text-sm text-left">
                     <thead className="text-xs text-gray-500 uppercase bg-black/40 border-b border-gray-800">
@@ -287,7 +282,6 @@ const ManagerReceiveGoods: React.FC = () => {
                  </table>
               </div>
 
-              {/* Actions */}
               <div className="flex justify-end gap-3 pt-2">
                  <Button variant="ghost" onClick={() => setIsModalOpen(false)} disabled={isPending}>{t('common.cancel')}</Button>
                  <Button 

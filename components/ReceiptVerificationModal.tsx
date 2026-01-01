@@ -39,7 +39,7 @@ export const ReceiptVerificationModal: React.FC<ReceiptVerificationModalProps> =
           order_items (
             quantity,
             price,
-            menu_item:menu_items (name, category)
+            menu_item:menu (name, category)
           )
         `)
         .eq('id', idToVerify)
@@ -72,8 +72,6 @@ export const ReceiptVerificationModal: React.FC<ReceiptVerificationModalProps> =
   return (
     <Dialog isOpen={isOpen} onClose={onClose} title="Verify Receipt">
       <div className="space-y-6 min-h-[300px]">
-        
-        {/* Search Input */}
         <div className="flex gap-2">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-3 h-4 w-4 text-gray-500" />
@@ -93,10 +91,7 @@ export const ReceiptVerificationModal: React.FC<ReceiptVerificationModalProps> =
           </Button>
         </div>
 
-        {/* Content Area */}
         <div className="bg-[#111] rounded-xl border border-gray-800 min-h-[200px] flex flex-col justify-center items-center p-6 relative overflow-hidden">
-           
-           {/* Empty State */}
            {!orderData && !loading && !error && (
               <div className="text-center text-gray-500">
                  <Receipt className="w-12 h-12 mx-auto mb-3 opacity-20" />
@@ -104,7 +99,6 @@ export const ReceiptVerificationModal: React.FC<ReceiptVerificationModalProps> =
               </div>
            )}
 
-           {/* Loading State */}
            {loading && (
               <div className="flex flex-col items-center text-primary">
                  <Loader2 className="w-8 h-8 animate-spin mb-2" />
@@ -112,7 +106,6 @@ export const ReceiptVerificationModal: React.FC<ReceiptVerificationModalProps> =
               </div>
            )}
 
-           {/* Error State */}
            {error && (
               <div className="text-center text-red-500 animate-in fade-in zoom-in">
                  <XCircle className="w-12 h-12 mx-auto mb-3" />
@@ -121,11 +114,8 @@ export const ReceiptVerificationModal: React.FC<ReceiptVerificationModalProps> =
               </div>
            )}
 
-           {/* Valid Order Data */}
            {orderData && (
               <div className="w-full space-y-4 animate-in slide-in-from-bottom-2 fade-in duration-300 text-left">
-                 
-                 {/* Header Status */}
                  <div className="flex justify-between items-start border-b border-gray-800 pb-4">
                     <div>
                        <div className="flex items-center gap-2 mb-1">
@@ -145,7 +135,6 @@ export const ReceiptVerificationModal: React.FC<ReceiptVerificationModalProps> =
                     </div>
                  </div>
 
-                 {/* Order Details */}
                  <div className="grid grid-cols-2 gap-4 text-sm">
                     <div className="p-3 bg-black/40 rounded-lg">
                        <p className="text-xs text-gray-500 uppercase font-bold mb-1">Table</p>
@@ -161,7 +150,6 @@ export const ReceiptVerificationModal: React.FC<ReceiptVerificationModalProps> =
                     </div>
                  </div>
 
-                 {/* Item List */}
                  <div className="space-y-1 max-h-[150px] overflow-y-auto pr-2 custom-scrollbar">
                     <p className="text-xs text-gray-500 uppercase font-bold sticky top-0 bg-[#111] py-1">Order Summary</p>
                     {orderData.order_items?.map((item: any, i: number) => (
@@ -172,13 +160,11 @@ export const ReceiptVerificationModal: React.FC<ReceiptVerificationModalProps> =
                     ))}
                  </div>
 
-                 {/* Validation Footer */}
                  <div className="pt-2 flex items-center justify-center gap-2 text-green-500 font-bold bg-green-500/5 p-2 rounded-lg border border-green-500/10">
                     <CheckCircle2 className="w-5 h-5" /> Valid Record Found
                  </div>
               </div>
            )}
-
         </div>
       </div>
 

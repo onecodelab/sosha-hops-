@@ -17,7 +17,8 @@ const ManagerPendingRequests: React.FC = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('purchase_requests')
-        .select(`*, ingredient:ingredients(name, unit_type), requester:profiles!created_by(full_name, email)`)
+        // Fixed: unit_type -> unittype to match types.ts
+        .select(`*, ingredient:ingredients(name, unittype), requester:profiles!created_by(full_name, email)`)
         .eq('status', 'pending')
         .order('created_at', { ascending: false });
       if (error) throw error;
