@@ -128,12 +128,15 @@ const OrdersTables: React.FC = () => {
 
           // --- Process Order Type ---
           const typeCount: Record<string, number> = { 'Dine-in': 0, 'Delivery': 0, 'Takeaway': 0 };
-          safeOrders.forEach(o => {
-              const type = o.order_type ? 
-                  (o.order_type.charAt(0).toUpperCase() + o.order_type.slice(1)) : 
-                  'Dine-in';
-              if (typeCount[type] !== undefined) typeCount[type]++;
-              else typeCount['Dine-in']++;
+          safeOrders.forEach((o: any) => {
+              const rawSource = (o.source || o.order_type || 'dine_in') as string;
+              const normalized = rawSource.toLowerCase();
+              let label: string;
+              if (normalized === 'dine_in' || normalized === 'dine-in') label = 'Dine-in';
+              else if (normalized === 'delivery') label = 'Delivery';
+              else if (normalized === 'takeaway' || normalized === 'take_out') label = 'Takeaway';
+              else label = 'Dine-in';
+              typeCount[label] = (typeCount[label] ?? 0) + 1;
           });
 
           const oTypeData = Object.entries(typeCount).map(([name, value]) => ({

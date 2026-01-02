@@ -26,27 +26,61 @@ export const RecipeEditor: React.FC<RecipeEditorProps> = ({ dish, onSaved }) => 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
+  const [errorDetails, setErrorDetails] = useState<string | null>(null);
 
   useEffect(() => {
     const initialize = async () => {
       setLoading(true);
+      setErrorDetails(null);
+
+      const handleTableError = (tableLabel: string, error: any) => {
+        console.error(`[RecipeEditor] ${tableLabel} error:`, error);
+        if (error?.code === '42P01') {
+          const message = `${tableLabel} Table Error: missing or misconfigured. Run the Blueprint SQL v7.0 in Supabase, then refresh.`;
+          setErrorDetails(message);
+          showToast(message, 'error');
+        } else {
+          const message = error?.message || `Failed to load ${tableLabel} data.`;
+          setErrorDetails(message);
+          showToast(message, 'error');
+        }
+      };
+
       try {
         // 1. Fetch master ingredient names and units
-        const { data: ingData } = await supabase
+        const { data: ingData, error: ingError } = await supabase
           .from('ingredients')
           .select('id, name, unit_type')
           .eq('is_active', true)
           .order('name');
-        if (ingData) setAllIngredients(ingData as any[]);
+
+        if (ingError) {
+          handleTableError('Ingredients', ingError);
+          return;
+        }
+
+        if (ingData) {
+          setAllIngredients(ingData as any[]);
+          if (ingData.length === 0) {
+            setErrorDetails(
+              'Inventory Registry is empty. Seed ingredients in the Inventory tab before mapping them to this dish.'
+            );
+          }
+        }
 
         // 2. Ensure Recipe Header exists for this dish
-        const { data: existingRecipe } = await supabase
+        const { data: existingRecipe, error: headerError } = await supabase
           .from('recipes')
           .select('id')
           .eq('menu_item_id', dish.id)
           .maybeSingle();
 
-        let currentId = existingRecipe?.id;
+        if (headerError) {
+          handleTableError('Recipes', headerError);
+          return;
+        }
+
+        let currentId = existingRecipe?.id as string | undefined;
 
         if (!currentId) {
           const { data: newRecipe, error: createError } = await supabase
@@ -59,11 +93,14 @@ export const RecipeEditor: React.FC<RecipeEditorProps> = ({ dish, onSaved }) => 
             .select()
             .single();
           
-          if (createError) throw createError;
+          if (createError) {
+            handleTableError('Recipes', createError);
+            return;
+          }
           currentId = newRecipe.id;
         }
 
-        setRecipeId(currentId);
+        setRecipeId(currentId || null);
 
         // 3. Load existing ingredients linked to this recipe
         const { data: mappings, error: mapError } = await supabase
@@ -76,19 +113,24 @@ export const RecipeEditor: React.FC<RecipeEditorProps> = ({ dish, onSaved }) => 
           `)
           .eq('recipe_id', currentId);
 
-        if (mapError) throw mapError;
+        if (mapError) {
+          handleTableError('Recipe Ingredients', mapError);
+          return;
+        }
 
         if (mappings) {
-          setSelectedMappings(mappings.map((m: any) => ({
-            ingredient_id: m.ingredient_id,
-            name: m.ingredient?.name || 'Unknown',
-            quantity_needed: m.quantity_needed || 0,
-            unit_type: m.unit_type || m.ingredient?.unit_type || 'g'
-          })));
+          setSelectedMappings(
+            mappings.map((m: any) => ({
+              ingredient_id: m.ingredient_id,
+              name: m.ingredient?.name || 'Unknown',
+              quantity_needed: m.quantity_needed || 0,
+              unit_type: m.unit_type || m.ingredient?.unit_type || 'g'
+            }))
+          );
         }
       } catch (err: any) {
-        console.error("Initialization error:", err);
-        showToast("Failed to load recipe system", "error");
+        console.error('Initialization error:', err);
+        showToast('Failed to load recipe system', 'error');
       } finally {
         setLoading(false);
       }
@@ -181,6 +223,17 @@ export const RecipeEditor: React.FC<RecipeEditorProps> = ({ dish, onSaved }) => 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
       
+      {/* Diagnostics */}
+      {errorDetails && (
+        <div className="rounded-2xl border border-red-500/30 bg-red-500/5 px-4 py-3 flex items-start gap-3 text-xs text-red-300">
+          <Info className="w-4 h-4 mt-0.5 shrink-0" />
+          <div>
+            <p className="font-black uppercase tracking-[0.2em] text-[9px] mb-1">Recipe System Diagnostics</p>
+            <p className="leading-relaxed">{errorDetails}</p>
+          </div>
+        </div>
+      )}
+
       {/* Search Header */}
       <div className="relative">
          <Search className={cn(

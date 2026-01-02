@@ -234,7 +234,7 @@ export interface PurchaseRequest {
   created_at: string;
   approved_by?: string;
   approved_at?: string;
-  ingredient?: { name: string; unittype: string };
+  ingredient?: { name: string; unit_type: string };
 }
 
 // Added missing Supplier type
