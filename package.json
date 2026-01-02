@@ -11,14 +11,21 @@
   "dependencies": {
     "react-router-dom": "^7.10.1",
     "lucide-react": "^0.556.0",
+<<<<<<< HEAD
     "recharts": "^3.5.1",
     "react-is": "^18.3.1",
     "react": "^19.2.1",
     "react-dom": "^19.2.1",
+=======
+    "recharts": "^2.5.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-is": "^18.3.1",
+>>>>>>> fffc6825c60fca89ca3f35a873b9d5b8b2e2d9c1
     "@supabase/supabase-js": "^2.86.2",
     "jsqr": "1.4.0",
-    "@tanstack/react-query": "5.28.9",
-    "@tanstack/react-query-devtools": "5.28.9",
+    "@tanstack/react-query": "^5.28.9",
+    "@tanstack/react-query-devtools": "^5.28.9",
     "framer-motion": "11.0.8"
   },
   "devDependencies": {

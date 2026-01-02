@@ -143,22 +143,65 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
       let finalOrderId = internalAppendId;
 
       if (!finalOrderId) {
-        // 1. Start NEW session
-        const { data: sessionData, error: sessionErr } = await supabase
-          .from('table_sessions')
-          .insert({
-            table_id: activeTableId,
-            waiter_id: user?.id,
-            is_active: true,
-            seated_at: now,
-            guest_count: guestCount
-          })
-          .select()
-          .single();
+        // 1. Reuse existing active session if present (respect atomic lock)
+        let sessionIdToUse: string | null = null;
 
-        if (sessionErr) throw sessionErr;
+        try {
+          const { data: existingSession, error: existingSessionError } = await supabase
+            .from('table_sessions')
+            .select('id')
+            .eq('table_id', activeTableId)
+            .eq('is_active', true)
+            .maybeSingle();
 
-        // 2. Create NEW order
+          if (!existingSessionError && existingSession) {
+            sessionIdToUse = existingSession.id;
+          }
+        } catch (lookupErr) {
+          console.warn('Table session lookup failed:', lookupErr);
+        }
+
+        // 2. Start NEW session only when none exists
+        if (!sessionIdToUse) {
+          const { data: sessionData, error: sessionErr } = await supabase
+            .from('table_sessions')
+            .insert({
+              table_id: activeTableId,
+              waiter_id: user?.id,
+              is_active: true,
+              seated_at: now,
+              guest_count: guestCount
+            })
+            .select()
+            .single();
+
+          if (sessionErr) {
+            const isUniqueViolation =
+              sessionErr.code === '23505' ||
+              (sessionErr.message || '').includes('idx_unique_active_session_per_table');
+
+            if (isUniqueViolation) {
+              const { data: fallbackSession } = await supabase
+                .from('table_sessions')
+                .select('id')
+                .eq('table_id', activeTableId)
+                .eq('is_active', true)
+                .maybeSingle();
+
+              if (fallbackSession?.id) {
+                sessionIdToUse = fallbackSession.id;
+              } else {
+                throw sessionErr;
+              }
+            } else {
+              throw sessionErr;
+            }
+          } else if (sessionData) {
+            sessionIdToUse = sessionData.id;
+          }
+        }
+
+        // 3. Create NEW order
         const { data: order, error: orderErr } = await supabase
           .from('orders')
           .insert({
@@ -181,13 +224,16 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
         if (orderErr) throw orderErr;
         finalOrderId = order.id;
 
-        // 3. Link Table
-        await supabase.from('tables').update({ 
-          status: 'occupied', 
-          current_order_id: finalOrderId,
-          current_session_id: sessionData.id,
-          last_updated: now
-        }).eq('id', activeTableId);
+        // 4. Link Table to session and order
+        await supabase
+          .from('tables')
+          .update({ 
+            status: 'occupied', 
+            current_order_id: finalOrderId,
+            current_session_id: sessionIdToUse,
+            last_updated: now
+          })
+          .eq('id', activeTableId);
       } else {
         // --- APPEND TO EXISTING BILL ---
         const { data: existingOrder } = await supabase
