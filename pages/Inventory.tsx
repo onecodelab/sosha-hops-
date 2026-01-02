@@ -58,7 +58,15 @@ const Inventory: React.FC = () => {
       if (error) throw error;
       setInventory(data as Ingredient[]);
     } catch (err: any) {
-      showToast(err.message, "error");
+      console.error('Inventory fetch error:', err);
+      if (err?.code === '42P01' || err?.message?.toLowerCase().includes('ingredients')) {
+        showToast(
+          "Ingredients Table Error: public.ingredients is missing or misconfigured. Open the Setup Guide and run the Blueprint SQL v7.0, then refresh.",
+          "error"
+        );
+      } else {
+        showToast(err.message || "Failed to load inventory data", "error");
+      }
     } finally {
       setLoading(false);
     }
@@ -75,17 +83,27 @@ const Inventory: React.FC = () => {
     });
     
     try {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('recipe_ingredients')
         .select(`recipe_id, recipes(name)`)
         .eq('ingredient_id', ingredient.id);
       
-      if (data) {
+      if (error) {
+        console.warn('Recipe links fetch error:', error);
+        if (error.code === '42P01') {
+          showToast(
+            "Recipe Ingredients Table Error: mapping table 'recipe_ingredients' is missing. Run the Blueprint SQL v7.0, then refresh.",
+            "error"
+          );
+        }
+        setLinkedRecipes([]);
+      } else if (data) {
         setLinkedRecipes(data.map((d: any) => d.recipes));
       } else {
         setLinkedRecipes([]);
       }
     } catch (e) {
+      console.error('Unexpected error while loading recipe links:', e);
       setLinkedRecipes([]);
     }
     
