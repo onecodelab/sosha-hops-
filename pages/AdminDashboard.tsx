@@ -105,8 +105,8 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
-  const handlePaymentSuccess = (paidOrderIds: string[]) => {
-    setActiveOrders(prev => prev.filter(o => !paidOrderIds.includes(o.id)));
+  // Fix: handlePaymentSuccess signature now matches onPaymentSuccess: () => void
+  const handlePaymentSuccess = () => {
     debouncedSync();
   };
 
