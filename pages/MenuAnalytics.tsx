@@ -79,7 +79,7 @@ const MenuAnalytics: React.FC = () => {
         return {
           id: menu.id,
           name: menu.name,
-          category: menu.category_name || menu.category || 'Uncategorized',
+          category: menu.category_name || 'Uncategorized',
           totalSold: data.sold,
           totalRevenue: data.rev,
           quadrant: 'Dog' // Placeholder
