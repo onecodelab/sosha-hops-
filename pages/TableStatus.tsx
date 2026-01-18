@@ -30,8 +30,8 @@ const TableStatus: React.FC = () => {
    const [orderInitialTable, setOrderInitialTable] = useState('');
    const [orderAppendId, setOrderAppendId] = useState<string | null>(null);
 
-   // New: Analytics Mode State
-   const [isAnalyticsMode, setIsAnalyticsMode] = useState(false);
+   // New: Analytics Mode State (Starts in Analytics for Owners)
+   const [isAnalyticsMode, setIsAnalyticsMode] = useState(true);
    const canViewAnalytics = hasPermission('canViewAnalytics');
 
    // 1. Fetch Live Data
@@ -297,54 +297,57 @@ const TableCard: React.FC<TableCardProps> = ({ table, currentTime, onQuickOrder,
       );
    }
 
-   // 2. Standard Logic
+   // 2. Sleek & Small Live Logic
    return (
-      <SoshaCard className={cn(
-         "p-0 flex flex-col h-64 border-2 transition-all duration-500 group relative overflow-hidden",
-         isAvailable && "border-green-500/20 bg-green-500/5",
-         isOccupied && "border-red-600 bg-red-500/10 shadow-[0_0_40px_rgba(239,68,68,0.15)] animate-pulse",
-         isDirty && "border-yellow-500/30 bg-yellow-500/10",
-         table.needs_cleanup && "border-purple-600 bg-purple-500/10 shadow-[0_0_40px_rgba(147,51,234,0.2)] animate-none"
-      )}>
-         <div className="p-6 h-full flex flex-col items-center justify-center text-center">
-            <h3 className={cn("text-6xl font-black tracking-tighter transition-colors", isOccupied ? "text-red-500" : isDirty ? "text-yellow-500" : "text-foreground")}>
-               {table.table_number}
-            </h3>
+      <SoshaCard
+         onClick={() => onQuickOrder(table)}
+         className={cn(
+            "p-0 flex flex-col h-40 transition-all duration-300 group relative overflow-hidden bg-black/40 backdrop-blur-2xl border border-white/5 rounded-[2rem] cursor-pointer",
+            "hover:border-primary/40 hover:scale-[1.02]",
+            isOccupied && "border-red-500/30",
+            isDirty && "border-yellow-500/30",
+            table.needs_cleanup && "border-purple-500/40"
+         )}>
 
-            <Badge className={cn("mt-4 text-[10px] font-black uppercase px-3 py-1 shadow-lg",
-               table.needs_cleanup ? "bg-purple-600 text-white" :
-                  isOccupied ? "bg-red-600 text-white" :
-                     isDirty ? "bg-yellow-500 text-black" : "bg-green-600 text-white"
-            )}>
-               {table.needs_cleanup ? 'PAID - READY' : table.status.replace('_', ' ')}
-            </Badge>
+         <div className="p-4 h-full flex flex-col items-center justify-center relative z-10">
+            <div className="flex flex-col items-center gap-1">
+               <span className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500 opacity-50">Station</span>
+               <h3 className={cn(
+                  "text-4xl font-black tracking-tighter transition-all duration-500",
+                  isOccupied ? "text-red-500 drop-shadow-[0_0_10px_rgba(239,68,68,0.3)]" :
+                     isDirty ? "text-yellow-500" : "text-white/90"
+               )}>
+                  {table.table_number}
+               </h3>
+            </div>
 
-            {isOccupied && (
-               <p className="mt-2 text-xs font-black text-white flex items-center gap-1">
-                  <Clock className="w-3 h-3 text-red-500" /> {elapsedMins}m Stay
-               </p>
-            )}
+            <div className="mt-3 flex flex-col items-center gap-2">
+               <Badge className={cn("text-[8px] font-black uppercase px-2 py-0.5 rounded-full border border-white/5",
+                  table.needs_cleanup ? "bg-purple-500/20 text-purple-400 border-purple-500/20" :
+                     isOccupied ? "bg-red-500/20 text-red-400 border-red-500/20" :
+                        isDirty ? "bg-yellow-500/20 text-yellow-400 border-yellow-500/20" :
+                           "bg-green-500/20 text-green-400 border-green-500/20"
+               )}>
+                  {table.needs_cleanup ? 'Ready' : table.status.replace('_', ' ')}
+               </Badge>
+
+               {isOccupied && (
+                  <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-black/20 border border-white/5">
+                     <Clock className="w-2.5 h-2.5 text-zinc-500" />
+                     <span className="text-[10px] font-bold text-zinc-400">{elapsedMins}m</span>
+                  </div>
+               )}
+            </div>
          </div>
 
-         <div className="absolute inset-0 bg-black/95 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center p-6 gap-3 z-20">
-            {table.needs_cleanup ? (
-               <div className="text-center space-y-2">
-                  <Trash2 className="w-8 h-8 text-purple-400 mx-auto" />
-                  <p className="text-[10px] font-black text-purple-400 uppercase leading-tight">Payment OK<br />Reset at station</p>
-               </div>
-            ) : isOccupied ? (
-               <Button size="sm" className="w-full h-12 rounded-xl bg-primary text-black font-black uppercase text-[10px] tracking-widest shadow-2xl" onClick={() => onQuickOrder(table)}>
-                  <Plus className="w-4 h-4 mr-2" /> Add More Items
-               </Button>
-            ) : isAvailable ? (
-               <Button size="sm" className="w-full h-12 rounded-xl bg-primary text-black font-black uppercase text-[10px] tracking-widest shadow-2xl" onClick={() => onQuickOrder(table)}>
-                  <Plus className="w-4 h-4 mr-2" /> New Order
-               </Button>
-            ) : (
-               <div className="text-center opacity-40">
-                  <Lock className="w-8 h-8 mx-auto text-zinc-500" />
-               </div>
-            )}
+         {/* Selection Glow */}
+         {isOccupied && <div className="absolute inset-0 bg-red-500/5 animate-pulse pointer-events-none" />}
+
+         {/* Hover Overlay for Actions (Lightweight) */}
+         <div className="absolute inset-0 bg-primary/10 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
+            <div className="bg-primary text-black p-2 rounded-full shadow-lg transform scale-0 group-hover:scale-100 transition-transform duration-300">
+               <Plus className="w-4 h-4" />
+            </div>
          </div>
       </SoshaCard>
    );
