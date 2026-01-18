@@ -14,8 +14,9 @@ interface LocalMapping {
   ingredient_id: string;
   name: string;
   quantity_needed: number;
-  unit_type: string;
-  cost_per_unit: number;
+  unit_type: string;        // Recipe Unit
+  inventory_unit: string;   // Original Inventory Unit
+  cost_per_unit: number;    // Cost per Inventory Unit
   out_of_stock_impact: 'kills_dish' | 'disable_variant' | 'optional';
 }
 
@@ -93,6 +94,7 @@ export const RecipeEditor: React.FC<RecipeEditorProps> = ({ dish, onSaved }) => 
             name: m.ingredient?.name || 'Unknown',
             quantity_needed: m.quantity_needed || 0,
             unit_type: m.unit_type || m.ingredient?.unit_type || 'g',
+            inventory_unit: m.ingredient?.unit_type || 'g',
             cost_per_unit: m.ingredient?.cost_per_unit || 0,
             out_of_stock_impact: m.out_of_stock_impact || 'kills_dish'
           })));
@@ -121,6 +123,7 @@ export const RecipeEditor: React.FC<RecipeEditorProps> = ({ dish, onSaved }) => 
       name: item.name,
       quantity_needed: 1,
       unit_type: item.unit_type || 'g',
+      inventory_unit: item.unit_type || 'g',
       cost_per_unit: item.cost_per_unit || 0,
       out_of_stock_impact: 'kills_dish'
     }]);
@@ -135,6 +138,12 @@ export const RecipeEditor: React.FC<RecipeEditorProps> = ({ dish, onSaved }) => 
     const num = parseFloat(val) || 0;
     setSelectedMappings(prev => prev.map(m =>
       m.ingredient_id === id ? { ...m, quantity_needed: num } : m
+    ));
+  };
+
+  const updateUnit = (id: string, unit: string) => {
+    setSelectedMappings(prev => prev.map(m =>
+      m.ingredient_id === id ? { ...m, unit_type: unit } : m
     ));
   };
 
@@ -180,8 +189,27 @@ export const RecipeEditor: React.FC<RecipeEditorProps> = ({ dish, onSaved }) => 
     }
   };
 
+  const getConversionFactor = (from: string, to: string) => {
+    const units = {
+      'g': 1, 'kg': 1000,
+      'ml': 1, 'l': 1000,
+      'pcs': 1, 'slice': 1, 'unit': 1
+    };
+
+    // Normalize to standard
+    if (from === 'kg' && to === 'g') return 0.001; // 1g = 0.001kg
+    if (from === 'g' && to === 'kg') return 1000;  // 1kg = 1000g
+    if (from === 'l' && to === 'ml') return 0.001; // 1ml = 0.001l
+    if (from === 'ml' && to === 'l') return 1000;  // 1l = 1000ml
+    return 1;
+  };
+
   const totalCost = useMemo(() => {
-    return selectedMappings.reduce((sum, m) => sum + (m.quantity_needed * m.cost_per_unit), 0);
+    return selectedMappings.reduce((sum, m) => {
+      const factor = getConversionFactor(m.inventory_unit, m.unit_type);
+      const inventoryQty = m.quantity_needed * factor;
+      return sum + (inventoryQty * m.cost_per_unit);
+    }, 0);
   }, [selectedMappings]);
 
   const margin = useMemo(() => {
@@ -283,16 +311,33 @@ export const RecipeEditor: React.FC<RecipeEditorProps> = ({ dish, onSaved }) => 
                     <td className="px-4 py-4">
                       <div className="flex flex-col">
                         <span className="font-bold text-white whitespace-nowrap">{m.name}</span>
-                        <span className="text-[10px] text-gray-500 uppercase font-mono">{m.unit_type} Spec</span>
+                        <div className="flex items-center gap-1 mt-1">
+                          <span className="text-[8px] text-gray-600 uppercase font-black tracking-tighter">Inv Unit:</span>
+                          <Badge variant="outline" className="text-[7px] px-1 h-3 border-gray-800 text-gray-500 uppercase">{m.inventory_unit}</Badge>
+                        </div>
                       </div>
                     </td>
                     <td className="px-4 py-4">
-                      <Input
-                        type="number"
-                        value={m.quantity_needed}
-                        onChange={e => updateQty(m.ingredient_id, e.target.value)}
-                        className="h-10 w-20 mx-auto bg-black/40 border-white/10 text-center font-mono text-primary font-bold rounded-lg"
-                      />
+                      <div className="flex flex-col items-center gap-2">
+                        <Input
+                          type="number"
+                          value={m.quantity_needed}
+                          onChange={e => updateQty(m.ingredient_id, e.target.value)}
+                          className="h-10 w-16 bg-black/40 border-white/10 text-center font-mono text-primary font-bold rounded-lg"
+                        />
+                        <select
+                          value={m.unit_type}
+                          onChange={e => updateUnit(m.ingredient_id, e.target.value)}
+                          className="bg-black/60 border border-white/10 rounded-lg px-2 py-0.5 text-[9px] text-gray-400 outline-none focus:border-primary/50"
+                        >
+                          <option value="g">g</option>
+                          <option value="kg">kg</option>
+                          <option value="ml">ml</option>
+                          <option value="l">l</option>
+                          <option value="pcs">pcs</option>
+                          <option value="slice">slice</option>
+                        </select>
+                      </div>
                     </td>
                     <td className="px-4 py-4">
                       <select
@@ -305,8 +350,8 @@ export const RecipeEditor: React.FC<RecipeEditorProps> = ({ dish, onSaved }) => 
                         <option value="optional">Optional ingredient</option>
                       </select>
                     </td>
-                    <td className="px-4 py-4 text-right font-mono text-white">
-                      {(m.quantity_needed * m.cost_per_unit).toFixed(2)}
+                    <td className="px-4 py-4 text-right font-mono text-white text-xs">
+                      {((m.quantity_needed * getConversionFactor(m.inventory_unit, m.unit_type)) * m.cost_per_unit).toFixed(2)}
                     </td>
                     <td className="px-4 py-4 text-right">
                       <button onClick={() => removeIngredient(m.ingredient_id)} className="text-gray-700 hover:text-red-500 transition-colors p-2">
