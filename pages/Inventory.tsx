@@ -19,6 +19,7 @@ interface FormData {
   par_max: number;
   cost_per_unit: number;
   expiry_days: number;
+  unit_type: string;
 }
 
 const Inventory: React.FC = () => {
@@ -39,7 +40,8 @@ const Inventory: React.FC = () => {
     par_min: 0,
     par_max: 0,
     cost_per_unit: 0,
-    expiry_days: 0
+    expiry_days: 0,
+    unit_type: 'g'
   });
 
   const [sortField, setSortField] = useState<SortField>('name');
@@ -76,7 +78,8 @@ const Inventory: React.FC = () => {
       par_min: Number(ingredient.par_min) || 0,
       par_max: Number(ingredient.par_max) || 0,
       cost_per_unit: Number(ingredient.cost_per_unit) || 0,
-      expiry_days: Number(ingredient.expiry_days) || 0
+      expiry_days: Number(ingredient.expiry_days) || 0,
+      unit_type: ingredient.unit_type || 'g'
     });
 
     try {
@@ -108,6 +111,7 @@ const Inventory: React.FC = () => {
         par_max: Number(formData.par_max),
         cost_per_unit: Number(formData.cost_per_unit),
         expiry_days: Math.floor(Number(formData.expiry_days)),
+        unit_type: formData.unit_type,
         updated_at: new Date().toISOString()
       };
 
@@ -319,8 +323,20 @@ const Inventory: React.FC = () => {
               <p className="text-sm font-mono text-primary font-bold">{selectedItem?.sku || 'N/A'}</p>
             </div>
             <div className="space-y-1">
-              <p className="text-[9px] font-black text-gray-500 uppercase tracking-widest">Unit Type</p>
-              <p className="text-sm text-white font-bold">{selectedItem?.unit_type}</p>
+              <p className="text-[9px] font-black text-gray-500 uppercase tracking-widest">Master Unit</p>
+              <select
+                value={formData.unit_type}
+                onChange={e => setFormData({ ...formData, unit_type: e.target.value })}
+                className="bg-black/60 border border-white/10 rounded-lg px-2 py-1 text-sm text-primary font-bold outline-none focus:border-primary/50 w-full"
+              >
+                <option value="g">g (Grams)</option>
+                <option value="kg">kg (Kilograms)</option>
+                <option value="ml">ml (Milliliters)</option>
+                <option value="l">l (Liters)</option>
+                <option value="pcs">pcs (Pieces)</option>
+                <option value="slice">slice (Slices)</option>
+                <option value="unit">unit (General)</option>
+              </select>
             </div>
             <div className="space-y-1">
               <p className="text-[9px] font-black text-gray-500 uppercase tracking-widest">Ingredient Name</p>
