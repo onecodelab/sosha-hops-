@@ -77,66 +77,49 @@ const AdminDashboard: React.FC = () => {
 
          // Build query range
          const now = new Date();
-         const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+         const localToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
-         let query = supabase.from('orders').select(`
-             *, 
-             waiter:profiles!orders_waiter_id_fkey (full_name, role),
-             closed_by_user:profiles(full_name, role),
-             order_items (
-                id,
-                quantity,
-                price,
-                menu_item:menu (name)
-             )
-          `);
+         let queryStart: string | null = null;
+         let queryEnd: string | null = null;
 
-         if (dateFilter !== 'all') {
-            let queryStart: Date;
-            let queryEnd: Date = new Date(startOfToday.getTime() + 86400000 * 2); // Far enough in future
-
-            if (dateFilter === 'today') {
-               queryStart = startOfToday;
-            } else if (dateFilter === 'yesterday') {
-               queryStart = new Date(startOfToday.getTime() - 86400000);
-               queryEnd = startOfToday;
-            } else { // week
-               queryStart = new Date(startOfToday.getTime() - 7 * 86400000);
-            }
-
-            query = query.gte('created_at', queryStart.toISOString()).lt('created_at', queryEnd.toISOString());
+         if (dateFilter === 'today') {
+            queryStart = localToday.toISOString();
+         } else if (dateFilter === 'yesterday') {
+            queryStart = new Date(localToday.getTime() - 86400000).toISOString();
+            queryEnd = localToday.toISOString();
+         } else if (dateFilter === 'week') {
+            queryStart = new Date(localToday.getTime() - 7 * 86400000).toISOString();
          }
 
-         let feedData = [];
-         try {
-            const { data: feed, error: feedErr } = await query
-               .order('created_at', { ascending: false })
-               .limit(searchQuery ? 100 : 50);
-
-            if (feedErr) throw feedErr;
-            feedData = feed || [];
-         } catch (auditErr) {
-            console.error("Audit Query Error (Retrying simple):", auditErr);
-
-            let simpleQuery = supabase.from('orders').select(`
-                 *, 
-                 waiter:profiles!orders_waiter_id_fkey (full_name, role),
-                 order_items (
+         const fetchOrders = async (useRichRel: boolean) => {
+            let q = supabase.from('orders').select(`
+                *, 
+                waiter:profiles!orders_waiter_id_fkey (full_name, role)
+                ${useRichRel ? ', closed_by:profiles(full_name, role)' : ''},
+                order_items (
                    id,
                    quantity,
                    price,
                    menu_item:menu (name)
-                 )
+                )
              `);
 
-            if (dateFilter !== 'all') {
-               let sStart = dateFilter === 'today' ? startOfToday : new Date(startOfToday.getTime() - 7 * 86400000);
-               simpleQuery = simpleQuery.gte('created_at', sStart.toISOString());
-            }
+            if (queryStart) q = q.gte('created_at', queryStart);
+            if (queryEnd) q = q.lt('created_at', queryEnd);
 
-            const { data: simpleFeed } = await simpleQuery
-               .order('created_at', { ascending: false })
-               .limit(searchQuery ? 100 : 50);
+            return q.order('created_at', { ascending: false }).limit(searchQuery ? 100 : 50);
+         };
+
+         let feedData = [];
+         try {
+            // Attempt rich query
+            const { data: feed, error: feedErr } = await fetchOrders(true);
+            if (feedErr) throw feedErr;
+            feedData = feed || [];
+         } catch (auditErr) {
+            console.error("Rich Audit Query Error (Retrying simple):", auditErr);
+            // Fallback to simple query but KEEP date filters
+            const { data: simpleFeed } = await fetchOrders(false);
             feedData = simpleFeed || [];
          }
 
