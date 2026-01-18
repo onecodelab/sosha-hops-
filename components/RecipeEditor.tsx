@@ -17,6 +17,7 @@ interface LocalMapping {
   unit_type: string;        // Recipe Unit
   inventory_unit: string;   // Original Inventory Unit
   cost_per_unit: number;    // Cost per Inventory Unit
+  weight_per_unit: number;  // Grams/ML per piece
   out_of_stock_impact: 'kills_dish' | 'disable_variant' | 'optional';
 }
 
@@ -39,7 +40,7 @@ export const RecipeEditor: React.FC<RecipeEditorProps> = ({ dish, onSaved }) => 
         // 1. Fetch master ingredient names, units, and COSTS
         const { data: ingData, error: ingError } = await supabase
           .from('ingredients')
-          .select('id, name, unit_type, cost_per_unit')
+          .select('id, name, unit_type, cost_per_unit, weight_per_unit')
           .eq('is_active', true)
           .order('name');
 
@@ -82,7 +83,7 @@ export const RecipeEditor: React.FC<RecipeEditorProps> = ({ dish, onSaved }) => 
             quantity_needed,
             unit_type,
             out_of_stock_impact,
-            ingredient:ingredients(name, unit_type, cost_per_unit)
+            ingredient:ingredients(name, unit_type, cost_per_unit, weight_per_unit)
           `)
           .eq('recipe_id', currentId);
 
@@ -96,6 +97,7 @@ export const RecipeEditor: React.FC<RecipeEditorProps> = ({ dish, onSaved }) => 
             unit_type: m.unit_type || m.ingredient?.unit_type || 'g',
             inventory_unit: m.ingredient?.unit_type || 'g',
             cost_per_unit: m.ingredient?.cost_per_unit || 0,
+            weight_per_unit: m.ingredient?.weight_per_unit || 1,
             out_of_stock_impact: m.out_of_stock_impact || 'kills_dish'
           })));
         }
@@ -125,6 +127,7 @@ export const RecipeEditor: React.FC<RecipeEditorProps> = ({ dish, onSaved }) => 
       unit_type: item.unit_type || 'g',
       inventory_unit: item.unit_type || 'g',
       cost_per_unit: item.cost_per_unit || 0,
+      weight_per_unit: item.weight_per_unit || 1,
       out_of_stock_impact: 'kills_dish'
     }]);
     setSearchTerm('');
@@ -189,24 +192,39 @@ export const RecipeEditor: React.FC<RecipeEditorProps> = ({ dish, onSaved }) => 
     }
   };
 
-  const getConversionFactor = (from: string, to: string) => {
-    const units = {
-      'g': 1, 'kg': 1000,
-      'ml': 1, 'l': 1000,
-      'pcs': 1, 'slice': 1, 'unit': 1
-    };
+  const getConversionFactor = (from: string, to: string, weightPerPc: number = 1) => {
+    // Pure mass/volume normalization
+    if (from === to) return 1;
 
-    // Normalize to standard
-    if (from === 'kg' && to === 'g') return 0.001; // 1g = 0.001kg
-    if (from === 'g' && to === 'kg') return 1000;  // 1kg = 1000g
-    if (from === 'l' && to === 'ml') return 0.001; // 1ml = 0.001l
-    if (from === 'ml' && to === 'l') return 1000;  // 1l = 1000ml
+    // Mass <-> Mass
+    if (from === 'kg' && to === 'g') return 0.001;
+    if (from === 'g' && to === 'kg') return 1000;
+
+    // Volume <-> Volume
+    if (from === 'l' && to === 'ml') return 0.001;
+    if (from === 'ml' && to === 'l') return 1000;
+
+    // Discrete <-> Mass/Volume (The "Deep Logic")
+    // If inventory is in kg/l but recipe is in pcs/slice
+    if ((from === 'kg' || from === 'l') && (to === 'pcs' || to === 'slice' || to === 'unit')) {
+      return weightPerPc / 1000; // 1 pc = X grams = X/1000 kg
+    }
+    // If inventory is in g/ml but recipe is in pcs/slice
+    if ((from === 'g' || from === 'ml') && (to === 'pcs' || to === 'slice' || to === 'unit')) {
+      return weightPerPc; // 1 pc = X grams
+    }
+
+    // Inverse: If inventory is in pcs but recipe is in mass (rare but possible)
+    if ((from === 'pcs' || from === 'slice') && (to === 'g' || to === 'ml')) {
+      return 1 / weightPerPc;
+    }
+
     return 1;
   };
 
   const totalCost = useMemo(() => {
     return selectedMappings.reduce((sum, m) => {
-      const factor = getConversionFactor(m.inventory_unit, m.unit_type);
+      const factor = getConversionFactor(m.inventory_unit, m.unit_type, m.weight_per_unit);
       const inventoryQty = m.quantity_needed * factor;
       return sum + (inventoryQty * m.cost_per_unit);
     }, 0);
@@ -351,7 +369,7 @@ export const RecipeEditor: React.FC<RecipeEditorProps> = ({ dish, onSaved }) => 
                       </select>
                     </td>
                     <td className="px-4 py-4 text-right font-mono text-white text-xs">
-                      {((m.quantity_needed * getConversionFactor(m.inventory_unit, m.unit_type)) * m.cost_per_unit).toFixed(2)}
+                      {((m.quantity_needed * getConversionFactor(m.inventory_unit, m.unit_type, m.weight_per_unit)) * m.cost_per_unit).toFixed(2)}
                     </td>
                     <td className="px-4 py-4 text-right">
                       <button onClick={() => removeIngredient(m.ingredient_id)} className="text-gray-700 hover:text-red-500 transition-colors p-2">

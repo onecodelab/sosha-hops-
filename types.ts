@@ -117,7 +117,8 @@ export interface Ingredient {
   unittype?: string; // Support for variations in field naming across components
   par_min: number;
   par_max: number;
-  cost_per_unit: number;
+  cost_per_unit?: number;
+  weight_per_unit?: number;
   expiry_days: number;
   is_active: boolean;
   supplier_id?: string;

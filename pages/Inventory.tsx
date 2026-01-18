@@ -20,6 +20,7 @@ interface FormData {
   cost_per_unit: number;
   expiry_days: number;
   unit_type: string;
+  weight_per_unit: number;
 }
 
 const Inventory: React.FC = () => {
@@ -41,7 +42,8 @@ const Inventory: React.FC = () => {
     par_max: 0,
     cost_per_unit: 0,
     expiry_days: 0,
-    unit_type: 'g'
+    unit_type: 'g',
+    weight_per_unit: 1
   });
 
   const [sortField, setSortField] = useState<SortField>('name');
@@ -79,7 +81,8 @@ const Inventory: React.FC = () => {
       par_max: Number(ingredient.par_max) || 0,
       cost_per_unit: Number(ingredient.cost_per_unit) || 0,
       expiry_days: Number(ingredient.expiry_days) || 0,
-      unit_type: ingredient.unit_type || 'g'
+      unit_type: ingredient.unit_type || 'g',
+      weight_per_unit: Number(ingredient.weight_per_unit) || 1
     });
 
     try {
@@ -112,6 +115,7 @@ const Inventory: React.FC = () => {
         cost_per_unit: Number(formData.cost_per_unit),
         expiry_days: Math.floor(Number(formData.expiry_days)),
         unit_type: formData.unit_type,
+        weight_per_unit: Number(formData.weight_per_unit),
         updated_at: new Date().toISOString()
       };
 
@@ -418,6 +422,33 @@ const Inventory: React.FC = () => {
           </div>
 
           <div className="pt-6 flex flex-col gap-3">
+            {(formData.unit_type === 'pcs' || formData.unit_type === 'slice' || formData.unit_type === 'unit') && (
+              <div className="mb-6 p-5 bg-primary/5 border border-primary/20 rounded-2xl animate-in zoom-in-95 duration-300">
+                <div className="flex items-center gap-2 mb-3">
+                  <Scale className="w-4 h-4 text-primary" />
+                  <h4 className="text-[10px] font-black text-white uppercase tracking-widest">Yield Mapping (Conversion)</h4>
+                </div>
+                <div className="grid grid-cols-1 gap-2">
+                  <p className="text-[10px] text-gray-500 mb-2">How much does <strong>1 {formData.unit_type}</strong> weigh/measure in your base unit?</p>
+                  <div className="flex items-center gap-3">
+                    <div className="flex-1 space-y-2">
+                      <label className="text-[9px] font-bold text-gray-500 uppercase">Weight per Piece (Grams/ML)</label>
+                      <Input
+                        type="number"
+                        value={formData.weight_per_unit}
+                        onChange={e => setFormData({ ...formData, weight_per_unit: parseFloat(e.target.value) || 1 })}
+                        className="bg-black/60 border-white/10 font-mono text-primary font-bold"
+                      />
+                    </div>
+                    <div className="pt-6">
+                      <Badge className="bg-primary/20 text-primary border-primary/20 font-black h-11 px-4">
+                        1 {formData.unit_type} = {formData.weight_per_unit}g/ml
+                      </Badge>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
             <Button
               onClick={handleSave}
               className="w-full bg-primary text-black font-black h-14 rounded-2xl shadow-xl shadow-primary/10 text-sm uppercase tracking-widest transition-all hover:scale-[1.01]"
