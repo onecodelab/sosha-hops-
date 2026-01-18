@@ -269,24 +269,24 @@ export const RecipeEditor: React.FC<RecipeEditorProps> = ({ dish, onSaved }) => 
           <table className="w-full text-sm text-left">
             <thead className="bg-black/60 text-[10px] font-black uppercase text-gray-500 tracking-widest sticky top-0 z-10 border-b border-white/5">
               <tr>
-                <th className="px-6 py-5">Ingredient</th>
-                <th className="px-6 py-5 text-center">Portion</th>
-                <th className="px-6 py-5 text-center whitespace-nowrap">Impact Flag</th>
-                <th className="px-6 py-5 text-right">Cost (ETB)</th>
-                <th className="px-10 py-5 w-12"></th>
+                <th className="px-4 py-5">Ingredient</th>
+                <th className="px-4 py-5 text-center">Portion</th>
+                <th className="px-4 py-5 text-center whitespace-nowrap">Impact Flag</th>
+                <th className="px-4 py-5 text-right">Cost (ETB)</th>
+                <th className="px-4 py-5 w-10"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5">
               {selectedMappings.length > 0 ? (
                 selectedMappings.map(m => (
                   <tr key={m.ingredient_id} className="group hover:bg-white/[0.01] transition-colors">
-                    <td className="px-6 py-4">
+                    <td className="px-4 py-4">
                       <div className="flex flex-col">
                         <span className="font-bold text-white whitespace-nowrap">{m.name}</span>
                         <span className="text-[10px] text-gray-500 uppercase font-mono">{m.unit_type} Spec</span>
                       </div>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-4 py-4">
                       <Input
                         type="number"
                         value={m.quantity_needed}
@@ -294,7 +294,7 @@ export const RecipeEditor: React.FC<RecipeEditorProps> = ({ dish, onSaved }) => 
                         className="h-10 w-20 mx-auto bg-black/40 border-white/10 text-center font-mono text-primary font-bold rounded-lg"
                       />
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-4 py-4">
                       <select
                         value={m.out_of_stock_impact}
                         onChange={e => updateImpact(m.ingredient_id, e.target.value)}
@@ -305,10 +305,10 @@ export const RecipeEditor: React.FC<RecipeEditorProps> = ({ dish, onSaved }) => 
                         <option value="optional">Optional ingredient</option>
                       </select>
                     </td>
-                    <td className="px-6 py-4 text-right font-mono text-white">
+                    <td className="px-4 py-4 text-right font-mono text-white">
                       {(m.quantity_needed * m.cost_per_unit).toFixed(2)}
                     </td>
-                    <td className="px-6 py-4 text-right">
+                    <td className="px-4 py-4 text-right">
                       <button onClick={() => removeIngredient(m.ingredient_id)} className="text-gray-700 hover:text-red-500 transition-colors p-2">
                         <Trash2 className="w-4 h-4" />
                       </button>

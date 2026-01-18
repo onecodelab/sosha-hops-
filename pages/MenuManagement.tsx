@@ -101,9 +101,29 @@ const MenuManagement: React.FC = () => {
                   </Badge>
                 </div>
                 <div className="absolute inset-0 bg-gradient-to-t from-[#0A0A0A] to-transparent opacity-90" />
-                <div className="absolute bottom-4 left-4">
+                <div className="absolute bottom-4 left-4 right-12">
                   <p className="text-[10px] font-black text-primary uppercase tracking-widest mb-1">{item.category}</p>
                   <h3 className="font-bold text-white text-lg truncate w-full">{item.name}</h3>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="absolute top-4 left-4 z-20 flex flex-col gap-2">
+                  <button
+                    onClick={() => { setEditingItem(item); setIsEditorOpen(true); }}
+                    className="p-2 bg-black/60 hover:bg-black/80 text-white rounded-lg border border-white/10 backdrop-blur-md transition-all active:scale-95"
+                  >
+                    <Edit3 className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (confirm(`Are you sure you want to delete "${item.name}"?`)) {
+                        supabase.from('menu').delete().eq('id', item.id).then(() => refreshMenu());
+                      }
+                    }}
+                    className="p-2 bg-red-500/20 hover:bg-red-500/40 text-red-500 rounded-lg border border-red-500/20 backdrop-blur-md transition-all active:scale-95"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
                 </div>
               </div>
               <CardContent className="p-5 flex-1 flex flex-col justify-between">
