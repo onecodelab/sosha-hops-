@@ -154,7 +154,7 @@ const AdminDashboard: React.FC = () => {
       } finally {
          setLoading(false);
       }
-   }, []);
+   }, [dateFilter, searchQuery]); // Added missing dependencies to prevent stale closure
 
    const debouncedSync = useCallback(() => {
       if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
