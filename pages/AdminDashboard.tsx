@@ -14,6 +14,7 @@ import { ActiveOrdersModal } from '../components/ActiveOrdersModal';
 import { PaymentVerificationModal } from '../components/PaymentVerificationModal';
 import { OrderCard } from '../components/OrderCard';
 import { Order, UserProfile } from '../types';
+import { OrderDetailsModal } from '../components/OrderDetailsModal';
 
 const AdminDashboard: React.FC = () => {
    const navigate = useNavigate();
@@ -28,6 +29,8 @@ const AdminDashboard: React.FC = () => {
    const [stats, setStats] = useState({ totalRevenue: 0, activeOrdersCount: 0 });
 
    const [transactionFilter, setTransactionFilter] = useState<'all' | 'cash' | 'digital'>('all');
+   const [selectedDetailsOrder, setSelectedDetailsOrder] = useState<Order | null>(null);
+   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
 
    const syncTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -66,9 +69,15 @@ const AdminDashboard: React.FC = () => {
             const { data: feed, error: feedErr } = await supabase
                .from('orders')
                .select(`
-                  *, 
-                  waiter:profiles!orders_waiter_id_fkey (full_name),
-                  closed_by_user:profiles(full_name)
+                   *, 
+                   waiter:profiles!orders_waiter_id_fkey (full_name, role),
+                   closed_by_user:profiles(full_name, role),
+                   order_items (
+                      id,
+                      quantity,
+                      price,
+                      menu_item:menu (name)
+                   )
                `)
                .order('created_at', { ascending: false })
                .limit(20);
@@ -79,7 +88,16 @@ const AdminDashboard: React.FC = () => {
             console.error("Audit Query Error (Retrying simple):", auditErr);
             const { data: simpleFeed } = await supabase
                .from('orders')
-               .select(`*, waiter:profiles!orders_waiter_id_fkey (full_name)`)
+               .select(`
+                  *, 
+                  waiter:profiles!orders_waiter_id_fkey (full_name, role),
+                  order_items (
+                    id,
+                    quantity,
+                    price,
+                    menu_item:menu (name)
+                  )
+               `)
                .order('created_at', { ascending: false })
                .limit(20);
             feedData = simpleFeed || [];
@@ -154,6 +172,11 @@ const AdminDashboard: React.FC = () => {
       if (method === 'cash') return <DollarSign className="w-3 h-3 text-green-500" />;
       if (['telebirr', 'abyssinia', 'cbe'].includes(method || '')) return <Activity className="w-3 h-3 text-blue-500" />;
       return <AlertTriangle className="w-3 h-3 text-gray-500" />;
+   };
+
+   const handleRowClick = (order: any) => {
+      setSelectedDetailsOrder(order);
+      setIsDetailsModalOpen(true);
    };
 
    return (
@@ -272,37 +295,39 @@ const AdminDashboard: React.FC = () => {
                            </thead>
                            <tbody className="divide-y divide-white/5">
                               {filteredAuditLog.map(order => (
-                                 <tr key={order.id} className="group hover:bg-white/5 transition-colors cursor-default text-xs">
-                                    <td className="px-3 py-1.5">
+                                 <tr
+                                    key={order.id}
+                                    onClick={() => handleRowClick(order)}
+                                    className="group hover:bg-white/10 transition-all cursor-pointer text-xs"
+                                 >
+                                    <td className="px-3 py-2.5">
                                        <div className="flex items-center gap-2">
-                                          <span className="font-mono text-gray-400 group-hover:text-white transition-colors">#{order.order_number || order.id.slice(0, 4)}</span>
+                                          <span className="font-mono text-gray-400 group-hover:text-primary transition-colors">#{order.order_number || order.id.slice(0, 4)}</span>
                                           <span className="text-[10px] text-gray-600 font-mono">
                                              {new Date(order.closed_at || order.paid_at || order.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                           </span>
                                        </div>
                                     </td>
-                                    <td className="px-3 py-1.5">
+                                    <td className="px-3 py-2.5">
                                        <div className="flex items-center gap-2">
-                                          <span className="font-bold text-gray-300">T-{order.table_number}</span>
+                                          <span className="font-bold text-gray-200">T-{order.table_number}</span>
                                           <span className="px-1.5 py-0.5 text-[8px] bg-white/5 rounded-sm uppercase tracking-tighter text-gray-500">{order.order_type || 'Dine'}</span>
                                        </div>
                                     </td>
-                                    <td className="px-3 py-1.5 hidden sm:table-cell">
-                                       <div className="flex items-center gap-1.5">
-                                          <span className="text-[10px] text-gray-500 truncate max-w-[80px]">{order.waiter?.full_name || 'Sys'}</span>
-                                          {order.closed_by_user && (
-                                             <ShieldCheck className="w-2.5 h-2.5 text-purple-500/50" />
-                                          )}
+                                    <td className="px-3 py-2.5 hidden sm:table-cell">
+                                       <div className="flex flex-col">
+                                          <span className="text-[10px] text-white font-black truncate max-w-[80px]">{order.waiter?.full_name || 'Sys'}</span>
+                                          <span className="text-[8px] text-primary uppercase font-bold">{(order as any).waiter?.role || (order.closed_by_user ? 'Admin' : 'Staff')}</span>
                                        </div>
                                     </td>
-                                    <td className="px-3 py-1.5 text-right font-mono font-medium text-gray-300">
+                                    <td className="px-3 py-2.5 text-right font-mono font-black text-white">
                                        {order.total_amount.toLocaleString()}
                                        {order.tip_amount > 0 && <span className="text-[8px] text-green-500 ml-1">+Tip</span>}
                                     </td>
-                                    <td className="px-3 py-1.5 text-right">
+                                    <td className="px-3 py-2.5 text-right">
                                        <div className="flex items-center justify-end gap-2">
                                           {order.payment_method && (
-                                             <span className="text-[8px] uppercase text-gray-600">{order.payment_method}</span>
+                                             <span className="text-[9px] font-black uppercase text-zinc-500 bg-white/5 px-2 py-0.5 rounded-sm">{order.payment_method}</span>
                                           )}
                                           <span className={cn("text-[9px] uppercase font-black px-1.5 py-0.5 rounded-sm",
                                              order.status === 'paid' ? "text-green-500 bg-green-500/10" :
@@ -335,6 +360,11 @@ const AdminDashboard: React.FC = () => {
             onClose={() => setIsPaymentOpen(false)}
             orders={servedUnpaidOrders}
             onPaymentSuccess={handlePaymentSuccess}
+         />
+         <OrderDetailsModal
+            isOpen={isDetailsModalOpen}
+            onClose={() => setIsDetailsModalOpen(false)}
+            order={selectedDetailsOrder}
          />
       </DashboardLayout>
    );
