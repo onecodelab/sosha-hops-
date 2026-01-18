@@ -54,7 +54,7 @@ const App: React.FC = () => {
               <Route path="/" element={<Landing />} />
               <Route path="/login/:role" element={<Login />} />
               <Route path="/signup" element={<SignUp />} />
-              
+
               <Route path="/admin" element={
                 <ProtectedRoute allowedRoles={['owner', 'admin' as any, 'manager']}>
                   <AdminDashboard />
@@ -80,7 +80,7 @@ const App: React.FC = () => {
               } />
 
               <Route path="/inventory" element={
-                <ProtectedRoute allowedRoles={['owner', 'manager', 'admin' as any, 'kitchen']}>
+                <ProtectedRoute allowedRoles={['owner', 'manager', 'admin' as any]}>
                   <Inventory />
                 </ProtectedRoute>
               } />
@@ -108,7 +108,7 @@ const App: React.FC = () => {
                   <OrdersTables />
                 </ProtectedRoute>
               } />
-              
+
               <Route path="/manager" element={
                 <ProtectedRoute allowedRoles={['manager', 'owner']}>
                   <ManagerDashboard />
@@ -138,19 +138,19 @@ const App: React.FC = () => {
                   <ManagerReceiveGoods />
                 </ProtectedRoute>
               } />
-              
+
               <Route path="/waiter" element={
                 <ProtectedRoute allowedRoles={['waiter']}>
                   <WaiterDashboard />
                 </ProtectedRoute>
               } />
-              
+
               <Route path="/kitchen" element={
                 <ProtectedRoute allowedRoles={['kitchen', 'manager', 'owner']}>
                   <KitchenDashboard />
                 </ProtectedRoute>
               } />
-              
+
               <Route path="/kitchen/stock" element={
                 <ProtectedRoute allowedRoles={['kitchen', 'manager', 'owner']}>
                   <KitchenStockView />

@@ -3,12 +3,13 @@ import { Dialog, Button, Input, showToast, cn } from './ui';
 import { supabase } from '../supabase';
 import { Order, PaymentMethod } from '../types';
 import { useAuth } from '../AuthContext';
-import { 
-  CheckCircle2, Printer, Smartphone, Loader2, X, 
+import {
+  CheckCircle2, Printer, Smartphone, Loader2, X,
   ChevronRight, ArrowLeft, ShieldCheck, Landmark,
-  Scan, Banknote, FileText, AlertCircle, Coins
+  Scan, Banknote, FileText, AlertCircle, Coins, QrCode
 } from 'lucide-react';
 import QRScanner from './QRScanner';
+import { AnimatedTicket } from './AnimatedTicket';
 
 interface BillModalProps {
   isOpen: boolean;
@@ -22,53 +23,55 @@ interface BillModalProps {
 const SOSHA_API_KEY = (process.env as any).VITE_SOSHA_API_KEY || "sosha_prod_key_8821";
 
 const BANK_CONFIG: Record<string, { receiver: string, label: string, placeholder: string, color: string, icon: any, endpoint: string }> = {
-  telebirr: { 
-    receiver: "", 
-    label: "Telebirr", 
-    placeholder: "10-char ID (e.g. CL...)", 
+  telebirr: {
+    receiver: "",
+    label: "Telebirr",
+    placeholder: "10-char ID (e.g. CL...)",
     color: "text-purple-400 border-purple-500/30 bg-purple-500/5",
     icon: Smartphone,
     endpoint: "telebirr"
   },
-  cbe: { 
-    receiver: "56042704", 
-    label: "CBE", 
-    placeholder: "FT Reference...", 
+  cbe: {
+    receiver: "56042704",
+    label: "CBE",
+    placeholder: "FT Reference...",
     color: "text-blue-400 border-blue-500/30 bg-blue-500/5",
     icon: Landmark,
     endpoint: "cbe"
   },
-  dashen: { 
-    receiver: "", 
-    label: "Dashen", 
-    placeholder: "Ref Number...", 
+  dashen: {
+    receiver: "",
+    label: "Dashen",
+    placeholder: "Ref Number...",
     color: "text-emerald-400 border-emerald-500/30 bg-emerald-500/5",
     icon: Landmark,
     endpoint: "dashen"
   },
-  abyssinia: { 
-    receiver: "16408", 
-    label: "Abyssinia", 
-    placeholder: "BoA Reference...", 
+  abyssinia: {
+    receiver: "16408",
+    label: "Abyssinia",
+    placeholder: "BoA Reference...",
     color: "text-zinc-400 border-zinc-500/30 bg-zinc-500/5",
     icon: Landmark,
     endpoint: "abyssinia"
   },
-  cbebirr: { 
-    receiver: "", 
-    label: "CBE Birr", 
-    placeholder: "Receipt #", 
+  cbebirr: {
+    receiver: "",
+    label: "CBE Birr",
+    placeholder: "Receipt #",
     color: "text-orange-400 border-orange-500/30 bg-orange-500/5",
     icon: Coins,
     endpoint: "cbebirr"
   }
 };
 
-export const BillModal: React.FC<BillModalProps> = ({ 
-  isOpen, onClose, order, onSuccess 
+import { orderService } from '../services/orderService';
+
+export const BillModal: React.FC<BillModalProps> = ({
+  isOpen, onClose, order, onSuccess
 }) => {
   const { user } = useAuth();
-  
+
   const [view, setView] = useState<'bill' | 'payment' | 'success'>('bill');
   const [paymentMethod, setPaymentMethod] = useState<string>('cash');
   const [amountPaid, setAmountPaid] = useState<string>('');
@@ -133,6 +136,12 @@ export const BillModal: React.FC<BillModalProps> = ({
 
     extractedRef = extractedRef.replace(/[^a-zA-Z0-9]+$/, "");
 
+    // Refinement: Strip receiver account suffix if detected (e.g. CBE/Abyssinia)
+    const receiverNum = BANK_CONFIG[detectedBank]?.receiver;
+    if (receiverNum && extractedRef.endsWith(receiverNum)) {
+      extractedRef = extractedRef.slice(0, -receiverNum.length);
+    }
+
     if (extractedRef) {
       setPaymentMethod(detectedBank);
       setRefNumber(extractedRef);
@@ -149,42 +158,39 @@ export const BillModal: React.FC<BillModalProps> = ({
     setIsVerifying(true);
     try {
       const config = BANK_CONFIG[bank];
-      
+
       // Construct Bank-Specific Payloads according to PRD
-      let payload: any = { 
-        reference: ref, 
-        orderId: order.id, 
-        branchId: 'main-01', 
-        manualOverride: false 
+      let payload: any = {
+        reference: ref,
+        orderId: order.id,
+        branchId: 'main-01',
+        manualOverride: false
       };
-      
+
       if (bank === 'cbe') {
         payload.accountSuffix = config.receiver;
       } else if (bank === 'abyssinia') {
         payload.suffix = config.receiver;
       } else if (bank === 'cbebirr') {
-        payload = { 
-          receiptNumber: ref, 
+        payload = {
+          receiptNumber: ref,
           phoneNumber: '', // Can be extended if you add phone input
-          manualOverride: false 
+          manualOverride: false
         };
       }
 
-      // 1. Get Function Base URL
-      const { data: { publicUrl } } = supabase.storage.from('dummy').getPublicUrl('');
-      const baseUrl = publicUrl.split('/storage')[0];
-      const functionUrl = `${baseUrl}/functions/v1/sosha-verifier/${config.endpoint}`;
+      // 1. Verifier Service URL
+      const VERIFIER_BASE_URL = "http://localhost:3001";
+      const functionUrl = `${VERIFIER_BASE_URL}/verify-${config.endpoint}`;
 
-      // 2. Auth Session for RLS
+      // 2. Auth Session
       const { data: { session } } = await supabase.auth.getSession();
 
       // 3. Execution
       const response = await fetch(functionUrl, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': SOSHA_API_KEY,
-          'Authorization': `Bearer ${session?.access_token}`
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify(payload)
       });
@@ -193,9 +199,28 @@ export const BillModal: React.FC<BillModalProps> = ({
 
       if (response.ok && data.success) {
         setIsVerified(true);
+        const finalAmount = data.amount ? parseFloat(data.amount.toString()) : order.total_amount;
+        const finalReceiptNo = data.receiptNo || ref;
+
         if (data.amount) setAmountPaid(data.amount.toString());
         if (data.receiptNo) setRefNumber(data.receiptNo);
+
         showToast("Bank record confirmed", "success");
+
+        // Auto-Trigger Logic: Process payment immediately without manual confirmation
+        showToast("Processing automated checkout...", "warning");
+
+        const tipAmount = Math.max(0, finalAmount - order.total_amount);
+
+        await orderService.closeOrder(order, {
+          method: bank,
+          amountPaid: finalAmount,
+          tipAmount: tipAmount,
+          reference: finalReceiptNo
+        });
+
+        setView('success');
+        onSuccess();
       } else {
         throw new Error(data.message || "Transaction verification failed.");
       }
@@ -213,28 +238,16 @@ export const BillModal: React.FC<BillModalProps> = ({
     setIsSubmitting(true);
 
     try {
-      const now = new Date().toISOString();
       const actualPaid = parseFloat(amountPaid) || order.total_amount;
       const tipAmount = Math.max(0, actualPaid - order.total_amount);
 
-      if (order.table_id) {
-        await supabase.from('table_sessions').update({ is_active: false, closed_at: now, session_revenue: order.total_amount }).eq('table_id', order.table_id).eq('is_active', true);
-        await supabase.from('tables').update({ status: 'available', current_order_id: null, current_session_id: null, last_updated: now }).eq('id', order.table_id);
-      }
+      await orderService.closeOrder(order, {
+        method: paymentMethod,
+        amountPaid: actualPaid,
+        tipAmount: tipAmount,
+        reference: refNumber
+      });
 
-      const { error } = await supabase.from('orders').update({
-        status: 'paid',
-        payment_status: 'paid',
-        payment_method: paymentMethod,
-        amount_paid: actualPaid,
-        tip_amount: tipAmount,
-        transaction_reference: refNumber || null,
-        paid_at: now,
-        closed_at: now,
-        last_updated: now
-      }).eq('id', order.id);
-
-      if (error) throw error;
       setView('success');
       onSuccess();
     } catch (err: any) {
@@ -251,37 +264,66 @@ export const BillModal: React.FC<BillModalProps> = ({
       <div className="flex flex-col p-1 min-h-[500px]">
         {view === 'bill' && (
           <div className="animate-in fade-in zoom-in-95 duration-300">
-            <div className="bg-white text-black p-6 rounded-2xl shadow-inner font-mono text-xs space-y-4 border-t-8 border-primary mx-1">
-               <div className="text-center border-b border-dashed border-gray-300 pb-4">
-                  <h3 className="font-black text-lg tracking-tighter uppercase leading-none">Sosha OS</h3>
-                  <p className="text-[9px] text-gray-400 mt-1">Production Receipt</p>
-               </div>
-               <div className="flex justify-between font-black border-b border-gray-100 pb-2">
-                  <span>Table: T-{order.table_number}</span>
-                  <span>#{order.order_number?.slice(-4)}</span>
-               </div>
-               <div className="space-y-1 py-2 max-h-40 overflow-y-auto custom-scrollbar">
-                  {order.order_items?.map((item: any, i) => (
-                    <div key={i} className="flex justify-between">
-                       <span className="flex-1 truncate mr-2"><span className="font-bold">{item.quantity}x</span> {item.menu_item?.name}</span>
-                       <span className="font-bold">{(item.price * item.quantity).toLocaleString()}</span>
-                    </div>
-                  ))}
-               </div>
-               <div className="border-t-2 border-dashed border-gray-300 pt-4">
-                  <div className="flex justify-between text-base font-black">
-                     <span>TOTAL</span>
-                     <span>ETB {order.total_amount.toLocaleString()}</span>
+            <div className="bg-white text-black p-6 rounded-2xl shadow-inner font-mono text-xs space-y-4 border-t-8 border-primary mx-1 relative overflow-hidden">
+              <div className="text-center border-b border-dashed border-gray-300 pb-4">
+                <h3 className="font-black text-lg tracking-tighter uppercase leading-none">Sosha OS</h3>
+                <p className="text-[9px] text-gray-400 mt-1">TIN: 0043819230</p>
+                <p className="text-[9px] text-gray-400">Production Receipt</p>
+              </div>
+
+              <div className="flex justify-between font-black border-b border-gray-100 pb-2">
+                <span>Table: T-{order.table_number}</span>
+                <span>#{order.order_number?.slice(-4)}</span>
+              </div>
+
+              <div className="flex justify-between text-[9px] text-gray-500 mb-2">
+                <span>Waiter: {order.waiter?.full_name || user?.user_metadata?.full_name || 'Staff'}</span>
+                <span>{new Date().toLocaleTimeString()}</span>
+              </div>
+
+              <div className="space-y-1 py-2 max-h-40 overflow-y-auto custom-scrollbar border-b border-gray-100">
+                {order.order_items?.map((item: any, i) => (
+                  <div key={i} className="flex justify-between">
+                    <span className="flex-1 truncate mr-2"><span className="font-bold">{item.quantity}x</span> {item.menu_item?.name}</span>
+                    <span className="font-bold">{(item.price * item.quantity).toLocaleString()}</span>
                   </div>
-               </div>
+                ))}
+              </div>
+
+              <div className="space-y-1.5 pt-2">
+                <div className="flex justify-between text-[10px] text-gray-600">
+                  <span>Subtotal (Excl. VAT)</span>
+                  <span>ETB {(order.total_amount / 1.15).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                </div>
+                <div className="flex justify-between text-[10px] text-gray-600">
+                  <span>VAT (15%)</span>
+                  <span>ETB {(order.total_amount - (order.total_amount / 1.15)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                </div>
+                <div className="flex justify-between text-base font-black pt-2 border-t-2 border-dashed border-gray-300">
+                  <span>TOTAL</span>
+                  <span>ETB {order.total_amount.toLocaleString()}</span>
+                </div>
+              </div>
+
+              {/* QR Verification Section */}
+              <div className="flex flex-col items-center pt-6 opacity-80">
+                <div className="w-20 h-20 bg-gray-50 border border-gray-200 rounded flex items-center justify-center mb-1">
+                  <QrCode className="w-12 h-12 text-gray-300" />
+                </div>
+                <p className="text-[7px] text-gray-400 uppercase tracking-widest text-center">Scan to verify receipt<br />ORD-{order.id.slice(0, 8)}</p>
+              </div>
+
+              <div className="absolute top-0 right-0 w-16 h-16 pointer-events-none opacity-[0.03]">
+                <ShieldCheck className="w-full h-full text-black rotate-12" />
+              </div>
             </div>
             <div className="grid grid-cols-2 gap-3 mt-6">
-               <Button variant="outline" onClick={() => window.print()} className="h-12 bg-white/5 border-white/10 rounded-xl font-bold">
-                  <Printer className="w-4 h-4 mr-2" /> Print
-               </Button>
-               <Button onClick={handleGoToPayment} className="h-12 bg-primary text-black font-black uppercase rounded-xl">
-                  Next <ChevronRight className="ml-2 w-4 h-4" />
-               </Button>
+              <Button variant="outline" onClick={() => window.print()} className="h-12 bg-white/5 border-white/10 rounded-xl font-bold">
+                <Printer className="w-4 h-4 mr-2" /> Print
+              </Button>
+              <Button onClick={handleGoToPayment} className="h-12 bg-primary text-black font-black uppercase rounded-xl">
+                Next <ChevronRight className="ml-2 w-4 h-4" />
+              </Button>
             </div>
           </div>
         )}
@@ -289,115 +331,118 @@ export const BillModal: React.FC<BillModalProps> = ({
         {view === 'payment' && (
           <div className="space-y-5 animate-in slide-in-from-right duration-300">
             <div className="flex items-center justify-between px-1">
-               <button onClick={() => setView('bill')} className="flex items-center gap-1.5 text-zinc-500 hover:text-white text-[10px] font-black uppercase tracking-widest transition-colors">
-                  <ArrowLeft className="w-3.5 h-3.5" /> Back
-               </button>
-               <div className="flex items-center gap-1.5 bg-primary/10 px-3 py-1 rounded-full border border-primary/20">
-                  <ShieldCheck className="w-3.5 h-3.5 text-primary" />
-                  <span className="text-[9px] font-black text-primary uppercase">Secure Edge</span>
-               </div>
+              <button onClick={() => setView('bill')} className="flex items-center gap-1.5 text-zinc-500 hover:text-white text-[10px] font-black uppercase tracking-widest transition-colors">
+                <ArrowLeft className="w-3.5 h-3.5" /> Back
+              </button>
+              <div className="flex items-center gap-1.5 bg-primary/10 px-3 py-1 rounded-full border border-primary/20">
+                <ShieldCheck className="w-3.5 h-3.5 text-primary" />
+                <span className="text-[9px] font-black text-primary uppercase">Secure Edge</span>
+              </div>
             </div>
 
             <div className="bg-[#0A0A0A] p-5 rounded-2xl border border-white/5 text-center relative overflow-hidden">
-               <p className="text-[9px] font-black text-zinc-600 uppercase tracking-widest">Amount to Collect</p>
-               <h3 className="text-3xl font-black text-white font-mono mt-1 tracking-tighter">
-                  ETB {order.total_amount.toLocaleString()}
-               </h3>
+              <p className="text-[9px] font-black text-zinc-600 uppercase tracking-widest">Amount to Collect</p>
+              <h3 className="text-3xl font-black text-white font-mono mt-1 tracking-tighter">
+                ETB {order.total_amount.toLocaleString()}
+              </h3>
             </div>
 
             <div className="grid grid-cols-2 gap-2">
-               <button onClick={() => { setPaymentMethod('cash'); setIsVerified(false); setRefNumber(''); }} className={cn("p-2.5 rounded-xl border flex items-center gap-2 transition-all", paymentMethod === 'cash' ? "bg-primary/10 border-primary text-primary" : "bg-black/40 border-white/5 text-zinc-500")}>
-                  <Banknote className="w-3.5 h-3.5" />
-                  <span className="font-black uppercase text-[9px]">Cash</span>
-               </button>
-               {Object.entries(BANK_CONFIG).map(([key, config]) => (
-                  <button key={key} onClick={() => { setPaymentMethod(key); setRefNumber(''); setIsVerified(false); }} className={cn("p-2.5 rounded-xl border flex items-center gap-2 transition-all", paymentMethod === key ? `${config.color}` : "bg-black/40 border-white/5 text-zinc-500")}>
-                    <config.icon className="w-3.5 h-3.5" />
-                    <span className="font-black uppercase text-[9px]">{config.label}</span>
-                  </button>
-               ))}
+              <button onClick={() => { setPaymentMethod('cash'); setIsVerified(false); setRefNumber(''); }} className={cn("p-2.5 rounded-xl border flex items-center gap-2 transition-all", paymentMethod === 'cash' ? "bg-primary/10 border-primary text-primary" : "bg-black/40 border-white/5 text-zinc-500")}>
+                <Banknote className="w-3.5 h-3.5" />
+                <span className="font-black uppercase text-[9px]">Cash</span>
+              </button>
+              {Object.entries(BANK_CONFIG).map(([key, config]) => (
+                <button key={key} onClick={() => { setPaymentMethod(key); setRefNumber(''); setIsVerified(false); }} className={cn("p-2.5 rounded-xl border flex items-center gap-2 transition-all", paymentMethod === key ? `${config.color}` : "bg-black/40 border-white/5 text-zinc-500")}>
+                  <config.icon className="w-3.5 h-3.5" />
+                  <span className="font-black uppercase text-[9px]">{config.label}</span>
+                </button>
+              ))}
             </div>
 
             <div className="space-y-3 bg-[#0A0A0A] p-4 rounded-2xl border border-white/5 relative">
-               <div className="space-y-1.5">
-                  <div className="flex justify-between items-center ml-1">
-                    <label className="text-[9px] font-black text-zinc-500 uppercase tracking-widest">Transaction ID</label>
-                    {paymentMethod !== 'cash' && (
-                       <button onClick={() => setIsQRScannerOpen(true)} className="text-[9px] font-black text-primary uppercase flex items-center gap-1 hover:opacity-80">
-                          <Scan className="w-3 h-3" /> Scan Receipt
-                       </button>
-                    )}
-                  </div>
-                  <div className="relative">
-                    <Input 
-                        placeholder={(BANK_CONFIG as any)[paymentMethod]?.placeholder || "Manual ID..."} 
-                        value={refNumber} 
-                        onChange={e => { setRefNumber(e.target.value); setIsVerified(false); }} 
-                        className={cn(
-                            "bg-black/40 border-white/10 font-mono text-white h-10 text-xs rounded-lg transition-all",
-                            isVerified && "border-green-500/50 text-green-400 bg-green-500/5"
-                        )}
-                        disabled={paymentMethod === 'cash'}
-                    />
-                    {isVerified && <CheckCircle2 className="absolute right-3 top-2.5 w-4 h-4 text-green-500" />}
-                  </div>
-               </div>
-
-               {(BANK_CONFIG as any)[paymentMethod]?.receiver && (
-                  <div className={cn("p-2 rounded-lg flex items-center justify-between border transition-all", isVerified ? "bg-green-500/5 border-green-500/20" : "bg-primary/5 border-primary/20")}>
-                     <div className="flex items-center gap-2">
-                        <ShieldCheck className={cn("w-3.5 h-3.5", isVerified ? "text-green-500" : "text-primary")} />
-                        <span className="text-[8px] text-zinc-400 font-black uppercase">To Account:</span>
-                     </div>
-                     <span className="text-[10px] text-primary font-mono font-black tracking-widest">
-                        ...{(BANK_CONFIG as any)[paymentMethod].receiver}
-                     </span>
-                  </div>
-               )}
-
-               <div className="space-y-1.5">
-                  <label className="text-[9px] font-black text-zinc-500 uppercase tracking-widest ml-1">Collection (ETB)</label>
-                  <Input 
-                    type="number" 
-                    value={amountPaid} 
-                    onChange={e => { setAmountPaid(e.target.value); setIsVerified(false); }} 
+              <div className="space-y-1.5">
+                <div className="flex justify-between items-center ml-1">
+                  <label className="text-[9px] font-black text-zinc-500 uppercase tracking-widest">Transaction ID</label>
+                  {paymentMethod !== 'cash' && (
+                    <button onClick={() => setIsQRScannerOpen(true)} className="text-[9px] font-black text-primary uppercase flex items-center gap-1 hover:opacity-80">
+                      <Scan className="w-3 h-3" /> Scan Receipt
+                    </button>
+                  )}
+                </div>
+                <div className="relative">
+                  <Input
+                    placeholder={(BANK_CONFIG as any)[paymentMethod]?.placeholder || "Manual ID..."}
+                    value={refNumber}
+                    onChange={e => { setRefNumber(e.target.value); setIsVerified(false); }}
                     className={cn(
-                      "bg-black/40 border-white/10 font-mono font-black h-11 text-lg rounded-lg transition-colors",
-                      isVerified ? "text-green-400" : "text-primary"
+                      "bg-black/40 border-white/10 font-mono text-white h-10 text-xs rounded-lg transition-all",
+                      isVerified && "border-green-500/50 text-green-400 bg-green-500/5"
                     )}
+                    disabled={paymentMethod === 'cash'}
                   />
-               </div>
+                  {isVerified && <CheckCircle2 className="absolute right-3 top-2.5 w-4 h-4 text-green-500" />}
+                </div>
+              </div>
+
+              {(BANK_CONFIG as any)[paymentMethod]?.receiver && (
+                <div className={cn("p-2 rounded-lg flex items-center justify-between border transition-all", isVerified ? "bg-green-500/5 border-green-500/20" : "bg-primary/5 border-primary/20")}>
+                  <div className="flex items-center gap-2">
+                    <ShieldCheck className={cn("w-3.5 h-3.5", isVerified ? "text-green-500" : "text-primary")} />
+                    <span className="text-[8px] text-zinc-400 font-black uppercase">To Account:</span>
+                  </div>
+                  <span className="text-[10px] text-primary font-mono font-black tracking-widest">
+                    ...{(BANK_CONFIG as any)[paymentMethod].receiver}
+                  </span>
+                </div>
+              )}
+
+              <div className="space-y-1.5">
+                <label className="text-[9px] font-black text-zinc-500 uppercase tracking-widest ml-1">Collection (ETB)</label>
+                <Input
+                  type="number"
+                  value={amountPaid}
+                  onChange={e => { setAmountPaid(e.target.value); setIsVerified(false); }}
+                  className={cn(
+                    "bg-black/40 border-white/10 font-mono font-black h-11 text-lg rounded-lg transition-colors",
+                    isVerified ? "text-green-400" : "text-primary"
+                  )}
+                />
+              </div>
             </div>
 
-            <Button 
-              onClick={isVerified || paymentMethod === 'cash' ? handleProcessPayment : () => verifyTransaction()} 
-              isLoading={isSubmitting || isVerifying} 
+            <Button
+              onClick={isVerified || paymentMethod === 'cash' ? handleProcessPayment : () => verifyTransaction()}
+              isLoading={isSubmitting || isVerifying}
               className={cn(
-                  "w-full h-14 font-black uppercase tracking-[0.2em] rounded-2xl shadow-xl transition-all",
-                  isVerified ? "bg-green-600 text-white shadow-green-500/20" : "bg-primary text-black"
+                "w-full h-14 font-black uppercase tracking-[0.2em] rounded-2xl shadow-xl transition-all",
+                isVerified ? "bg-green-600 text-white shadow-green-500/20" : "bg-primary text-black"
               )}
             >
-               {isVerifying ? (
-                 <span className="flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" /> Verifying...</span>
-               ) : (
-                 paymentMethod === 'cash' ? 'Finalize Order' : (isVerified ? 'Confirm & Close' : 'Verify & Link')
-               )}
+              {isVerifying ? (
+                <span className="flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" /> Verifying...</span>
+              ) : (
+                paymentMethod === 'cash' ? 'Finalize Order' : (isVerified ? 'Confirm & Close' : 'Verify & Link')
+              )}
             </Button>
           </div>
         )}
 
         {view === 'success' && (
-          <div className="flex-1 flex flex-col items-center justify-center text-center py-8 space-y-6 animate-in zoom-in duration-300">
-             <div className="w-20 h-20 bg-green-500 rounded-full flex items-center justify-center shadow-[0_0_30px_rgba(34,197,94,0.4)]">
-                <CheckCircle2 className="w-10 h-10 text-white" />
-             </div>
-             <div>
-                <h3 className="text-xl font-black text-white uppercase tracking-tighter">Paid & Cleared</h3>
-                <p className="text-zinc-500 text-xs mt-1">Transaction verified. Table is now free.</p>
-             </div>
-             <Button onClick={onClose} className="w-full bg-white/10 hover:bg-white/20 text-white font-black h-12 rounded-xl text-[10px] uppercase tracking-widest">
-                Return to Station
-             </Button>
+          <div className="flex-1 flex flex-col items-center justify-center pt-2 space-y-8 animate-in fade-in duration-500">
+            <AnimatedTicket
+              ticketId={order.order_number || order.id.slice(0, 8)}
+              amount={parseFloat(amountPaid) || order.total_amount}
+              date={new Date()}
+              staffName={order.waiter?.full_name || user?.user_metadata?.full_name || 'Staff'}
+              paymentMethod={paymentMethod}
+              reference={refNumber}
+              barcodeValue={order.id.slice(0, 8).toUpperCase()}
+            />
+
+            <Button onClick={onClose} className="w-full bg-white/5 hover:bg-white/10 text-white font-black h-14 rounded-2xl text-[10px] uppercase tracking-[0.2em] border border-white/5 transition-all">
+              Return to Station
+            </Button>
           </div>
         )}
       </div>

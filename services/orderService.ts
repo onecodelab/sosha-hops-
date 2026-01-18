@@ -1,0 +1,270 @@
+import { supabase } from '../supabase';
+import { Order, OrderStatus, PaymentMethod } from '../types';
+
+export const orderService = {
+    /**
+     * Fetch active orders for a specific waiter or all active orders
+     */
+    async fetchActiveOrders(waiterId?: string): Promise<Order[]> {
+        let query = supabase
+            .from('orders')
+            .select(`
+        *,
+        order_items (
+          id, quantity, price, 
+          menu_item:menu (name)
+        )
+      `)
+            .is('closed_at', null)
+            .in('status', ['pending', 'accepted', 'preparing', 'ready', 'served', 'paid'])
+            .order('created_at', { ascending: true });
+
+        if (waiterId) {
+            query = query.or(`waiter_id.eq.${waiterId},source.eq.chatbot`);
+        }
+
+        const { data, error } = await query;
+        if (error) throw error;
+        return data as Order[];
+    },
+
+    /**
+     * Update order status
+     */
+    async updateStatus(orderId: string, status: OrderStatus, additionalData: any = {}): Promise<void> {
+        const now = new Date().toISOString();
+
+        // Prepare specific timestamp fields based on status
+        const timestampFields: any = {};
+        if (status === 'served') timestampFields.served_at = now;
+        else if (status === 'accepted') timestampFields.accepted_at = now;
+        else if (status === 'ready') timestampFields.ready_at = now;
+        else if (status === 'paid') timestampFields.paid_at = now;
+
+        const updatePayload = {
+            status,
+            last_updated: now,
+            ...timestampFields,
+            ...additionalData
+        };
+
+        const { data, error, status: httpStatus } = await supabase
+            .from('orders')
+            .update(updatePayload)
+            .eq('id', orderId)
+            .select();
+
+        if (error) {
+            console.error("[orderService] Update failed:", error);
+            throw new Error(`Update error: ${error.message} (HTTP ${httpStatus})`);
+        }
+
+        if (!data || data.length === 0) {
+            throw new Error("Update blocked by database security (RLS). Please ensure you have permission to update orders.");
+        }
+    },
+
+    async closeOrder(order: Order, paymentData: {
+        method: string;
+        amountPaid: number;
+        tipAmount: number;
+        reference?: string;
+    }): Promise<void> {
+        const now = new Date().toISOString();
+        const todayStr = now.split('T')[0];
+
+        // 0. Fraud Prevention: Check for duplicate reference
+        if (paymentData.reference && paymentData.method !== 'cash') {
+            const { data: existingRef } = await supabase
+                .from('orders')
+                .select('id')
+                .eq('transaction_reference', paymentData.reference)
+                .neq('id', order.id)
+                .maybeSingle();
+
+            if (existingRef) {
+                throw new Error("Fraud Alert: This transaction reference has already been used!");
+            }
+        }
+
+        const subtotal = order.total_amount / 1.15;
+        const vat = order.total_amount - subtotal;
+        const tin = "0043819230"; // Static TIN as per requirements
+
+        // Calculate actual shortage if payment is under
+        const trueShortage = Math.max(0, order.total_amount - paymentData.amountPaid);
+        // Calculate actual tip (only if payment is over)
+        const trueTip = Math.max(0, paymentData.amountPaid - order.total_amount);
+
+        const qrData = {
+            v: "1.0",
+            oid: order.id,
+            onum: order.order_number,
+            tin: tin,
+            tot: order.total_amount,
+            vat: parseFloat(vat.toFixed(2)),
+            ts: now
+        };
+
+        // 1. Update order status to closed and paid
+        const { error: orderError } = await supabase
+            .from('orders')
+            .update({
+                status: 'closed',
+                payment_status: 'paid',
+                payment_method: paymentData.method,
+                amount_paid: paymentData.amountPaid,
+                tip_amount: trueTip,
+                transaction_reference: paymentData.reference || null,
+                paid_at: now,
+                closed_at: now,
+                last_updated: now,
+                subtotal_amount: parseFloat(subtotal.toFixed(2)),
+                vat_amount: parseFloat(vat.toFixed(2)),
+                vat_rate: 15.0,
+                qr_verification_code: btoa(JSON.stringify(qrData)) // Base64 encoded payload
+            })
+            .eq('id', order.id);
+
+        if (orderError) throw orderError;
+
+        // 2. Handle Tip Extraction (Extract to Ledger)
+        if (trueTip > 0 && order.waiter_id) {
+            await supabase.from('tips_ledger').insert({
+                staff_id: order.waiter_id,
+                order_id: order.id,
+                amount: trueTip,
+                tip_type: paymentData.method === 'cash' ? 'cash' : 'digital',
+                created_at: now
+            });
+        }
+
+        // 3. Handle Performance & Shortage Logging
+        if (order.waiter_id) {
+            const { data: existingPerf } = await supabase
+                .from('staff_performance_daily')
+                .select('id, revenue_attributed, total_shortage, shortages_count, orders_completed')
+                .eq('staff_id', order.waiter_id)
+                .eq('date', todayStr)
+                .maybeSingle();
+
+            if (existingPerf) {
+                await supabase.from('staff_performance_daily').update({
+                    revenue_attributed: (existingPerf.revenue_attributed || 0) + (order.total_amount - trueShortage),
+                    total_shortage: (existingPerf.total_shortage || 0) + trueShortage,
+                    shortages_count: (existingPerf.shortages_count || 0) + (trueShortage > 0 ? 1 : 0),
+                    orders_completed: (existingPerf.orders_completed || 0) + 1
+                }).eq('id', existingPerf.id);
+            } else {
+                await supabase.from('staff_performance_daily').insert({
+                    staff_id: order.waiter_id,
+                    staff_name: order.waiter?.full_name || 'Staff',
+                    date: todayStr,
+                    revenue_attributed: order.total_amount - trueShortage,
+                    total_shortage: trueShortage,
+                    shortages_count: trueShortage > 0 ? 1 : 0,
+                    orders_completed: 1
+                });
+            }
+        }
+
+        // 4. Handle table session if applicable
+        if (order.table_id) {
+            await this.forceClearTable(order.table_id);
+        }
+    },
+
+    /**
+     * Mark order as served
+     */
+    async markServed(orderId: string): Promise<void> {
+        return this.updateStatus(orderId, 'served', { served_at: new Date().toISOString() });
+    },
+
+    /**
+     * Generate bill (marks payment as pending)
+     */
+    async generateBill(orderId: string): Promise<void> {
+        const { error } = await supabase
+            .from('orders')
+            .update({
+                payment_status: 'pending',
+                last_updated: new Date().toISOString()
+            })
+            .eq('id', orderId);
+
+        if (error) throw error;
+    },
+
+    /**
+     * Clear table and complete order (used if table wasn't cleared during payment)
+     */
+    async completeAndClearTable(order: Order): Promise<void> {
+        const now = new Date().toISOString();
+
+        if (order.table_id) {
+            await this.forceClearTable(order.table_id);
+        }
+
+        const { error } = await supabase
+            .from('orders')
+            .update({
+                completed_at: now,
+                closed_at: now,
+                status: 'closed',
+                last_updated: now,
+            })
+            .eq('id', order.id);
+
+        if (error) throw error;
+    },
+
+    /**
+     * Proactively cleans up any active sessions for a table.
+     * Use this before creating a new session or during order closure.
+     */
+    async forceClearTable(tableId: string): Promise<void> {
+        const now = new Date().toISOString();
+
+        // 1. Deactivate all active sessions for this table
+        await supabase
+            .from('table_sessions')
+            .update({ is_active: false, closed_at: now })
+            .eq('table_id', tableId)
+            .eq('is_active', true);
+
+        // 2. Reset the table status
+        await supabase
+            .from('tables')
+            .update({
+                status: 'available',
+                current_order_id: null,
+                current_session_id: null,
+                last_updated: now
+            })
+            .eq('id', tableId);
+
+        console.log(`Force cleared table ${tableId}`);
+    },
+    /**
+     * Fetch active order summary for a table
+     */
+    async fetchTableOrderSummary(tableId: string): Promise<Order | null> {
+        const { data, error } = await supabase
+            .from('orders')
+            .select(`
+                *,
+                order_items (
+                    id, quantity, price,
+                    menu_item:menu (name)
+                )
+            `)
+            .eq('table_id', tableId)
+            .is('closed_at', null)
+            .neq('status', 'cancelled')
+            .maybeSingle();
+
+        if (error) throw error;
+        return data as Order | null;
+    },
+};

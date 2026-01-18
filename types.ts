@@ -1,5 +1,5 @@
 
-export type Role = 'owner' | 'manager' | 'waiter' | 'kitchen';
+export type Role = 'owner' | 'admin' | 'manager' | 'waiter' | 'kitchen';
 
 export interface UserProfile {
   id: string;
@@ -63,6 +63,10 @@ export interface Order {
   payment_method?: string;
   waiter?: { full_name: string };
   last_updated?: string;
+  subtotal_amount?: number;
+  vat_amount?: number;
+  vat_rate?: number;
+  qr_verification_code?: string;
 }
 
 export interface OrderItem {
@@ -158,6 +162,8 @@ export interface StaffPerformanceDaily {
   orders_completed: number;
   avg_service_time?: number;
   tips_collected?: number;
+  total_shortage?: number;
+  shortages_count?: number;
   staff?: { full_name: string; role: string };
 }
 

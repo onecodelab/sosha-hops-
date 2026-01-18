@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { supabase } from '../supabase';
 import { useMenu } from '../hooks/useMenu';
-import { 
+import {
   ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Cell
 } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle, Badge, cn, Button } from '../components/ui';
@@ -22,7 +22,7 @@ const MenuAnalytics: React.FC = () => {
   const [period, setPeriod] = useState<'7d' | '30d' | '90d'>('30d');
   const { menuItems, loading: menuLoading } = useMenu(false);
   const [analyticsData, setAnalyticsData] = useState<MenuStat[]>([]);
-  const [categoryBreakdown, setCategoryBreakdown] = useState<{name: string, percentage: number, revenue: number}[]>([]);
+  const [categoryBreakdown, setCategoryBreakdown] = useState<{ name: string, percentage: number, revenue: number }[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -53,7 +53,7 @@ const MenuAnalytics: React.FC = () => {
           )
         `)
         .gte('orders.created_at', startDate.toISOString())
-        .in('orders.status', ['completed', 'paid', 'served']);
+        .in('orders.status', ['closed', 'paid', 'served']);
 
       if (error) throw error;
 
@@ -142,8 +142,8 @@ const MenuAnalytics: React.FC = () => {
   };
 
   return (
-    <DashboardLayout 
-      title="Menu Analytics" 
+    <DashboardLayout
+      title="Menu Analytics"
       subtitle="Optimize your menu performance and profitability"
       actions={
         <div className="flex bg-card/50 p-1 rounded-xl border border-border backdrop-blur-md">
@@ -153,8 +153,8 @@ const MenuAnalytics: React.FC = () => {
               onClick={() => setPeriod(p)}
               className={cn(
                 "px-4 py-1.5 text-xs font-bold rounded-lg transition-all",
-                period === p 
-                  ? "bg-primary text-black shadow-lg" 
+                period === p
+                  ? "bg-primary text-black shadow-lg"
                   : "text-muted hover:text-foreground"
               )}
             >
@@ -165,10 +165,10 @@ const MenuAnalytics: React.FC = () => {
       }
     >
       <div className="space-y-8 animate-in fade-in duration-500">
-        
+
         {/* Top Section: Table & Breakdown */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          
+
           {/* Top Performers Table */}
           <Card className="lg:col-span-2 bg-[#09090b] border-border">
             <CardHeader className="flex flex-row items-center justify-between border-b border-border pb-4">
@@ -208,9 +208,9 @@ const MenuAnalytics: React.FC = () => {
                           <td className="px-6 py-4 text-center">
                             <span className={cn(
                               "px-2 py-1 rounded text-[10px] font-bold uppercase border",
-                              item.quadrant === 'Star' ? "bg-green-500/10 text-green-500 border-green-500/20" : 
-                              item.quadrant === 'Plowhorse' ? "bg-yellow-500/10 text-yellow-500 border-yellow-500/20" : 
-                              "bg-purple-500/10 text-purple-500 border-purple-500/20"
+                              item.quadrant === 'Star' ? "bg-green-500/10 text-green-500 border-green-500/20" :
+                                item.quadrant === 'Plowhorse' ? "bg-yellow-500/10 text-yellow-500 border-yellow-500/20" :
+                                  "bg-purple-500/10 text-purple-500 border-purple-500/20"
                             )}>
                               {item.quadrant}
                             </span>
@@ -233,11 +233,11 @@ const MenuAnalytics: React.FC = () => {
             </CardHeader>
             <CardContent className="space-y-6">
               {loading ? (
-                 <div className="space-y-4 py-4">
-                    {[1,2,3].map(i => <div key={i} className="h-12 bg-white/5 rounded-xl animate-pulse" />)}
-                 </div>
+                <div className="space-y-4 py-4">
+                  {[1, 2, 3].map(i => <div key={i} className="h-12 bg-white/5 rounded-xl animate-pulse" />)}
+                </div>
               ) : categoryBreakdown.length === 0 ? (
-                 <p className="text-center text-muted py-10 text-sm italic">Insufficient sales data</p>
+                <p className="text-center text-muted py-10 text-sm italic">Insufficient sales data</p>
               ) : (
                 categoryBreakdown.map((cat) => (
                   <div key={cat.name} className="space-y-2">
@@ -246,8 +246,8 @@ const MenuAnalytics: React.FC = () => {
                       <span className="font-bold text-white">{cat.percentage.toFixed(1)}%</span>
                     </div>
                     <div className="h-2 w-full bg-gray-900 rounded-full overflow-hidden border border-white/5">
-                      <div 
-                        className="h-full bg-primary rounded-full transition-all duration-1000 shadow-[0_0_10px_rgba(255,184,0,0.3)]" 
+                      <div
+                        className="h-full bg-primary rounded-full transition-all duration-1000 shadow-[0_0_10px_rgba(255,184,0,0.3)]"
                         style={{ width: `${cat.percentage}%` }}
                       />
                     </div>
@@ -269,10 +269,10 @@ const MenuAnalytics: React.FC = () => {
               <div className="group relative">
                 <Info className="w-5 h-5 text-muted hover:text-white cursor-help transition-colors" />
                 <div className="absolute right-0 top-full mt-2 w-64 bg-[#1a1a1a] border border-border p-4 rounded-xl shadow-2xl z-50 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity text-xs space-y-2">
-                   <p><strong className="text-green-400">Stars:</strong> High popularity & High revenue</p>
-                   <p><strong className="text-yellow-400">Plowhorses:</strong> High popularity but Lower revenue</p>
-                   <p><strong className="text-purple-400">Puzzles:</strong> Low popularity but High revenue</p>
-                   <p><strong className="text-red-400">Dogs:</strong> Low popularity & Low revenue</p>
+                  <p><strong className="text-green-400">Stars:</strong> High popularity & High revenue</p>
+                  <p><strong className="text-yellow-400">Plowhorses:</strong> High popularity but Lower revenue</p>
+                  <p><strong className="text-purple-400">Puzzles:</strong> Low popularity but High revenue</p>
+                  <p><strong className="text-red-400">Dogs:</strong> Low popularity & Low revenue</p>
                 </div>
               </div>
             </div>
@@ -287,21 +287,21 @@ const MenuAnalytics: React.FC = () => {
                 <ResponsiveContainer width="100%" height="100%">
                   <ScatterChart margin={{ top: 20, right: 40, bottom: 40, left: 40 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#27272a" />
-                    <XAxis 
-                      type="number" 
-                      dataKey="x" 
-                      name="Popularity" 
-                      stroke="#71717a" 
-                      label={{ value: 'Popularity (Quantity Sold)', position: 'bottom', fill: '#71717a', fontSize: 12, dy: 10 }} 
+                    <XAxis
+                      type="number"
+                      dataKey="x"
+                      name="Popularity"
+                      stroke="#71717a"
+                      label={{ value: 'Popularity (Quantity Sold)', position: 'bottom', fill: '#71717a', fontSize: 12, dy: 10 }}
                     />
-                    <YAxis 
-                      type="number" 
-                      dataKey="y" 
-                      name="Revenue" 
-                      stroke="#71717a" 
-                      label={{ value: 'Revenue (ETB)', angle: -90, position: 'left', fill: '#71717a', fontSize: 12, dx: -20 }} 
+                    <YAxis
+                      type="number"
+                      dataKey="y"
+                      name="Revenue"
+                      stroke="#71717a"
+                      label={{ value: 'Revenue (ETB)', angle: -90, position: 'left', fill: '#71717a', fontSize: 12, dx: -20 }}
                     />
-                    <RechartsTooltip 
+                    <RechartsTooltip
                       cursor={{ strokeDasharray: '3 3' }}
                       content={({ active, payload }) => {
                         if (active && payload && payload.length) {
@@ -322,9 +322,9 @@ const MenuAnalytics: React.FC = () => {
                     />
                     <Scatter name="Items" data={scatterData}>
                       {scatterData.map((entry, index) => (
-                        <Cell 
-                          key={`cell-${index}`} 
-                          fill={getQuadrantColor(entry.quadrant)} 
+                        <Cell
+                          key={`cell-${index}`}
+                          fill={getQuadrantColor(entry.quadrant)}
                           className="drop-shadow-[0_0_8px_rgba(255,255,255,0.1)]"
                         />
                       ))}
@@ -332,14 +332,14 @@ const MenuAnalytics: React.FC = () => {
                   </ScatterChart>
                 </ResponsiveContainer>
               )}
-              
+
               {/* Overlay Quadrant Labels */}
               {!loading && scatterData.length > 0 && (
                 <div className="absolute inset-0 pointer-events-none grid grid-cols-2 grid-rows-2 p-14 opacity-20">
-                   <div className="flex items-start justify-start p-4"><span className="text-xs font-bold text-purple-400 border border-purple-400/30 px-2 py-1 rounded">PUZZLES</span></div>
-                   <div className="flex items-start justify-end p-4"><span className="text-xs font-bold text-green-400 border border-green-400/30 px-2 py-1 rounded">STARS</span></div>
-                   <div className="flex items-end justify-start p-4"><span className="text-xs font-bold text-red-400 border border-red-400/30 px-2 py-1 rounded">DOGS</span></div>
-                   <div className="flex items-end justify-end p-4"><span className="text-xs font-bold text-yellow-400 border border-yellow-400/30 px-2 py-1 rounded">PLOWHORSES</span></div>
+                  <div className="flex items-start justify-start p-4"><span className="text-xs font-bold text-purple-400 border border-purple-400/30 px-2 py-1 rounded">PUZZLES</span></div>
+                  <div className="flex items-start justify-end p-4"><span className="text-xs font-bold text-green-400 border border-green-400/30 px-2 py-1 rounded">STARS</span></div>
+                  <div className="flex items-end justify-start p-4"><span className="text-xs font-bold text-red-400 border border-red-400/30 px-2 py-1 rounded">DOGS</span></div>
+                  <div className="flex items-end justify-end p-4"><span className="text-xs font-bold text-yellow-400 border border-yellow-400/30 px-2 py-1 rounded">PLOWHORSES</span></div>
                 </div>
               )}
             </div>

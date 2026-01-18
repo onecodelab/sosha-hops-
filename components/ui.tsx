@@ -1,4 +1,3 @@
-
 import React, { ButtonHTMLAttributes, InputHTMLAttributes } from 'react';
 import { Loader2 } from 'lucide-react';
 
@@ -7,36 +6,53 @@ export function cn(...classes: (string | undefined | null | false)[]) {
   return classes.filter(Boolean).join(' ');
 }
 
+// --- Responsive Helpers ---
+export const MobileView: React.FC<{ children: React.ReactNode; className?: string }> = ({ children, className }) => (
+  <div className={cn("block md:hidden", className)}>{children}</div>
+);
+
+export const DesktopView: React.FC<{ children: React.ReactNode; className?: string }> = ({ children, className }) => (
+  <div className={cn("hidden md:block", className)}>{children}</div>
+);
+
 // --- Button ---
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'secondary' | 'destructive' | 'outline' | 'ghost';
+  variant?: 'primary' | 'secondary' | 'destructive' | 'outline' | 'ghost' | 'glass';
   size?: 'default' | 'sm' | 'lg' | 'icon';
   isLoading?: boolean;
 }
 
-export const Button: React.FC<ButtonProps> = ({ 
-  className, variant = 'primary', size = 'default', isLoading, children, disabled, ...props 
+export const Button: React.FC<ButtonProps> = ({
+  className, variant = 'primary', size = 'default', isLoading, children, disabled, ...props
 }) => {
-  const baseStyles = "inline-flex items-center justify-center rounded-lg text-sm font-medium transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-50 disabled:pointer-events-none";
-  
+  const baseStyles = "inline-flex items-center justify-center rounded-xl font-medium transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 disabled:opacity-50 disabled:pointer-events-none active:scale-95";
+
   const variants = {
-    // Updated primary to use var(--primary-glow) for theme-aware shadows
-    primary: "bg-primary text-black hover:bg-primary/90 shadow-[0_4px_20px_var(--primary-glow)] hover:shadow-[0_8px_25px_var(--primary-glow)] hover:-translate-y-0.5",
-    secondary: "bg-gray-200 text-gray-900 hover:bg-gray-300 dark:bg-white/10 dark:text-white dark:hover:bg-white/20 dark:border dark:border-white/5",
-    destructive: "bg-red-500/10 text-red-600 border border-red-500/20 hover:bg-red-500/20 dark:bg-red-900/50 dark:text-red-200 dark:border-red-900",
-    outline: "border border-border bg-transparent hover:bg-black/5 dark:hover:bg-white/5 text-foreground",
-    ghost: "hover:bg-black/5 dark:hover:bg-white/5 text-muted-foreground hover:text-foreground",
+    // 2026 Sleek: Gradient + Inner Glow + Colored Shadow
+    primary: "bg-gradient-to-br from-primary via-primary to-primary-hover text-black font-bold shadow-[0_0_20px_-5px_var(--primary-glow)] hover:shadow-[0_0_30px_-5px_var(--primary-glow)] border border-white/10 relative overflow-hidden after:absolute after:inset-0 after:bg-white/20 after:opacity-0 hover:after:opacity-100 after:transition-opacity",
+
+    // Vibrant secondary
+    secondary: "bg-secondary text-black font-bold hover:bg-secondary-hover shadow-[0_0_15px_-3px_var(--bubble-2)]",
+
+    destructive: "bg-red-500/10 text-red-500 border border-red-500/20 hover:bg-red-500/20 shadow-sm",
+
+    // Glassy Outline
+    outline: "border border-white/10 bg-white/5 hover:bg-white/10 text-foreground backdrop-blur-sm",
+
+    ghost: "hover:bg-white/5 text-muted-foreground hover:text-foreground",
+
+    glass: "bg-white/5 backdrop-blur-md border border-white/10 text-foreground hover:bg-white/10 shadow-lg"
   };
 
   const sizes = {
-    default: "h-11 px-4 py-2",
-    sm: "h-9 rounded-md px-3",
-    lg: "h-11 rounded-md px-8",
-    icon: "h-10 w-10",
+    default: "h-11 px-5 py-2 text-sm",
+    sm: "h-9 rounded-lg px-3 text-xs",
+    lg: "h-12 rounded-2xl px-8 text-base",
+    icon: "h-11 w-11",
   };
 
   return (
-    <button 
+    <button
       className={cn(baseStyles, variants[variant], sizes[size], className)}
       disabled={disabled || isLoading}
       {...props}
@@ -48,13 +64,13 @@ export const Button: React.FC<ButtonProps> = ({
 };
 
 // --- Input ---
-interface InputProps extends InputHTMLAttributes<HTMLInputElement> {}
+interface InputProps extends InputHTMLAttributes<HTMLInputElement> { }
 
 export const Input: React.FC<InputProps> = ({ className, ...props }) => {
   return (
     <input
       className={cn(
-        "flex h-11 w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-50 transition-colors",
+        "flex h-11 w-full rounded-xl border border-white/10 bg-[var(--input-bg)] px-3 py-2 text-sm text-foreground shadow-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 disabled:cursor-not-allowed disabled:opacity-50 transition-all duration-300 hover:border-white/20",
         className
       )}
       {...props}
@@ -65,7 +81,7 @@ export const Input: React.FC<InputProps> = ({ className, ...props }) => {
 // --- Card ---
 export const Card: React.FC<React.HTMLAttributes<HTMLDivElement>> = ({ className, children, ...props }) => {
   return (
-    <div className={cn("rounded-xl border border-border bg-card text-foreground shadow-sm transition-colors", className)} {...props}>
+    <div className={cn("rounded-2xl border border-white/5 bg-card/80 backdrop-blur-xl text-foreground shadow-lg transition-colors hover:border-white/10", className)} {...props}>
       {children}
     </div>
   );
@@ -76,7 +92,7 @@ export const CardHeader: React.FC<React.HTMLAttributes<HTMLDivElement>> = ({ cla
 };
 
 export const CardTitle: React.FC<React.HTMLAttributes<HTMLHeadingElement>> = ({ className, children, ...props }) => {
-  return <h3 className={cn("text-lg font-semibold leading-none tracking-tight", className)} {...props}>{children}</h3>;
+  return <h3 className={cn("text-lg font-bold leading-none tracking-tight", className)} {...props}>{children}</h3>;
 };
 
 export const CardContent: React.FC<React.HTMLAttributes<HTMLDivElement>> = ({ className, children, ...props }) => {
@@ -85,21 +101,22 @@ export const CardContent: React.FC<React.HTMLAttributes<HTMLDivElement>> = ({ cl
 
 // --- Badge ---
 interface BadgeProps extends React.HTMLAttributes<HTMLDivElement> {
-  variant?: 'default' | 'success' | 'warning' | 'destructive' | 'outline' | 'secondary';
+  variant?: 'default' | 'success' | 'warning' | 'destructive' | 'outline' | 'secondary' | 'glass';
 }
 
 export const Badge: React.FC<BadgeProps> = ({ className, variant = 'default', ...props }) => {
   const variants = {
-    default: "bg-primary text-black",
-    success: "bg-green-500/15 text-green-600 dark:text-green-400 border border-green-500/20",
-    warning: "bg-yellow-500/15 text-yellow-600 dark:text-yellow-400 border border-yellow-500/20",
-    destructive: "bg-red-500/15 text-red-600 dark:text-red-400 border border-red-500/20",
+    default: "bg-primary text-black shadow-[0_0_10px_-2px_var(--primary-glow)]",
+    success: "bg-green-500/15 text-green-500 border border-green-500/20",
+    warning: "bg-yellow-500/15 text-yellow-500 border border-yellow-500/20",
+    destructive: "bg-red-500/15 text-red-500 border border-red-500/20",
     outline: "text-muted-foreground border border-border",
-    secondary: "bg-black/5 dark:bg-white/10 text-muted-foreground",
+    secondary: "bg-white/5 text-muted-foreground",
+    glass: "bg-white/5 backdrop-blur-md border border-white/10 text-foreground"
   };
-  
+
   return (
-    <div className={cn("inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2", variants[variant], className)} {...props} />
+    <div className={cn("inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-bold transition-colors uppercase tracking-wider", variants[variant], className)} {...props} />
   );
 };
 
@@ -115,15 +132,16 @@ interface DialogProps {
 export const Dialog: React.FC<DialogProps> = ({ isOpen, onClose, title, children, maxWidth = "max-w-lg" }) => {
   if (!isOpen) return null;
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-      <div className={cn("w-full rounded-[2rem] bg-card border border-border shadow-2xl animate-in fade-in zoom-in duration-200 overflow-hidden flex flex-col", maxWidth)}>
-        <div className="flex items-center justify-between px-8 py-6 border-b border-border bg-black/20">
-          <h2 className="text-xl font-bold text-white tracking-tight">{title}</h2>
-          <button onClick={onClose} className="p-2 rounded-full hover:bg-white/10 text-muted hover:text-white transition-colors">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-lg p-4 animate-in fade-in duration-300">
+      <div className={cn("w-full max-h-[90vh] rounded-[2rem] bg-card/95 border border-white/10 shadow-2xl animate-in zoom-in-95 duration-300 overflow-hidden flex flex-col relative", maxWidth)}>
+        {/* Glass Header */}
+        <div className="flex items-center justify-between px-8 py-5 border-b border-white/5 bg-white/5 backdrop-blur-md">
+          <h2 className="text-lg font-black text-foreground tracking-tight uppercase">{title}</h2>
+          <button onClick={onClose} className="p-2 rounded-full hover:bg-white/10 text-muted hover:text-foreground transition-all duration-300 hover:rotate-90">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
           </button>
         </div>
-        <div className="flex-1 overflow-hidden">
+        <div className="flex-1 overflow-y-auto custom-scrollbar">
           {children}
         </div>
       </div>
@@ -139,15 +157,15 @@ export const showToast = (message: string, type: 'success' | 'error' | 'warning'
   if (!container) return;
 
   const toast = document.createElement('div');
-  
+
   let bgClass = 'bg-green-600';
   if (type === 'error') bgClass = 'bg-red-600';
   if (type === 'warning') bgClass = 'bg-yellow-600';
-  
-  toast.className = `pointer-events-auto flex items-center w-full max-w-xs p-4 rounded-lg shadow-lg text-white ${bgClass} animate-in slide-in-from-right fade-in duration-300 mb-2`;
-  
+
+  toast.className = `pointer-events-auto flex items-center w-full max-w-xs p-4 rounded-xl shadow-2xl text-white ${bgClass} animate-in slide-in-from-right fade-in duration-300 mb-2 border border-white/10 backdrop-blur-md`;
+
   toast.innerHTML = `
-    <div class="text-sm font-normal">${message}</div>
+    <div class="text-sm font-bold tracking-wide">${message}</div>
   `;
 
   container.appendChild(toast);
