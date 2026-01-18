@@ -5,7 +5,7 @@ import { DashboardLayout } from '../components/DashboardLayout';
 import { SoshaCard, SoshaCardTitle } from '../components/SoshaCard';
 import {
    TrendingUp, Users, ShoppingBag, AlertTriangle,
-   RefreshCw, DollarSign, Activity, ClipboardList, List, Eye, Filter, User, ShieldCheck
+   RefreshCw, DollarSign, Activity, ClipboardList, List, Eye, Filter, User, ShieldCheck, Search, Calendar
 } from 'lucide-react';
 import { cn, Badge, Button, showToast } from '../components/ui';
 import { supabase } from '../supabase';
@@ -31,17 +31,29 @@ const AdminDashboard: React.FC = () => {
    const [transactionFilter, setTransactionFilter] = useState<'all' | 'cash' | 'digital'>('all');
    const [selectedDetailsOrder, setSelectedDetailsOrder] = useState<Order | null>(null);
    const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
+   const [searchQuery, setSearchQuery] = useState('');
+   const [dateFilter, setDateFilter] = useState<'today' | 'yesterday' | 'week' | 'month'>('today');
 
    const syncTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
    const fetchDashboardData = useCallback(async () => {
       try {
-         const today = new Date().toISOString().split('T')[0];
+         let dateLimit = new Date();
+         if (dateFilter === 'yesterday') {
+            dateLimit.setDate(dateLimit.getDate() - 1);
+         } else if (dateFilter === 'week') {
+            dateLimit.setDate(dateLimit.getDate() - 7);
+         } else if (dateFilter === 'month') {
+            dateLimit.setMonth(dateLimit.getMonth() - 1);
+         }
+         const startDate = dateFilter === 'today' || dateFilter === 'yesterday'
+            ? dateLimit.toISOString().split('T')[0]
+            : dateLimit.toISOString().split('T')[0];
 
          const { data: rev } = await supabase
             .from('orders')
             .select('total_amount')
-            .gte('created_at', `${today}T00:00:00`)
+            .gte('created_at', `${new Date().toISOString().split('T')[0]}T00:00:00`)
             .in('status', ['closed', 'paid', 'served']);
 
          const { data: active, error: activeErr } = await supabase
@@ -65,6 +77,18 @@ const AdminDashboard: React.FC = () => {
 
          // Updated query to fetch closed_by details with robust fallback
          let feedData = [];
+         const queryStart = dateFilter === 'today'
+            ? `${new Date().toISOString().split('T')[0]}T00:00:00`
+            : dateFilter === 'yesterday'
+               ? `${new Date(Date.now() - 86400000).toISOString().split('T')[0]}T00:00:00`
+               : dateFilter === 'week'
+                  ? `${new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0]}T00:00:00`
+                  : `${new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0]}T00:00:00`;
+
+         const queryEnd = dateFilter === 'yesterday'
+            ? `${new Date().toISOString().split('T')[0]}T00:00:00`
+            : `${new Date(Date.now() + 86400000).toISOString().split('T')[0]}T00:00:00`;
+
          try {
             const { data: feed, error: feedErr } = await supabase
                .from('orders')
@@ -78,9 +102,11 @@ const AdminDashboard: React.FC = () => {
                       price,
                       menu_item:menu (name)
                    )
-               `)
+                `)
+               .gte('created_at', queryStart)
+               .lt('created_at', queryEnd)
                .order('created_at', { ascending: false })
-               .limit(20);
+               .limit(searchQuery ? 100 : 50);
 
             if (feedErr) throw feedErr;
             feedData = feed || [];
@@ -89,17 +115,19 @@ const AdminDashboard: React.FC = () => {
             const { data: simpleFeed } = await supabase
                .from('orders')
                .select(`
-                  *, 
-                  waiter:profiles!orders_waiter_id_fkey (full_name, role),
-                  order_items (
-                    id,
-                    quantity,
-                    price,
-                    menu_item:menu (name)
-                  )
-               `)
+                   *, 
+                   waiter:profiles!orders_waiter_id_fkey (full_name, role),
+                   order_items (
+                     id,
+                     quantity,
+                     price,
+                     menu_item:menu (name)
+                   )
+                `)
+               .gte('created_at', queryStart)
+               .lt('created_at', queryEnd)
                .order('created_at', { ascending: false })
-               .limit(20);
+               .limit(searchQuery ? 100 : 50);
             feedData = simpleFeed || [];
          }
 
@@ -134,7 +162,7 @@ const AdminDashboard: React.FC = () => {
          supabase.removeChannel(sub);
          if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
       };
-   }, [debouncedSync]);
+   }, [debouncedSync, dateFilter]);
 
    const handleOrderAction = async (action: string, orderId: string) => {
       if (action === 'served') {
@@ -160,13 +188,27 @@ const AdminDashboard: React.FC = () => {
    }, [activeOrders]);
 
    const filteredAuditLog = useMemo(() => {
-      if (transactionFilter === 'all') return allRecentOrders;
-      return allRecentOrders.filter(o => {
-         if (transactionFilter === 'cash') return o.payment_method === 'cash';
-         if (transactionFilter === 'digital') return o.payment_method && o.payment_method !== 'cash';
-         return true;
-      });
-   }, [allRecentOrders, transactionFilter]);
+      let filtered = allRecentOrders;
+
+      if (transactionFilter !== 'all') {
+         filtered = filtered.filter(o => {
+            if (transactionFilter === 'cash') return o.payment_method === 'cash';
+            if (transactionFilter === 'digital') return o.payment_method && o.payment_method !== 'cash';
+            return true;
+         });
+      }
+
+      if (searchQuery) {
+         const query = searchQuery.toLowerCase();
+         filtered = filtered.filter(o =>
+            o.order_number?.toLowerCase().includes(query) ||
+            o.table_number?.toLowerCase().includes(query) ||
+            o.id.toLowerCase().includes(query)
+         );
+      }
+
+      return filtered;
+   }, [allRecentOrders, transactionFilter, searchQuery]);
 
    const getPaymentIcon = (method?: string) => {
       if (method === 'cash') return <DollarSign className="w-3 h-3 text-green-500" />;
@@ -259,30 +301,60 @@ const AdminDashboard: React.FC = () => {
                {/* Right Col: Transaction Audit (Takes 8 cols) */}
                <div className="lg:col-span-8 flex flex-col min-h-0">
                   <SoshaCard className="flex-1 flex flex-col min-h-0 bg-transparent border-0 p-0" indicatorColor="purple">
-                     <div className="flex items-center justify-between mb-2 px-1 shrink-0">
+                     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-2 px-1 gap-2 shrink-0">
                         <SoshaCardTitle className="flex items-center gap-2 text-xs uppercase tracking-widest opacity-70">
                            <ClipboardList className="w-3 h-3" /> Transaction Log
                         </SoshaCardTitle>
 
-                        <div className="flex gap-1">
-                           {(['all', 'cash', 'digital'] as const).map((filter) => (
-                              <button
-                                 key={filter}
-                                 onClick={() => setTransactionFilter(filter)}
-                                 className={cn(
-                                    "px-3 py-0.5 text-[9px] font-black uppercase tracking-wider rounded-sm transition-all border border-transparent",
-                                    transactionFilter === filter
-                                       ? "bg-purple-900/50 text-purple-200 border-purple-500/20"
-                                       : "text-gray-600 hover:text-gray-400"
-                                 )}
-                              >
-                                 {filter}
-                              </button>
-                           ))}
+                        <div className="flex flex-wrap items-center gap-2">
+                           {/* Search Bar */}
+                           <div className="relative group">
+                              <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-500 group-focus-within:text-primary transition-colors" />
+                              <input
+                                 type="text"
+                                 placeholder="Search..."
+                                 value={searchQuery}
+                                 onChange={(e) => setSearchQuery(e.target.value)}
+                                 className="bg-black/40 border border-white/10 rounded-md pl-7 pr-2 py-1 text-[10px] text-white focus:outline-none focus:border-primary/50 transition-all w-32"
+                              />
+                           </div>
+
+                           {/* Date Filter */}
+                           <div className="flex bg-black/40 rounded-md p-0.5 border border-white/5">
+                              {(['today', 'yesterday', 'week'] as const).map((d) => (
+                                 <button
+                                    key={d}
+                                    onClick={() => setDateFilter(d)}
+                                    className={cn(
+                                       "px-2 py-0.5 text-[8px] font-black uppercase tracking-wider rounded-sm transition-all",
+                                       dateFilter === d ? "bg-white/10 text-white" : "text-gray-500 hover:text-gray-300"
+                                    )}
+                                 >
+                                    {d}
+                                 </button>
+                              ))}
+                           </div>
+
+                           <div className="flex gap-1 border-l border-white/10 pl-2">
+                              {(['all', 'cash', 'digital'] as const).map((filter) => (
+                                 <button
+                                    key={filter}
+                                    onClick={() => setTransactionFilter(filter)}
+                                    className={cn(
+                                       "px-3 py-0.5 text-[9px] font-black uppercase tracking-wider rounded-sm transition-all border border-transparent",
+                                       transactionFilter === filter
+                                          ? "bg-purple-900/50 text-purple-200 border-purple-500/20"
+                                          : "text-gray-600 hover:text-gray-400"
+                                    )}
+                                 >
+                                    {filter}
+                                 </button>
+                              ))}
+                           </div>
                         </div>
                      </div>
 
-                     <div className="flex-1 overflow-y-auto pr-1 custom-scrollbar border border-white/5 rounded-lg bg-black/20">
+                     <div className="flex-1 overflow-y-auto pr-1 custom-scrollbar border border-white/5 rounded-lg bg-black/20 max-h-[calc(100vh-320px)]">
                         <table className="w-full text-left border-collapse">
                            <thead className="sticky top-0 bg-black/90 text-[9px] font-black uppercase text-gray-600 tracking-wider z-10 backdrop-blur-sm">
                               <tr>
