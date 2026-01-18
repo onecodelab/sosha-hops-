@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../supabase';
-import { Dialog, Button, Input, cn, showToast } from './ui';
+import { Dialog, Button, Input, cn, showToast, Badge } from './ui';
 import { Info, BookOpen, Loader2, ListTree, Lock } from 'lucide-react';
 import { MenuItem, Category } from '../types';
 import { RecipeEditor } from './RecipeEditor';
@@ -13,6 +13,7 @@ interface MenuEditorModalProps {
   onClose: () => void;
   onSuccess: () => void;
   editingItem?: MenuItem | null;
+  refreshParent?: () => void;
 }
 
 export const MenuEditorModal: React.FC<MenuEditorModalProps> = ({
@@ -32,6 +33,7 @@ export const MenuEditorModal: React.FC<MenuEditorModalProps> = ({
   const [price, setPrice] = useState<number>(0);
   const [imageUrl, setImageUrl] = useState('');
   const [isAvailable, setIsAvailable] = useState(true);
+  const [recipeCost, setRecipeCost] = useState(0);
 
   // Initialize state when modal opens or editingItem changes
   useEffect(() => {
@@ -48,6 +50,7 @@ export const MenuEditorModal: React.FC<MenuEditorModalProps> = ({
           setPrice(editingItem.price);
           setImageUrl(editingItem.image_url || '');
           setIsAvailable(editingItem.is_available);
+          fetchRecipeCost(editingItem.id);
         } else {
           setInternalItem(null);
           setName('');
@@ -55,6 +58,7 @@ export const MenuEditorModal: React.FC<MenuEditorModalProps> = ({
           setPrice(0);
           setImageUrl('');
           setIsAvailable(true);
+          setRecipeCost(0);
         }
       }
       wasOpen.current = true;
@@ -62,6 +66,27 @@ export const MenuEditorModal: React.FC<MenuEditorModalProps> = ({
       wasOpen.current = false;
     }
   }, [isOpen, editingItem]);
+
+  const fetchRecipeCost = async (itemId: string) => {
+    try {
+      const { data: recipe } = await supabase.from('recipes').select('id').eq('menu_item_id', itemId).maybeSingle();
+      if (!recipe) return;
+
+      const { data: ingredients } = await supabase
+        .from('recipe_ingredients')
+        .select('quantity_needed, ingredient:ingredients(cost_per_unit)')
+        .eq('recipe_id', recipe.id);
+
+      if (ingredients) {
+        const cost = ingredients.reduce((sum: number, m: any) =>
+          sum + (m.quantity_needed * (m.ingredient?.cost_per_unit || 0)), 0
+        );
+        setRecipeCost(cost);
+      }
+    } catch (err) {
+      console.error("Cost fetch error:", err);
+    }
+  };
 
   const fetchCategories = async () => {
     const { data } = await supabase.from('categories').select('*').order('name');
@@ -113,6 +138,8 @@ export const MenuEditorModal: React.FC<MenuEditorModalProps> = ({
   };
 
   const hasItem = !!internalItem;
+
+  const marginPercent = price > 0 ? ((price - recipeCost) / price) * 100 : 0;
 
   return (
     <Dialog isOpen={isOpen} onClose={onClose} title={internalItem ? `Manage: ${internalItem.name}` : "Create New Dish"}>
@@ -170,7 +197,22 @@ export const MenuEditorModal: React.FC<MenuEditorModalProps> = ({
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Price (ETB)</label>
+                  <div className="flex items-center justify-between">
+                    <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Price (ETB)</label>
+                    {recipeCost > 0 && (
+                      <div className="flex items-center gap-1.5 animate-in fade-in slide-in-from-right-2 duration-500">
+                        <span className="text-[9px] text-gray-600 font-bold uppercase">Margin:</span>
+                        <Badge className={cn(
+                          "text-[9px] font-black h-4 px-1.5",
+                          marginPercent > 40 ? "bg-green-500/10 text-green-500 border-green-500/20" :
+                            marginPercent > 20 ? "bg-yellow-500/10 text-yellow-500 border-yellow-500/20" :
+                              "bg-red-500/10 text-red-500 border-red-500/20"
+                        )}>
+                          {marginPercent.toFixed(0)}%
+                        </Badge>
+                      </div>
+                    )}
+                  </div>
                   <RoleGuard
                     allowedRoles={['owner', 'admin']}
                     fallback={
@@ -181,12 +223,19 @@ export const MenuEditorModal: React.FC<MenuEditorModalProps> = ({
                       </div>
                     }
                   >
-                    <Input
-                      type="number"
-                      value={price}
-                      onChange={e => setPrice(parseFloat(e.target.value) || 0)}
-                      className="font-mono text-primary font-bold bg-black/40 border-gray-700"
-                    />
+                    <div className="relative group">
+                      <Input
+                        type="number"
+                        value={price}
+                        onChange={e => setPrice(parseFloat(e.target.value) || 0)}
+                        className="font-mono text-primary font-bold bg-black/40 border-gray-700 h-11 transition-all group-focus-within:border-primary/40"
+                      />
+                      {recipeCost > 0 && (
+                        <div className="absolute right-3 top-2.5 text-[8px] font-black text-gray-600 uppercase">
+                          Cost: ETB {recipeCost.toFixed(0)}
+                        </div>
+                      )}
+                    </div>
                   </RoleGuard>
                 </div>
               </div>

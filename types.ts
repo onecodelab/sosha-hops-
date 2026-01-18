@@ -79,6 +79,7 @@ export interface OrderItem {
   special_instructions?: string;
   menu_dish?: MenuDish;
   menu_item?: { name: string; category?: string };
+  out_of_stock_impact?: 'kills_dish' | 'disable_variant' | 'optional';
 }
 
 export interface TipsLog {

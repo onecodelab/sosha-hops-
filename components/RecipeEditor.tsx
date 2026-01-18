@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../supabase';
 import { MenuDish, Ingredient } from '../types';
-import { Input, Button, showToast, cn } from './ui';
+import { Input, Button, showToast, cn, Badge } from './ui';
 import { Search, Plus, Trash2, Save, Loader2, ChefHat, Info, BookOpen, X, AlertTriangle } from 'lucide-react';
 
 interface RecipeEditorProps {
@@ -15,13 +15,15 @@ interface LocalMapping {
   name: string;
   quantity_needed: number;
   unit_type: string;
+  cost_per_unit: number;
+  out_of_stock_impact: 'kills_dish' | 'disable_variant' | 'optional';
 }
 
 export const RecipeEditor: React.FC<RecipeEditorProps> = ({ dish, onSaved }) => {
   const [recipeId, setRecipeId] = useState<string | null>(null);
   const [allIngredients, setAllIngredients] = useState<Ingredient[]>([]);
   const [selectedMappings, setSelectedMappings] = useState<LocalMapping[]>([]);
-  
+
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -33,13 +35,13 @@ export const RecipeEditor: React.FC<RecipeEditorProps> = ({ dish, onSaved }) => 
       setLoading(true);
       setErrorState(null);
       try {
-        // 1. Fetch master ingredient names and units
+        // 1. Fetch master ingredient names, units, and COSTS
         const { data: ingData, error: ingError } = await supabase
           .from('ingredients')
-          .select('id, name, unit_type')
+          .select('id, name, unit_type, cost_per_unit')
           .eq('is_active', true)
           .order('name');
-        
+
         if (ingError) throw new Error(`Ingredients Table Error: ${ingError.message}`);
         if (ingData) setAllIngredients(ingData as any[]);
 
@@ -64,7 +66,7 @@ export const RecipeEditor: React.FC<RecipeEditorProps> = ({ dish, onSaved }) => 
             })
             .select()
             .single();
-          
+
           if (createError) throw new Error(`Recipe Creation Failed: ${createError.message}`);
           currentId = newRecipe.id;
         }
@@ -78,7 +80,8 @@ export const RecipeEditor: React.FC<RecipeEditorProps> = ({ dish, onSaved }) => 
             ingredient_id,
             quantity_needed,
             unit_type,
-            ingredient:ingredients(name, unit_type)
+            out_of_stock_impact,
+            ingredient:ingredients(name, unit_type, cost_per_unit)
           `)
           .eq('recipe_id', currentId);
 
@@ -89,7 +92,9 @@ export const RecipeEditor: React.FC<RecipeEditorProps> = ({ dish, onSaved }) => 
             ingredient_id: m.ingredient_id,
             name: m.ingredient?.name || 'Unknown',
             quantity_needed: m.quantity_needed || 0,
-            unit_type: m.unit_type || m.ingredient?.unit_type || 'g'
+            unit_type: m.unit_type || m.ingredient?.unit_type || 'g',
+            cost_per_unit: m.ingredient?.cost_per_unit || 0,
+            out_of_stock_impact: m.out_of_stock_impact || 'kills_dish'
           })));
         }
       } catch (err: any) {
@@ -110,12 +115,14 @@ export const RecipeEditor: React.FC<RecipeEditorProps> = ({ dish, onSaved }) => 
       setSearchTerm('');
       return;
     }
-    
-    setSelectedMappings(prev => [...prev, { 
-      ingredient_id: item.id, 
-      name: item.name, 
-      quantity_needed: 1, 
-      unit_type: item.unit_type || 'g'
+
+    setSelectedMappings(prev => [...prev, {
+      ingredient_id: item.id,
+      name: item.name,
+      quantity_needed: 1,
+      unit_type: item.unit_type || 'g',
+      cost_per_unit: item.cost_per_unit || 0,
+      out_of_stock_impact: 'kills_dish'
     }]);
     setSearchTerm('');
   };
@@ -126,8 +133,14 @@ export const RecipeEditor: React.FC<RecipeEditorProps> = ({ dish, onSaved }) => 
 
   const updateQty = (id: string, val: string) => {
     const num = parseFloat(val) || 0;
-    setSelectedMappings(prev => prev.map(m => 
+    setSelectedMappings(prev => prev.map(m =>
       m.ingredient_id === id ? { ...m, quantity_needed: num } : m
+    ));
+  };
+
+  const updateImpact = (id: string, impact: any) => {
+    setSelectedMappings(prev => prev.map(m =>
+      m.ingredient_id === id ? { ...m, out_of_stock_impact: impact } : m
     ));
   };
 
@@ -147,7 +160,8 @@ export const RecipeEditor: React.FC<RecipeEditorProps> = ({ dish, onSaved }) => 
           recipe_id: recipeId,
           ingredient_id: m.ingredient_id,
           quantity_needed: m.quantity_needed,
-          unit_type: m.unit_type || 'g'
+          unit_type: m.unit_type || 'g',
+          out_of_stock_impact: m.out_of_stock_impact
         }));
 
         const { error: insertError } = await supabase
@@ -166,10 +180,19 @@ export const RecipeEditor: React.FC<RecipeEditorProps> = ({ dish, onSaved }) => 
     }
   };
 
+  const totalCost = useMemo(() => {
+    return selectedMappings.reduce((sum, m) => sum + (m.quantity_needed * m.cost_per_unit), 0);
+  }, [selectedMappings]);
+
+  const margin = useMemo(() => {
+    if (dish.price <= 0) return 0;
+    return ((dish.price - totalCost) / dish.price) * 100;
+  }, [dish.price, totalCost]);
+
   const filteredResults = useMemo(() => {
     if (!searchTerm.trim()) return [];
-    return allIngredients.filter(i => 
-      i.name.toLowerCase().includes(searchTerm.toLowerCase()) && 
+    return allIngredients.filter(i =>
+      i.name.toLowerCase().includes(searchTerm.toLowerCase()) &&
       !selectedMappings.some(m => m.ingredient_id === i.id)
     ).slice(0, 5);
   }, [allIngredients, searchTerm, selectedMappings]);
@@ -186,114 +209,153 @@ export const RecipeEditor: React.FC<RecipeEditorProps> = ({ dish, onSaved }) => 
   if (errorState) {
     return (
       <div className="py-20 flex flex-col items-center text-center px-6">
-         <div className="p-4 bg-red-500/10 rounded-full mb-4">
-            <AlertTriangle className="w-12 h-12 text-red-500" />
-         </div>
-         <h3 className="text-white font-bold text-lg mb-2">Schema Initialization Failed</h3>
-         <p className="text-xs text-gray-500 mb-6 max-w-xs">{errorState}</p>
-         <div className="bg-yellow-500/10 border border-yellow-500/20 p-4 rounded-xl text-left">
-            <p className="text-[10px] font-black text-yellow-500 uppercase tracking-widest mb-1">Recommended Fix:</p>
-            <p className="text-[10px] text-gray-400">Please run the <strong>Full System Blueprint SQL</strong> found in the Setup Guide to initialize your inventory and recipe tables.</p>
-         </div>
+        <div className="p-4 bg-red-500/10 rounded-full mb-4">
+          <AlertTriangle className="w-12 h-12 text-red-500" />
+        </div>
+        <h3 className="text-white font-bold text-lg mb-2">Schema Initialization Failed</h3>
+        <p className="text-xs text-gray-500 mb-6 max-w-xs">{errorState}</p>
+        <div className="bg-yellow-500/10 border border-yellow-500/20 p-4 rounded-xl text-left">
+          <p className="text-[10px] font-black text-yellow-500 uppercase tracking-widest mb-1">Recommended Fix:</p>
+          <p className="text-[10px] text-gray-400">Please run the <strong>Full System Blueprint SQL</strong> found in the Setup Guide to initialize your inventory and recipe tables.</p>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
-      
+
       {/* Search Header */}
       <div className="relative">
-         <Search className={cn(
-           "absolute left-4 top-3.5 h-4 w-4 transition-colors",
-           isFocused ? "text-primary" : "text-gray-500"
-         )} />
-         <Input 
-           placeholder="Search master ingredients..." 
-           value={searchTerm}
-           onChange={e => setSearchTerm(e.target.value)}
-           onFocus={() => setIsFocused(true)}
-           onBlur={() => setTimeout(() => setIsFocused(false), 200)}
-           className="pl-12 bg-black/40 border-white/10 h-12 rounded-2xl focus:border-primary/50"
-         />
-         
-         {isFocused && searchTerm && (
-           <div className="absolute z-50 top-full left-0 right-0 mt-2 bg-[#0A0A0A] border border-white/10 rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
-              {filteredResults.length > 0 ? (
-                filteredResults.map(item => (
-                  <button 
-                    key={item.id} 
-                    onMouseDown={(e) => { e.preventDefault(); addIngredient(item); }}
-                    className="w-full text-left px-5 py-4 hover:bg-primary/10 flex justify-between items-center transition-colors border-b border-white/5 last:border-0 group"
-                  >
-                    <div className="flex flex-col">
-                      <span className="text-sm font-bold text-white block group-hover:text-primary">{item.name}</span>
-                      <span className="text-[10px] text-gray-500 font-mono uppercase tracking-widest opacity-40">{item.unit_type} Spec</span>
-                    </div>
-                    <Plus className="w-4 h-4 text-primary opacity-40 group-hover:opacity-100" />
-                  </button>
-                ))
-              ) : (
-                <div className="px-5 py-8 text-center text-gray-500 text-xs italic">No matching ingredients.</div>
-              )}
-           </div>
-         )}
+        <Search className={cn(
+          "absolute left-4 top-3.5 h-4 w-4 transition-colors",
+          isFocused ? "text-primary" : "text-gray-500"
+        )} />
+        <Input
+          placeholder="Search master ingredients..."
+          value={searchTerm}
+          onChange={e => setSearchTerm(e.target.value)}
+          onFocus={() => setIsFocused(true)}
+          onBlur={() => setTimeout(() => setIsFocused(false), 200)}
+          className="pl-12 bg-black/40 border-white/10 h-12 rounded-2xl focus:border-primary/50"
+        />
+
+        {isFocused && searchTerm && (
+          <div className="absolute z-50 top-full left-0 right-0 mt-2 bg-[#0A0A0A] border border-white/10 rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+            {filteredResults.length > 0 ? (
+              filteredResults.map(item => (
+                <button
+                  key={item.id}
+                  onMouseDown={(e) => { e.preventDefault(); addIngredient(item); }}
+                  className="w-full text-left px-5 py-4 hover:bg-primary/10 flex justify-between items-center transition-colors border-b border-white/5 last:border-0 group"
+                >
+                  <div className="flex flex-col">
+                    <span className="text-sm font-bold text-white block group-hover:text-primary">{item.name}</span>
+                    <span className="text-[10px] text-gray-500 font-mono uppercase tracking-widest opacity-40">{item.unit_type} Spec</span>
+                  </div>
+                  <Plus className="w-4 h-4 text-primary opacity-40 group-hover:opacity-100" />
+                </button>
+              ))
+            ) : (
+              <div className="px-5 py-8 text-center text-gray-500 text-xs italic">No matching ingredients.</div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Mapping List */}
       <div className="rounded-[2rem] bg-black/30 border border-white/5 overflow-hidden">
-         <div className="max-h-[350px] overflow-y-auto custom-scrollbar">
-            <table className="w-full text-sm text-left">
-                <thead className="bg-black/60 text-[10px] font-black uppercase text-gray-500 tracking-widest sticky top-0 z-10 border-b border-white/5">
-                  <tr>
-                      <th className="px-8 py-5">Ingredient Name</th>
-                      <th className="px-8 py-5 w-40 text-center">Qty Needed</th>
-                      <th className="px-8 py-5 w-24">Unit</th>
-                      <th className="px-8 py-5 w-12"></th>
+        <div className="max-h-[350px] overflow-y-auto custom-scrollbar">
+          <table className="w-full text-sm text-left">
+            <thead className="bg-black/60 text-[10px] font-black uppercase text-gray-500 tracking-widest sticky top-0 z-10 border-b border-white/5">
+              <tr>
+                <th className="px-6 py-5">Ingredient</th>
+                <th className="px-6 py-5 text-center">Portion</th>
+                <th className="px-6 py-5 text-center whitespace-nowrap">Impact Flag</th>
+                <th className="px-6 py-5 text-right">Cost (ETB)</th>
+                <th className="px-10 py-5 w-12"></th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-white/5">
+              {selectedMappings.length > 0 ? (
+                selectedMappings.map(m => (
+                  <tr key={m.ingredient_id} className="group hover:bg-white/[0.01] transition-colors">
+                    <td className="px-6 py-4">
+                      <div className="flex flex-col">
+                        <span className="font-bold text-white whitespace-nowrap">{m.name}</span>
+                        <span className="text-[10px] text-gray-500 uppercase font-mono">{m.unit_type} Spec</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <Input
+                        type="number"
+                        value={m.quantity_needed}
+                        onChange={e => updateQty(m.ingredient_id, e.target.value)}
+                        className="h-10 w-20 mx-auto bg-black/40 border-white/10 text-center font-mono text-primary font-bold rounded-lg"
+                      />
+                    </td>
+                    <td className="px-6 py-4">
+                      <select
+                        value={m.out_of_stock_impact}
+                        onChange={e => updateImpact(m.ingredient_id, e.target.value)}
+                        className="bg-black/60 border border-white/10 rounded-lg px-2 py-1 text-[10px] text-gray-300 outline-none focus:border-primary/50 w-full"
+                      >
+                        <option value="kills_dish">Kills entire dish</option>
+                        <option value="disable_variant">Disables variant</option>
+                        <option value="optional">Optional ingredient</option>
+                      </select>
+                    </td>
+                    <td className="px-6 py-4 text-right font-mono text-white">
+                      {(m.quantity_needed * m.cost_per_unit).toFixed(2)}
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <button onClick={() => removeIngredient(m.ingredient_id)} className="text-gray-700 hover:text-red-500 transition-colors p-2">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </td>
                   </tr>
-                </thead>
-                <tbody className="divide-y divide-white/5">
-                  {selectedMappings.length > 0 ? (
-                    selectedMappings.map(m => (
-                      <tr key={m.ingredient_id} className="group hover:bg-white/[0.01] transition-colors">
-                        <td className="px-8 py-4 font-bold text-white">{m.name}</td>
-                        <td className="px-8 py-4">
-                           <Input 
-                             type="number" 
-                             value={m.quantity_needed}
-                             onChange={e => updateQty(m.ingredient_id, e.target.value)}
-                             className="h-10 w-24 mx-auto bg-black/40 border-white/10 text-center font-mono text-primary font-bold rounded-lg"
-                           />
-                        </td>
-                        <td className="px-8 py-4">
-                           <span className="text-[10px] text-gray-400 font-black uppercase tracking-widest">{m.unit_type}</span>
-                        </td>
-                        <td className="px-8 py-4 text-right">
-                          <button onClick={() => removeIngredient(m.ingredient_id)} className="text-gray-700 hover:text-red-500 transition-colors p-2">
-                              <Trash2 className="w-4 h-4" />
-                          </button>
-                        </td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan={4} className="py-24 text-center">
-                          <div className="flex flex-col items-center gap-3 opacity-20">
-                            <ChefHat className="w-12 h-12 text-white" />
-                            <p className="font-black uppercase tracking-widest text-[10px]">No Ingredients Linked</p>
-                          </div>
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-            </table>
-         </div>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={4} className="py-24 text-center">
+                    <div className="flex flex-col items-center gap-3 opacity-20">
+                      <ChefHat className="w-12 h-12 text-white" />
+                      <p className="font-black uppercase tracking-widest text-[10px]">No Ingredients Linked</p>
+                    </div>
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+        <div className="bg-black/60 p-4 px-8 border-t border-white/5 flex items-center justify-between">
+          <div className="flex items-center gap-6">
+            <div>
+              <p className="text-[8px] font-black text-gray-500 uppercase tracking-widest leading-none mb-1">Total Cost</p>
+              <p className="text-sm font-black text-white font-mono">ETB {totalCost.toFixed(2)}</p>
+            </div>
+            <div>
+              <p className="text-[8px] font-black text-gray-500 uppercase tracking-widest leading-none mb-1">Profit Margin</p>
+              <Badge className={cn(
+                "text-[9px] font-black uppercase",
+                margin > 40 ? "bg-green-500/10 text-green-500" :
+                  margin > 20 ? "bg-yellow-500/10 text-yellow-500" : "bg-red-500/10 text-red-500"
+              )}>
+                {margin.toFixed(0)}% Margin
+              </Badge>
+            </div>
+          </div>
+          <div className="text-right">
+            <p className="text-[8px] font-black text-gray-500 uppercase tracking-widest leading-none mb-1">Selling Price</p>
+            <p className="text-sm font-black text-primary font-mono">ETB {dish.price.toLocaleString()}</p>
+          </div>
+        </div>
       </div>
 
       {/* Save Button */}
       <div className="pt-4 space-y-4">
-        <Button 
-          onClick={handleCommit} 
+        <Button
+          onClick={handleCommit}
           disabled={saving}
           className="w-full bg-primary text-black font-black h-16 rounded-2xl shadow-xl shadow-primary/20 text-xs uppercase tracking-[0.2em] transition-all hover:scale-[1.01] active:scale-95"
         >
@@ -301,10 +363,10 @@ export const RecipeEditor: React.FC<RecipeEditorProps> = ({ dish, onSaved }) => 
           Commit Recipe Logic
         </Button>
         <div className="flex items-center gap-2 justify-center text-gray-600 bg-white/5 p-4 rounded-xl">
-           <Info className="w-4 h-4" />
-           <p className="text-[10px] uppercase font-black tracking-widest">
-             This configuration triggers automated stock deduction upon order completion.
-           </p>
+          <Info className="w-4 h-4" />
+          <p className="text-[10px] uppercase font-black tracking-widest">
+            This configuration triggers automated stock deduction upon order completion.
+          </p>
         </div>
       </div>
     </div>
