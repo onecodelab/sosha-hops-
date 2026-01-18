@@ -75,7 +75,7 @@ const AdminDashboard: React.FC = () => {
 
          if (activeErr) throw activeErr;
 
-         // Build query range
+         // Define date boundaries precisely
          const now = new Date();
          const localToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
@@ -91,36 +91,52 @@ const AdminDashboard: React.FC = () => {
             queryStart = new Date(localToday.getTime() - 7 * 86400000).toISOString();
          }
 
-         const fetchOrders = async (useRichRel: boolean) => {
-            let q = supabase.from('orders').select(`
-                *, 
-                waiter:profiles!orders_waiter_id_fkey (full_name, role)
-                ${useRichRel ? ', closed_by:profiles(full_name, role)' : ''},
-                order_items (
-                   id,
-                   quantity,
-                   price,
-                   menu_item:menu (name)
-                )
-             `);
-
+         // Function to execute order fetch with specific fields
+         const fetchWithFields = async (fields: string) => {
+            let q = supabase.from('orders').select(fields);
             if (queryStart) q = q.gte('created_at', queryStart);
             if (queryEnd) q = q.lt('created_at', queryEnd);
-
             return q.order('created_at', { ascending: false }).limit(searchQuery ? 100 : 50);
          };
 
+         const richFields = `
+             *, 
+             waiter:profiles!orders_waiter_id_fkey (full_name, role),
+             closed_by_user:profiles!orders_closed_by_id_fkey (full_name, role),
+             order_items (
+                id,
+                quantity,
+                price,
+                menu_item:menu (name)
+             )
+          `;
+
+         const fallbackFields = `
+             *, 
+             waiter:profiles!orders_waiter_id_fkey (full_name, role),
+             order_items (
+                id,
+                quantity,
+                price,
+                menu_item:menu (name)
+             )
+          `;
+
          let feedData = [];
          try {
-            // Attempt rich query
-            const { data: feed, error: feedErr } = await fetchOrders(true);
+            // 1. Try with rich relationships (including closed_by)
+            const { data: feed, error: feedErr } = await fetchWithFields(richFields);
             if (feedErr) throw feedErr;
             feedData = feed || [];
-         } catch (auditErr) {
-            console.error("Rich Audit Query Error (Retrying simple):", auditErr);
-            // Fallback to simple query but KEEP date filters
-            const { data: simpleFeed } = await fetchOrders(false);
-            feedData = simpleFeed || [];
+         } catch (richErr: any) {
+            console.log("Rich query failed, trying simple query:", richErr.message);
+            // 2. Fallback to simple (no closed_by join)
+            const { data: simpleFeed, error: simpleErr } = await fetchWithFields(fallbackFields);
+            if (!simpleErr) {
+               feedData = simpleFeed || [];
+            } else {
+               console.error("Simple query also failed:", simpleErr);
+            }
          }
 
          const { data: staff } = await supabase.from('profiles').select('*').in('role', ['waiter', 'manager']);
