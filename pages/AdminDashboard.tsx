@@ -77,17 +77,22 @@ const AdminDashboard: React.FC = () => {
 
          // Updated query to fetch closed_by details with robust fallback
          let feedData = [];
-         const queryStart = dateFilter === 'today'
-            ? `${new Date().toISOString().split('T')[0]}T00:00:00`
-            : dateFilter === 'yesterday'
-               ? `${new Date(Date.now() - 86400000).toISOString().split('T')[0]}T00:00:00`
-               : dateFilter === 'week'
-                  ? `${new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0]}T00:00:00`
-                  : `${new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0]}T00:00:00`;
+         const now = new Date();
+         const localToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
-         const queryEnd = dateFilter === 'yesterday'
-            ? `${new Date().toISOString().split('T')[0]}T00:00:00`
-            : `${new Date(Date.now() + 86400000).toISOString().split('T')[0]}T00:00:00`;
+         let queryStart: string;
+         let queryEnd: string = new Date(localToday.getTime() + 2 * 86400000).toISOString(); // Default to including tomorrow
+
+         if (dateFilter === 'today') {
+            queryStart = localToday.toISOString();
+         } else if (dateFilter === 'yesterday') {
+            queryStart = new Date(localToday.getTime() - 86400000).toISOString();
+            queryEnd = localToday.toISOString();
+         } else if (dateFilter === 'week') {
+            queryStart = new Date(localToday.getTime() - 7 * 86400000).toISOString();
+         } else {
+            queryStart = new Date(localToday.getTime() - 30 * 86400000).toISOString();
+         }
 
          try {
             const { data: feed, error: feedErr } = await supabase
@@ -202,8 +207,10 @@ const AdminDashboard: React.FC = () => {
          const query = searchQuery.toLowerCase();
          filtered = filtered.filter(o =>
             o.order_number?.toLowerCase().includes(query) ||
-            o.table_number?.toLowerCase().includes(query) ||
-            o.id.toLowerCase().includes(query)
+            o.table_number?.toString().toLowerCase().includes(query) ||
+            o.id.toLowerCase().includes(query) ||
+            o.waiter?.full_name?.toLowerCase().includes(query) ||
+            o.closed_by_user?.full_name?.toLowerCase().includes(query)
          );
       }
 
@@ -417,7 +424,17 @@ const AdminDashboard: React.FC = () => {
                         {filteredAuditLog.length === 0 && (
                            <div className="text-center py-10 opacity-30">
                               <ClipboardList className="w-8 h-8 mx-auto mb-2" />
-                              <p className="text-xs">No records</p>
+                              <p className="text-xs mb-2">No records found</p>
+                              {searchQuery && (
+                                 <Button
+                                    variant="link"
+                                    size="sm"
+                                    onClick={() => setSearchQuery('')}
+                                    className="text-[10px] text-primary h-auto p-0"
+                                 >
+                                    Clear Search
+                                 </Button>
+                              )}
                            </div>
                         )}
                      </div>
