@@ -32,7 +32,7 @@ const AdminDashboard: React.FC = () => {
    const [selectedDetailsOrder, setSelectedDetailsOrder] = useState<Order | null>(null);
    const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
    const [searchQuery, setSearchQuery] = useState('');
-   const [dateFilter, setDateFilter] = useState<'today' | 'yesterday' | 'week' | 'month'>('today');
+   const [dateFilter, setDateFilter] = useState<'today' | 'yesterday' | 'week' | 'all'>('week');
 
    const syncTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -75,41 +75,41 @@ const AdminDashboard: React.FC = () => {
 
          if (activeErr) throw activeErr;
 
-         // Updated query to fetch closed_by details with robust fallback
-         let feedData = [];
+         // Build query range
          const now = new Date();
-         const localToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+         const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
-         let queryStart: string;
-         let queryEnd: string = new Date(localToday.getTime() + 2 * 86400000).toISOString(); // Default to including tomorrow
+         let query = supabase.from('orders').select(`
+             *, 
+             waiter:profiles!orders_waiter_id_fkey (full_name, role),
+             closed_by_user:profiles(full_name, role),
+             order_items (
+                id,
+                quantity,
+                price,
+                menu_item:menu (name)
+             )
+          `);
 
-         if (dateFilter === 'today') {
-            queryStart = localToday.toISOString();
-         } else if (dateFilter === 'yesterday') {
-            queryStart = new Date(localToday.getTime() - 86400000).toISOString();
-            queryEnd = localToday.toISOString();
-         } else if (dateFilter === 'week') {
-            queryStart = new Date(localToday.getTime() - 7 * 86400000).toISOString();
-         } else {
-            queryStart = new Date(localToday.getTime() - 30 * 86400000).toISOString();
+         if (dateFilter !== 'all') {
+            let queryStart: Date;
+            let queryEnd: Date = new Date(startOfToday.getTime() + 86400000 * 2); // Far enough in future
+
+            if (dateFilter === 'today') {
+               queryStart = startOfToday;
+            } else if (dateFilter === 'yesterday') {
+               queryStart = new Date(startOfToday.getTime() - 86400000);
+               queryEnd = startOfToday;
+            } else { // week
+               queryStart = new Date(startOfToday.getTime() - 7 * 86400000);
+            }
+
+            query = query.gte('created_at', queryStart.toISOString()).lt('created_at', queryEnd.toISOString());
          }
 
+         let feedData = [];
          try {
-            const { data: feed, error: feedErr } = await supabase
-               .from('orders')
-               .select(`
-                   *, 
-                   waiter:profiles!orders_waiter_id_fkey (full_name, role),
-                   closed_by_user:profiles(full_name, role),
-                   order_items (
-                      id,
-                      quantity,
-                      price,
-                      menu_item:menu (name)
-                   )
-                `)
-               .gte('created_at', queryStart)
-               .lt('created_at', queryEnd)
+            const { data: feed, error: feedErr } = await query
                .order('created_at', { ascending: false })
                .limit(searchQuery ? 100 : 50);
 
@@ -117,20 +117,24 @@ const AdminDashboard: React.FC = () => {
             feedData = feed || [];
          } catch (auditErr) {
             console.error("Audit Query Error (Retrying simple):", auditErr);
-            const { data: simpleFeed } = await supabase
-               .from('orders')
-               .select(`
-                   *, 
-                   waiter:profiles!orders_waiter_id_fkey (full_name, role),
-                   order_items (
-                     id,
-                     quantity,
-                     price,
-                     menu_item:menu (name)
-                   )
-                `)
-               .gte('created_at', queryStart)
-               .lt('created_at', queryEnd)
+
+            let simpleQuery = supabase.from('orders').select(`
+                 *, 
+                 waiter:profiles!orders_waiter_id_fkey (full_name, role),
+                 order_items (
+                   id,
+                   quantity,
+                   price,
+                   menu_item:menu (name)
+                 )
+             `);
+
+            if (dateFilter !== 'all') {
+               let sStart = dateFilter === 'today' ? startOfToday : new Date(startOfToday.getTime() - 7 * 86400000);
+               simpleQuery = simpleQuery.gte('created_at', sStart.toISOString());
+            }
+
+            const { data: simpleFeed } = await simpleQuery
                .order('created_at', { ascending: false })
                .limit(searchQuery ? 100 : 50);
             feedData = simpleFeed || [];
@@ -328,7 +332,7 @@ const AdminDashboard: React.FC = () => {
 
                            {/* Date Filter */}
                            <div className="flex bg-black/40 rounded-md p-0.5 border border-white/5">
-                              {(['today', 'yesterday', 'week'] as const).map((d) => (
+                              {(['today', 'yesterday', 'week', 'all'] as const).map((d) => (
                                  <button
                                     key={d}
                                     onClick={() => setDateFilter(d)}
