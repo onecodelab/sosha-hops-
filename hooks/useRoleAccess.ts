@@ -13,6 +13,7 @@ const ROLE_PERMISSIONS = {
         canEditPayRates: true,
         canViewAuditLogs: true,
         canViewSettings: true,
+        canViewAnalytics: true,
     },
     admin: {
         canViewInventoryCost: true,
@@ -23,6 +24,7 @@ const ROLE_PERMISSIONS = {
         canEditPayRates: true,
         canViewAuditLogs: true,
         canViewSettings: true,
+        canViewAnalytics: true,
     },
     manager: {
         canViewInventoryCost: false,
@@ -33,6 +35,7 @@ const ROLE_PERMISSIONS = {
         canEditPayRates: false,
         canViewAuditLogs: false,
         canViewSettings: true,
+        canViewAnalytics: true,
     },
     waiter: {
         canViewInventoryCost: false,
@@ -43,6 +46,7 @@ const ROLE_PERMISSIONS = {
         canEditPayRates: false,
         canViewAuditLogs: false,
         canViewSettings: false,
+        canViewAnalytics: false,
     },
     kitchen: {
         canViewInventoryCost: false,
@@ -53,6 +57,7 @@ const ROLE_PERMISSIONS = {
         canEditPayRates: false,
         canViewAuditLogs: false,
         canViewSettings: false,
+        canViewAnalytics: false,
     },
 } as const;
 

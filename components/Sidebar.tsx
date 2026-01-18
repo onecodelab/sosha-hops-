@@ -4,7 +4,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import {
     LogOut, LayoutDashboard, ShoppingBag, Users,
     ClipboardList, Utensils, ChevronLeft, ChevronRight,
-    Trash2, Truck, PlusCircle, PackageCheck, FileText, Monitor, BookOpen
+    Trash2, Truck, PlusCircle, PackageCheck, FileText, Monitor, BookOpen, TrendingUp
 } from 'lucide-react';
 import { cn } from './ui';
 import { SoshaLogo } from './SoshaLogo';
@@ -66,7 +66,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, setIsCollapsed, h
                 {/* Dashboard/Ops */}
                 <NavItem
                     icon={LayoutDashboard}
-                    label={t('nav.dashboard')}
+                    label="ADMIN HOME"
                     path="/admin"
                     allowedRoles={['owner', 'admin']}
                 />
@@ -94,13 +94,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, setIsCollapsed, h
                     icon={Monitor}
                     label="Kitchen Board"
                     path="/kitchen"
-                    allowedRoles={['manager', 'admin', 'owner']}
+                    allowedRoles={['manager', 'admin']}
                 />
 
                 {/* Floor/Waiter Station */}
                 <NavItem
                     icon={Monitor}
-                    label="Floor Status"
+                    label="FLOOR LIVE MAP"
                     path="/tables"
                     allowedRoles={['waiter', 'manager', 'admin', 'owner']}
                 />
@@ -116,6 +116,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, setIsCollapsed, h
                     icon={Utensils}
                     label={t('nav.menuAnalytics')}
                     path="/menu-analytics"
+                    allowedRoles={['owner', 'admin']}
+                />
+                <NavItem
+                    icon={TrendingUp}
+                    label="Floor Analytics"
+                    path="/admin/analytics"
                     allowedRoles={['owner', 'admin']}
                 />
 

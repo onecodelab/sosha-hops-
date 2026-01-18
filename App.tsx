@@ -19,6 +19,7 @@ import Inventory from './pages/Inventory';
 import StaffPerformance from './pages/StaffPerformance';
 import AdminStaffPerformance from './pages/AdminStaffPerformance';
 import AdminTableMap from './pages/AdminTableMap';
+import AdminFloorAnalytics from './pages/AdminFloorAnalytics';
 import TableStatus from './pages/TableStatus';
 import OrdersTables from './pages/OrdersTables';
 import ManagerDashboard from './pages/ManagerDashboard';
@@ -166,6 +167,12 @@ const App: React.FC = () => {
               <Route path="/kitchen/restock" element={
                 <ProtectedRoute allowedRoles={['kitchen', 'manager', 'owner']}>
                   <KitchenRestockRequests />
+                </ProtectedRoute>
+              } />
+
+              <Route path="/admin/analytics" element={
+                <ProtectedRoute allowedRoles={['owner', 'admin' as any]}>
+                  <AdminFloorAnalytics />
                 </ProtectedRoute>
               } />
 

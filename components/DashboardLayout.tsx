@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -19,9 +18,10 @@ interface DashboardLayoutProps {
   title?: string;
   subtitle?: string;
   actions?: React.ReactNode;
+  className?: string;
 }
 
-export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, title, subtitle, actions }) => {
+export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, title, subtitle, actions, className }) => {
   const { profile, signOut } = useAuth();
   const { t } = useLanguage();
   const navigate = useNavigate();
@@ -165,7 +165,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, titl
           </div>
         )}
 
-        <div className="flex-1 overflow-y-auto p-8 relative custom-scrollbar">
+        <div className={cn("flex-1 overflow-y-auto p-8 relative custom-scrollbar", className)}>
           {children}
         </div>
       </main>

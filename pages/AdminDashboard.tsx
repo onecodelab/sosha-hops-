@@ -157,187 +157,176 @@ const AdminDashboard: React.FC = () => {
    };
 
    return (
-      <DashboardLayout title="Executive Dashboard" subtitle="System oversight">
-         <div className="space-y-8 animate-in fade-in duration-700">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-               <SoshaCard className="p-6" indicatorColor="yellow">
-                  <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Revenue Today</p>
-                  <h3 className="text-3xl font-black text-foreground mt-2">ETB {stats.totalRevenue.toLocaleString()}</h3>
+      <DashboardLayout title="Executive Dashboard" subtitle="Mission Control" className="overflow-hidden h-screen">
+         <div className="space-y-3 animate-in fade-in duration-500 h-full flex flex-col">
+
+            {/* Top Compact Metrics Bar */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 shrink-0">
+               <SoshaCard className="p-3 border-l-4 border-l-yellow-500 rounded-sm" indicatorColor="yellow">
+                  <div className="flex justify-between items-center">
+                     <div>
+                        <p className="text-[9px] font-black text-gray-500 uppercase tracking-widest leading-none mb-1">Revenue Today</p>
+                        <h3 className="text-xl font-black text-foreground tracking-tight">ETB {stats.totalRevenue.toLocaleString()}</h3>
+                     </div>
+                     <DollarSign className="w-4 h-4 text-yellow-500 opacity-50" />
+                  </div>
                </SoshaCard>
+
                <SoshaCard
-                  className="p-6 cursor-pointer hover:border-blue-500/30 transition-all"
+                  className="p-3 cursor-pointer hover:bg-white/5 transition-colors border-l-4 border-l-blue-500 rounded-sm"
                   indicatorColor="blue"
                   onClick={() => setIsModalOpen(true)}
                >
-                  <div className="flex justify-between items-start">
+                  <div className="flex justify-between items-center">
                      <div>
-                        <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest">In Kitchen</p>
-                        <h3 className="text-3xl font-black text-foreground mt-2">{stats.activeOrdersCount}</h3>
+                        <p className="text-[9px] font-black text-gray-500 uppercase tracking-widest leading-none mb-1">Active / In Kitchen</p>
+                        <h3 className="text-xl font-black text-foreground tracking-tight">{stats.activeOrdersCount}</h3>
                      </div>
-                     <div className="p-2 bg-blue-500/10 rounded-xl text-blue-500">
-                        <Activity className="w-5 h-5" />
-                     </div>
+                     <Activity className="w-4 h-4 text-blue-500 animate-pulse" />
                   </div>
                </SoshaCard>
-            </div>
 
-            <div className="space-y-6">
-               <div className="flex flex-col md:flex-row md:items-center justify-between px-2 gap-4">
-                  <h3 className="text-xl font-black text-foreground flex items-center gap-2">
-                     <List className="w-5 h-5 text-primary" /> Live Production Board
-                  </h3>
-
-                  <div className="flex items-center gap-3 bg-white/5 p-1.5 rounded-2xl border border-white/5 backdrop-blur-md">
-                     <div className="flex items-center gap-2 px-3 text-gray-500">
-                        <User className="w-4 h-4" />
-                        <span className="text-[10px] font-black uppercase tracking-widest">Staff:</span>
-                     </div>
-                     <select
-                        value={selectedStaffId}
-                        onChange={(e) => setSelectedStaffId(e.target.value)}
-                        className="bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs font-bold text-white focus:outline-none focus:border-primary transition-all min-w-[160px]"
-                     >
-                        <option value="all">Global View</option>
-                        {staffList.map(s => (
-                           <option key={s.id} value={s.id}>{s.full_name || s.email}</option>
-                        ))}
-                     </select>
-                     <Button variant="ghost" size="icon" onClick={fetchDashboardData} className="h-8 w-8 hover:bg-white/10">
-                        <RefreshCw className={cn("w-3.5 h-3.5", loading && "animate-spin")} />
-                     </Button>
-                  </div>
+               {/* Consolidated Quick Actions / Status could go here in remaining col slots if needed, using placeholders for now to maintain grid */}
+               <div className="hidden lg:block lg:col-span-2">
+                  {/* Spacing or additional future compact metrics */}
                </div>
-
-               {filteredActiveOrders.length === 0 ? (
-                  <div className="h-60 flex flex-col items-center justify-center bg-white/5 border border-dashed border-white/10 rounded-[2.5rem] text-gray-600 gap-3">
-                     <Activity className="w-12 h-12 opacity-10" />
-                     <p className="italic text-sm font-medium">Kitchen is currently clear</p>
-                  </div>
-               ) : (
-                  <div className="flex gap-4 overflow-x-auto pb-6 custom-scrollbar snap-x">
-                     {filteredActiveOrders.map(order => (
-                        <div key={order.id} className="min-w-[320px] snap-start">
-                           <OrderCard order={order} role="manager" onAction={handleOrderAction} />
-                        </div>
-                     ))}
-                  </div>
-               )}
             </div>
 
-            <SoshaCard className="p-6" indicatorColor="purple">
-               <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
-                  <SoshaCardTitle className="flex items-center gap-2">
-                     <ClipboardList className="w-5 h-5 text-purple-400" /> Transaction Audit
-                  </SoshaCardTitle>
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 min-h-0 flex-1">
+               {/* Left Col: Live Production Board (Takes 4 cols) */}
+               <div className="lg:col-span-4 flex flex-col min-h-0 space-y-2">
+                  <div className="flex items-center justify-between px-1 shrink-0">
+                     <h3 className="text-xs font-black text-foreground flex items-center gap-2 uppercase tracking-widest opacity-70">
+                        <List className="w-3 h-3" /> Live Production
+                     </h3>
 
-                  <div className="flex bg-black/40 p-1 rounded-xl border border-white/5">
-                     {(['all', 'cash', 'digital'] as const).map((filter) => (
-                        <button
-                           key={filter}
-                           onClick={() => setTransactionFilter(filter)}
-                           className={cn(
-                              "px-4 py-1.5 text-[10px] font-black uppercase tracking-wider rounded-lg transition-all",
-                              transactionFilter === filter
-                                 ? "bg-purple-500 text-white shadow-lg"
-                                 : "text-gray-500 hover:text-white"
-                           )}
+                     <div className="flex items-center gap-1 scale-90 origin-right">
+                        <select
+                           value={selectedStaffId}
+                           onChange={(e) => setSelectedStaffId(e.target.value)}
+                           className="bg-black/40 border-b border-white/20 px-2 py-1 text-[10px] font-bold text-white focus:outline-none hover:bg-white/5 transition-all text-right"
                         >
-                           {filter}
-                        </button>
-                     ))}
+                           <option value="all">ALL STAFF</option>
+                           {staffList.map(s => (
+                              <option key={s.id} value={s.id}>{s.full_name}</option>
+                           ))}
+                        </select>
+                        <Button variant="ghost" size="icon" onClick={fetchDashboardData} className="h-6 w-6 hover:bg-white/10 rounded-sm">
+                           <RefreshCw className={cn("w-3 h-3", loading && "animate-spin")} />
+                        </Button>
+                     </div>
+                  </div>
+
+                  <div className="flex-1 overflow-y-auto pr-1 custom-scrollbar space-y-2 bg-black/20 p-2 rounded-lg border border-white/5">
+                     {filteredActiveOrders.length === 0 ? (
+                        <div className="h-20 flex items-center justify-center text-gray-700 gap-2">
+                           <Activity className="w-4 h-4 opacity-50" />
+                           <span className="text-[10px] font-mono">ALL CLEAR</span>
+                        </div>
+                     ) : (
+                        filteredActiveOrders.map(order => (
+                           <div key={order.id} className="scale-95 origin-top-left w-full mb-[-10px]">
+                              <OrderCard order={order} role="manager" onAction={handleOrderAction} />
+                           </div>
+                        ))
+                     )}
                   </div>
                </div>
 
-               <div className="space-y-4">
-                  {filteredAuditLog.map(order => (
-                     <div key={order.id} className="p-5 bg-black/40 border border-white/5 rounded-3xl flex flex-col md:flex-row justify-between items-start md:items-center group hover:border-primary/20 transition-all gap-4">
-                        {/* Left Side: Table, Order #, Type, Time */}
-                        <div className="flex items-center gap-4">
-                           <div className="w-12 h-12 rounded-2xl bg-white/5 flex flex-col items-center justify-center border border-white/5 group-hover:border-primary/30 transition-all shrink-0">
-                              <span className="text-[10px] font-black text-gray-400 uppercase">T-{order.table_number}</span>
-                              <Badge variant="ghost" className="p-0 text-[8px] opacity-60 text-primary uppercase font-black">{order.order_type || 'Dine'}</Badge>
-                           </div>
-                           <div>
-                              <div className="flex items-center gap-2">
-                                 <p className="text-sm font-black text-foreground">#{order.order_number || order.id.slice(0, 5)}</p>
-                                 <span className="text-[10px] text-gray-600 font-mono bg-white/5 px-2 py-0.5 rounded-full">
-                                    {new Date(order.closed_at || order.paid_at || order.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                 </span>
-                              </div>
-                              <div className="flex flex-wrap items-center gap-y-1 gap-x-4 mt-1.5">
-                                 <div className="flex items-center gap-1.5">
-                                    <User className="w-3 h-3 text-gray-600" />
-                                    <span className="text-[10px] text-gray-500 font-bold uppercase tracking-tighter">Wait: {order.waiter?.full_name || 'System'}</span>
-                                 </div>
-                                 {order.closed_by_user && (
-                                    <div className="flex items-center gap-1.5 border-l border-white/10 pl-4">
-                                       <ShieldCheck className="w-3 h-3 text-purple-400" />
-                                       <span className="text-[10px] text-purple-400 font-bold uppercase tracking-tighter">Done: {order.closed_by_user.full_name}</span>
-                                    </div>
+               {/* Right Col: Transaction Audit (Takes 8 cols) */}
+               <div className="lg:col-span-8 flex flex-col min-h-0">
+                  <SoshaCard className="flex-1 flex flex-col min-h-0 bg-transparent border-0 p-0" indicatorColor="purple">
+                     <div className="flex items-center justify-between mb-2 px-1 shrink-0">
+                        <SoshaCardTitle className="flex items-center gap-2 text-xs uppercase tracking-widest opacity-70">
+                           <ClipboardList className="w-3 h-3" /> Transaction Log
+                        </SoshaCardTitle>
+
+                        <div className="flex gap-1">
+                           {(['all', 'cash', 'digital'] as const).map((filter) => (
+                              <button
+                                 key={filter}
+                                 onClick={() => setTransactionFilter(filter)}
+                                 className={cn(
+                                    "px-3 py-0.5 text-[9px] font-black uppercase tracking-wider rounded-sm transition-all border border-transparent",
+                                    transactionFilter === filter
+                                       ? "bg-purple-900/50 text-purple-200 border-purple-500/20"
+                                       : "text-gray-600 hover:text-gray-400"
                                  )}
-                              </div>
-                              {order.transaction_reference && (
-                                 <p className="text-[9px] text-blue-400/80 font-mono mt-2 flex items-center gap-1.5 bg-blue-500/5 px-2 py-1 rounded-lg border border-blue-500/10">
-                                    <Activity className="w-2.5 h-2.5" /> REF: {order.transaction_reference}
-                                 </p>
-                              )}
-                           </div>
-                        </div>
-
-                        {/* Right Side: Financial Breakdown & Status */}
-                        <div className="flex flex-col items-end gap-2 w-full md:w-auto">
-                           <div className="flex items-center gap-4">
-                              {/* Financial transparency breakdown */}
-                              <div className="hidden sm:flex flex-col items-end opacity-40 group-hover:opacity-100 transition-opacity">
-                                 <p className="text-[9px] font-mono text-gray-500">Sub: {(order.subtotal_amount || 0).toLocaleString()} • VAT: {(order.vat_amount || 0).toLocaleString()}</p>
-                                 <p className="text-[9px] font-mono text-primary/80 font-bold">Total: {order.total_amount.toLocaleString()}</p>
-                              </div>
-
-                              <div className="text-right">
-                                 <div className="flex items-center justify-end gap-2 mb-1">
-                                    {order.payment_method && (
-                                       <Badge variant="outline" className="text-[8px] uppercase px-2 py-0.5 border-white/10 text-gray-400 flex items-center gap-1.5 bg-white/5">
-                                          {getPaymentIcon(order.payment_method)} {order.payment_method}
-                                       </Badge>
-                                    )}
-                                    <div className="flex flex-col items-end">
-                                       <p className="text-lg font-black text-primary font-mono leading-none">ETB {order.total_amount.toLocaleString()}</p>
-                                       {order.tip_amount > 0 && <span className="text-[9px] text-green-400 font-bold tracking-tighter">+ ETB {order.tip_amount} TIP</span>}
-                                    </div>
-                                 </div>
-                              </div>
-                           </div>
-
-                           <div className="flex items-center gap-3">
-                              {/* Verification Badge */}
-                              {order.verified && (
-                                 <div className="flex items-center gap-1.5 text-[9px] font-black text-green-500 uppercase bg-green-500/10 px-2 py-0.5 rounded-full border border-green-500/20">
-                                    <ShieldCheck className="w-3 h-3" /> Verified
-                                 </div>
-                              )}
-
-                              {/* Overpayment check */}
-                              {order.amount_paid > order.total_amount && (
-                                 <span className="text-[8px] font-bold text-gray-600">Paid: {order.amount_paid.toLocaleString()}</span>
-                              )}
-
-                              <Badge variant="outline" className={cn("text-[9px] uppercase font-black px-3 py-1 rounded-xl shadow-inner",
-                                 order.status === 'paid' ? "border-green-500/30 text-green-500 bg-green-500/10" :
-                                    order.status === 'served' ? "border-purple-500/30 text-purple-400 bg-purple-500/10" :
-                                       order.status === 'closed' ? "border-gray-700 text-gray-500 bg-gray-800/20" : "border-gray-800 text-gray-600"
-                              )}>{order.status}</Badge>
-                           </div>
+                              >
+                                 {filter}
+                              </button>
+                           ))}
                         </div>
                      </div>
-                  ))}
-                  {filteredAuditLog.length === 0 && (
-                     <div className="text-center py-16 bg-white/5 rounded-[2rem] border border-dashed border-white/10">
-                        <ClipboardList className="w-12 h-12 mx-auto text-gray-700 mb-4 opacity-20" />
-                        <p className="text-gray-500 italic font-medium">No transactions found matching this filter.</p>
+
+                     <div className="flex-1 overflow-y-auto pr-1 custom-scrollbar border border-white/5 rounded-lg bg-black/20">
+                        <table className="w-full text-left border-collapse">
+                           <thead className="sticky top-0 bg-black/90 text-[9px] font-black uppercase text-gray-600 tracking-wider z-10 backdrop-blur-sm">
+                              <tr>
+                                 <th className="px-3 py-2">ID / Time</th>
+                                 <th className="px-3 py-2">Table / Type</th>
+                                 <th className="px-3 py-2 hidden sm:table-cell">Staff</th>
+                                 <th className="px-3 py-2 text-right">Total</th>
+                                 <th className="px-3 py-2 text-right">Status</th>
+                              </tr>
+                           </thead>
+                           <tbody className="divide-y divide-white/5">
+                              {filteredAuditLog.map(order => (
+                                 <tr key={order.id} className="group hover:bg-white/5 transition-colors cursor-default text-xs">
+                                    <td className="px-3 py-1.5">
+                                       <div className="flex items-center gap-2">
+                                          <span className="font-mono text-gray-400 group-hover:text-white transition-colors">#{order.order_number || order.id.slice(0, 4)}</span>
+                                          <span className="text-[10px] text-gray-600 font-mono">
+                                             {new Date(order.closed_at || order.paid_at || order.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                          </span>
+                                       </div>
+                                    </td>
+                                    <td className="px-3 py-1.5">
+                                       <div className="flex items-center gap-2">
+                                          <span className="font-bold text-gray-300">T-{order.table_number}</span>
+                                          <span className="px-1.5 py-0.5 text-[8px] bg-white/5 rounded-sm uppercase tracking-tighter text-gray-500">{order.order_type || 'Dine'}</span>
+                                       </div>
+                                    </td>
+                                    <td className="px-3 py-1.5 hidden sm:table-cell">
+                                       <div className="flex items-center gap-1.5">
+                                          <span className="text-[10px] text-gray-500 truncate max-w-[80px]">{order.waiter?.full_name || 'Sys'}</span>
+                                          {order.closed_by_user && (
+                                             <ShieldCheck className="w-2.5 h-2.5 text-purple-500/50" />
+                                          )}
+                                       </div>
+                                    </td>
+                                    <td className="px-3 py-1.5 text-right font-mono font-medium text-gray-300">
+                                       {order.total_amount.toLocaleString()}
+                                       {order.tip_amount > 0 && <span className="text-[8px] text-green-500 ml-1">+Tip</span>}
+                                    </td>
+                                    <td className="px-3 py-1.5 text-right">
+                                       <div className="flex items-center justify-end gap-2">
+                                          {order.payment_method && (
+                                             <span className="text-[8px] uppercase text-gray-600">{order.payment_method}</span>
+                                          )}
+                                          <span className={cn("text-[9px] uppercase font-black px-1.5 py-0.5 rounded-sm",
+                                             order.status === 'paid' ? "text-green-500 bg-green-500/10" :
+                                                order.status === 'served' ? "text-purple-400 bg-purple-500/10" : "text-gray-500"
+                                          )}>
+                                             {order.status}
+                                          </span>
+                                       </div>
+                                    </td>
+                                 </tr>
+                              ))}
+                           </tbody>
+                        </table>
+
+                        {filteredAuditLog.length === 0 && (
+                           <div className="text-center py-10 opacity-30">
+                              <ClipboardList className="w-8 h-8 mx-auto mb-2" />
+                              <p className="text-xs">No records</p>
+                           </div>
+                        )}
                      </div>
-                  )}
+                  </SoshaCard>
                </div>
-            </SoshaCard>
+            </div>
          </div>
 
          <ActiveOrdersModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} orders={activeOrders.filter(o => !['served', 'paid'].includes(o.status))} />
