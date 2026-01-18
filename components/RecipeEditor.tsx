@@ -48,7 +48,7 @@ export const RecipeEditor: React.FC<RecipeEditorProps> = ({ dish, onSaved }) => 
         if (ingData) setAllIngredients(ingData as any[]);
 
         // 2. Ensure Recipe Header exists for this dish
-        const { data: existingRecipe, error: recFetchError } = await supabase
+        let { data: existingRecipe, error: recFetchError } = await supabase
           .from('recipes')
           .select('id')
           .eq('menu_item_id', dish.id)
@@ -69,8 +69,21 @@ export const RecipeEditor: React.FC<RecipeEditorProps> = ({ dish, onSaved }) => 
             .select()
             .single();
 
-          if (createError) throw new Error(`Recipe Creation Failed: ${createError.message}`);
-          currentId = newRecipe.id;
+          if (createError) {
+            // Handle race condition: if it failed because it was JUST created by another call
+            if (createError.code === '23505') {
+              const { data: retryFetch } = await supabase
+                .from('recipes')
+                .select('id')
+                .eq('menu_item_id', dish.id)
+                .maybeSingle();
+              currentId = retryFetch?.id;
+            } else {
+              throw new Error(`Recipe Creation Failed: ${createError.message}`);
+            }
+          } else {
+            currentId = newRecipe.id;
+          }
         }
 
         setRecipeId(currentId);
