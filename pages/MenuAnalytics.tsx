@@ -4,11 +4,11 @@ import { DashboardLayout } from '../components/DashboardLayout';
 import { supabase } from '../supabase';
 import { useMenu } from '../hooks/useMenu';
 import {
-  ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Cell
+  PieChart,
 } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle, Badge, cn, Button } from '../components/ui';
 import {
-  TrendingUp, AlertOctagon, DollarSign, PieChart, Info, Filter,
+  TrendingUp, AlertOctagon, DollarSign, PieChart as PieIcon, Info, Filter,
   ArrowUpRight, ArrowDownRight, Zap, Target, Trash2, Clock,
   ChevronRight, Award, Flame, Star
 } from 'lucide-react';
@@ -193,16 +193,6 @@ const MenuAnalytics: React.FC = () => {
 
   const [activeRankTab, setActiveRankTab] = useState<'top' | 'bottom'>('top');
   const [rankBy, setRankBy] = useState<'revenue' | 'profit' | 'margin' | 'orders' | 'wasteRisk'>('revenue');
-  const [matrixCategory, setMatrixCategory] = useState<string>('All');
-
-  const filteredMatrixData = useMemo(() => {
-    let filtered = [...analyticsData];
-    if (matrixCategory !== 'All') {
-      filtered = filtered.filter(item => item.category === matrixCategory);
-    }
-    // Sort by revenue by default for the matrix "Top 10"
-    return filtered.sort((a, b) => b.revenue - a.revenue).slice(0, 10);
-  }, [analyticsData, matrixCategory]);
 
   const rankedData = [...analyticsData].sort((a, b) => {
     const field = rankBy === 'orders' ? 'totalSold' : rankBy === 'margin' ? 'marginPercent' : rankBy;
@@ -375,7 +365,7 @@ const MenuAnalytics: React.FC = () => {
           <Card className="lg:col-span-2 bg-black/40 border-white/5 backdrop-blur-xl rounded-[2rem]">
             <CardHeader className="p-8 pb-2">
               <CardTitle className="text-lg font-black text-white uppercase tracking-widest flex items-center gap-3">
-                <PieChart className="w-5 h-5 text-blue-400" /> Category Revenue Split
+                <PieIcon className="w-5 h-5 text-blue-400" /> Category Revenue Split
               </CardTitle>
             </CardHeader>
             <CardContent className="p-8 pt-4">
@@ -400,67 +390,6 @@ const MenuAnalytics: React.FC = () => {
             <h3 className="text-sm font-black text-white uppercase leading-tight tracking-[0.2em]">Live Performance<br />Diagnosis</h3>
             <div className="w-10 h-0.5 bg-primary/30" />
             <p className="text-[9px] text-primary/80 font-bold uppercase tracking-widest max-w-[150px]">Items are audited by real recipe cost & daily demand volume</p>
-          </div>
-        </div>
-
-        {/* Section 3: Blunt Rankings */}
-        <div className="space-y-6">
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-            <div className="flex bg-black/40 border border-white/5 p-1 rounded-2xl w-fit">
-              <button
-                onClick={() => setActiveRankTab('top')}
-                className={cn("px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all", activeRankTab === 'top' ? "bg-green-500 text-white shadow-lg shadow-green-500/20" : "text-muted-foreground hover:text-white")}
-              >
-                Top Performers
-              </button>
-              <button
-                onClick={() => setActiveRankTab('bottom')}
-                className={cn("px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all", activeRankTab === 'bottom' ? "bg-red-500 text-white shadow-lg shadow-red-500/20" : "text-muted-foreground hover:text-white")}
-              >
-                Bottom Performers
-              </button>
-            </div>
-
-            <div className="flex flex-wrap gap-2">
-              {(['revenue', 'profit', 'margin', 'orders', 'wasteRisk'] as const).map(tab => (
-                <button
-                  key={tab}
-                  onClick={() => setRankBy(tab)}
-                  className={cn(
-                    "px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-tighter border transition-all",
-                    rankBy === tab ? "bg-primary border-primary text-black" : "bg-white/5 border-white/10 text-muted-foreground hover:border-white/20"
-                  )}
-                >
-                  By {tab === 'wasteRisk' ? 'Waste Risk' : tab}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-            {rankedData.map((item, i) => (
-              <div key={item.id} className="group relative bg-[#111] border border-white/5 rounded-3xl p-5 hover:border-primary/50 transition-all">
-                <div className="absolute -top-3 -right-3 w-8 h-8 rounded-full bg-black border border-white/10 flex items-center justify-center font-black text-xs text-white z-10 shadow-2xl">
-                  {i + 1}
-                </div>
-                <div className="space-y-3">
-                  <div className="w-full aspect-square rounded-2xl overflow-hidden grayscale group-hover:grayscale-0 transition-all duration-500">
-                    <img src={item.image_url || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c'} className="w-full h-full object-cover scale-110" />
-                  </div>
-                  <div>
-                    <h4 className="font-black text-white text-sm truncate leading-tight group-hover:text-primary transition-colors">{item.name}</h4>
-                    <div className="flex items-center gap-2 mt-2">
-                      <span className="text-[10px] font-mono font-bold text-primary">
-                        {rankBy === 'orders' ? `${item.totalSold} Sold` :
-                          rankBy === 'wasteRisk' ? `Risk: ${item.wasteRisk.toFixed(0)}%` :
-                            rankBy === 'margin' ? `${item.marginPercent.toFixed(1)}%` :
-                              `ETB ${(item as any)[rankBy].toLocaleString()}`}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))}
           </div>
         </div>
 
