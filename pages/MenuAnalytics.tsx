@@ -151,7 +151,7 @@ const MenuAnalytics: React.FC = () => {
         return {
           id: item.id,
           name: item.name,
-          category: item.category_name || 'Uncategorized',
+          category: item.category || 'Uncategorized',
           totalSold: data.sold,
           revenue: data.rev,
           costPerUnit: unitCost,
@@ -182,16 +182,28 @@ const MenuAnalytics: React.FC = () => {
         }
       });
 
-      setCategoryBreakdown(
-        Array.from(catMap.entries())
-          .map(([name, revenue]) => ({
-            name,
-            revenue,
-            percentage: totalRev > 0 ? (revenue / totalRev) * 100 : 0,
-            winner: catWinnersMap.get(name)
-          }))
-          .sort((a, b) => b.revenue - a.revenue)
-      );
+      const overallWinner = [...finalStats].sort((a, b) => b.revenue - a.revenue)[0];
+
+      const breakdown = Array.from(catMap.entries())
+        .map(([name, revenue]) => ({
+          name,
+          revenue,
+          percentage: totalRev > 0 ? (revenue / totalRev) * 100 : 0,
+          winner: catWinnersMap.get(name)
+        }))
+        .sort((a, b) => b.revenue - a.revenue);
+
+      // Prepend Overall Winner if it exists
+      if (overallWinner && overallWinner.revenue > 0) {
+        breakdown.unshift({
+          name: 'All Dishes',
+          revenue: totalRev,
+          percentage: 100,
+          winner: overallWinner
+        });
+      }
+
+      setCategoryBreakdown(breakdown);
 
     } catch (err) {
       console.error("Analytics Error:", err);
@@ -379,7 +391,7 @@ const MenuAnalytics: React.FC = () => {
             </CardHeader>
             <CardContent className="p-8 pt-4">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {categoryBreakdown.map(cat => (
+                {categoryBreakdown.filter(c => c.name !== 'All Dishes').map(cat => (
                   <div key={cat.name} className="space-y-2">
                     <div className="flex justify-between text-[10px] font-bold uppercase tracking-tight">
                       <span className="text-muted-foreground">{cat.name}</span>
