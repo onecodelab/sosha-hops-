@@ -296,114 +296,92 @@ const MenuAnalytics: React.FC = () => {
           </div>
         )}
 
-        {/* Section 2: The Truth Matrix (Hard Metrics Table) */}
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          <Card className="lg:col-span-3 bg-black/40 border-white/5 backdrop-blur-xl rounded-[2rem] overflow-hidden">
-            <CardHeader className="flex flex-row items-center justify-between p-8 border-b border-white/5">
-              <div>
-                <CardTitle className="text-2xl font-black text-white flex items-center gap-3">
-                  <Target className="w-6 h-6 text-primary" /> The Performance Matrix
-                </CardTitle>
-                <p className="text-xs text-muted-foreground mt-1 font-medium">Top 10 items by revenue</p>
-              </div>
+        {/* Section 2: Blunt Rankings - Moved up and expanded */}
+        <div className="space-y-6">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+            <div>
+              <h2 className="text-3xl font-black text-white flex items-center gap-3">
+                <Target className="w-8 h-8 text-primary" /> Performance Rankings
+              </h2>
+              <p className="text-xs text-muted-foreground mt-1 font-medium italic">Ranked evidence of your items</p>
+            </div>
 
-              <div className="flex bg-black/60 border border-white/10 p-1 rounded-xl">
-                <select
-                  value={matrixCategory}
-                  onChange={(e) => setMatrixCategory(e.target.value)}
-                  className="bg-transparent text-xs font-black text-primary uppercase outline-none px-3 py-1 cursor-pointer"
-                >
-                  <option value="All" className="bg-[#111]">All Categories</option>
-                  {categoryBreakdown.map(cat => (
-                    <option key={cat.name} value={cat.name} className="bg-[#111]">{cat.name}</option>
-                  ))}
-                </select>
+            <div className="flex bg-black/40 border border-white/5 p-1 rounded-2xl w-fit">
+              <button
+                onClick={() => setActiveRankTab('top')}
+                className={cn("px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all", activeRankTab === 'top' ? "bg-green-500 text-white shadow-lg shadow-green-500/20" : "text-muted-foreground hover:text-white")}
+              >
+                Top Performers
+              </button>
+              <button
+                onClick={() => setActiveRankTab('bottom')}
+                className={cn("px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all", activeRankTab === 'bottom' ? "bg-red-500 text-white shadow-lg shadow-red-500/20" : "text-muted-foreground hover:text-white")}
+              >
+                Bottom Performers
+              </button>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-2 pb-4">
+            {(['revenue', 'profit', 'margin', 'orders', 'wasteRisk'] as const).map(tab => (
+              <button
+                key={tab}
+                onClick={() => setRankBy(tab)}
+                className={cn(
+                  "px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-tighter border transition-all",
+                  rankBy === tab ? "bg-primary border-primary text-black" : "bg-white/5 border-white/10 text-muted-foreground hover:border-white/20"
+                )}
+              >
+                By {tab === 'wasteRisk' ? 'Waste Risk' : tab}
+              </button>
+            ))}
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+            {rankedData.map((item, i) => (
+              <div key={item.id} className="group relative bg-[#111] border border-white/5 rounded-3xl p-5 hover:border-primary/50 transition-all">
+                <div className="absolute -top-3 -right-3 w-8 h-8 rounded-full bg-black border border-white/10 flex items-center justify-center font-black text-xs text-white z-10 shadow-2xl">
+                  {i + 1}
+                </div>
+                <div className="space-y-3">
+                  <div className="w-full aspect-square rounded-2xl overflow-hidden grayscale group-hover:grayscale-0 transition-all duration-500">
+                    <img src={item.image_url || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c'} className="w-full h-full object-cover scale-110" />
+                  </div>
+                  <div>
+                    <h4 className="font-black text-white text-sm truncate leading-tight group-hover:text-primary transition-colors">{item.name}</h4>
+                    <div className="flex items-center gap-2 mt-2">
+                      <span className="text-[10px] font-mono font-bold text-primary">
+                        {rankBy === 'orders' ? `${item.totalSold} Sold` :
+                          rankBy === 'wasteRisk' ? `Risk: ${item.wasteRisk.toFixed(0)}%` :
+                            rankBy === 'margin' ? `${item.marginPercent.toFixed(1)}%` :
+                              `ETB ${(item as any)[rankBy].toLocaleString()}`}
+                      </span>
+                    </div>
+                    {/* Tiny stats inside card */}
+                    <div className="mt-3 flex gap-2">
+                      {item.labels.slice(0, 1).map((label, idx) => (
+                        <span key={idx} className="text-[7px] text-muted-foreground font-black uppercase tracking-tighter">{label.split(' – ')[0]}</span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
               </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Section 3: Revenue Split (Simplified and full width) */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <Card className="lg:col-span-2 bg-black/40 border-white/5 backdrop-blur-xl rounded-[2rem]">
+            <CardHeader className="p-8 pb-2">
+              <CardTitle className="text-lg font-black text-white uppercase tracking-widest flex items-center gap-3">
+                <PieChart className="w-5 h-5 text-blue-400" /> Category Revenue Split
+              </CardTitle>
             </CardHeader>
-            <CardContent className="p-0">
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm text-left">
-                  <thead className="text-[10px] text-muted-foreground uppercase bg-white/[0.02]">
-                    <tr>
-                      <th className="px-8 py-5 font-black tracking-widest">Dish Identity</th>
-                      <th className="px-6 py-5 text-center font-black tracking-widest">Revenue</th>
-                      <th className="px-6 py-5 text-center font-black tracking-widest text-primary">Unit Cost</th>
-                      <th className="px-6 py-5 text-center font-black tracking-widest">Profit</th>
-                      <th className="px-6 py-5 text-center font-black tracking-widest">Margin %</th>
-                      <th className="px-8 py-5 text-right font-black tracking-widest">Intelligence</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-white/5">
-                    {loading ? (
-                      <tr><td colSpan={6} className="p-20 text-center text-muted italic">Computing truth layer...</td></tr>
-                    ) : filteredMatrixData.length === 0 ? (
-                      <tr><td colSpan={6} className="p-20 text-center text-muted italic">No data found for this category.</td></tr>
-                    ) : (
-                      filteredMatrixData.map(item => (
-                        <tr key={item.id} className="hover:bg-white/[0.02] transition-colors group">
-                          <td className="px-8 py-6">
-                            <div className="flex items-center gap-4">
-                              <div className="w-12 h-12 rounded-xl bg-white/5 overflow-hidden border border-white/10 group-hover:border-primary/50 transition-colors">
-                                <img src={item.image_url || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c'} className="w-full h-full object-cover" />
-                              </div>
-                              <div>
-                                <p className="font-black text-white group-hover:text-primary transition-colors">{item.name}</p>
-                                <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest">{item.category}</p>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="px-6 py-6 text-center font-mono font-bold text-gray-300">ETB {item.revenue.toLocaleString()}</td>
-                          <td className="px-6 py-6 text-center font-mono font-bold text-primary">ETB {item.costPerUnit.toFixed(1)}</td>
-                          <td className="px-6 py-6 text-center font-mono font-black text-white">ETB {item.profit.toLocaleString()}</td>
-                          <td className="px-6 py-6 text-center">
-                            <div className="flex flex-col items-center gap-1">
-                              <span className={cn(
-                                "text-sm font-black font-mono",
-                                item.marginPercent > 60 ? "text-green-500" : item.marginPercent < 30 ? "text-red-500" : "text-primary"
-                              )}>
-                                {item.marginPercent.toFixed(1)}%
-                              </span>
-                              <div className="w-12 h-1 bg-white/5 rounded-full overflow-hidden">
-                                <div className={cn("h-full transition-all duration-500",
-                                  item.marginPercent > 60 ? "bg-green-500" : item.marginPercent < 30 ? "bg-red-500" : "bg-primary"
-                                )} style={{ width: `${Math.min(item.marginPercent, 100)}%` }} />
-                              </div>
-                            </div>
-                          </td>
-                          <td className="px-8 py-6 text-right">
-                            <div className="flex flex-wrap justify-end gap-2">
-                              {item.labels.slice(0, 2).map((label, i) => (
-                                <Badge key={i} className={cn(
-                                  "text-[8px] font-black uppercase px-2 py-0.5 rounded-lg border-none",
-                                  label.includes('High') ? "bg-green-500/10 text-green-500" :
-                                    label.includes('Popular') ? "bg-blue-500/10 text-blue-500" :
-                                      "bg-orange-500/10 text-orange-500"
-                                )}>
-                                  {label.split(' – ')[0]}
-                                </Badge>
-                              ))}
-                            </div>
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Side: Category Health */}
-          <div className="space-y-6">
-            <Card className="bg-black/40 border-white/5 backdrop-blur-xl rounded-[2rem]">
-              <CardHeader className="p-6 pb-2">
-                <CardTitle className="text-sm font-black text-white uppercase tracking-widest flex items-center gap-2">
-                  <PieChart className="w-4 h-4 text-blue-400" /> Revenue Split
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-6 pt-0 space-y-4">
+            <CardContent className="p-8 pt-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {categoryBreakdown.map(cat => (
-                  <div key={cat.name} className="space-y-1.5">
+                  <div key={cat.name} className="space-y-2">
                     <div className="flex justify-between text-[10px] font-bold uppercase tracking-tight">
                       <span className="text-muted-foreground">{cat.name}</span>
                       <span className="text-white">{cat.percentage.toFixed(1)}%</span>
@@ -413,14 +391,15 @@ const MenuAnalytics: React.FC = () => {
                     </div>
                   </div>
                 ))}
-              </CardContent>
-            </Card>
+              </div>
+            </CardContent>
+          </Card>
 
-            <div className="bg-primary/10 border border-primary/20 rounded-[2rem] p-8 text-center space-y-4">
-              <Zap className="w-12 h-12 text-primary mx-auto animate-pulse" />
-              <h3 className="text-lg font-black text-white uppercase leading-none">Auto Diagnosis<br />Enabled</h3>
-              <p className="text-[10px] text-primary font-bold uppercase tracking-widest">Every item is indexed by real cost & yield</p>
-            </div>
+          <div className="bg-primary/10 border border-primary/20 rounded-[2rem] p-8 text-center flex flex-col justify-center items-center space-y-4">
+            <Zap className="w-10 h-10 text-primary animate-pulse" />
+            <h3 className="text-sm font-black text-white uppercase leading-tight tracking-[0.2em]">Live Performance<br />Diagnosis</h3>
+            <div className="w-10 h-0.5 bg-primary/30" />
+            <p className="text-[9px] text-primary/80 font-bold uppercase tracking-widest max-w-[150px]">Items are audited by real recipe cost & daily demand volume</p>
           </div>
         </div>
 
