@@ -182,8 +182,6 @@ const MenuAnalytics: React.FC = () => {
         }
       });
 
-      const overallWinner = [...finalStats].sort((a, b) => b.revenue - a.revenue)[0];
-
       const breakdown = Array.from(catMap.entries())
         .map(([name, revenue]) => ({
           name,
@@ -192,16 +190,6 @@ const MenuAnalytics: React.FC = () => {
           winner: catWinnersMap.get(name)
         }))
         .sort((a, b) => b.revenue - a.revenue);
-
-      // Prepend Overall Winner if it exists
-      if (overallWinner && overallWinner.revenue > 0) {
-        breakdown.unshift({
-          name: 'All Dishes',
-          revenue: totalRev,
-          percentage: 100,
-          winner: overallWinner
-        });
-      }
 
       setCategoryBreakdown(breakdown);
 
@@ -391,7 +379,7 @@ const MenuAnalytics: React.FC = () => {
             </CardHeader>
             <CardContent className="p-8 pt-4">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {categoryBreakdown.filter(c => c.name !== 'All Dishes').map(cat => (
+                {categoryBreakdown.map(cat => (
                   <div key={cat.name} className="space-y-2">
                     <div className="flex justify-between text-[10px] font-bold uppercase tracking-tight">
                       <span className="text-muted-foreground">{cat.name}</span>
