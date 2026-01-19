@@ -33,7 +33,7 @@ const MenuAnalytics: React.FC = () => {
   const [period, setPeriod] = useState<'7d' | '30d' | '90d'>('30d');
   const { menuItems, loading: menuLoading } = useMenu(false);
   const [analyticsData, setAnalyticsData] = useState<MenuStat[]>([]);
-  const [categoryBreakdown, setCategoryBreakdown] = useState<{ name: string, percentage: number, revenue: number }[]>([]);
+  const [categoryBreakdown, setCategoryBreakdown] = useState<{ name: string, percentage: number, revenue: number, winner?: MenuStat }[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -174,12 +174,21 @@ const MenuAnalytics: React.FC = () => {
         catMap.set(s.category, (catMap.get(s.category) || 0) + s.revenue);
       });
 
+      const catWinnersMap = new Map<string, MenuStat>();
+      finalStats.forEach(s => {
+        const currentWinner = catWinnersMap.get(s.category);
+        if (!currentWinner || s.revenue > currentWinner.revenue) {
+          catWinnersMap.set(s.category, s);
+        }
+      });
+
       setCategoryBreakdown(
         Array.from(catMap.entries())
           .map(([name, revenue]) => ({
             name,
             revenue,
-            percentage: totalRev > 0 ? (revenue / totalRev) * 100 : 0
+            percentage: totalRev > 0 ? (revenue / totalRev) * 100 : 0,
+            winner: catWinnersMap.get(name)
           }))
           .sort((a, b) => b.revenue - a.revenue)
       );
@@ -385,11 +394,47 @@ const MenuAnalytics: React.FC = () => {
             </CardContent>
           </Card>
 
-          <div className="bg-primary/10 border border-primary/20 rounded-[2rem] p-8 text-center flex flex-col justify-center items-center space-y-4">
-            <Zap className="w-10 h-10 text-primary animate-pulse" />
-            <h3 className="text-sm font-black text-white uppercase leading-tight tracking-[0.2em]">Live Performance<br />Diagnosis</h3>
-            <div className="w-10 h-0.5 bg-primary/30" />
-            <p className="text-[9px] text-primary/80 font-bold uppercase tracking-widest max-w-[150px]">Items are audited by real recipe cost & daily demand volume</p>
+          <div className="bg-black/40 border border-white/5 rounded-[2rem] p-8 overflow-hidden relative backdrop-blur-xl">
+            <div className="relative z-10 flex flex-col h-full">
+              <div className="flex items-center gap-2 mb-6">
+                < Award className="w-5 h-5 text-primary" />
+                <h3 className="text-sm font-black text-white uppercase tracking-[0.2em]">Category Champions</h3>
+              </div>
+
+              <div className="space-y-6 flex-1 overflow-y-auto custom-scrollbar pr-2">
+                {categoryBreakdown.filter(c => c.winner && c.winner.revenue > 0).map((cat, idx) => (
+                  <div key={cat.name} className="flex items-center gap-4 group/winner">
+                    <div className="relative">
+                      <div className="w-14 h-14 rounded-2xl overflow-hidden border border-white/10 group-hover/winner:border-primary/50 transition-all">
+                        <img
+                          src={cat.winner?.image_url || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c'}
+                          className="w-full h-full object-cover grayscale group-hover/winner:grayscale-0 group-hover/winner:scale-110 transition-all duration-500"
+                        />
+                      </div>
+                      <div className="absolute -top-1 -right-1 bg-primary text-black text-[8px] font-black w-4 h-4 rounded-full flex items-center justify-center border-2 border-black">
+                        {idx + 1}
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-primary font-black uppercase tracking-widest leading-none mb-1">{cat.name} Winner</p>
+                      <h4 className="text-sm font-bold text-white group-hover/winner:text-primary transition-colors truncate max-w-[120px]">
+                        {cat.winner?.name}
+                      </h4>
+                      <p className="text-[10px] text-muted-foreground font-mono">ETB {cat.winner?.revenue.toLocaleString()}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="pt-6 mt-6 border-t border-white/5">
+                <div className="flex items-center gap-2 text-[9px] text-muted-foreground font-bold uppercase tracking-widest">
+                  <Zap className="w-3 h-3 text-primary animate-pulse" />
+                  Live Performance Pulse
+                </div>
+              </div>
+            </div>
+            {/* Ambient Background */}
+            <div className="absolute top-0 right-0 w-32 h-32 bg-primary/10 rounded-full blur-3xl -mr-16 -mt-16" />
           </div>
         </div>
 
