@@ -23,6 +23,7 @@ interface MenuStat {
   totalCost: number;
   profit: number;
   marginPercent: number;
+  wasteRisk: number; // New metric
   labels: string[];
   image_url?: string;
   hourlyPerformance?: Record<number, number>; // Hour -> Quantity
@@ -122,15 +123,30 @@ const MenuAnalytics: React.FC = () => {
         const profit = data.rev - totalCost;
         const margin = data.rev > 0 ? (profit / data.rev) * 100 : 0;
 
+        // Waste Risk: High cost share + Low demand
+        // Score 0-100: Higher is riskier
+        const itemPrice = item.price || 1;
+        const costShare = unitCost / itemPrice;
+        const demandFactor = Math.max(0, 1 - (data.sold / 20)); // Normalized 0-1
+        const wasteRisk = (costShare * demandFactor) * 100;
+
         // Auto Labels
         const labels: string[] = [];
         if (margin > 60 && data.sold > 0) labels.push('High Margin – Promote');
         if (margin < 30 && data.sold > 10) labels.push('Popular but Low Margin – Reprice');
-        if (data.sold < 5 && unitCost > 0) labels.push('Low Demand – Consider Removal');
+        if (wasteRisk > 70) labels.push('High Waste Risk – Remove?');
 
-        // Time Winner logic
-        const maxHour = Object.entries(data.hourly).sort((a, b) => b[1] - a[1])[0];
-        if (maxHour && data.sold > 5) labels.push('Time-Specific Winner');
+        // Time Winner logic (Ethiopian 12h clock)
+        const entries = Object.entries(data.hourly);
+        const maxHourEntry = entries.sort((a, b) => b[1] - a[1])[0];
+        if (maxHourEntry && data.sold > 5) {
+          const hour = parseInt(maxHourEntry[0]);
+          // Ethiopian Time: Offset 6 hours
+          // 6 AM -> 12, 7 AM -> 1, 12 PM -> 6, 6 PM -> 12, 11 PM -> 5
+          const etHour = (hour - 6 + 24) % 12 || 12;
+          const periodName = (hour >= 6 && hour < 18) ? 'Day' : 'Night';
+          labels.push(`Peak at ${etHour}:00 (${periodName})`);
+        }
 
         return {
           id: item.id,
@@ -142,6 +158,7 @@ const MenuAnalytics: React.FC = () => {
           totalCost,
           profit,
           marginPercent: margin,
+          wasteRisk,
           labels,
           image_url: item.image_url,
           hourlyPerformance: data.hourly
@@ -175,7 +192,7 @@ const MenuAnalytics: React.FC = () => {
   };
 
   const [activeRankTab, setActiveRankTab] = useState<'top' | 'bottom'>('top');
-  const [rankBy, setRankBy] = useState<'revenue' | 'profit' | 'margin' | 'orders'>('revenue');
+  const [rankBy, setRankBy] = useState<'revenue' | 'profit' | 'margin' | 'orders' | 'wasteRisk'>('revenue');
   const [matrixCategory, setMatrixCategory] = useState<string>('All');
 
   const filteredMatrixData = useMemo(() => {
@@ -426,7 +443,7 @@ const MenuAnalytics: React.FC = () => {
             </div>
 
             <div className="flex flex-wrap gap-2">
-              {(['revenue', 'profit', 'margin', 'orders'] as const).map(tab => (
+              {(['revenue', 'profit', 'margin', 'orders', 'wasteRisk'] as const).map(tab => (
                 <button
                   key={tab}
                   onClick={() => setRankBy(tab)}
@@ -435,7 +452,7 @@ const MenuAnalytics: React.FC = () => {
                     rankBy === tab ? "bg-primary border-primary text-black" : "bg-white/5 border-white/10 text-muted-foreground hover:border-white/20"
                   )}
                 >
-                  By {tab}
+                  By {tab === 'wasteRisk' ? 'Waste Risk' : tab}
                 </button>
               ))}
             </div>
@@ -456,8 +473,9 @@ const MenuAnalytics: React.FC = () => {
                     <div className="flex items-center gap-2 mt-2">
                       <span className="text-[10px] font-mono font-bold text-primary">
                         {rankBy === 'orders' ? `${item.totalSold} Sold` :
-                          rankBy === 'margin' ? `${item.marginPercent.toFixed(1)}%` :
-                            `ETB ${(item as any)[rankBy].toLocaleString()}`}
+                          rankBy === 'wasteRisk' ? `Risk: ${item.wasteRisk.toFixed(0)}%` :
+                            rankBy === 'margin' ? `${item.marginPercent.toFixed(1)}%` :
+                              `ETB ${(item as any)[rankBy].toLocaleString()}`}
                       </span>
                     </div>
                   </div>
