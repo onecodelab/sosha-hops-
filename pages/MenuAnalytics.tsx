@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { supabase } from '../supabase';
 import { useMenu } from '../hooks/useMenu';
@@ -176,6 +176,16 @@ const MenuAnalytics: React.FC = () => {
 
   const [activeRankTab, setActiveRankTab] = useState<'top' | 'bottom'>('top');
   const [rankBy, setRankBy] = useState<'revenue' | 'profit' | 'margin' | 'orders'>('revenue');
+  const [matrixCategory, setMatrixCategory] = useState<string>('All');
+
+  const filteredMatrixData = useMemo(() => {
+    let filtered = [...analyticsData];
+    if (matrixCategory !== 'All') {
+      filtered = filtered.filter(item => item.category === matrixCategory);
+    }
+    // Sort by revenue by default for the matrix "Top 10"
+    return filtered.sort((a, b) => b.revenue - a.revenue).slice(0, 10);
+  }, [analyticsData, matrixCategory]);
 
   const rankedData = [...analyticsData].sort((a, b) => {
     const field = rankBy === 'orders' ? 'totalSold' : rankBy === 'margin' ? 'marginPercent' : rankBy;
@@ -277,7 +287,20 @@ const MenuAnalytics: React.FC = () => {
                 <CardTitle className="text-2xl font-black text-white flex items-center gap-3">
                   <Target className="w-6 h-6 text-primary" /> The Performance Matrix
                 </CardTitle>
-                <p className="text-xs text-muted-foreground mt-1 font-medium">Detailed evidence per menu item</p>
+                <p className="text-xs text-muted-foreground mt-1 font-medium">Top 10 items by revenue</p>
+              </div>
+
+              <div className="flex bg-black/60 border border-white/10 p-1 rounded-xl">
+                <select
+                  value={matrixCategory}
+                  onChange={(e) => setMatrixCategory(e.target.value)}
+                  className="bg-transparent text-xs font-black text-primary uppercase outline-none px-3 py-1 cursor-pointer"
+                >
+                  <option value="All" className="bg-[#111]">All Categories</option>
+                  {categoryBreakdown.map(cat => (
+                    <option key={cat.name} value={cat.name} className="bg-[#111]">{cat.name}</option>
+                  ))}
+                </select>
               </div>
             </CardHeader>
             <CardContent className="p-0">
@@ -296,8 +319,10 @@ const MenuAnalytics: React.FC = () => {
                   <tbody className="divide-y divide-white/5">
                     {loading ? (
                       <tr><td colSpan={6} className="p-20 text-center text-muted italic">Computing truth layer...</td></tr>
+                    ) : filteredMatrixData.length === 0 ? (
+                      <tr><td colSpan={6} className="p-20 text-center text-muted italic">No data found for this category.</td></tr>
                     ) : (
-                      analyticsData.map(item => (
+                      filteredMatrixData.map(item => (
                         <tr key={item.id} className="hover:bg-white/[0.02] transition-colors group">
                           <td className="px-8 py-6">
                             <div className="flex items-center gap-4">
