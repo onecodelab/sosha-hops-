@@ -204,7 +204,8 @@ export const translations = {
         delete: "Delete",
         receive: "Receive"
       },
-      deleteSuccess: "PO deleted successfully"
+      deleteSuccess: "PO deleted successfully",
+      empty: "No purchase orders found"
     },
     grn: {
       title: "Receive Goods",
@@ -474,7 +475,8 @@ export const translations = {
         delete: "ሰርዝ",
         receive: "ተረከብ"
       },
-      deleteSuccess: "PO በተሳካ ሁኔታ ተሰርዟል"
+      deleteSuccess: "PO በተሳካ ሁኔታ ተሰርዟል",
+      empty: "ምንም የግዢ ትዕዛዝ አልተገኘም"
     },
     grn: {
       title: "ዕቃ ተረከብ",

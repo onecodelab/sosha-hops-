@@ -4,7 +4,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import {
     LogOut, LayoutDashboard, ShoppingBag, Users,
     ClipboardList, Utensils, ChevronLeft, ChevronRight,
-    Trash2, Truck, PlusCircle, PackageCheck, FileText, Monitor, BookOpen, TrendingUp
+    Trash2, Truck, PlusCircle, PackageCheck, FileText, Monitor, BookOpen, TrendingUp, Clock
 } from 'lucide-react';
 import { cn } from './ui';
 import { SoshaLogo } from './SoshaLogo';
@@ -89,20 +89,20 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, setIsCollapsed, h
                     allowedRoles={['kitchen']}
                 />
 
-                {/* Kitchen Display (Management Access) */}
+                {/* Kitchen Display - Manager only */}
                 <NavItem
                     icon={Monitor}
                     label="Kitchen Board"
                     path="/kitchen"
-                    allowedRoles={['manager', 'admin']}
+                    allowedRoles={['manager']}
                 />
 
-                {/* Floor/Waiter Station */}
+                {/* Floor Live Map - Owner/Admin manage the floor */}
                 <NavItem
                     icon={Monitor}
-                    label="FLOOR LIVE MAP"
+                    label="Floor Live Map"
                     path="/tables"
-                    allowedRoles={['waiter', 'manager', 'admin', 'owner']}
+                    allowedRoles={['owner', 'admin', 'waiter', 'manager']}
                 />
 
                 {/* Menu Management & Analytics */}
@@ -118,7 +118,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, setIsCollapsed, h
                     path="/menu-analytics"
                     allowedRoles={['owner', 'admin']}
                 />
-
 
                 {/* Inventory/Stock */}
                 <NavItem
@@ -146,13 +145,33 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, setIsCollapsed, h
                     allowedRoles={['kitchen']}
                 />
 
-                {/* Supply Chain */}
+                {/* Supply Chain - Owner/Admin only */}
                 <NavItem
                     icon={Truck}
                     label={t('nav.pendingRequests')}
                     path="/manager/pending-requests"
-                    allowedRoles={['manager', 'owner', 'admin']}
+                    allowedRoles={['owner', 'admin']}
                 />
+                <NavItem
+                    icon={FileText}
+                    label={t('nav.purchaseOrders')}
+                    path="/manager/purchase-orders"
+                    allowedRoles={['owner', 'admin']}
+                />
+                <NavItem
+                    icon={PackageCheck}
+                    label={t('nav.receiveGoods')}
+                    path="/manager/receive-goods"
+                    allowedRoles={['owner', 'admin']}
+                />
+                <NavItem
+                    icon={Clock}
+                    label="Pending Approvals"
+                    path="/pending-po"
+                    allowedRoles={['owner', 'admin']}
+                />
+
+                {/* Manager-only PO access */}
                 <NavItem
                     icon={PlusCircle}
                     label={t('nav.createPO')}
@@ -160,22 +179,18 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, setIsCollapsed, h
                     allowedRoles={['manager']}
                 />
                 <NavItem
-                    icon={FileText}
-                    label={t('nav.purchaseOrders')}
-                    path="/manager/purchase-orders"
+                    icon={Clock}
+                    label="My Pending POs"
+                    path="/pending-po"
                     allowedRoles={['manager']}
                 />
-                <NavItem
-                    icon={PackageCheck}
-                    label={t('nav.receiveGoods')}
-                    path="/manager/receive-goods"
-                    allowedRoles={['manager']}
-                />
+
+                {/* Orders - Owner/Admin only */}
                 <NavItem
                     icon={ClipboardList}
                     label={t('nav.orders')}
                     path="/orders-tables"
-                    allowedRoles={['manager']}
+                    allowedRoles={['owner', 'admin']}
                 />
 
                 {/* Staff/Performance */}
@@ -184,12 +199,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, setIsCollapsed, h
                     label={t('nav.staffPerf')}
                     path="/admin/staff-performance"
                     allowedRoles={['owner', 'admin']}
-                />
-                <NavItem
-                    icon={Users}
-                    label={t('nav.staff')}
-                    path="/staff-performance"
-                    allowedRoles={['manager']}
                 />
 
                 {/* Settings */}
