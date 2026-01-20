@@ -26,6 +26,8 @@ export interface MenuDish {
   image_url?: string;
   stock_quantity: number;
   is_available: boolean;
+  cost_per_plate?: number;
+  availability_reason?: string;
   recipe_id?: string | null;
   created_at: string;
 }

@@ -187,10 +187,9 @@ const Inventory: React.FC = () => {
   const getStockStatus = (item: Ingredient) => {
     const current = Number(item.current_stock) || 0;
     const min = Number(item.par_min) || 0;
-    const max = Number(item.par_max) || 0;
-    if (current < min) return 'low';
-    if (current > max && max > 0) return 'high';
-    return 'healthy';
+    if (current <= 0) return 'Out of Stock';
+    if (current < min) return 'Low stock';
+    return 'In stock';
   };
   return (
     <DashboardLayout title="Inventory Management" subtitle="Master Registry Control">
@@ -261,14 +260,15 @@ const Inventory: React.FC = () => {
                       {canViewStock && (
                         <td className="px-8 py-5 text-center">
                           <div className="flex flex-col items-center gap-1">
-                            <span className={cn(
-                              "font-mono font-black text-xl",
-                              status === 'low' ? "text-red-500" :
-                                status === 'high' ? "text-blue-400" : "text-white"
+                            <Badge className={cn(
+                              "px-2 py-0.5 rounded-full text-[8px] font-black uppercase border",
+                              status === 'In stock' ? "bg-green-500/10 text-green-500 border-green-500/20" :
+                                status === 'Low stock' ? "bg-yellow-500/10 text-yellow-500 border-yellow-500/20" :
+                                  "bg-red-500/10 text-red-500 border-red-500/20"
                             )}>
-                              {stockVal.toLocaleString()}
-                            </span>
-                            {status === 'low' && <span className="text-[8px] font-black text-red-500 uppercase flex items-center gap-1"><AlertTriangle className="w-2.5 h-2.5" /> LOW</span>}
+                              {status}
+                            </Badge>
+                            {status === 'Low stock' && <span className="text-[8px] font-black text-yellow-500 uppercase flex items-center gap-1"><AlertTriangle className="w-2.5 h-2.5" /> LOW</span>}
                           </div>
                         </td>
                       )}

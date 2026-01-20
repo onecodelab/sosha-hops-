@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../supabase';
 import { MenuDish, Ingredient } from '../types';
+import { getConversionFactor, calculateMargins, RecipeIngredient, calculateIngredientCost } from '../lib/menuEconomics';
 import { Input, Button, showToast, cn, Badge } from './ui';
 import { Search, Plus, Trash2, Save, Loader2, ChefHat, Info, BookOpen, X, AlertTriangle } from 'lucide-react';
 
@@ -205,47 +206,15 @@ export const RecipeEditor: React.FC<RecipeEditorProps> = ({ dish, onSaved }) => 
     }
   };
 
-  const getConversionFactor = (from: string, to: string, weightPerPc: number = 1) => {
-    // Pure mass/volume normalization
-    if (from === to) return 1;
-
-    // Mass <-> Mass
-    if (from === 'kg' && to === 'g') return 0.001;
-    if (from === 'g' && to === 'kg') return 1000;
-
-    // Volume <-> Volume
-    if (from === 'l' && to === 'ml') return 0.001;
-    if (from === 'ml' && to === 'l') return 1000;
-
-    // Discrete <-> Mass/Volume (The "Deep Logic")
-    // If inventory is in kg/l but recipe is in pcs/slice
-    if ((from === 'kg' || from === 'l') && (to === 'pcs' || to === 'slice' || to === 'unit')) {
-      return weightPerPc / 1000; // 1 pc = X grams = X/1000 kg
-    }
-    // If inventory is in g/ml but recipe is in pcs/slice
-    if ((from === 'g' || from === 'ml') && (to === 'pcs' || to === 'slice' || to === 'unit')) {
-      return weightPerPc; // 1 pc = X grams
-    }
-
-    // Inverse: If inventory is in pcs but recipe is in mass (rare but possible)
-    if ((from === 'pcs' || from === 'slice') && (to === 'g' || to === 'ml')) {
-      return 1 / weightPerPc;
-    }
-
-    return 1;
-  };
-
   const totalCost = useMemo(() => {
     return selectedMappings.reduce((sum, m) => {
-      const factor = getConversionFactor(m.inventory_unit, m.unit_type, m.weight_per_unit);
-      const inventoryQty = m.quantity_needed * factor;
-      return sum + (inventoryQty * m.cost_per_unit);
+      // Use centralized cost calculation
+      return sum + calculateIngredientCost(m as unknown as RecipeIngredient);
     }, 0);
   }, [selectedMappings]);
 
-  const margin = useMemo(() => {
-    if (dish.price <= 0) return 0;
-    return ((dish.price - totalCost) / dish.price) * 100;
+  const { marginPercent } = useMemo(() => {
+    return calculateMargins(dish.price, totalCost);
   }, [dish.price, totalCost]);
 
   const filteredResults = useMemo(() => {
@@ -382,7 +351,7 @@ export const RecipeEditor: React.FC<RecipeEditorProps> = ({ dish, onSaved }) => 
                       </select>
                     </td>
                     <td className="px-4 py-4 text-right font-mono text-white text-xs">
-                      {((m.quantity_needed * getConversionFactor(m.inventory_unit, m.unit_type, m.weight_per_unit)) * m.cost_per_unit).toFixed(2)}
+                      {calculateIngredientCost(m as unknown as RecipeIngredient).toFixed(2)}
                     </td>
                     <td className="px-4 py-4 text-right">
                       <button onClick={() => removeIngredient(m.ingredient_id)} className="text-gray-700 hover:text-red-500 transition-colors p-2">
@@ -414,10 +383,10 @@ export const RecipeEditor: React.FC<RecipeEditorProps> = ({ dish, onSaved }) => 
               <p className="text-[8px] font-black text-gray-500 uppercase tracking-widest leading-none mb-1">Profit Margin</p>
               <Badge className={cn(
                 "text-[9px] font-black uppercase",
-                margin > 40 ? "bg-green-500/10 text-green-500" :
-                  margin > 20 ? "bg-yellow-500/10 text-yellow-500" : "bg-red-500/10 text-red-500"
+                marginPercent > 40 ? "bg-green-500/10 text-green-500" :
+                  marginPercent > 20 ? "bg-yellow-500/10 text-yellow-500" : "bg-red-500/10 text-red-500"
               )}>
-                {margin.toFixed(0)}% Margin
+                {marginPercent.toFixed(0)}% Margin
               </Badge>
             </div>
           </div>

@@ -12,6 +12,7 @@ import { MenuEditorModal } from '../components/MenuEditorModal';
 
 const MenuManagement: React.FC = () => {
   const { menuItems, categories, loading: menuLoading, refreshMenu } = useMenu(false);
+  const { user } = useLanguage(); // Note: LanguageContext has user profile
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [selectedDish, setSelectedDish] = useState<MenuDish | null>(null);
@@ -20,11 +21,15 @@ const MenuManagement: React.FC = () => {
 
   const filteredItems = useMemo(() => {
     return menuItems.filter(item => {
+      // Visibility rule: Staff (non-owners/admins) should never see unavailable items
+      const isPrivileged = user?.role === 'owner' || user?.role === 'admin';
+      if (!isPrivileged && !item.is_available) return false;
+
       const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesCategory = selectedCategory === 'all' || item.category === selectedCategory;
       return matchesSearch && matchesCategory;
     });
-  }, [menuItems, searchTerm, selectedCategory]);
+  }, [menuItems, searchTerm, selectedCategory, user?.role]);
 
   return (
     <DashboardLayout
@@ -92,13 +97,18 @@ const MenuManagement: React.FC = () => {
                   src={item.image_url || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=300&q=80'}
                   className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
                 />
-                <div className="absolute top-4 right-4 z-10">
+                <div className="absolute top-4 right-4 z-10 flex flex-col items-end gap-2">
                   <Badge className={cn(
                     "text-[9px] font-black uppercase px-2 py-1 rounded-md border",
                     item.recipe_id ? "bg-green-500/10 text-green-400 border-green-500/20" : "bg-red-500/10 text-red-400 border-red-500/20"
                   )}>
                     {item.recipe_id ? 'Recipe Set' : 'No Spec'}
                   </Badge>
+                  {!item.is_available && (
+                    <Badge className="bg-red-500 text-white border-red-600 text-[8px] font-black uppercase shadow-lg shadow-red-500/20">
+                      Out of Stock
+                    </Badge>
+                  )}
                 </div>
                 <div className="absolute inset-0 bg-gradient-to-t from-[#0A0A0A] to-transparent opacity-90" />
                 <div className="absolute bottom-4 left-4 right-12">
@@ -131,12 +141,25 @@ const MenuManagement: React.FC = () => {
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-2xl font-black text-white font-mono tracking-tighter">ETB {item.price.toLocaleString()}</span>
 
-                    {/* Margin Indicator - Simulated Logic for now */}
+                    {/* Real Margin & Cost Logic */}
                     <div className="flex flex-col items-end">
-                      <Badge className="bg-green-500/10 text-green-500 border-green-500/20 text-[8px] font-black uppercase">
-                        72% Margin
-                      </Badge>
-                      <span className="text-[8px] text-gray-600 mt-1 uppercase font-bold tracking-tighter">Cost: ETB 123</span>
+                      {item.cost_per_plate !== undefined && item.cost_per_plate > 0 ? (
+                        <>
+                          <Badge className={cn(
+                            "text-[8px] font-black uppercase border",
+                            ((item.price - item.cost_per_plate) / item.price) > 0.4
+                              ? "bg-green-500/10 text-green-500 border-green-500/20"
+                              : "bg-yellow-500/10 text-yellow-500 border-yellow-500/20"
+                          )}>
+                            {(((item.price - item.cost_per_plate) / item.price) * 100).toFixed(0)}% Margin
+                          </Badge>
+                          <span className="text-[8px] text-gray-600 mt-1 uppercase font-bold tracking-tighter">
+                            Cost: ETB {item.cost_per_plate.toFixed(2)}
+                          </span>
+                        </>
+                      ) : (
+                        <span className="text-[8px] text-red-500/50 uppercase font-black tracking-tighter italic">Cost Unknown</span>
+                      )}
                     </div>
                   </div>
                 </div>

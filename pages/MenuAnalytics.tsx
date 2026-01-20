@@ -3,6 +3,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { supabase } from '../supabase';
 import { useMenu } from '../hooks/useMenu';
+import { calculateCostPerPlate, calculateMargins, RecipeIngredient } from '../lib/menuEconomics';
 import {
   PieChart,
 } from 'recharts';
@@ -118,31 +119,28 @@ const MenuAnalytics: React.FC = () => {
       // 4. Transform to MenuStat
       const finalStats: MenuStat[] = menuItems.map(item => {
         const data = statsMap.get(item.id) || { sold: 0, rev: 0, hourly: {} };
-        const unitCost = costMap.get(item.id) || 0;
+
+        // Strict economic truth from menuEconomics
+        const unitCost = item.cost_per_plate || 0;
         const totalCost = data.sold * unitCost;
-        const profit = data.rev - totalCost;
-        const margin = data.rev > 0 ? (profit / data.rev) * 100 : 0;
+        const { margin, marginPercent } = calculateMargins(item.price, unitCost);
 
         // Waste Risk: High cost share + Low demand
-        // Score 0-100: Higher is riskier
         const itemPrice = item.price || 1;
         const costShare = unitCost / itemPrice;
-        const demandFactor = Math.max(0, 1 - (data.sold / 20)); // Normalized 0-1
+        const demandFactor = Math.max(0, 1 - (data.sold / 20));
         const wasteRisk = (costShare * demandFactor) * 100;
 
         // Auto Labels
         const labels: string[] = [];
-        if (margin > 60 && data.sold > 0) labels.push('High Margin – Promote');
-        if (margin < 30 && data.sold > 10) labels.push('Popular but Low Margin – Reprice');
+        if (marginPercent > 60 && data.sold > 0) labels.push('High Margin – Promote');
+        if (marginPercent < 30 && data.sold > 10) labels.push('Popular but Low Margin – Reprice');
         if (wasteRisk > 70) labels.push('High Waste Risk – Remove?');
 
-        // Time Winner logic (Ethiopian 12h clock)
         const entries = Object.entries(data.hourly);
         const maxHourEntry = entries.sort((a, b) => b[1] - a[1])[0];
         if (maxHourEntry && data.sold > 5) {
           const hour = parseInt(maxHourEntry[0]);
-          // Ethiopian Time: Offset 6 hours
-          // 6 AM -> 12, 7 AM -> 1, 12 PM -> 6, 6 PM -> 12, 11 PM -> 5
           const etHour = (hour - 6 + 24) % 12 || 12;
           const periodName = (hour >= 6 && hour < 18) ? 'Day' : 'Night';
           labels.push(`Peak at ${etHour}:00 (${periodName})`);
@@ -156,8 +154,8 @@ const MenuAnalytics: React.FC = () => {
           revenue: data.rev,
           costPerUnit: unitCost,
           totalCost,
-          profit,
-          marginPercent: margin,
+          profit: margin * data.sold, // Profit is margin * quantity sold
+          marginPercent: marginPercent,
           wasteRisk,
           labels,
           image_url: item.image_url,
@@ -201,6 +199,18 @@ const MenuAnalytics: React.FC = () => {
 
   const bestSeller = [...analyticsData].sort((a, b) => b.totalSold - a.totalSold)[0];
 
+  const revenueAtRisk = useMemo(() => {
+    // Current "Revenue at Risk" based on items that are unavailable or have low stock
+    // Low stock items have Math.min stock < par_min (assuming we had par_min here, but we'll use < 5 for now)
+    return menuItems.reduce((sum, item) => {
+      if (!item.is_available) {
+        const stats = analyticsData.find(s => s.id === item.id);
+        return sum + (stats?.revenue || 0);
+      }
+      return sum;
+    }, 0);
+  }, [menuItems, analyticsData]);
+
   return (
     <DashboardLayout
       title="Truth Layer Analytics"
@@ -223,6 +233,25 @@ const MenuAnalytics: React.FC = () => {
       }
     >
       <div className="space-y-10 pb-20 animate-in fade-in slide-in-from-bottom-5 duration-700">
+
+        {/* Dynamic Metric Bar */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <Card className="bg-black/40 border-white/5 backdrop-blur-xl p-6 rounded-[2rem]">
+            <p className="text-[10px] text-muted-foreground uppercase font-black tracking-widest mb-1">Total Revenue ({period})</p>
+            <p className="text-3xl font-black text-white font-mono">ETB {analyticsData.reduce((sum, s) => sum + s.revenue, 0).toLocaleString()}</p>
+          </Card>
+          <Card className="bg-black/40 border-white/5 backdrop-blur-xl p-6 rounded-[2rem]">
+            <p className="text-[10px] text-muted-foreground uppercase font-black tracking-widest mb-1">Total Profit</p>
+            <p className="text-3xl font-black text-primary font-mono">ETB {analyticsData.reduce((sum, s) => sum + s.profit, 0).toLocaleString()}</p>
+          </Card>
+          <Card className="bg-red-500/10 border-red-500/20 backdrop-blur-xl p-6 rounded-[2rem] relative overflow-hidden group">
+            <div className="relative z-10">
+              <p className="text-[10px] text-red-500 uppercase font-black tracking-widest mb-1">Revenue at Risk ⚠️</p>
+              <p className="text-3xl font-black text-white font-mono">ETB {revenueAtRisk.toLocaleString()}</p>
+            </div>
+            <AlertOctagon className="absolute -right-4 -bottom-4 w-24 h-24 text-red-500/10 group-hover:scale-110 transition-transform" />
+          </Card>
+        </div>
 
         {/* Section 1: Best Seller Spotlight (Rolling Plate) */}
         {bestSeller && bestSeller.totalSold > 0 && (
