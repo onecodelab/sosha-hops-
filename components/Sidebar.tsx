@@ -118,12 +118,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, setIsCollapsed, h
                     path="/menu-analytics"
                     allowedRoles={['owner', 'admin']}
                 />
-                <NavItem
-                    icon={TrendingUp}
-                    label="Floor Analytics"
-                    path="/admin/analytics"
-                    allowedRoles={['owner', 'admin']}
-                />
+
 
                 {/* Inventory/Stock */}
                 <NavItem

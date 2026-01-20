@@ -349,19 +349,28 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
           {/* Menu List */}
           <div className="flex-1 overflow-y-auto p-4 space-y-2 custom-scrollbar bg-gradient-to-b from-transparent to-black/40">
             {menuLoading ? <Loader2 className="w-6 h-6 animate-spin mx-auto mt-10 text-primary" /> : filteredMenu.map(dish => (
-              <div key={dish.id} className="group p-2 pr-3 bg-white/[0.02] border border-white/5 rounded-xl flex items-center justify-between hover:bg-white/[0.05] hover:border-white/10 transition-all">
+              <div key={dish.id} className={cn("group p-2 pr-3 border rounded-xl flex items-center justify-between transition-all", !dish.is_available ? "bg-red-900/10 border-red-900/20 opacity-60" : "bg-white/[0.02] border-white/5 hover:bg-white/[0.05] hover:border-white/10")}>
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-zinc-900 border border-white/5 flex items-center justify-center overflow-hidden shrink-0">
-                    {dish.image_url ? <img src={dish.image_url} className="w-full h-full object-cover opacity-70 group-hover:opacity-100 transition-opacity" /> : <Utensils className="w-4 h-4 text-zinc-700" />}
+                  <div className="w-10 h-10 rounded-lg bg-zinc-900 border border-white/5 flex items-center justify-center overflow-hidden shrink-0 relative">
+                    {dish.image_url ? <img src={dish.image_url} className={cn("w-full h-full object-cover transition-opacity", !dish.is_available ? "grayscale opacity-50" : "opacity-70 group-hover:opacity-100")} /> : <Utensils className="w-4 h-4 text-zinc-700" />}
+                    {!dish.is_available && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/60">
+                        <AlertCircle className="w-4 h-4 text-red-500" />
+                      </div>
+                    )}
                   </div>
                   <div className="flex flex-col">
-                    <h4 className="text-xs font-bold text-zinc-100 leading-tight group-hover:text-primary transition-colors">{dish.name}</h4>
+                    <h4 className={cn("text-xs font-bold leading-tight transition-colors", !dish.is_available ? "text-zinc-500" : "text-zinc-100 group-hover:text-primary")}>
+                      {dish.name}
+                      {!dish.is_available && <span className="ml-2 text-[8px] font-black text-red-500 uppercase tracking-wider">Out of Stock</span>}
+                    </h4>
                     <p className="text-[10px] font-mono font-medium text-zinc-500">ETB {dish.price.toLocaleString()}</p>
                   </div>
                 </div>
                 <button
-                  onClick={() => addToCart(dish)}
-                  className="w-8 h-8 rounded-lg bg-white/5 text-zinc-400 group-hover:bg-primary group-hover:text-black flex items-center justify-center transition-all"
+                  onClick={() => dish.is_available && addToCart(dish)}
+                  disabled={!dish.is_available}
+                  className={cn("w-8 h-8 rounded-lg flex items-center justify-center transition-all", !dish.is_available ? "bg-transparent text-zinc-700 cursor-not-allowed" : "bg-white/5 text-zinc-400 group-hover:bg-primary group-hover:text-black")}
                 >
                   <Plus className="w-4 h-4" />
                 </button>

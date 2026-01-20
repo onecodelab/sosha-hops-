@@ -60,12 +60,13 @@ const Inventory: React.FC = () => {
   const fetchInventory = async () => {
     setLoading(true);
     try {
+      // Switched to 'view_inventory_intelligence' for Predictive Data
       const { data, error } = await supabase
-        .from('ingredients')
-        .select('*')
-        .eq('is_active', true);
+        .from('view_inventory_intelligence')
+        .select('*');
+
       if (error) throw error;
-      setInventory(data as Ingredient[]);
+      setInventory(data as any[]); // Using any temporarily as the view returns more fields than Ingredient type
     } catch (err: any) {
       showToast(err.message, "error");
     } finally {
@@ -146,6 +147,31 @@ const Inventory: React.FC = () => {
     }
   };
 
+  // Helper for Smart Labels
+  const getSmartLabels = (item: any) => {
+    const labels = [];
+
+    // 1. Critical High Risk
+    if (item.revenue_at_risk_7d > 5000 && item.days_of_stock_left < 3) {
+      labels.push({ text: 'CRITICAL', color: 'bg-red-500 text-white' });
+    }
+
+    // 2. Velocity
+    if (item.velocity_ratio > 1.3) labels.push({ text: 'Velocity High', color: 'bg-orange-500/20 text-orange-400' });
+    if (item.velocity_ratio < 0.8 && item.days_of_stock_left > 14) labels.push({ text: 'Slow Moving', color: 'bg-blue-500/20 text-blue-400' });
+
+    // 3. Days Left
+    if (item.days_of_stock_left < 3) labels.push({ text: '< 3 Days', color: 'bg-red-500/10 text-red-500 border border-red-500/20' });
+    else if (item.days_of_stock_left < 7) labels.push({ text: '< 7 Days', color: 'bg-yellow-500/10 text-yellow-500 border border-yellow-500/20' });
+
+    // 4. Waste Risk
+    if (item.days_of_stock_left > 60 && item.cost_per_unit > 100) {
+      labels.push({ text: 'Overstock Risk', color: 'bg-purple-500/20 text-purple-400' });
+    }
+
+    return labels;
+  };
+
   const toggleSort = (field: SortField) => {
     if (sortField === field) {
       setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
@@ -224,26 +250,13 @@ const Inventory: React.FC = () => {
         <Card className="bg-card/30 border-white/5 rounded-[2rem] overflow-hidden backdrop-blur-sm shadow-2xl">
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-left">
-              <thead className="text-[10px] text-gray-500 uppercase bg-black/60 border-b border-white/5 font-black tracking-widest">
+              <thead className="text-[10px] text-zinc-500 uppercase bg-black/40 border-b border-white/5 font-bold tracking-widest backdrop-blur-md">
                 <tr>
-                  <th className="px-8 py-5 cursor-pointer hover:text-white transition-colors" onClick={() => toggleSort('name')}>
-                    <div className="flex items-center gap-2">Ingredient {sortField === 'name' && <ArrowUpDown className="w-3 h-3" />}</div>
-                  </th>
-                  {canViewStock && (
-                    <th className="px-8 py-5 cursor-pointer hover:text-white transition-colors text-center" onClick={() => toggleSort('current_stock')}>
-                      <div className="flex items-center gap-2 justify-center">Stock Level {sortField === 'current_stock' && <ArrowUpDown className="w-3 h-3" />}</div>
-                    </th>
-                  )}
-                  <th className="px-8 py-5 text-center">Unit</th>
-                  {canViewCost && (
-                    <th className="px-8 py-5 text-right">Cost/Unit</th>
-                  )}
-                  {canViewCost && (
-                    <th className="px-8 py-5 cursor-pointer hover:text-white transition-colors text-right" onClick={() => toggleSort('total_value')}>
-                      <div className="flex items-center gap-2 justify-end">Value {sortField === 'total_value' && <ArrowUpDown className="w-3 h-3" />}</div>
-                    </th>
-                  )}
-                  <th className="px-8 py-5 text-right"></th>
+                  <th className="px-6 py-4 text-left w-[25%]">Item Details</th>
+                  {canViewStock && <th className="px-6 py-4 text-center w-[15%]">Supply Health</th>}
+                  {canViewCost && <th className="px-6 py-4 text-right w-[25%]">Financial & Risk</th>}
+                  <th className="px-6 py-4 text-left w-[25%]">Intelligence & Status</th>
+                  <th className="px-6 py-4 text-right w-[10%]">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5">
@@ -251,53 +264,95 @@ const Inventory: React.FC = () => {
                   const status = getStockStatus(item);
                   const stockVal = Number(item?.current_stock) || 0;
                   const costVal = Number(item?.cost_per_unit) || 0;
+                  const totalVal = stockVal * costVal;
+                  const riskVal = (item as any).revenue_at_risk_7d || 0;
+                  const daysLeft = (item as any).days_of_stock_left || 0;
+
                   return (
-                    <tr key={item.id} className="hover:bg-white/[0.02] transition-colors group">
-                      <td className="px-8 py-5">
-                        <p className="font-bold text-white text-base">{item.name || 'Unnamed'}</p>
-                        <p className="text-[9px] text-gray-500 uppercase font-black mt-1">SKU: {item.sku || 'N/A'}</p>
+                    <tr key={item.id} className="hover:bg-white/[0.02] transition-colors group border-b border-white/5 last:border-0">
+
+                      {/* 1. Item Details */}
+                      <td className="px-6 py-4">
+                        <div className="flex flex-col">
+                          <span className="font-bold text-white text-sm tracking-tight">{item.name || 'Unnamed'}</span>
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className="text-[10px] text-zinc-500 font-mono bg-white/5 px-1.5 py-0.5 rounded uppercase tracking-wider">{item.sku || '---'}</span>
+                            <span className="text-[10px] text-zinc-500 font-medium">per {item.unit_type || 'unit'}</span>
+                          </div>
+                        </div>
                       </td>
+
+                      {/* 2. Supply Health (Days Left + Stock) */}
                       {canViewStock && (
-                        <td className="px-8 py-5 text-center">
-                          <div className="flex flex-col items-center gap-1">
-                            <Badge className={cn(
-                              "px-2 py-0.5 rounded-full text-[8px] font-black uppercase border",
-                              status === 'In stock' ? "bg-green-500/10 text-green-500 border-green-500/20" :
-                                status === 'Low stock' ? "bg-yellow-500/10 text-yellow-500 border-yellow-500/20" :
-                                  "bg-red-500/10 text-red-500 border-red-500/20"
-                            )}>
-                              {status}
-                            </Badge>
-                            {status === 'Low stock' && <span className="text-[8px] font-black text-yellow-500 uppercase flex items-center gap-1"><AlertTriangle className="w-2.5 h-2.5" /> LOW</span>}
+                        <td className="px-6 py-4 text-center">
+                          <div className="flex flex-col items-center">
+                            <div className="flex items-baseline gap-1">
+                              <span className={cn(
+                                "text-lg font-black font-mono tracking-tighter",
+                                daysLeft < 3 ? "text-red-500 drop-shadow-[0_0_8px_rgba(239,68,68,0.5)]" :
+                                  daysLeft < 7 ? "text-yellow-400" : "text-emerald-400"
+                              )}>
+                                {daysLeft > 90 ? '90+' : Math.round(daysLeft)}
+                              </span>
+                              <span className="text-[10px] font-bold text-zinc-600 uppercase">Days</span>
+                            </div>
+                            <span className="text-[10px] font-medium text-zinc-400 mt-1">
+                              {stockVal.toLocaleString()} {item.unit_type}
+                            </span>
                           </div>
                         </td>
                       )}
-                      <td className="px-8 py-5 text-center">
-                        <Badge variant="outline" className="text-[10px] font-black uppercase text-gray-500 border-white/10">{item.unit_type || 'unit'}</Badge>
+
+                      {/* 3. Financial & Risk */}
+                      {canViewCost && (
+                        <td className="px-6 py-4 text-right">
+                          <div className="flex flex-col items-end gap-1">
+                            <span className="font-mono text-zinc-300 font-medium text-sm">
+                              ETB {totalVal.toLocaleString()}
+                            </span>
+                            {riskVal > 0 ? (
+                              <div className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-red-500/10 border border-red-500/20">
+                                <AlertTriangle className="w-3 h-3 text-red-500" />
+                                <span className="text-[10px] font-bold text-red-400 uppercase tracking-wide">
+                                  Risk: {riskVal.toLocaleString()}
+                                </span>
+                              </div>
+                            ) : (
+                              <span className="text-[10px] text-zinc-700 font-medium">Safe</span>
+                            )}
+                          </div>
+                        </td>
+                      )}
+
+                      {/* 4. Intelligence & Status */}
+                      <td className="px-6 py-4">
+                        <div className="flex flex-wrap gap-2">
+                          {getSmartLabels(item).map((label, idx) => (
+                            <span key={idx} className={cn("px-2 py-1 rounded border text-[9px] font-black uppercase tracking-wider shadow-sm", label.color)}>
+                              {label.text}
+                            </span>
+                          ))}
+                          {getSmartLabels(item).length === 0 && (
+                            <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-emerald-500/5 border border-emerald-500/10 text-emerald-500/60 text-[9px] font-bold uppercase tracking-wider">
+                              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500/40" /> Stable
+                            </span>
+                          )}
+                        </div>
                       </td>
-                      {canViewCost && (
-                        <td className="px-8 py-5 text-right">
-                          <span className="font-mono text-gray-300">ETB {costVal.toLocaleString()}</span>
-                        </td>
-                      )}
-                      {canViewCost && (
-                        <td className="px-8 py-5 text-right">
-                          <span className="font-mono text-white font-black text-lg">
-                            {(stockVal * costVal).toLocaleString()}
-                          </span>
-                        </td>
-                      )}
-                      <td className="px-8 py-5 text-right">
+
+                      {/* 5. Action */}
+                      <td className="px-6 py-4 text-right">
                         <RoleGuard
                           allowedRoles={['owner', 'admin', 'manager']}
-                          fallback={
-                            <Button size="sm" variant="ghost" disabled className="h-10 px-4 rounded-xl font-bold text-xs uppercase text-gray-600">
-                              <Eye className="w-4 h-4 mr-2" /> View Only
-                            </Button>
-                          }
+                          fallback={<Eye className="w-4 h-4 text-zinc-700 mx-auto" />}
                         >
-                          <Button size="sm" variant="ghost" onClick={() => handleEditClick(item)} className="h-10 px-4 rounded-xl hover:bg-primary/10 hover:text-primary transition-all font-bold text-xs uppercase">
-                            <Edit3 className="w-4 h-4 mr-2" /> Adjust
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleEditClick(item)}
+                            className="h-8 w-8 p-0 rounded-lg hover:bg-white/10 hover:text-white transition-all"
+                          >
+                            <Edit3 className="w-4 h-4 text-zinc-400" />
                           </Button>
                         </RoleGuard>
                       </td>
@@ -362,8 +417,8 @@ const Inventory: React.FC = () => {
                 <Input
                   type="number"
                   step="any"
-                  value={formData.current_stock}
-                  onChange={e => setFormData({ ...formData, current_stock: parseFloat(e.target.value) || 0 })}
+                  value={formData.current_stock === 0 ? '0' : formData.current_stock}
+                  onChange={e => setFormData({ ...formData, current_stock: e.target.value === '' ? '' : parseFloat(e.target.value) } as any)}
                   className="bg-black/60 border-white/10 text-primary font-mono font-bold"
                 />
               </div>
@@ -371,8 +426,8 @@ const Inventory: React.FC = () => {
                 <label className="text-[10px] font-bold text-gray-500 uppercase">Par Min</label>
                 <Input
                   type="number"
-                  value={formData.par_min}
-                  onChange={e => setFormData({ ...formData, par_min: parseFloat(e.target.value) || 0 })}
+                  value={formData.par_min === 0 ? '0' : formData.par_min}
+                  onChange={e => setFormData({ ...formData, par_min: e.target.value === '' ? '' : parseFloat(e.target.value) } as any)}
                   className="bg-black/60 border-white/10 font-mono"
                 />
               </div>
@@ -380,8 +435,8 @@ const Inventory: React.FC = () => {
                 <label className="text-[10px] font-bold text-gray-500 uppercase">Par Max</label>
                 <Input
                   type="number"
-                  value={formData.par_max}
-                  onChange={e => setFormData({ ...formData, par_max: parseFloat(e.target.value) || 0 })}
+                  value={formData.par_max === 0 ? '0' : formData.par_max}
+                  onChange={e => setFormData({ ...formData, par_max: e.target.value === '' ? '' : parseFloat(e.target.value) } as any)}
                   className="bg-black/60 border-white/10 font-mono"
                 />
               </div>
@@ -400,8 +455,8 @@ const Inventory: React.FC = () => {
                   <Input
                     type="number"
                     step="any"
-                    value={formData.cost_per_unit}
-                    onChange={e => setFormData({ ...formData, cost_per_unit: parseFloat(e.target.value) || 0 })}
+                    value={formData.cost_per_unit === 0 ? '0' : formData.cost_per_unit}
+                    onChange={e => setFormData({ ...formData, cost_per_unit: e.target.value === '' ? '' : parseFloat(e.target.value) } as any)}
                     className="pl-9 bg-black/60 border-white/10 font-mono"
                   />
                 </div>
@@ -412,8 +467,8 @@ const Inventory: React.FC = () => {
                   <Calendar className="absolute left-3 top-3 w-4 h-4 text-gray-600" />
                   <Input
                     type="number"
-                    value={formData.expiry_days}
-                    onChange={e => setFormData({ ...formData, expiry_days: parseInt(e.target.value) || 0 })}
+                    value={formData.expiry_days === 0 ? '0' : formData.expiry_days}
+                    onChange={e => setFormData({ ...formData, expiry_days: e.target.value === '' ? '' : parseInt(e.target.value) } as any)}
                     className="pl-9 bg-black/60 border-white/10 font-mono"
                   />
                 </div>

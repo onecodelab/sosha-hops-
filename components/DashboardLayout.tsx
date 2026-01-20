@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '../AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -8,9 +8,7 @@ import {
 import { cn, Button } from './ui';
 import { LeafBubbleBackground } from './LeafBubbleBackground';
 import { BackgroundMascots, MascotVariant } from './BackgroundMascots';
-import { supabase } from '../supabase';
 import { Sidebar } from './Sidebar';
-import { Header } from './Header';
 import { RoleGuard } from './RoleGuard';
 
 interface DashboardLayoutProps {
@@ -29,51 +27,6 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, titl
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const [isProfileActive, setIsProfileActive] = useState(false);
-  const profileRef = useRef<HTMLButtonElement>(null);
-
-  // Dynamic Header Stats
-  const [headerStats, setHeaderStats] = useState({ label: 'Revenue', value: 0 });
-
-  useEffect(() => {
-    if (!profile) return;
-
-    const fetchStats = async () => {
-      const today = new Date().toISOString().split('T')[0];
-      let label = t('common.revenue');
-      let query = supabase.from('orders')
-        .select('total_amount')
-        .gte('created_at', `${today}T00:00:00`)
-        .neq('status', 'cancelled');
-
-      if (profile.role === 'waiter') {
-        label = t('nav.myStation');
-        query = query.eq('waiter_id', profile.id);
-      }
-
-      const { data } = await query;
-      const total = data?.reduce((acc, order) => acc + (order.total_amount || 0), 0) || 0;
-      setHeaderStats({ label, value: total });
-    };
-
-    fetchStats();
-
-    const sub = supabase.channel('header_stats_update')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => fetchStats())
-      .subscribe();
-
-    return () => { supabase.removeChannel(sub); };
-  }, [profile, t]);
-
-  useEffect(() => {
-    const handleProfile = (e: MouseEvent) => {
-      if (profileRef.current && !profileRef.current.contains(e.target as Node)) {
-        setIsProfileActive(false);
-      }
-    };
-    document.addEventListener("click", handleProfile);
-    return () => document.removeEventListener("click", handleProfile);
-  }, []);
 
   const handleLogout = async () => {
     await signOut();
@@ -146,19 +99,6 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, titl
       )}
 
       <main className="flex-1 flex flex-col h-full overflow-hidden relative z-10 pt-16 md:pt-0">
-        <Header
-          title={title}
-          subtitle={subtitle}
-          headerStats={headerStats}
-          profile={profile}
-          displayName={displayName}
-          role={role}
-          isProfileActive={isProfileActive}
-          setIsProfileActive={setIsProfileActive}
-          profileRef={profileRef}
-          handleLogout={handleLogout}
-        />
-
         {actions && (
           <div className="flex-none px-8 py-4 bg-black/10 border-b border-white/5">
             {actions}

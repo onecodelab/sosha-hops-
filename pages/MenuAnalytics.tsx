@@ -53,6 +53,7 @@ const MenuAnalytics: React.FC = () => {
       else startDate.setDate(now.getDate() - 90);
 
       // 1. Fetch Sales Data
+      // 1. Fetch Sales Data
       const { data: sales, error: salesErr } = await supabase
         .from('order_items')
         .select(`
@@ -66,43 +67,7 @@ const MenuAnalytics: React.FC = () => {
 
       if (salesErr) throw salesErr;
 
-      // 2. Fetch Recipe & Cost Data
-      const { data: recipes, error: recErr } = await supabase
-        .from('recipes')
-        .select(`
-          menu_item_id,
-          recipe_ingredients (
-            quantity_needed,
-            unit_type,
-            ingredient:ingredients (unit_type, cost_per_unit, weight_per_unit)
-          )
-        `);
-
-      if (recErr) throw recErr;
-
-      // Helper for conversion
-      const getFactor = (from: string, to: string, weight: number = 1) => {
-        if (from === to) return 1;
-        if (from === 'kg' && to === 'g') return 0.001;
-        if (from === 'g' && to === 'kg') return 1000;
-        if (from === 'l' && to === 'ml') return 0.001;
-        if (from === 'ml' && to === 'l') return 1000;
-        if ((from === 'kg' || from === 'l') && ['pcs', 'slice', 'unit'].includes(to)) return weight / 1000;
-        if (['g', 'ml'].includes(from) && ['pcs', 'slice', 'unit'].includes(to)) return weight;
-        return 1;
-      };
-
-      // Create Cost Map
-      const costMap = new Map<string, number>();
-      recipes?.forEach(r => {
-        const unitCost = (r.recipe_ingredients as any[])?.reduce((sum, ri) => {
-          const factor = getFactor(ri.ingredient?.unit_type, ri.unit_type, ri.ingredient?.weight_per_unit);
-          return sum + (ri.quantity_needed * factor * (ri.ingredient?.cost_per_unit || 0));
-        }, 0);
-        costMap.set(r.menu_item_id, unitCost);
-      });
-
-      // 3. Aggregate Sales
+      // 2. Aggregate Sales
       const statsMap = new Map<string, { sold: number; rev: number; hourly: Record<number, number> }>();
       sales?.forEach((s: any) => {
         const id = s.menu_item_id;
@@ -116,12 +81,14 @@ const MenuAnalytics: React.FC = () => {
         });
       });
 
-      // 4. Transform to MenuStat
+      // 3. Transform to MenuStat using SOURCE OF TRUTH (view_menu_details)
+      // menuItems is already fetched from view_menu_details in useMenu hook
       const finalStats: MenuStat[] = menuItems.map(item => {
         const data = statsMap.get(item.id) || { sold: 0, rev: 0, hourly: {} };
 
-        // Strict economic truth from menuEconomics
-        const unitCost = item.cost_per_plate || 0;
+        // Cost comes directly from the DB View (Single Source of Truth)
+        // We type cast item as any because MenuDish type might not officially have cost_price yet in types.ts
+        const unitCost = (item as any).cost_price || 0;
         const totalCost = data.sold * unitCost;
         const { margin, marginPercent } = calculateMargins(item.price, unitCost);
 
@@ -133,8 +100,10 @@ const MenuAnalytics: React.FC = () => {
 
         // Auto Labels
         const labels: string[] = [];
-        if (marginPercent > 60 && data.sold > 0) labels.push('High Margin – Promote');
-        if (marginPercent < 30 && data.sold > 10) labels.push('Popular but Low Margin – Reprice');
+        if (margin > 60 && data.sold > 0) labels.push('High Margin – Promote');
+        if (margin < 30 && data.sold > 10) labels.push('Popular but Low Margin – Reprice');
+        if (data.sold < 5 && unitCost > 0) labels.push('Low Demand – Consider Removal');
+        if (!(item as any).is_available) labels.push('Currently Unavailable');
         if (wasteRisk > 70) labels.push('High Waste Risk – Remove?');
 
         const entries = Object.entries(data.hourly);

@@ -12,61 +12,16 @@ export const useMenu = (filterAvailable = false) => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      // 1. Fetch Menu Items
-      const { data: menuData, error: menuError } = await supabase
-        .from('menu')
+      // Switched to 'view_menu_details' for Single Source of Truth
+      const { data, error } = await supabase
+        .from('view_menu_details')
         .select('*')
         .order('name', { ascending: true });
 
-      if (menuError) throw menuError;
+      if (error) throw error;
 
-      // 2. Fetch Recipes with Ingredients
-      const { data: recipeData, error: recipeError } = await supabase
-        .from('recipes')
-        .select(`
-          menu_item_id,
-          recipe_ingredients (
-            ingredient_id,
-            quantity_needed,
-            unit_type,
-            out_of_stock_impact,
-            ingredient:ingredients (
-              id,
-              name,
-              current_stock,
-              unit_type,
-              cost_per_unit,
-              weight_per_unit
-            )
-          )
-        `);
-
-      if (recipeError) throw recipeError;
-
-      // 3. Map Intelligence
-      const recipeMap = new Map<string, any[]>();
-      recipeData?.forEach(r => {
-        recipeMap.set(r.menu_item_id, r.recipe_ingredients);
-      });
-
-      let items = (menuData || []).map(item => {
-        const ingredients = (recipeMap.get(item.id) || []) as RecipeIngredient[];
-        const costPerPlate = calculateCostPerPlate(ingredients);
-        const availability = checkDishAvailability(ingredients);
-
-        return {
-          ...item,
-          cost_per_plate: costPerPlate,
-          is_available: availability.isAvailable,
-          availability_reason: availability.reason,
-          stock_quantity: ingredients.length > 0 ?
-            Math.min(...ingredients.map(ri => ri.ingredient ? ri.ingredient.current_stock : 999)) : 999
-        };
-      }) as MenuDish[];
-
-      if (filterAvailable) {
-        items = items.filter(i => i.is_available);
-      }
+      // Type assertion as 'view_menu_details' matches MenuDish structure + extra fields
+      const items = (data || []) as MenuDish[];
 
       setMenuItems(items);
 
