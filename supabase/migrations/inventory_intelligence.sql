@@ -51,7 +51,8 @@ SELECT
   
   -- Days of Stock Left
   CASE 
-    WHEN COALESCE(u.usage_last_14d, 0) = 0 THEN 999 -- Infinite if no usage
+    WHEN i.current_stock <= 0 THEN 0 -- Correctly report 0 days if out of stock
+    WHEN COALESCE(u.usage_last_14d, 0) = 0 THEN 999 -- Infinite if no usage but has stock
     ELSE i.current_stock / (COALESCE(u.usage_last_14d, 0) / 14.0)
   END as days_of_stock_left,
 
