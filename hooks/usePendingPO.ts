@@ -18,9 +18,9 @@ export const usePendingPO = () => {
                 .select(`
           *,
           supplier:suppliers(name),
-          creator:users!created_by(full_name)
+          creator:profiles!created_by(full_name)
         `)
-                .in('status', ['draft', 'pending', 'needs_revision', 'approved'])
+                .in('status', ['draft', 'pending_approval', 'pending', 'needs_revision', 'approved'])
                 .order('created_at', { ascending: false });
 
             if (error) {
@@ -38,7 +38,7 @@ export const usePendingPO = () => {
             .from('po_activity_log')
             .select(`
         *,
-        performer:users(full_name, role)
+        performer:profiles(full_name, role)
       `)
             .eq('po_id', poId)
             .order('created_at', { ascending: true });
@@ -125,9 +125,9 @@ export const usePendingPO = () => {
 
     // Submit for Approval (Manager)
     const submitForApproval = async (poId: string) => {
-        await updateStatus({ poId, status: 'pending' });
+        await updateStatus({ poId, status: 'pending_approval' });
         await logAction(poId, 'submitted');
-        showToast('Submitted for Approval', 'success');
+        showToast('Submitted for Owner Approval', 'success');
     };
 
     // Delete Draft (Manager)
@@ -147,6 +147,13 @@ export const usePendingPO = () => {
         await updateStatus({ poId, status: 'sent' });
         await logAction(poId, 'sent');
         showToast('PO Sent to Supplier', 'success');
+    };
+
+    // Verify received PO (Manager)
+    const verifyPO = async (poId: string) => {
+        await updateStatus({ poId, status: 'verified' });
+        await logAction(poId, 'received', 'Manager verified numbers and items match');
+        showToast('PO Verified & Reconciled', 'success');
     };
 
     // Analyze Risk (Price/Qty spikes)
@@ -203,6 +210,7 @@ export const usePendingPO = () => {
         submitForApproval,
         deletePO,
         sendPO,
+        verifyPO,
         logAction,
         analyzeRisk
     };

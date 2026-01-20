@@ -15,10 +15,15 @@ const statusConfig: Record<POStatus, { label: string; icon: React.ElementType; c
         icon: Edit3,
         className: 'bg-gray-500/10 text-gray-400 border-gray-500/20'
     },
-    pending: {
-        label: 'Pending Approval',
+    pending_approval: {
+        label: 'Awaiting Review',
         icon: Clock,
-        className: 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20 animate-pulse'
+        className: 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20'
+    },
+    pending: {
+        label: 'Pending',
+        icon: Clock,
+        className: 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20'
     },
     needs_revision: {
         label: 'Needs Revision',
@@ -44,6 +49,11 @@ const statusConfig: Record<POStatus, { label: string; icon: React.ElementType; c
         label: 'Received',
         icon: CheckCircle,
         className: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
+    },
+    verified: {
+        label: 'Verified',
+        icon: CheckCircle,
+        className: 'bg-blue-500/10 text-blue-500 border-blue-500/20'
     }
 };
 

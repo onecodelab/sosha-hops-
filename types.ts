@@ -242,7 +242,7 @@ export interface Supplier {
 }
 
 // PO Status Flow: draft -> pending_approval -> needs_revision -> approved -> sent -> partial_received -> received
-export type POStatus = 'draft' | 'pending' | 'needs_revision' | 'approved' | 'sent' | 'partial_received' | 'received';
+export type POStatus = 'draft' | 'pending_approval' | 'pending' | 'needs_revision' | 'approved' | 'sent' | 'partial_received' | 'received' | 'verified';
 
 export type POActionType = 'created' | 'submitted' | 'approved' | 'rejected' | 'revision_requested' | 'sent' | 'withdrawn' | 'edited' | 'received';
 

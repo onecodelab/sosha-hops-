@@ -109,9 +109,9 @@ export const PODetailView: React.FC<PODetailViewProps> = ({ po, isOpen, onClose 
     };
 
     const canManagerEdit = !isOwnerOrAdmin && po.status === 'needs_revision';
-    const canOwnerAct = isOwnerOrAdmin && ['pending', 'needs_revision'].includes(po.status);
+    const canOwnerAct = isOwnerOrAdmin && ['pending', 'pending_approval', 'needs_revision'].includes(po.status);
     const canSend = isOwnerOrAdmin && po.status === 'approved';
-    const canWithdraw = !isOwnerOrAdmin && ['pending', 'needs_revision'].includes(po.status);
+    const canWithdraw = !isOwnerOrAdmin && ['pending', 'pending_approval', 'needs_revision'].includes(po.status);
 
     // Risk warnings
     const riskWarnings: string[] = [];
@@ -250,7 +250,9 @@ export const PODetailView: React.FC<PODetailViewProps> = ({ po, isOpen, onClose 
                             <Button
                                 onClick={() => {
                                     onClose();
-                                    setTimeout(() => navigate('/manager/create-po', { state: { editPO: po } }), 100);
+                                    // Merge fetched items into the PO object before navigating
+                                    const poWithItems = { ...po, items };
+                                    setTimeout(() => navigate('/manager/create-po', { state: { editPO: poWithItems } }), 100);
                                 }}
                                 variant="secondary"
                                 className="bg-white/10 text-white hover:bg-white/20 flex-1"
@@ -331,7 +333,8 @@ export const PODetailView: React.FC<PODetailViewProps> = ({ po, isOpen, onClose 
                         <Button
                             onClick={() => {
                                 onClose();
-                                setTimeout(() => navigate('/manager/create-po', { state: { editPO: po } }), 100);
+                                const poWithItems = { ...po, items };
+                                setTimeout(() => navigate('/manager/create-po', { state: { editPO: poWithItems } }), 100);
                             }}
                             className="bg-yellow-600 hover:bg-yellow-700 text-white font-bold flex-1"
                         >

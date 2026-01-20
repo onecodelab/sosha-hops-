@@ -63,17 +63,17 @@ const PendingPO: React.FC = () => {
 
     // Stats
     const draftCount = pendingPOs?.filter(po => po.status === 'draft').length || 0;
-    const pendingCount = pendingPOs?.filter(po => po.status === 'pending').length || 0;
+    const pendingCount = pendingPOs?.filter(po => ['pending', 'pending_approval'].includes(po.status)).length || 0;
     const revisionCount = pendingPOs?.filter(po => po.status === 'needs_revision').length || 0;
-    const approvedCount = pendingPOs?.filter(po => po.status === 'approved').length || 0;
+    const arrivingCount = pendingPOs?.filter(po => ['approved', 'sent'].includes(po.status)).length || 0;
     const totalValue = filteredPOs.reduce((sum, po) => sum + po.total_amount, 0);
 
     const statusTabs: { value: POStatus | 'all'; label: string; count: number }[] = [
         { value: 'all', label: 'All Pending', count: pendingPOs?.length || 0 },
         { value: 'draft', label: 'Drafts', count: draftCount },
-        { value: 'pending', label: 'Awaiting Review', count: pendingCount },
+        { value: 'pending_approval', label: 'Awaiting Review', count: pendingCount },
         { value: 'needs_revision', label: 'Needs Revision', count: revisionCount },
-        { value: 'approved', label: 'Approved (Not Sent)', count: approvedCount },
+        { value: 'approved', label: 'Arriving / Approved', count: arrivingCount },
     ];
 
     return (

@@ -132,7 +132,7 @@ const ManagerCreatePO: React.FC = () => {
                   supplier_id: supplierId,
                   expected_delivery: deliveryDate,
                   total_amount: totalAmount,
-                  status: isDraft ? 'draft' : 'pending'
+                  status: isDraft ? 'draft' : 'pending_approval'
                })
                .eq('id', poId);
 
@@ -178,7 +178,7 @@ const ManagerCreatePO: React.FC = () => {
             po_id: poId,
             action_type: poId ? (isDraft ? 'created' : 'submitted') : (isDraft ? 'created' : 'submitted'), // Simplified log type for now
             performed_by: user.id,
-            notes: isDraft ? 'Draft saved' : 'Submitted for owner approval'
+            notes: isDraft ? 'Draft saved' : 'Submitted for Owner approval'
          });
       },
       onSuccess: () => {

@@ -147,12 +147,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, setIsCollapsed, h
 
                 {/* Supply Chain - Owner/Admin only */}
                 <NavItem
-                    icon={Truck}
-                    label={t('nav.pendingRequests')}
-                    path="/manager/pending-requests"
-                    allowedRoles={['owner', 'admin']}
-                />
-                <NavItem
                     icon={FileText}
                     label={t('nav.purchaseOrders')}
                     path="/manager/purchase-orders"
