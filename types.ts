@@ -239,19 +239,39 @@ export interface Supplier {
   is_active: boolean;
 }
 
-// Added missing PurchaseOrder types
+// PO Status Flow: draft -> pending_approval -> needs_revision -> approved -> sent -> partial_received -> received
+export type POStatus = 'draft' | 'pending' | 'needs_revision' | 'approved' | 'sent' | 'partial_received' | 'received';
+
+export type POActionType = 'created' | 'submitted' | 'approved' | 'rejected' | 'revision_requested' | 'sent' | 'withdrawn' | 'edited' | 'received';
+
+export interface POActivityLog {
+  id: string;
+  po_id: string;
+  action_type: POActionType;
+  performed_by: string;
+  notes?: string;
+  created_at: string;
+  performer?: { full_name: string; role: string };
+}
+
 export interface PurchaseOrder {
   id: string;
   po_number: string;
   supplier_id: string;
   total_amount: number;
-  status: 'draft' | 'sent' | 'partial_received' | 'received';
+  status: POStatus;
   expected_delivery: string;
   received_date?: string;
   created_by: string;
   created_at: string;
+  approval_notes?: string;
+  approved_by?: string;
+  approved_at?: string;
+  risk_flags?: string[];
   supplier?: { name: string };
+  creator?: { full_name: string };
   items?: PurchaseOrderItem[];
+  activity_log?: POActivityLog[];
 }
 
 export interface PurchaseOrderItem {

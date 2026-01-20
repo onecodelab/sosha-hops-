@@ -32,6 +32,7 @@ import ManagerPendingRequests from './pages/ManagerPendingRequests';
 import ManagerCreatePO from './pages/ManagerCreatePO';
 import ManagerReceiveGoods from './pages/ManagerReceiveGoods';
 import ManagerPurchaseOrders from './pages/ManagerPurchaseOrders';
+import PendingPO from './pages/PendingPO';
 import ProtectedRoute from './components/ProtectedRoute';
 import Settings from './pages/Settings';
 
@@ -137,6 +138,12 @@ const App: React.FC = () => {
               <Route path="/manager/receive-goods" element={
                 <ProtectedRoute allowedRoles={['manager', 'owner']}>
                   <ManagerReceiveGoods />
+                </ProtectedRoute>
+              } />
+
+              <Route path="/pending-po" element={
+                <ProtectedRoute allowedRoles={['manager', 'owner', 'admin' as any]}>
+                  <PendingPO />
                 </ProtectedRoute>
               } />
 
