@@ -13,6 +13,8 @@ export interface UserProfile {
   base_salary?: number;
   pay_period?: 'monthly' | 'weekly' | 'hourly';
   is_salary_approved?: boolean;
+  created_by?: string;
+  invitation_pending?: boolean;
 }
 
 export interface MenuDish {

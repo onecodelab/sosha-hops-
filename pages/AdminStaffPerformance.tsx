@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, Badge, Button, Input, showToa
 import {
    Users, Award, Clock, Search, UserPlus,
    Timer, TrendingUp, Filter, RefreshCw,
-   DollarSign, CheckCircle, Edit2, Zap, AlertTriangle
+   DollarSign, CheckCircle, Edit2, Zap, AlertTriangle, Trash2
 } from 'lucide-react';
 import { supabase } from '../supabase';
 import { InviteStaffModal } from '../components/InviteStaffModal';
@@ -45,6 +45,10 @@ const AdminStaffPerformance: React.FC = () => {
       pay_period: 'monthly' as any,
       is_salary_approved: false
    });
+
+   // Delete Confirmation State
+   const [staffToDelete, setStaffToDelete] = useState<string | null>(null);
+   const [isDeleting, setIsDeleting] = useState(false);
 
    useEffect(() => {
       fetchData();
@@ -152,6 +156,26 @@ const AdminStaffPerformance: React.FC = () => {
          fetchData();
       } catch (err: any) {
          showToast(err.message, "error");
+      }
+   };
+
+   const handleDeleteStaff = async () => {
+      if (!staffToDelete) return;
+      setIsDeleting(true);
+      try {
+         const { error } = await supabase
+            .from('profiles')
+            .delete()
+            .eq('id', staffToDelete);
+
+         if (error) throw error;
+         showToast("Staff profile deleted successfully", "success");
+         setStaffToDelete(null);
+         fetchData();
+      } catch (err: any) {
+         showToast(err.message, "error");
+      } finally {
+         setIsDeleting(false);
       }
    };
 
@@ -303,6 +327,14 @@ const AdminStaffPerformance: React.FC = () => {
                                     >
                                        <Edit2 className="w-4 h-4 text-gray-400" />
                                     </Button>
+                                    <Button
+                                       size="sm"
+                                       variant="ghost"
+                                       onClick={() => setStaffToDelete(m.staff_id)}
+                                       className="h-8 w-8 p-0 hover:bg-red-500/10 hover:text-red-500"
+                                    >
+                                       <Trash2 className="w-4 h-4" />
+                                    </Button>
                                  </td>
                               </tr>
                            ))}
@@ -397,6 +429,28 @@ const AdminStaffPerformance: React.FC = () => {
             </Dialog>
 
             <InviteStaffModal isOpen={isInviteOpen} onClose={() => setIsInviteOpen(false)} onSuccess={fetchData} />
+
+            {/* Delete Confirmation Dialog */}
+            <Dialog isOpen={!!staffToDelete} onClose={() => !isDeleting && setStaffToDelete(null)} title="Confirm Deletion">
+               <div className="space-y-6 pt-2">
+                  <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-2xl flex gap-3 text-red-500">
+                     <AlertTriangle className="w-5 h-5 shrink-0" />
+                     <div>
+                        <p className="text-xs font-bold uppercase tracking-wider">Permanent Action</p>
+                        <p className="text-[10px] opacity-80 mt-0.5">Deleting this profile will remove all associated performance records. This cannot be undone.</p>
+                     </div>
+                  </div>
+
+                  <p className="text-sm text-gray-300 px-1">
+                     Are you sure you want to delete <span className="text-white font-bold">{metrics.find(m => m.staff_id === staffToDelete)?.staff_name}</span>?
+                  </p>
+
+                  <div className="flex gap-3 justify-end pt-4">
+                     <Button variant="ghost" onClick={() => setStaffToDelete(null)} disabled={isDeleting} className="rounded-xl text-xs font-bold uppercase tracking-widest text-gray-500">Cancel</Button>
+                     <Button onClick={handleDeleteStaff} isLoading={isDeleting} className="bg-red-600 hover:bg-red-500 text-white font-black rounded-xl text-xs tracking-widest uppercase shadow-xl transition-all">Yes, Delete Profile</Button>
+                  </div>
+               </div>
+            </Dialog>
          </div>
       </DashboardLayout>
    );
