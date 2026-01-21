@@ -7,12 +7,14 @@ import { Card, CardContent, Badge, Button, Input, cn, showToast, Dialog } from '
 import { Search, Plus, Edit3, Trash2, Utensils, Info, BookOpen, Loader2, ChefHat } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { MenuDish } from '../types';
+import { useAuth } from '../AuthContext';
 import { RecipeEditor } from '../components/RecipeEditor';
 import { MenuEditorModal } from '../components/MenuEditorModal';
 
 const MenuManagement: React.FC = () => {
   const { menuItems, categories, loading: menuLoading, refreshMenu } = useMenu(false);
-  const { user } = useLanguage(); // Note: LanguageContext has user profile
+  const { profile: user } = useAuth();
+  const isPrivileged = user?.role === 'owner' || user?.role === 'admin';
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [selectedDish, setSelectedDish] = useState<MenuDish | null>(null);
@@ -74,12 +76,14 @@ const MenuManagement: React.FC = () => {
                 className="pl-12 bg-black/20 border-white/10 h-12 rounded-2xl"
               />
             </div>
-            <Button
-              onClick={() => { setEditingItem(null); setIsEditorOpen(true); }}
-              className="bg-primary hover:bg-primary/80 text-black font-black uppercase tracking-widest text-[10px] h-12 px-6 rounded-2xl flex items-center gap-2 shrink-0 shadow-lg shadow-primary/20"
-            >
-              <Plus className="w-4 h-4" /> Add New Item
-            </Button>
+            {isPrivileged && (
+              <Button
+                onClick={() => { setEditingItem(null); setIsEditorOpen(true); }}
+                className="bg-primary hover:bg-primary/80 text-black font-black uppercase tracking-widest text-[10px] h-12 px-6 rounded-2xl flex items-center gap-2 shrink-0 shadow-lg shadow-primary/20"
+              >
+                <Plus className="w-4 h-4" /> Add New Item
+              </Button>
+            )}
           </div>
         </div>
 
@@ -117,24 +121,26 @@ const MenuManagement: React.FC = () => {
                 </div>
 
                 {/* Action Buttons */}
-                <div className="absolute top-4 left-4 z-20 flex flex-col gap-2">
-                  <button
-                    onClick={() => { setEditingItem(item); setIsEditorOpen(true); }}
-                    className="p-2 bg-black/60 hover:bg-black/80 text-white rounded-lg border border-white/10 backdrop-blur-md transition-all active:scale-95"
-                  >
-                    <Edit3 className="w-3.5 h-3.5" />
-                  </button>
-                  <button
-                    onClick={() => {
-                      if (confirm(`Are you sure you want to delete "${item.name}"?`)) {
-                        supabase.from('menu').delete().eq('id', item.id).then(() => refreshMenu());
-                      }
-                    }}
-                    className="p-2 bg-red-500/20 hover:bg-red-500/40 text-red-500 rounded-lg border border-red-500/20 backdrop-blur-md transition-all active:scale-95"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                </div>
+                {isPrivileged && (
+                  <div className="absolute top-4 left-4 z-20 flex flex-col gap-2">
+                    <button
+                      onClick={() => { setEditingItem(item); setIsEditorOpen(true); }}
+                      className="p-2 bg-black/60 hover:bg-black/80 text-white rounded-lg border border-white/10 backdrop-blur-md transition-all active:scale-95"
+                    >
+                      <Edit3 className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (confirm(`Are you sure you want to delete "${item.name}"?`)) {
+                          supabase.from('menu').delete().eq('id', item.id).then(() => refreshMenu());
+                        }
+                      }}
+                      className="p-2 bg-red-500/20 hover:bg-red-500/40 text-red-500 rounded-lg border border-red-500/20 backdrop-blur-md transition-all active:scale-95"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
               </div>
               <CardContent className="p-5 flex-1 flex flex-col justify-between">
                 <div>
@@ -163,13 +169,15 @@ const MenuManagement: React.FC = () => {
                     </div>
                   </div>
                 </div>
-                <Button
-                  variant="secondary"
-                  className="w-full mt-6 bg-white/5 border-white/10 hover:bg-white/10 hover:text-white rounded-xl h-12 font-bold text-xs uppercase tracking-widest group"
-                  onClick={() => setSelectedDish(item)}
-                >
-                  <ChefHat className="w-4 h-4 mr-2 group-hover:rotate-12 transition-transform" /> Recipe Architect
-                </Button>
+                {isPrivileged && (
+                  <Button
+                    variant="secondary"
+                    className="w-full mt-6 bg-white/5 border-white/10 hover:bg-white/10 hover:text-white rounded-xl h-12 font-bold text-xs uppercase tracking-widest group"
+                    onClick={() => setSelectedDish(item)}
+                  >
+                    <ChefHat className="w-4 h-4 mr-2 group-hover:rotate-12 transition-transform" /> Recipe Architect
+                  </Button>
+                )}
               </CardContent>
             </Card>
           ))}
@@ -197,7 +205,7 @@ const MenuManagement: React.FC = () => {
         onSuccess={() => { refreshMenu(); setIsEditorOpen(false); }}
         editingItem={editingItem}
       />
-    </DashboardLayout>
+    </DashboardLayout >
   );
 };
 

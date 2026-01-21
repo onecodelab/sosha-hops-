@@ -343,7 +343,7 @@ const Inventory: React.FC = () => {
                       {/* 5. Action */}
                       <td className="px-6 py-4 text-right">
                         <RoleGuard
-                          allowedRoles={['owner', 'admin', 'manager']}
+                          allowedRoles={['owner', 'admin']}
                           fallback={<Eye className="w-4 h-4 text-zinc-700 mx-auto" />}
                         >
                           <Button
