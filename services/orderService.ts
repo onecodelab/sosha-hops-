@@ -3,9 +3,11 @@ import { Order, OrderStatus, PaymentMethod } from '../types';
 
 export const orderService = {
     /**
-     * Fetch active orders for a specific waiter or all active orders
+     * Fetch active orders for a specific branch and optionally a specific waiter
      */
-    async fetchActiveOrders(waiterId?: string): Promise<Order[]> {
+    async fetchActiveOrders(branchId: string, waiterId?: string): Promise<Order[]> {
+        if (!branchId) return [];
+
         let query = supabase
             .from('orders')
             .select(`
@@ -15,6 +17,7 @@ export const orderService = {
           menu_item:menu (name)
         )
       `)
+            .eq('branch_id', branchId)
             .is('closed_at', null)
             .in('status', ['pending', 'accepted', 'preparing', 'ready', 'served', 'paid'])
             .order('created_at', { ascending: true });

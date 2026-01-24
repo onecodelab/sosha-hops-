@@ -3,16 +3,20 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../supabase';
 import { PurchaseOrder, POActivityLog, POStatus, POActionType } from '../types';
 import { useAuth } from '../AuthContext';
+import { useBranch } from '../contexts/BranchContext';
 import { showToast } from '../components/ui';
 
 export const usePendingPO = () => {
     const { user } = useAuth();
+    const { activeBranchId } = useBranch();
     const queryClient = useQueryClient();
 
     // Fetch pending POs (pending_approval, needs_revision, approved but not sent)
     const { data: pendingPOs, isLoading } = useQuery({
         queryKey: ['pending-pos'],
         queryFn: async () => {
+            if (!activeBranchId) return [];
+
             const { data, error } = await supabase
                 .from('purchase_orders')
                 .select(`
@@ -20,6 +24,7 @@ export const usePendingPO = () => {
           supplier:suppliers(name),
           creator:profiles!created_by(full_name)
         `)
+                .eq('branch_id', activeBranchId)
                 .in('status', ['draft', 'pending_approval', 'pending', 'needs_revision', 'approved'])
                 .order('created_at', { ascending: false });
 
@@ -124,9 +129,9 @@ export const usePendingPO = () => {
     };
 
     // Submit for Approval (Manager)
-    const submitForApproval = async (poId: string) => {
-        await updateStatus({ poId, status: 'pending_approval' });
-        await logAction(poId, 'submitted');
+    const submitForApproval = async (poId: string, notes?: string) => {
+        await updateStatus({ poId, status: 'pending_approval', notes });
+        await logAction(poId, 'submitted', notes);
         showToast('Submitted for Owner Approval', 'success');
     };
 

@@ -5,12 +5,13 @@ import { Card, CardContent, CardHeader, CardTitle, Badge, Button, Input, showToa
 import {
    Users, Award, Clock, Search, UserPlus,
    Timer, TrendingUp, Filter, RefreshCw,
-   DollarSign, CheckCircle, Edit2, Zap, AlertTriangle, Trash2
+   DollarSign, CheckCircle, Edit2, Zap, AlertTriangle, Trash2, MapPin
 } from 'lucide-react';
 import { supabase } from '../supabase';
 import { InviteStaffModal } from '../components/InviteStaffModal';
 import { UserProfile } from '../types';
 import { useAuth } from '../AuthContext';
+import { useBranch } from '../contexts/BranchContext';
 
 interface PerformanceMetric {
    staff_id: string;
@@ -27,6 +28,7 @@ interface PerformanceMetric {
 
 const AdminStaffPerformance: React.FC = () => {
    const { profile: currentUserProfile } = useAuth();
+   const { branches, activeBranchId } = useBranch();
    const [loading, setLoading] = useState(true);
    const [metrics, setMetrics] = useState<PerformanceMetric[]>([]);
    const [activeShifts, setActiveShifts] = useState<any[]>([]);
@@ -43,7 +45,8 @@ const AdminStaffPerformance: React.FC = () => {
    const [editForm, setEditForm] = useState({
       base_salary: '',
       pay_period: 'monthly' as any,
-      is_salary_approved: false
+      is_salary_approved: false,
+      home_branch_id: ''
    });
 
    // Delete Confirmation State
@@ -68,14 +71,19 @@ const AdminStaffPerformance: React.FC = () => {
          // 2. Fetch Metrics via RPC
          const { data, error } = await supabase.rpc('get_staff_performance_metrics', {
             start_date: start.toISOString(),
-            end_date: end.toISOString()
+            end_date: end.toISOString(),
+            p_branch_id: activeBranchId
          });
 
          if (error) throw error;
          setMetrics(data || []);
 
          // 3. Fetch Active Shifts
-         const { data: shiftData } = await supabase.from('staff_shifts').select('*').eq('status', 'active');
+         let shiftQuery = supabase.from('staff_shifts').select('*').eq('status', 'active');
+         if (activeBranchId) {
+            shiftQuery = shiftQuery.eq('branch_id', activeBranchId);
+         }
+         const { data: shiftData } = await shiftQuery;
          if (shiftData) setActiveShifts(shiftData);
 
       } catch (err: any) {
@@ -134,7 +142,8 @@ const AdminStaffPerformance: React.FC = () => {
       setEditForm({
          base_salary: s.base_salary?.toString() || '',
          pay_period: s.pay_period || 'monthly',
-         is_salary_approved: s.is_salary_approved || false
+         is_salary_approved: s.is_salary_approved || false,
+         home_branch_id: s.home_branch_id || ''
       });
    };
 
@@ -146,7 +155,8 @@ const AdminStaffPerformance: React.FC = () => {
             .update({
                base_salary: editForm.base_salary ? parseFloat(editForm.base_salary) : null,
                pay_period: editForm.pay_period,
-               is_salary_approved: editForm.is_salary_approved
+               is_salary_approved: editForm.is_salary_approved,
+               home_branch_id: editForm.home_branch_id || null
             })
             .eq('id', editingStaff.id);
 
@@ -375,6 +385,25 @@ const AdminStaffPerformance: React.FC = () => {
                      <div>
                         <p className="text-xs font-bold text-white uppercase tracking-wider">Salary & Compensation</p>
                         <p className="text-[10px] text-gray-400 mt-0.5">Adjust base pay and authorization status. Changes are logged for audit.</p>
+                     </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                     <div className="space-y-2">
+                        <label className="text-xs font-bold text-gray-500 uppercase">Home Branch</label>
+                        <div className="relative">
+                           <MapPin className="absolute left-3 top-3 h-4 w-4 text-gray-500 pointer-events-none" />
+                           <select
+                              value={editForm.home_branch_id}
+                              onChange={e => setEditForm({ ...editForm, home_branch_id: e.target.value })}
+                              className="w-full h-11 bg-black/20 border border-gray-700 rounded-lg px-9 text-sm text-white focus:outline-none appearance-none"
+                           >
+                              <option value="">Select Branch</option>
+                              {branches.map(b => (
+                                 <option key={b.id} value={b.id}>{b.name}</option>
+                              ))}
+                           </select>
+                        </div>
                      </div>
                   </div>
 

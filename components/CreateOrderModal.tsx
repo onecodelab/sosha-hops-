@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Dialog, Button, Input, Badge, showToast, cn } from './ui';
 import { supabase } from '../supabase';
 import { useAuth } from '../AuthContext';
+import { useBranch } from '../contexts/BranchContext';
 import { useMenu } from '../hooks/useMenu';
 import { MenuDish, Table, Order } from '../types';
 import {
@@ -26,6 +27,7 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
   isOpen, onClose, onOrderCreated, initialTableId = '', initialTableNo = '', appendOrderId = null
 }) => {
   const { user, profile } = useAuth();
+  const { activeBranchId } = useBranch();
   const { menuItems, categories, loading: menuLoading } = useMenu(true);
 
   const [tableId, setTableId] = useState<string>(initialTableId);
@@ -88,7 +90,14 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
   }, [isOpen, tables, tableNumber]);
 
   const fetchTables = async () => {
-    const { data } = await supabase.from('tables').select('*').order('table_number', { ascending: true });
+    let query = supabase.from('tables').select('*').order('table_number', { ascending: true });
+
+    // Filter by active branch
+    if (activeBranchId) {
+      query = query.eq('branch_id', activeBranchId);
+    }
+
+    const { data } = await query;
     if (data) setTables(data as Table[]);
   };
 
@@ -226,7 +235,8 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
             customer_notes: customerNotes,
             created_at: now,
             created_by_id: user?.id,
-            created_by_name: profile?.full_name || 'Staff'
+            created_by_name: profile?.full_name || 'Staff',
+            branch_id: activeBranchId // CRITICAL: Tag order with current branch
           })
           .select()
           .single();

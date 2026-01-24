@@ -7,6 +7,8 @@ export interface UserProfile {
   name?: string;
   email?: string;
   role: Role;
+  phone?: string;
+  home_branch_id?: string;
   created_at: string;
   is_online?: boolean;
   avatar_url?: string;
@@ -47,6 +49,7 @@ export interface Order {
   table_id: string;
   table_number: string;
   waiter_id: string;
+  branch_id: string;
   status: OrderStatus;
   source: OrderSource;
   payment_status: PaymentStatus;
@@ -98,6 +101,7 @@ export interface TipsLog {
 export interface Table {
   id: string;
   table_number: string;
+  branch_id: string;
   status: 'available' | 'occupied' | 'needs_cleaning' | 'reserved';
   capacity_min: number;
   capacity_max: number;
@@ -260,6 +264,7 @@ export interface PurchaseOrder {
   id: string;
   po_number: string;
   supplier_id: string;
+  branch_id: string;
   total_amount: number;
   status: POStatus;
   expected_delivery: string;
@@ -274,6 +279,7 @@ export interface PurchaseOrder {
   creator?: { full_name: string };
   items?: PurchaseOrderItem[];
   activity_log?: POActivityLog[];
+  grns?: any[];
 }
 
 export interface PurchaseOrderItem {
@@ -294,3 +300,22 @@ export interface Category {
 
 // Added missing TableZone type
 export type TableZone = 'indoor' | 'outdoor' | 'vip' | 'bar';
+
+export interface Branch {
+  id: string;
+  name: string;
+  location?: string;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface BranchInventory {
+  id: string;
+  branch_id: string;
+  ingredient_id: string;
+  current_stock: number;
+  par_min: number;
+  par_max: number;
+  last_updated: string;
+  ingredient?: Ingredient;
+}

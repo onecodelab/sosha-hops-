@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { Table, TableZone, Order } from '../types';
 import { useAuth } from '../AuthContext';
+import { useBranch } from '../contexts/BranchContext';
 import { CreateOrderModal } from '../components/CreateOrderModal';
 import { useRoleAccess } from '../hooks/useRoleAccess';
 import { RoleGuard } from '../components/RoleGuard';
@@ -24,6 +25,7 @@ import { FloorMapCanvas } from '../components/FloorMapCanvas';
 const TableStatus: React.FC = () => {
    const { profile } = useAuth();
    const { hasPermission } = useRoleAccess();
+   const { activeBranchId } = useBranch();
    const [selectedTableId, setSelectedTableId] = useState<string | null>(null);
    const [zoneFilter, setZoneFilter] = useState<TableZone | 'all'>('all');
    const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -54,11 +56,11 @@ const TableStatus: React.FC = () => {
    const [isMapView, setIsMapView] = useState(false);
    const canViewAnalytics = hasPermission('canViewAnalytics');
 
-   // 1. Fetch Live Data
+   // 1. Fetch Live Data (Filtered by Active Branch)
    const { data: tables, isLoading, refetch } = useQuery({
-      queryKey: ['live-floor-detailed'],
+      queryKey: ['live-floor-detailed', activeBranchId],
       queryFn: async () => {
-         const { data, error } = await supabase
+         let query = supabase
             .from('tables')
             .select(`
           *,
@@ -67,21 +69,28 @@ const TableStatus: React.FC = () => {
         `)
             .order('table_number', { ascending: true });
 
+         // Filter by branch if one is selected
+         if (activeBranchId) {
+            query = query.eq('branch_id', activeBranchId);
+         }
+
+         const { data, error } = await query;
          if (error) throw error;
          return (data || []).map(t => ({
             ...t,
             active_session: Array.isArray(t.sessions) ? t.sessions.find((s: any) => s.is_active) : null,
             needs_cleanup: t.status === 'occupied' && t.current_order?.status === 'paid'
          }));
-      }
+      },
+      enabled: !!activeBranchId
    });
 
    // 2. Fetch Analytics Data
    const [analyticsRange, setAnalyticsRange] = useState<'today' | 'week' | 'month'>('today');
    const { data: analyticsData } = useQuery({
-      queryKey: ['floor-analytics-overlay', analyticsRange],
-      queryFn: () => analyticsService.getFloorMetrics(analyticsRange),
-      enabled: isAnalyticsMode && canViewAnalytics
+      queryKey: ['floor-analytics-overlay', analyticsRange, activeBranchId],
+      queryFn: () => analyticsService.getFloorMetrics(analyticsRange, activeBranchId),
+      enabled: isAnalyticsMode && canViewAnalytics && !!activeBranchId
    });
 
    useEffect(() => {
@@ -174,7 +183,8 @@ const TableStatus: React.FC = () => {
             capacity_max: newTableData.capacity_max,
             pos_x: newTableData.pos_x,
             pos_y: newTableData.pos_y,
-            status: 'available'
+            status: 'available',
+            branch_id: activeBranchId
          });
          if (error) throw error;
          showToast(`Table ${newTableData.table_number} created successfully!`, 'success');

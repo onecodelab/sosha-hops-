@@ -201,6 +201,7 @@ export const translations = {
       actions: {
         view: "View Details",
         download: "Download PDF",
+        edit: "Edit",
         delete: "Delete",
         receive: "Receive"
       },
@@ -472,6 +473,7 @@ export const translations = {
       actions: {
         view: "ዝርዝር ይመልከቱ",
         download: "PDF አውርድ",
+        edit: "አስተካክል",
         delete: "ሰርዝ",
         receive: "ተረከብ"
       },

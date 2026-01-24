@@ -25,7 +25,7 @@ export const analyticsService = {
      * Compute full floor analytics for a given time range.
      * Uses Server-Side Aggregation Query pattern (fetching raw data and computing).
      */
-    async getFloorMetrics(range: 'today' | 'week' | 'month' = 'today'): Promise<TableMetric[]> {
+    async getFloorMetrics(range: 'today' | 'week' | 'month' = 'today', branchId?: string | null): Promise<TableMetric[]> {
         const now = new Date();
         const startDate = new Date();
 
@@ -46,15 +46,26 @@ export const analyticsService = {
 
         const startIso = startDate.toISOString();
 
-        // 1. Fetch Raw Data in Parallel
+        // 1. Build queries with optional branch filtering
+        let tablesQuery = supabase.from('tables').select('id, table_number, zone, branch_id');
+        let sessionsQuery = supabase.from('table_sessions')
+            .select('id, table_id, seated_at, closed_at, is_active')
+            .gte('seated_at', startIso);
+        let ordersQuery = supabase.from('orders')
+            .select('id, table_id, total_amount, created_at, status, waiter_id, branch_id')
+            .gte('created_at', startIso);
+
+        // Apply branch filtering if branchId is provided
+        if (branchId) {
+            tablesQuery = tablesQuery.eq('branch_id', branchId);
+            ordersQuery = ordersQuery.eq('branch_id', branchId);
+        }
+
+        // Fetch Raw Data in Parallel
         const [tablesRes, sessionsRes, ordersRes] = await Promise.all([
-            supabase.from('tables').select('id, table_number, zone'),
-            supabase.from('table_sessions')
-                .select('id, table_id, seated_at, closed_at, is_active')
-                .gte('seated_at', startIso),
-            supabase.from('orders')
-                .select('id, table_id, total_amount, created_at, status, waiter_id')
-                .gte('created_at', startIso)
+            tablesQuery,
+            sessionsQuery,
+            ordersQuery
         ]);
 
         if (tablesRes.error) throw tablesRes.error;

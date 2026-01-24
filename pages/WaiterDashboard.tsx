@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { useAuth } from '../AuthContext';
+import { useBranch } from '../contexts/BranchContext';
 import { supabase } from '../supabase';
 import { Order, Table } from '../types';
 import { Button, showToast, cn, Badge } from '../components/ui';
@@ -24,6 +25,7 @@ import { orderService } from '../services/orderService';
 
 const WaiterDashboard: React.FC = () => {
   const { profile, user } = useAuth();
+  const { activeBranchId } = useBranch();
   const [tables, setTables] = useState<Table[]>([]);
   const { orders, kitchenPipeline, billingQueue, isLoading: ordersLoading, refresh: refreshOrders } = useOrders(user?.id);
 
@@ -40,14 +42,21 @@ const WaiterDashboard: React.FC = () => {
   const fetchTables = useCallback(async () => {
     setIsSyncingTables(true);
     try {
-      const { data: tableData } = await supabase.from('tables').select('*').order('table_number');
+      let query = supabase.from('tables').select('*').order('table_number');
+
+      // Filter by active branch
+      if (activeBranchId) {
+        query = query.eq('branch_id', activeBranchId);
+      }
+
+      const { data: tableData } = await query;
       if (tableData) setTables(tableData as Table[]);
     } catch (err: any) {
       showToast("Sync Failed: " + err.message, "error");
     } finally {
       setIsSyncingTables(false);
     }
-  }, []);
+  }, [activeBranchId]);
 
   const refreshAll = useCallback(() => {
     fetchTables();

@@ -1,21 +1,24 @@
-
 import { useEffect, useState } from 'react';
 import { supabase } from '../supabase';
 import { MenuDish, Ingredient } from '../types';
 import { calculateCostPerPlate, checkDishAvailability, RecipeIngredient } from '../lib/menuEconomics';
+import { useBranch } from '../contexts/BranchContext';
 
 export const useMenu = (filterAvailable = false) => {
+  const { activeBranchId } = useBranch();
   const [menuItems, setMenuItems] = useState<MenuDish[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchData = async () => {
+    if (!activeBranchId) return;
     setLoading(true);
     try {
       // Switched to 'view_menu_details' for Single Source of Truth
       const { data, error } = await supabase
         .from('view_menu_details')
         .select('*')
+        .eq('branch_id', activeBranchId)
         .order('name', { ascending: true });
 
       if (error) throw error;

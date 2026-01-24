@@ -1,65 +1,11 @@
--- 1. Create Staff Shifts Table
-CREATE TABLE IF NOT EXISTS public.staff_shifts (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    staff_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
-    branch_id UUID REFERENCES public.branches(id) ON DELETE SET NULL,
-    staff_name TEXT,
-    role TEXT,
-    clock_in_time TIMESTAMP WITH TIME ZONE DEFAULT now(),
-    clock_out_time TIMESTAMP WITH TIME ZONE,
-    shift_duration_minutes INTEGER,
-    status TEXT DEFAULT 'active' CHECK (status IN ('active', 'completed', 'cancelled')),
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
-);
+-- HEAVY DUTY FIX: Staff Performance Signature Cleanup
+-- This script drops all previous versions of the function to clear signature conflicts in Supabase.
 
--- 2. Create Staff Actions Table (for Accountability Log)
-CREATE TABLE IF NOT EXISTS public.staff_actions (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    staff_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
-    staff_name TEXT,
-    role TEXT,
-    action_type TEXT,
-    entity_type TEXT,
-    entity_id TEXT,
-    details JSONB DEFAULT '{}'::jsonb,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
-);
+-- 1. Drop old versions to prevent ambiguity
+DROP FUNCTION IF EXISTS public.get_staff_performance_metrics(timestamp with time zone, timestamp with time zone);
+DROP FUNCTION IF EXISTS public.get_staff_performance_metrics(timestamp with time zone, timestamp with time zone, uuid);
 
--- 3. Create Tips Ledger Table
-CREATE TABLE IF NOT EXISTS public.tips_ledger (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    staff_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
-    order_id UUID REFERENCES public.orders(id) ON DELETE CASCADE,
-    amount NUMERIC DEFAULT 0,
-    tip_type TEXT CHECK (tip_type IN ('cash', 'digital')),
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
-);
-
--- Indices for performance
-CREATE INDEX IF NOT EXISTS idx_staff_shifts_id ON staff_shifts(staff_id);
-CREATE INDEX IF NOT EXISTS idx_staff_shifts_branch ON staff_shifts(branch_id);
-CREATE INDEX IF NOT EXISTS idx_staff_shifts_status ON staff_shifts(status);
-CREATE INDEX IF NOT EXISTS idx_staff_actions_id ON staff_actions(staff_id);
-CREATE INDEX IF NOT EXISTS idx_tips_ledger_staff ON tips_ledger(staff_id);
-
--- Simple RLS
-ALTER TABLE public.staff_shifts ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.staff_actions ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.tips_ledger ENABLE ROW LEVEL SECURITY;
-
-DO $$ BEGIN
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow all access to staff_shifts') THEN
-        CREATE POLICY "Allow all access to staff_shifts" ON public.staff_shifts FOR ALL USING (true);
-    END IF;
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow all access to staff_actions') THEN
-        CREATE POLICY "Allow all access to staff_actions" ON public.staff_actions FOR ALL USING (true);
-    END IF;
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Allow all access to tips_ledger') THEN
-        CREATE POLICY "Allow all access to tips_ledger" ON public.tips_ledger FOR ALL USING (true);
-    END IF;
-END $$;
-
--- 4. Function to calculate comprehensive staff performance metrics
+-- 2. Create the clean version with branch support
 CREATE OR REPLACE FUNCTION get_staff_performance_metrics(
   start_date TIMESTAMP WITH TIME ZONE, 
   end_date TIMESTAMP WITH TIME ZONE,
@@ -166,3 +112,6 @@ BEGIN
   LEFT JOIN shift_stats ss ON ps.st_id = ss.staff_id;
 END;
 $$ LANGUAGE plpgsql;
+
+-- 3. Force Cache Reload
+NOTIFY pgrst, 'reload schema';

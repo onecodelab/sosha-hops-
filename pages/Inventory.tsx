@@ -9,6 +9,7 @@ import { supabase } from '../supabase';
 import { Ingredient } from '../types';
 import { useRoleAccess } from '../hooks/useRoleAccess';
 import { RoleGuard } from '../components/RoleGuard';
+import { useBranch } from '../contexts/BranchContext';
 
 type SortField = 'name' | 'current_stock' | 'total_value';
 type SortOrder = 'asc' | 'desc';
@@ -25,6 +26,7 @@ interface FormData {
 
 const Inventory: React.FC = () => {
   const { hasPermission, isOwnerOrAdmin } = useRoleAccess();
+  const { activeBranchId } = useBranch();
   const canViewCost = hasPermission('canViewInventoryCost');
   const canViewStock = hasPermission('canViewInventoryStock');
 
@@ -50,23 +52,63 @@ const Inventory: React.FC = () => {
   const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
 
   useEffect(() => {
+    if (!activeBranchId) return;
     fetchInventory();
-    const sub = supabase.channel('ingredients_sync_v2')
+
+    // Subscribe to both ingredients (for global info) and branch_inventory (for stock)
+    const ingredientsSub = supabase.channel('ingredients_sync_v2')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'ingredients' }, () => fetchInventory())
       .subscribe();
-    return () => { supabase.removeChannel(sub); };
-  }, []);
+
+    const branchSub = supabase.channel('branch_inventory_sync')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'branch_inventory',
+        filter: `branch_id=eq.${activeBranchId}`
+      }, () => fetchInventory())
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(ingredientsSub);
+      supabase.removeChannel(branchSub);
+    };
+  }, [activeBranchId]);
 
   const fetchInventory = async () => {
+    if (!activeBranchId) return;
     setLoading(true);
     try {
-      // Switched to 'view_inventory_intelligence' for Predictive Data
+      // Since 'view_inventory_intelligence' might not be fully branch-aware yet for all fields,
+      // we'll fetch from ingredients and join branch_inventory for the current branch truth.
+      // We still use intelligence view if possible, but let's favor branch truth for operational fields.
       const { data, error } = await supabase
-        .from('view_inventory_intelligence')
-        .select('*');
+        .from('ingredients')
+        .select(`
+          *,
+          branch_inventory!left(current_stock, par_min, par_max, last_updated)
+        `)
+        .eq('is_active', true)
+        .eq('branch_inventory.branch_id', activeBranchId);
 
       if (error) throw error;
-      setInventory(data as any[]); // Using any temporarily as the view returns more fields than Ingredient type
+
+      // Transform data to flatten branch_inventory
+      const flattened = (data || []).map(item => {
+        const bStock = Array.isArray(item.branch_inventory) ? item.branch_inventory[0] : item.branch_inventory;
+        return {
+          ...item,
+          current_stock: bStock?.current_stock ?? 0,
+          par_min: bStock?.par_min ?? 0,
+          par_max: bStock?.par_max ?? 0,
+          // Fallback for intelligence fields if missing
+          days_of_stock_left: (item as any).days_of_stock_left ?? (bStock?.current_stock > 0 ? 30 : 0),
+          revenue_at_risk_7d: (item as any).revenue_at_risk_7d ?? 0,
+          velocity_ratio: (item as any).velocity_ratio ?? 1.0
+        };
+      });
+
+      setInventory(flattened as any[]);
     } catch (err: any) {
       showToast(err.message, "error");
     } finally {
@@ -105,14 +147,12 @@ const Inventory: React.FC = () => {
   };
 
   const handleSave = async () => {
-    if (!selectedItem) return;
+    if (!selectedItem || !activeBranchId) return;
     setSubmitting(true);
 
     try {
-      const updatePayload = {
-        current_stock: Number(formData.current_stock),
-        par_min: Number(formData.par_min),
-        par_max: Number(formData.par_max),
+      // 1. Update Global Ingredient Definitions
+      const globalUpdate = {
         cost_per_unit: Number(formData.cost_per_unit),
         expiry_days: Math.floor(Number(formData.expiry_days)),
         unit_type: formData.unit_type,
@@ -120,22 +160,35 @@ const Inventory: React.FC = () => {
         updated_at: new Date().toISOString()
       };
 
-      if (updatePayload.par_max < updatePayload.par_min && updatePayload.par_max > 0) {
+      const { error: globalErr } = await supabase
+        .from('ingredients')
+        .update(globalUpdate)
+        .eq('id', selectedItem.id);
+
+      if (globalErr) throw globalErr;
+
+      // 2. Update Branch-Specific Reality (UPSERT into branch_inventory)
+      if (formData.par_max < formData.par_min && formData.par_max > 0) {
         throw new Error("Par Max cannot be less than Par Min");
       }
 
-      const { error } = await supabase
-        .from('ingredients')
-        .update(updatePayload)
-        .eq('id', selectedItem.id);
+      const branchUpdate = {
+        branch_id: activeBranchId,
+        ingredient_id: selectedItem.id,
+        current_stock: Number(formData.current_stock),
+        par_min: Number(formData.par_min),
+        par_max: Number(formData.par_max),
+        last_updated: new Date().toISOString()
+      };
 
-      if (error) {
-        console.error("Database Save Error:", error);
-        throw new Error(`DB Error: ${error.message}. Please run the SQL Hardening Script.`);
-      }
+      const { error: branchErr } = await supabase
+        .from('branch_inventory')
+        .upsert(branchUpdate, { onConflict: 'branch_id,ingredient_id' });
+
+      if (branchErr) throw branchErr;
 
       await fetchInventory();
-      showToast(`Master record for ${selectedItem.name} updated!`, "success");
+      showToast(`Inventory for ${selectedItem.name} updated in this branch!`, "success");
       setIsModalOpen(false);
       setSelectedItem(null);
 

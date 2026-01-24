@@ -15,9 +15,11 @@ import { PaymentVerificationModal } from '../components/PaymentVerificationModal
 import { OrderCard } from '../components/OrderCard';
 import { Order, UserProfile } from '../types';
 import { OrderDetailsModal } from '../components/OrderDetailsModal';
+import { useBranch } from '../contexts/BranchContext';
 
 const AdminDashboard: React.FC = () => {
    const navigate = useNavigate();
+   const { activeBranchId } = useBranch();
    const [loading, setLoading] = useState(true);
    const [actionInProgress, setActionInProgress] = useState(false);
    const [activeOrders, setActiveOrders] = useState<Order[]>([]);
@@ -37,6 +39,7 @@ const AdminDashboard: React.FC = () => {
    const syncTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
    const fetchDashboardData = useCallback(async () => {
+      if (!activeBranchId) return;
       try {
          let dateLimit = new Date();
          if (dateFilter === 'yesterday') {
@@ -53,6 +56,7 @@ const AdminDashboard: React.FC = () => {
          const { data: rev } = await supabase
             .from('orders')
             .select('total_amount')
+            .eq('branch_id', activeBranchId)
             .gte('created_at', `${new Date().toISOString().split('T')[0]}T00:00:00`)
             .in('status', ['closed', 'paid', 'served']);
 
@@ -68,6 +72,7 @@ const AdminDashboard: React.FC = () => {
             menu_item:menu (name)
           )
         `)
+            .eq('branch_id', activeBranchId)
             .neq('status', 'paid')
             .neq('status', 'closed')
             .neq('status', 'cancelled')
@@ -93,7 +98,7 @@ const AdminDashboard: React.FC = () => {
 
          // Function to execute order fetch with specific fields
          const fetchWithFields = async (fields: string) => {
-            let q = supabase.from('orders').select(fields);
+            let q = supabase.from('orders').select(fields).eq('branch_id', activeBranchId);
             if (queryStart) q = q.gte('created_at', queryStart);
             if (queryEnd) q = q.lt('created_at', queryEnd);
             return q.order('created_at', { ascending: false }).limit(searchQuery ? 100 : 50);
@@ -139,7 +144,11 @@ const AdminDashboard: React.FC = () => {
             }
          }
 
-         const { data: staff } = await supabase.from('profiles').select('*').in('role', ['waiter', 'manager']);
+         const { data: staff } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('home_branch_id', activeBranchId)
+            .in('role', ['waiter', 'manager']);
          if (staff) setStaffList(staff as UserProfile[]);
 
          setStats({
@@ -164,13 +173,21 @@ const AdminDashboard: React.FC = () => {
    }, [fetchDashboardData]);
 
    useEffect(() => {
+      if (!activeBranchId) return;
       fetchDashboardData();
-      const sub = supabase.channel('admin_sync').on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => debouncedSync()).subscribe();
+      const sub = supabase.channel('admin_sync')
+         .on('postgres_changes', {
+            event: '*',
+            schema: 'public',
+            table: 'orders',
+            filter: `branch_id=eq.${activeBranchId}`
+         }, () => debouncedSync())
+         .subscribe();
       return () => {
          supabase.removeChannel(sub);
          if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
       };
-   }, [debouncedSync, dateFilter]);
+   }, [debouncedSync, dateFilter, activeBranchId]);
 
    const handleOrderAction = async (action: string, orderId: string) => {
       if (action === 'served') {

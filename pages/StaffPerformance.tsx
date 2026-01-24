@@ -9,8 +9,10 @@ import {
 import { Badge, Button, Input, cn, showToast, Dialog, Card, CardHeader, CardTitle, CardContent } from '../components/ui';
 import { supabase } from '../supabase';
 import { Role } from '../types';
+import { useBranch } from '../contexts/BranchContext';
 
 const StaffPerformance: React.FC = () => {
+   const { activeBranchId } = useBranch();
    const [loading, setLoading] = useState(true);
    const [metrics, setMetrics] = useState<any[]>([]);
    const [activeShifts, setActiveShifts] = useState<any[]>([]);
@@ -37,13 +39,18 @@ const StaffPerformance: React.FC = () => {
          // Fetch Stats via RPC
          const { data: stats, error: rpcError } = await supabase.rpc('get_staff_performance_metrics', {
             start_date: start.toISOString(),
-            end_date: end.toISOString()
+            end_date: end.toISOString(),
+            p_branch_id: activeBranchId
          });
 
          if (rpcError) throw rpcError;
 
          // Fetch Active Shifts
-         const { data: shiftData } = await supabase.from('staff_shifts').select('*').eq('status', 'active');
+         let shiftQuery = supabase.from('staff_shifts').select('*').eq('status', 'active');
+         if (activeBranchId) {
+            shiftQuery = shiftQuery.eq('branch_id', activeBranchId);
+         }
+         const { data: shiftData } = await shiftQuery;
 
          setMetrics(stats || []);
          setActiveShifts(shiftData || []);

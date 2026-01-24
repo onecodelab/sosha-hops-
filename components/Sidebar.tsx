@@ -4,12 +4,16 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import {
     LogOut, LayoutDashboard, ShoppingBag, Users,
     ClipboardList, Utensils, ChevronLeft, ChevronRight,
-    Trash2, Truck, PlusCircle, PackageCheck, FileText, Monitor, BookOpen, TrendingUp, Clock
+    Trash2, Truck, PlusCircle, PackageCheck, FileText, Monitor, BookOpen, TrendingUp, Clock, ShoppingCart
 } from 'lucide-react';
 import { cn } from './ui';
 import { SoshaLogo } from './SoshaLogo';
 import { RoleGuard } from './RoleGuard';
 import { useLanguage } from '../contexts/LanguageContext';
+import { useRoleAccess } from '../hooks/useRoleAccess';
+import { useBranch } from '../contexts/BranchContext';
+import { useAuth } from '../AuthContext';
+import { MapPin, ChevronDown } from 'lucide-react';
 
 interface SidebarProps {
     isCollapsed: boolean;
@@ -21,6 +25,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, setIsCollapsed, h
     const navigate = useNavigate();
     const location = useLocation();
     const { t } = useLanguage();
+    const { isOwnerOrAdmin } = useRoleAccess();
+    const { profile } = useAuth();
+    const { activeBranch, branches, switchBranch, isLoading: branchesLoading } = useBranch();
+    const [isBranchSelectorOpen, setIsBranchSelectorOpen] = React.useState(false);
 
     const NavItem = ({ icon: Icon, label, path, allowedRoles }: any) => {
         const isActive = location.pathname === path;
@@ -61,6 +69,58 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, setIsCollapsed, h
                 )}
                 {isCollapsed && <SoshaLogo className="w-10 h-10 mx-auto" />}
             </div>
+
+            {/* Branch Selector Section */}
+            {!isCollapsed && (
+                <div className="px-5 mb-4 animate-in slide-in-from-left duration-500 delay-150">
+                    <div className="relative">
+                        <button
+                            onClick={() => isOwnerOrAdmin && setIsBranchSelectorOpen(!isBranchSelectorOpen)}
+                            className={cn(
+                                "w-full flex items-center justify-between gap-3 px-4 py-3 rounded-2xl border transition-all duration-300",
+                                isOwnerOrAdmin
+                                    ? "bg-primary/5 border-primary/20 hover:bg-primary/10 group"
+                                    : "bg-white/5 border-white/5 cursor-default"
+                            )}
+                        >
+                            <div className="flex items-center gap-3 overflow-hidden">
+                                <MapPin className={cn("w-4 h-4 shrink-0", isOwnerOrAdmin ? "text-primary" : "text-gray-500")} />
+                                <div className="flex flex-col items-start leading-none overflow-hidden text-left">
+                                    <span className="text-[9px] font-black text-gray-500 uppercase tracking-widest mb-0.5">Active Branch</span>
+                                    <span className="text-sm font-bold text-white truncate w-full">
+                                        {branchesLoading ? "Loading..." : (activeBranch?.name || "System Global")}
+                                    </span>
+                                </div>
+                            </div>
+                            {isOwnerOrAdmin && (
+                                <ChevronDown className={cn("w-4 h-4 text-gray-500 transition-transform", isBranchSelectorOpen && "rotate-180")} />
+                            )}
+                        </button>
+
+                        {isBranchSelectorOpen && isOwnerOrAdmin && (
+                            <div className="absolute top-full left-0 right-0 mt-2 py-2 bg-[#1A1A1A] border border-white/10 rounded-2xl shadow-2xl z-[100] animate-in fade-in zoom-in-95 duration-200">
+                                {branches.map((branch) => (
+                                    <button
+                                        key={branch.id}
+                                        onClick={() => {
+                                            switchBranch(branch.id);
+                                            setIsBranchSelectorOpen(false);
+                                        }}
+                                        className={cn(
+                                            "w-full text-left px-4 py-2 text-sm font-bold transition-colors",
+                                            activeBranch?.id === branch.id
+                                                ? "text-primary bg-primary/10"
+                                                : "text-gray-400 hover:text-white hover:bg-white/5"
+                                        )}
+                                    >
+                                        {branch.name}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
 
             <nav className="flex-1 px-4 space-y-2 py-4 overflow-y-auto custom-scrollbar">
                 {/* Dashboard/Ops */}
@@ -145,38 +205,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, setIsCollapsed, h
                     allowedRoles={['kitchen']}
                 />
 
-                {/* Supply Chain - Owner/Admin only */}
                 <NavItem
-                    icon={FileText}
+                    icon={ShoppingCart}
                     label={t('nav.purchaseOrders')}
-                    path="/manager/purchase-orders"
-                    allowedRoles={['owner', 'admin']}
-                />
-                <NavItem
-                    icon={PackageCheck}
-                    label={t('nav.receiveGoods')}
-                    path="/manager/receive-goods"
-                    allowedRoles={['owner', 'admin']}
-                />
-                <NavItem
-                    icon={Clock}
-                    label="Pending Approvals"
-                    path="/pending-po"
-                    allowedRoles={['owner', 'admin']}
-                />
-
-                {/* Manager-only PO access */}
-                <NavItem
-                    icon={PlusCircle}
-                    label={t('nav.createPO')}
-                    path="/manager/create-po"
-                    allowedRoles={['manager']}
-                />
-                <NavItem
-                    icon={Clock}
-                    label="My Pending POs"
-                    path="/pending-po"
-                    allowedRoles={['manager']}
+                    path="/po/list"
+                    allowedRoles={['owner', 'admin', 'manager']}
                 />
 
                 {/* Orders - Owner/Admin only */}

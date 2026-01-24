@@ -9,18 +9,20 @@ import {
 } from 'lucide-react';
 import { analyticsService, TableMetric } from '../services/analyticsService';
 import { useRoleAccess } from '../hooks/useRoleAccess';
+import { useBranch } from '../contexts/BranchContext';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const AdminFloorAnalytics: React.FC = () => {
     const { hasPermission } = useRoleAccess();
+    const { activeBranchId } = useBranch();
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
     const [timeRange, setTimeRange] = useState<'today' | 'week' | 'month'>('today');
 
     // Fetch Metrics
     const { data: metrics, isLoading, refetch } = useQuery({
-        queryKey: ['floor-analytics', timeRange],
-        queryFn: () => analyticsService.getFloorMetrics(timeRange),
-        enabled: hasPermission('canViewAnalytics'), // Security Check
+        queryKey: ['floor-analytics', timeRange, activeBranchId],
+        queryFn: () => analyticsService.getFloorMetrics(timeRange, activeBranchId),
+        enabled: hasPermission('canViewAnalytics') && !!activeBranchId, // Security Check
     });
 
     if (!hasPermission('canViewAnalytics')) {

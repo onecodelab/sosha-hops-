@@ -127,20 +127,23 @@ interface DialogProps {
   title: string;
   children: React.ReactNode;
   maxWidth?: string;
+  showTitle?: boolean;
 }
 
-export const Dialog: React.FC<DialogProps> = ({ isOpen, onClose, title, children, maxWidth = "max-w-lg" }) => {
+export const Dialog: React.FC<DialogProps> = ({ isOpen, onClose, title, children, maxWidth = "max-w-lg", showTitle = true }) => {
   if (!isOpen) return null;
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-lg p-4 animate-in fade-in duration-300">
       <div className={cn("w-full max-h-[90vh] rounded-[2rem] bg-card/95 border border-white/10 shadow-2xl animate-in zoom-in-95 duration-300 overflow-hidden flex flex-col relative", maxWidth)}>
         {/* Glass Header */}
-        <div className="flex items-center justify-between px-8 py-5 border-b border-white/5 bg-white/5 backdrop-blur-md">
-          <h2 className="text-lg font-black text-foreground tracking-tight uppercase">{title}</h2>
-          <button onClick={onClose} className="p-2 rounded-full hover:bg-white/10 text-muted hover:text-foreground transition-all duration-300 hover:rotate-90">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-          </button>
-        </div>
+        {showTitle && (
+          <div className="flex items-center justify-between px-8 py-5 border-b border-white/5 bg-white/5 backdrop-blur-md">
+            <h2 className="text-lg font-black text-foreground tracking-tight uppercase">{title}</h2>
+            <button onClick={onClose} className="p-2 rounded-full hover:bg-white/10 text-muted hover:text-foreground transition-all duration-300 hover:rotate-90">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </button>
+          </div>
+        )}
         <div className="flex-1 overflow-y-auto custom-scrollbar">
           {children}
         </div>

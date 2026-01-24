@@ -2,6 +2,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { supabase } from '../supabase';
+import { useBranch } from '../contexts/BranchContext';
 import { Badge, cn, showToast, Button } from '../components/ui';
 import {
    Clock, CheckCircle2, RefreshCw, AlertTriangle,
@@ -11,6 +12,7 @@ import { Order } from '../types';
 import { OrderCard } from '../components/OrderCard';
 
 const KitchenDashboard: React.FC = () => {
+   const { activeBranchId } = useBranch();
    const [orders, setOrders] = useState<Order[]>([]);
    const [loading, setLoading] = useState(true);
    const [error, setError] = useState<string | null>(null);
@@ -19,8 +21,8 @@ const KitchenDashboard: React.FC = () => {
    const fetchOrders = useCallback(async () => {
       setIsSyncing(true);
       try {
-         // MASTER KITCHEN QUERY - Using explicit FK hints to prevent "ambiguous join" errors
-         const { data, error: fetchError } = await supabase
+         // MASTER KITCHEN QUERY - Filtered by Branch
+         let query = supabase
             .from('orders')
             .select(`
           id, 
@@ -49,6 +51,12 @@ const KitchenDashboard: React.FC = () => {
             .in('status', ['pending', 'accepted', 'preparing', 'ready'])
             .order('created_at', { ascending: true });
 
+         if (activeBranchId) {
+            query = query.eq('branch_id', activeBranchId);
+         }
+
+         const { data, error: fetchError } = await query;
+
          if (fetchError) throw fetchError;
 
          setOrders(data as unknown as Order[] || []);
@@ -61,7 +69,7 @@ const KitchenDashboard: React.FC = () => {
          setLoading(false);
          setIsSyncing(false);
       }
-   }, []);
+   }, [activeBranchId]);
 
    useEffect(() => {
       fetchOrders();

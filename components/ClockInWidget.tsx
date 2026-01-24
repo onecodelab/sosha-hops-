@@ -3,11 +3,13 @@ import React, { useEffect, useState } from 'react';
 import { supabase } from '../supabase';
 import { Clock, CheckCircle, XCircle } from 'lucide-react';
 import { useAuth } from '../AuthContext';
+import { useBranch } from '../contexts/BranchContext';
 
 export const ClockInWidget = () => {
   const [currentShift, setCurrentShift] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const { profile, refreshProfile } = useAuth();
+  const { activeBranchId } = useBranch();
 
   useEffect(() => {
     if (profile) {
@@ -17,7 +19,7 @@ export const ClockInWidget = () => {
 
   const loadShiftStatus = async () => {
     if (!profile) return;
-    
+
     // Don't show for owner
     if (profile.role === 'owner') {
       setLoading(false);
@@ -58,6 +60,7 @@ export const ClockInWidget = () => {
       .from('staff_shifts')
       .insert([{
         staff_id: profile.id,
+        branch_id: activeBranchId,
         staff_name: profile.full_name || profile.email,
         role: profile.role,
         clock_in_time: new Date().toISOString()
@@ -104,7 +107,7 @@ export const ClockInWidget = () => {
 
   // Don't render for owner
   if (profile?.role === 'owner') return null;
-  
+
   if (loading) {
     return (
       <div className="bg-[#09090b] rounded-2xl p-6 border border-white/5 mb-6 animate-pulse">

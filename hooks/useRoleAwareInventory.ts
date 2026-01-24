@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { supabase } from '../supabase';
 import { useRoleAccess } from './useRoleAccess';
 import { Role } from '../types';
+import { useBranch } from '../contexts/BranchContext';
 
 interface InventoryItemBase {
     id: string;
@@ -35,41 +36,62 @@ export const useRoleAwareInventory = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const { isOwnerOrAdmin, hasPermission, role } = useRoleAccess();
+    const { activeBranchId } = useBranch();
 
     const selectFields = useMemo(() => {
-        // Admin/Owner: full access to all fields
+        // We always fetch the global ingredient fields
+        let fields = 'id, name, category, unit_type, is_active';
+
         if (isOwnerOrAdmin) {
-            return 'id, name, category, unit_type, is_active, current_stock, par_min, par_max, cost_per_unit, supplier_id, sku, expiry_days';
+            fields += ', cost_per_unit, supplier_id, sku, expiry_days';
         }
-        // Manager/Kitchen: stock counts but no cost data
+
+        // Add the branch-specific stock details
+        // We use !branch_inventory(current_stock...) to join the table
+        // Note: Field names in branch_inventory must match what the UI expects or we transform them
         if (hasPermission('canViewInventoryStock')) {
-            return 'id, name, category, unit_type, is_active, current_stock, par_min, par_max';
+            fields += ', branch_inventory(current_stock, par_min, par_max)';
         }
-        // Waiter/Others: basic info only (availability status)
-        return 'id, name, category, unit_type, is_active';
+
+        return fields;
     }, [isOwnerOrAdmin, hasPermission]);
 
     const fetchInventory = async () => {
+        if (!activeBranchId) return;
+
         setLoading(true);
         setError(null);
         try {
             const { data, error: fetchError } = await supabase
                 .from('ingredients')
                 .select(selectFields)
-                .eq('is_active', true);
+                .eq('is_active', true)
+                .eq('branch_inventory.branch_id', activeBranchId);
 
             if (fetchError) throw fetchError;
 
             // Transform data based on role for consistent typing
             const transformedData = (data || []).map(item => {
+                // Flatten branch_inventory data back to the top-level for UI compatibility
+                const stockData = Array.isArray(item.branch_inventory)
+                    ? item.branch_inventory[0]
+                    : item.branch_inventory;
+
+                const normalizedItem = {
+                    ...item,
+                    current_stock: stockData?.current_stock ?? 0,
+                    par_min: stockData?.par_min ?? 0,
+                    par_max: stockData?.par_max ?? 0,
+                };
+
                 if (!hasPermission('canViewInventoryStock')) {
                     // For waiters: simplified availability boolean
                     return {
-                        ...item,
-                        is_available: true,
+                        ...normalizedItem,
+                        is_available: normalizedItem.current_stock > 0,
                     } as WaiterInventoryItem;
                 }
-                return item as RoleAwareInventoryItem;
+                return normalizedItem as RoleAwareInventoryItem;
             });
 
             setItems(transformedData);
@@ -84,15 +106,27 @@ export const useRoleAwareInventory = () => {
     useEffect(() => {
         fetchInventory();
 
-        const sub = supabase
-            .channel('role_aware_inventory')
+        // Subscribe to both ingredients and branch_inventory changes
+        const ingredientsChannel = supabase
+            .channel('ingredients_changes')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'ingredients' }, fetchInventory)
             .subscribe();
 
+        const branchInventoryChannel = supabase
+            .channel('branch_inventory_changes')
+            .on('postgres_changes', {
+                event: '*',
+                schema: 'public',
+                table: 'branch_inventory',
+                filter: `branch_id=eq.${activeBranchId}`
+            }, fetchInventory)
+            .subscribe();
+
         return () => {
-            supabase.removeChannel(sub);
+            supabase.removeChannel(ingredientsChannel);
+            supabase.removeChannel(branchInventoryChannel);
         };
-    }, [selectFields]);
+    }, [selectFields, activeBranchId]);
 
     return {
         items,
