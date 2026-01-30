@@ -1,115 +1,82 @@
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { supabase } from '../supabase';
-import { useBranch } from '../contexts/BranchContext';
-import { Badge, cn, showToast, Button } from '../components/ui';
-import {
-   Clock, CheckCircle2, RefreshCw, AlertTriangle,
-   ChefHat, Loader2, Info, WifiOff, LayoutPanelTop, Terminal
-} from 'lucide-react';
 import { Order } from '../types';
+import { Button, Badge, showToast, cn, Card } from '../components/ui';
+import {
+   RefreshCw,
+   Monitor,
+   Terminal,
+   Clock,
+   CheckCircle2,
+   ChefHat,
+   LayoutPanelTop
+} from 'lucide-react';
 import { OrderCard } from '../components/OrderCard';
+import { orderService } from '../services/orderService';
 
 const KitchenDashboard: React.FC = () => {
-   const { activeBranchId } = useBranch();
    const [orders, setOrders] = useState<Order[]>([]);
    const [loading, setLoading] = useState(true);
-   const [error, setError] = useState<string | null>(null);
    const [isSyncing, setIsSyncing] = useState(false);
+   const [error, setError] = useState<string | null>(null);
 
    const fetchOrders = useCallback(async () => {
       setIsSyncing(true);
       try {
-         // MASTER KITCHEN QUERY - Filtered by Branch
-         let query = supabase
+         const { data, error: fetchErr } = await supabase
             .from('orders')
             .select(`
-          id, 
-          order_number, 
-          table_id, 
-          table_number, 
-          status, 
-          total_amount, 
-          created_at, 
-          waiter_id,
-          source,
-          payment_status,
-          customer_notes,
-          waiter:profiles!waiter_id (full_name),
-          order_items (
-            id, 
-            order_id,
-            menu_id:menu_item_id,
-            price,
-            quantity, 
-            special_instructions,
-            menu_item:menu (name)
-          )
-        `)
-            .is('closed_at', null)
-            .in('status', ['pending', 'accepted', 'preparing', 'ready'])
+               *,
+               order_items (
+                  id,
+                  quantity,
+                  menu_item:menu (name)
+               )
+            `)
+            .neq('status', 'paid')
+            .neq('status', 'closed')
+            .neq('status', 'cancelled')
             .order('created_at', { ascending: true });
 
-         if (activeBranchId) {
-            query = query.eq('branch_id', activeBranchId);
-         }
-
-         const { data, error: fetchError } = await query;
-
-         if (fetchError) throw fetchError;
-
-         setOrders(data as unknown as Order[] || []);
+         if (fetchErr) throw fetchErr;
+         setOrders(data || []);
          setError(null);
       } catch (err: any) {
-         console.error("Kitchen Sync Error Details:", err);
-         setError(err.message || 'Database connection error');
-         showToast("Kitchen Sync Failed", "error");
+         console.error("Kitchen fetch error:", err);
+         setError(err.message);
+         showToast(err.message, "error");
       } finally {
          setLoading(false);
          setIsSyncing(false);
       }
-   }, [activeBranchId]);
+   }, []);
 
    useEffect(() => {
       fetchOrders();
-
-      // Multi-table real-time listener for maximum reliability
-      const channel = supabase.channel('kitchen_live_v7')
-         .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => {
-            console.debug("Kitchen: Orders updated, refreshing...");
-            fetchOrders();
-         })
-         .on('postgres_changes', { event: '*', schema: 'public', table: 'order_items' }, () => {
-            console.debug("Kitchen: Items updated, refreshing...");
-            fetchOrders();
-         })
+      const channel = supabase.channel('kitchen_sync')
+         .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => fetchOrders())
          .subscribe();
-
       return () => { supabase.removeChannel(channel); };
    }, [fetchOrders]);
 
    const handleOrderAction = async (action: string, orderId: string) => {
-      const now = new Date().toISOString();
-      const update: any = { last_updated: now };
-
-      if (action === 'accepted') {
-         update.status = 'preparing';
-         update.accepted_at = now;
-      } else if (action === 'ready') {
-         update.status = 'ready';
-         update.ready_at = now;
-      }
-
       try {
-         const { error } = await supabase.from('orders').update(update).eq('id', orderId);
-         if (error) throw error;
-         showToast(`Kitchen status updated`, "success");
-         fetchOrders();
+         if (action === 'accepted' || action === 'ready') {
+            await orderService.updateStatus(orderId, action as any);
+            showToast(`Order marked as ${action}`, "success");
+         }
+         await fetchOrders();
       } catch (err: any) {
          showToast(err.message, "error");
       }
    };
+
+   // Column Logic
+   const incomingOrders = useMemo(() => orders.filter(o => o.status === 'pending'), [orders]);
+   const acceptedOrders = useMemo(() => orders.filter(o => ['accepted', 'preparing'].includes(o.status)), [orders]);
+   const preparedOrders = useMemo(() => orders.filter(o => o.status === 'ready'), [orders]);
 
    return (
       <DashboardLayout title="Kitchen Display" subtitle="Live Production Board"
@@ -127,56 +94,74 @@ const KitchenDashboard: React.FC = () => {
             </div>
          }
       >
-         <div className="space-y-6 animate-in fade-in duration-700">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 min-h-[750px]">
-               {/* Column: Incoming */}
-               <div className="flex flex-col h-full bg-card/60 backdrop-blur-xl rounded-[3rem] border border-white/5 overflow-hidden shadow-2xl">
-                  <div className="p-6 border-b border-white/5 flex justify-between items-center bg-white/[0.02]">
+         <div className="space-y-6 animate-in fade-in duration-700 h-full flex flex-col">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-1 min-h-0 pb-20">
+               {/* INCOMING */}
+               <div className="flex flex-col min-h-0 bg-black/40 backdrop-blur-2xl border border-white/5 rounded-[2.5rem] overflow-hidden shadow-[0_0_50px_rgba(234,179,8,0.1)] relative group hover:border-yellow-500/20 transition-all">
+                  <div className="absolute inset-0 bg-gradient-to-br from-yellow-500/5 to-transparent pointer-events-none" />
+                  <div className="p-6 border-b border-white/5 bg-black/20 flex items-center justify-between relative z-10">
                      <div className="flex items-center gap-3">
-                        <div className="w-3 h-3 rounded-full bg-yellow-500 animate-pulse shadow-[0_0_10px_rgba(234,179,8,0.5)]" />
-                        <h3 className="font-black text-gray-400 text-[11px] uppercase tracking-[0.2em]">Incoming</h3>
+                        <div className="w-2 h-2 rounded-full bg-yellow-400 animate-pulse shadow-[0_0_10px_rgba(234,179,8,0.5)]" />
+                        <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-yellow-500/80">Incoming</h3>
                      </div>
-                     <Badge className="bg-yellow-500 text-black font-black px-3 py-1 rounded-full">{orders.filter(o => o.status === 'pending').length}</Badge>
+                     <Badge variant="default" className="font-mono bg-yellow-500/10 text-yellow-500 border-yellow-500/20 shadow-lg backdrop-blur-md">{incomingOrders.length}</Badge>
                   </div>
-                  <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
-                     {orders.filter(o => o.status === 'pending').map(o => (
-                        <OrderCard key={o.id} order={o} role="kitchen" onAction={handleOrderAction} />
+                  <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar relative z-10">
+                     {incomingOrders.map(order => (
+                        <OrderCard key={order.id} order={order} role="kitchen" onAction={handleOrderAction} />
                      ))}
-                     {orders.filter(o => o.status === 'pending').length === 0 && <EmptyState label="Queue is empty" icon={LayoutPanelTop} />}
+                     {incomingOrders.length === 0 && (
+                        <div className="h-full flex flex-col items-center justify-center opacity-30 gap-4">
+                           <Monitor className="w-12 h-12 text-yellow-500" />
+                           <span className="text-[10px] font-black uppercase tracking-[0.2em] text-yellow-500">Queue Clear</span>
+                        </div>
+                     )}
                   </div>
                </div>
 
-               {/* Column: Accepted */}
-               <div className="flex flex-col h-full bg-card/60 backdrop-blur-xl rounded-[3rem] border border-orange-500/20 overflow-hidden shadow-2xl">
-                  <div className="p-6 border-b border-white/5 flex justify-between items-center bg-orange-500/5">
+               {/* ACCEPTED (PREPARING) */}
+               <div className="flex flex-col min-h-0 bg-black/40 backdrop-blur-2xl border border-white/5 rounded-[2.5rem] overflow-hidden shadow-[0_0_50px_rgba(249,115,22,0.1)] relative group hover:border-orange-500/20 transition-all">
+                  <div className="absolute inset-0 bg-gradient-to-br from-orange-500/5 to-transparent pointer-events-none" />
+                  <div className="p-6 border-b border-white/5 bg-black/20 flex items-center justify-between relative z-10">
                      <div className="flex items-center gap-3">
-                        <ChefHat className="w-4 h-4 text-orange-500" />
-                        <h3 className="font-black text-orange-500/70 text-[11px] uppercase tracking-[0.2em]">Accepted</h3>
+                        <div className="w-2 h-2 rounded-full bg-orange-500 shadow-[0_0_10px_rgba(249,115,22,0.5)]" />
+                        <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-orange-500/80">Prep Station</h3>
                      </div>
-                     <Badge className="bg-orange-500 text-black font-black px-3 py-1 rounded-full">{orders.filter(o => ['accepted', 'preparing'].includes(o.status)).length}</Badge>
+                     <Badge variant="default" className="font-mono bg-orange-500/10 text-orange-500 border-orange-500/20 shadow-lg backdrop-blur-md">{acceptedOrders.length}</Badge>
                   </div>
-                  <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
-                     {orders.filter(o => ['accepted', 'preparing'].includes(o.status)).map(o => (
-                        <OrderCard key={o.id} order={o} role="kitchen" onAction={handleOrderAction} />
+                  <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar relative z-10">
+                     {acceptedOrders.map(order => (
+                        <OrderCard key={order.id} order={order} role="kitchen" onAction={handleOrderAction} />
                      ))}
-                     {orders.filter(o => ['accepted', 'preparing'].includes(o.status)).length === 0 && <EmptyState label="No accepted orders" icon={ChefHat} />}
+                     {acceptedOrders.length === 0 && (
+                        <div className="h-full flex flex-col items-center justify-center opacity-30 gap-4">
+                           <ChefHat className="w-12 h-12 text-orange-500" />
+                           <span className="text-[10px] font-black uppercase tracking-[0.2em] text-orange-500">Station Idle</span>
+                        </div>
+                     )}
                   </div>
                </div>
 
-               {/* Column: Prepared */}
-               <div className="flex flex-col h-full bg-card/60 backdrop-blur-xl rounded-[3rem] border border-green-500/20 overflow-hidden shadow-2xl">
-                  <div className="p-6 border-b border-white/5 flex justify-between items-center bg-green-500/5">
+               {/* PREPARED (READY) */}
+               <div className="flex flex-col min-h-0 bg-black/40 backdrop-blur-2xl border border-white/5 rounded-[2.5rem] overflow-hidden shadow-[0_0_50px_rgba(34,197,94,0.1)] relative group hover:border-green-500/20 transition-all">
+                  <div className="absolute inset-0 bg-gradient-to-br from-green-500/5 to-transparent pointer-events-none" />
+                  <div className="p-6 border-b border-white/5 bg-black/20 flex items-center justify-between relative z-10">
                      <div className="flex items-center gap-3">
-                        <CheckCircle2 className="w-4 h-4 text-green-500" />
-                        <h3 className="font-black text-green-500/70 text-[11px] uppercase tracking-[0.2em]">Prepared</h3>
+                        <div className="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.5)]" />
+                        <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-green-500/80">Ready to Serve</h3>
                      </div>
-                     <Badge className="bg-green-500 text-black font-black px-3 py-1 rounded-full">{orders.filter(o => o.status === 'ready').length}</Badge>
+                     <Badge variant="default" className="font-mono bg-green-500/10 text-green-500 border-green-500/20 shadow-lg backdrop-blur-md">{preparedOrders.length}</Badge>
                   </div>
-                  <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
-                     {orders.filter(o => o.status === 'ready').map(o => (
-                        <OrderCard key={o.id} order={o} role="kitchen" />
+                  <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar relative z-10">
+                     {preparedOrders.map(order => (
+                        <OrderCard key={order.id} order={order} role="kitchen" onAction={handleOrderAction} />
                      ))}
-                     {orders.filter(o => o.status === 'ready').length === 0 && <EmptyState label="Preparation clear" icon={CheckCircle2} />}
+                     {preparedOrders.length === 0 && (
+                        <div className="h-full flex flex-col items-center justify-center opacity-30 gap-4">
+                           <CheckCircle2 className="w-12 h-12 text-green-500" />
+                           <span className="text-[10px] font-black uppercase tracking-[0.2em] text-green-500">All Cleared</span>
+                        </div>
+                     )}
                   </div>
                </div>
             </div>
@@ -184,12 +169,5 @@ const KitchenDashboard: React.FC = () => {
       </DashboardLayout>
    );
 };
-
-const EmptyState = ({ label, icon: Icon }: { label: string, icon: any }) => (
-   <div className="h-40 flex flex-col items-center justify-center text-gray-700 opacity-20 py-10 transition-opacity group-hover:opacity-40">
-      <Icon className="w-12 h-12 mb-4" />
-      <p className="text-[10px] font-black uppercase tracking-widest">{label}</p>
-   </div>
-);
 
 export default KitchenDashboard;

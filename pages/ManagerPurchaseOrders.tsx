@@ -5,7 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../supabase';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle, Button, Input, Badge, Dialog, showToast, cn } from '../components/ui';
-import { Plus, Search, FileText, Trash2, Eye, Download, MoreVertical, Truck, PackageCheck, Calendar, ShoppingBag, DollarSign, Package, Save, Send, CheckCircle, XCircle, RotateCcw, AlertCircle, CheckCircle2, ArrowRight } from 'lucide-react';
+import { Plus, Search, FileText, Trash2, Eye, Download, MoreVertical, Truck, PackageCheck, Calendar, ShoppingBag, DollarSign, Package, Save, Send, CheckCircle, XCircle, RotateCcw, AlertCircle, CheckCircle2, ArrowRight, PlusCircle } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useNavigate } from 'react-router-dom';
 import { PurchaseOrder, Ingredient, Supplier } from '../types';
@@ -544,164 +544,213 @@ const ManagerPurchaseOrders: React.FC = () => {
             {showForm ? (
                <div className="space-y-6 pb-20">
                   {/* Form Section */}
-                  <Card className="bg-[#1A1A1A] border-gray-800">
-                     <CardHeader>
-                        <CardTitle className="text-white flex items-center gap-2">
-                           <Truck className="w-5 h-5 text-blue-500" /> {editingPOData ? "Edit Order" : "Order Details"}
-                        </CardTitle>
-                     </CardHeader>
-                     <CardContent>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                           <div className="space-y-2">
-                              <label className="text-xs font-bold text-gray-500 uppercase">{t('po.supplier')}</label>
-                              <select
-                                 className="w-full h-12 bg-black/20 border border-gray-800 rounded-lg text-sm px-3 text-white focus:outline-none focus:border-blue-500/50 appearance-none"
-                                 value={supplierId}
-                                 onChange={(e) => setSupplierId(e.target.value)}
-                              >
-                                 <option value="">{t('po.selectSupplier')}</option>
-                                 {suppliers?.map(s => (
-                                    <option key={s.id} value={s.id}>{s.name}</option>
-                                 ))}
-                              </select>
-                           </div>
-                           <div className="space-y-2">
-                              <label className="text-xs font-bold text-gray-500 uppercase">{t('po.deliveryDate')}</label>
-                              <div className="relative">
-                                 <Calendar className="absolute left-3 top-3.5 h-4 w-4 text-gray-500" />
-                                 <Input
-                                    type="date"
-                                    value={deliveryDate}
-                                    onChange={(e) => setDeliveryDate(e.target.value)}
-                                    className="pl-10 bg-black/20 border-gray-800 h-12"
-                                 />
+                  {/* Form Section - SOSHA STYLE */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                     {/* LEFT: Order Details */}
+                     <div className="md:col-span-1 space-y-6">
+                        <div className="bg-black/40 backdrop-blur-xl border border-white/10 rounded-3xl p-6 shadow-2xl relative overflow-hidden group">
+                           <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+                           <h3 className="flex items-center gap-2 text-sm font-black text-blue-400 uppercase tracking-widest mb-6">
+                              <Truck className="w-4 h-4" /> Order Details
+                           </h3>
+
+                           <div className="space-y-5">
+                              <div className="space-y-2">
+                                 <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest pl-1">{t('po.supplier')}</label>
+                                 <div className="relative">
+                                    <select
+                                       className="w-full h-12 bg-black/20 border border-white/10 rounded-xl px-4 text-sm font-bold text-white focus:outline-none focus:border-blue-500/50 focus:bg-white/5 appearance-none hover:border-white/20 transition-all cursor-pointer z-10 relative"
+                                       value={supplierId}
+                                       onChange={(e) => setSupplierId(e.target.value)}
+                                    >
+                                       <option value="" className="bg-black text-gray-500">{t('po.selectSupplier')}</option>
+                                       {suppliers?.map(s => (
+                                          <option key={s.id} value={s.id} className="bg-zinc-900">{s.name}</option>
+                                       ))}
+                                    </select>
+                                    <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500">
+                                       <ArrowRight className="w-3 h-3 text-white/20" />
+                                    </div>
+                                 </div>
+                              </div>
+
+                              <div className="space-y-2">
+                                 <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest pl-1">{t('po.deliveryDate')}</label>
+                                 <div className="relative group/date">
+                                    <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500 group-hover/date:text-blue-400 transition-colors" />
+                                    <Input
+                                       type="date"
+                                       value={deliveryDate}
+                                       onChange={(e) => setDeliveryDate(e.target.value)}
+                                       className="pl-12 h-12 bg-black/20 border-white/10 rounded-xl text-white font-bold focus:border-blue-500/50 focus:bg-white/5"
+                                    />
+                                 </div>
                               </div>
                            </div>
                         </div>
-                     </CardContent>
-                  </Card>
 
-                  {/* Items Section */}
-                  <Card className="bg-[#1A1A1A] border-gray-800 overflow-hidden">
-                     <CardHeader className="bg-black/20 border-b border-gray-800 flex flex-row items-center justify-between py-4">
-                        <CardTitle className="text-white flex items-center gap-2">
-                           <ShoppingBag className="w-5 h-5 text-primary" /> {t('po.items')}
-                        </CardTitle>
-                        <Button size="sm" variant="outline" onClick={addItem} className="border-gray-700 hover:bg-gray-800">
-                           <Plus className="w-4 h-4 mr-2" /> {t('po.addItem')}
-                        </Button>
-                     </CardHeader>
-                     <div className="overflow-x-auto">
-                        <table className="w-full text-sm text-left">
-                           <thead className="text-xs text-gray-500 uppercase bg-black/20 border-b border-gray-800">
-                              <tr>
-                                 <th className="px-6 py-4 w-1/3">{t('po.ingredient')}</th>
-                                 <th className="px-6 py-4 w-24">Current Stock</th>
-                                 <th className="px-6 py-4 w-24">{t('po.qty')}</th>
-                                 <th className="px-6 py-4 w-20">{t('stock.unit')}</th>
-                                 <th className="px-6 py-4 w-32">{t('po.unitPrice')}</th>
-                                 <th className="px-6 py-4 w-32 text-right">{t('po.subtotal')}</th>
-                                 <th className="px-6 py-4 w-16"></th>
-                              </tr>
-                           </thead>
-                           <tbody className="divide-y divide-gray-800">
-                              {items.map((row) => (
-                                 <tr key={row.id} className="hover:bg-white/5 transition-colors">
-                                    <td className="px-6 py-3">
-                                       <select
-                                          className="w-full h-10 bg-black/20 border border-gray-700 rounded px-2 text-white focus:outline-none focus:border-primary/50 text-sm"
-                                          value={row.ingredientId}
-                                          onChange={(e) => updateItem(row.id, 'ingredientId', e.target.value)}
-                                       >
-                                          <option value="">{t('po.selectIngredient')}</option>
-                                          {filteredIngredients.map(ing => (
-                                             <option key={ing.id} value={ing.id}>{ing.name}</option>
-                                          ))}
-                                       </select>
-                                    </td>
-                                    <td className="px-6 py-3">
-                                       {row.ingredientId ? (
-                                          <div className="flex flex-col">
-                                             <span className={cn(
-                                                "text-sm font-bold",
-                                                (ingredients?.find(i => i.id === row.ingredientId)?.current_stock || 0) < (ingredients?.find(i => i.id === row.ingredientId)?.par_min || 0)
-                                                   ? "text-red-400"
-                                                   : "text-emerald-400"
-                                             )}>
-                                                {ingredients?.find(i => i.id === row.ingredientId)?.current_stock}
+                        {/* Summary Card */}
+                        <div className="bg-gradient-to-br from-amber-500/10 to-black/40 border border-amber-500/20 rounded-3xl p-6 text-center">
+                           <p className="text-[10px] font-black text-amber-500 uppercase tracking-widest mb-1">Total Estimated Cost</p>
+                           <h2 className="text-4xl font-black text-white tracking-tight drop-shadow-[0_0_15px_rgba(245,158,11,0.3)]">
+                              <span className="text-lg align-top opacity-50 mr-1">$</span>
+                              {totalAmount.toLocaleString()}
+                           </h2>
+                        </div>
+                     </div>
+
+                     {/* RIGHT: Items Table */}
+                     <div className="md:col-span-2">
+                        <div className="bg-black/40 backdrop-blur-xl border border-white/10 rounded-3xl overflow-hidden shadow-2xl flex flex-col h-full min-h-[500px]">
+                           <div className="p-6 border-b border-white/5 flex items-center justify-between bg-white/[0.02]">
+                              <h3 className="flex items-center gap-2 text-sm font-black text-amber-400 uppercase tracking-widest">
+                                 <ShoppingBag className="w-4 h-4" /> Order Items
+                              </h3>
+                              <Button
+                                 size="sm"
+                                 onClick={addItem}
+                                 className="bg-white/5 text-white hover:bg-white/10 border border-white/5 rounded-xl font-bold text-xs h-9 px-4 backdrop-blur-md"
+                              >
+                                 <Plus className="w-3.5 h-3.5 mr-2" /> Add Item
+                              </Button>
+                           </div>
+
+                           <div className="flex-1 overflow-x-auto">
+                              <table className="w-full text-left border-collapse">
+                                 <thead className="bg-black/20 text-[9px] font-black uppercase text-gray-500 tracking-wider">
+                                    <tr>
+                                       <th className="px-6 py-4 w-[35%]">Ingredient</th>
+                                       <th className="px-4 py-4 w-[15%] text-center">Stock</th>
+                                       <th className="px-4 py-4 w-[15%] text-center">Qty</th>
+                                       <th className="px-4 py-4 w-[15%]">Price</th>
+                                       <th className="px-6 py-4 w-[15%] text-right">Total</th>
+                                       <th className="px-4 py-4 w-[5%]"></th>
+                                    </tr>
+                                 </thead>
+                                 <tbody className="divide-y divide-white/5">
+                                    {items.map((row) => (
+                                       <tr key={row.id} className="group hover:bg-white/5 transition-colors">
+                                          <td className="px-6 py-3">
+                                             <div className="relative">
+                                                <select
+                                                   className="w-full bg-transparent border-b border-transparent group-hover:border-white/20 text-sm font-bold text-white focus:outline-none focus:border-primary py-2 appearance-none cursor-pointer"
+                                                   value={row.ingredientId}
+                                                   onChange={(e) => updateItem(row.id, 'ingredientId', e.target.value)}
+                                                >
+                                                   <option value="" className="bg-black text-gray-500">Select Item...</option>
+                                                   {filteredIngredients.map(ing => (
+                                                      <option key={ing.id} value={ing.id} className="bg-zinc-900">{ing.name}</option>
+                                                   ))}
+                                                </select>
+                                                {!row.ingredientId && <div className="absolute right-0 top-1/2 -translate-y-1/2 pointer-events-none text-red-500 text-[10px] font-bold">REQUIRED</div>}
+                                             </div>
+                                             {row.ingredientId && <div className="text-[10px] text-gray-500 mt-1 pl-1">{row.unit}</div>}
+                                          </td>
+                                          <td className="px-4 py-3 text-center">
+                                             {row.ingredientId ? (
+                                                <div className="flex flex-col items-center">
+                                                   <span className={cn(
+                                                      "text-xs font-black px-2 py-0.5 rounded-full",
+                                                      (ingredients?.find(i => i.id === row.ingredientId)?.current_stock || 0) < (ingredients?.find(i => i.id === row.ingredientId)?.par_min || 0)
+                                                         ? "bg-red-500/20 text-red-500"
+                                                         : "bg-emerald-500/20 text-emerald-500"
+                                                   )}>
+                                                      {ingredients?.find(i => i.id === row.ingredientId)?.current_stock}
+                                                   </span>
+                                                   <span className="text-[9px] text-gray-600 mt-1">Min: {ingredients?.find(i => i.id === row.ingredientId)?.par_min}</span>
+                                                </div>
+                                             ) : <span className="text-gray-700">-</span>}
+                                          </td>
+                                          <td className="px-4 py-3">
+                                             <div className="bg-black/20 rounded-lg border border-white/5 flex items-center justify-center p-1 group-hover:border-white/10 transition-colors">
+                                                <input
+                                                   type="number"
+                                                   className="w-16 bg-transparent text-center text-sm font-bold text-white focus:outline-none p-1"
+                                                   value={row.qty}
+                                                   onChange={(e) => updateItem(row.id, 'qty', parseFloat(e.target.value) || 0)}
+                                                   min="1"
+                                                />
+                                             </div>
+                                          </td>
+                                          <td className="px-4 py-3">
+                                             <div className="relative">
+                                                <span className="absolute left-0 top-1/2 -translate-y-1/2 text-gray-500 text-xs">$</span>
+                                                <input
+                                                   type="number"
+                                                   className="w-full bg-transparent border-b border-transparent group-hover:border-white/20 pl-3 text-sm font-medium text-gray-300 focus:outline-none focus:border-primary py-2 text-right"
+                                                   value={row.price}
+                                                   onChange={(e) => updateItem(row.id, 'price', parseFloat(e.target.value) || 0)}
+                                                   min="0"
+                                                />
+                                             </div>
+                                          </td>
+                                          <td className="px-6 py-3 text-right">
+                                             <span className="font-mono text-white font-black tracking-tight">
+                                                {(row.qty * row.price).toLocaleString()}
                                              </span>
-                                             <span className="text-[10px] text-gray-500 uppercase tracking-tighter">Min: {ingredients?.find(i => i.id === row.ingredientId)?.par_min}</span>
-                                          </div>
-                                       ) : (
-                                          <span className="text-gray-600">-</span>
-                                       )}
-                                    </td>
-                                    <td className="px-6 py-3">
-                                       <Input
-                                          type="number"
-                                          className="h-10 bg-black/20 border-gray-700"
-                                          value={row.qty}
-                                          onChange={(e) => updateItem(row.id, 'qty', parseFloat(e.target.value) || 0)}
-                                          min="1"
-                                       />
-                                    </td>
-                                    <td className="px-6 py-3 text-gray-400 font-medium">
-                                       {row.unit}
-                                    </td>
-                                    <td className="px-6 py-3">
-                                       <div className="relative">
-                                          <span className="absolute left-2 top-2.5 text-gray-500 text-xs">$</span>
-                                          <Input
-                                             type="number"
-                                             className="h-10 pl-5 bg-black/20 border-gray-700"
-                                             value={row.price}
-                                             onChange={(e) => updateItem(row.id, 'price', parseFloat(e.target.value) || 0)}
-                                             min="0"
-                                          />
-                                       </div>
-                                    </td>
-                                    <td className="px-6 py-3 text-right font-mono text-white font-bold">
-                                       {(row.qty * row.price).toLocaleString()}
-                                    </td>
-                                    <td className="px-6 py-3 text-center">
-                                       {items.length > 1 && (
-                                          <button onClick={() => removeItem(row.id)} className="text-gray-500 hover:text-red-500 transition-colors">
-                                             <Trash2 className="w-4 h-4" />
-                                          </button>
-                                       )}
-                                    </td>
-                                 </tr>
-                              ))}
-                           </tbody>
-                        </table>
+                                          </td>
+                                          <td className="px-4 py-3 text-center">
+                                             <button
+                                                onClick={() => removeItem(row.id)}
+                                                className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-red-500/20 text-gray-600 hover:text-red-500 transition-all opacity-0 group-hover:opacity-100"
+                                                disabled={items.length <= 1}
+                                             >
+                                                <Trash2 className="w-4 h-4" />
+                                             </button>
+                                          </td>
+                                       </tr>
+                                    ))}
+                                    {/* Add Item Row Trigger */}
+                                    <tr onClick={addItem} className="cursor-pointer hover:bg-white/5 border-t border-dashed border-white/10 opacity-50 hover:opacity-100 transition-all">
+                                       <td colSpan={6} className="py-4 text-center">
+                                          <span className="text-xs font-bold text-gray-400 uppercase tracking-widest flex items-center justify-center gap-2">
+                                             <PlusCircle className="w-4 h-4" /> Add Another Item
+                                          </span>
+                                       </td>
+                                    </tr>
+                                 </tbody>
+                              </table>
+                           </div>
+                        </div>
                      </div>
-                  </Card>
+                  </div>
 
-                  {/* Footer Actions */}
-                  <div className="fixed bottom-0 left-0 md:left-[280px] right-0 p-4 bg-[#111] border-t border-gray-800 z-40 flex flex-col md:flex-row justify-between items-center gap-4 shadow-2xl">
-                     <div className="flex flex-col md:flex-row items-center gap-2 md:gap-6">
-                        <span className="text-gray-400 uppercase text-xs font-bold tracking-wider">{t('po.total')}</span>
-                        <span className="text-2xl md:text-3xl font-bold text-primary font-mono">ETB {totalAmount.toLocaleString()}</span>
+                  {/* Footer Actions - FLOATING GLASS */}
+                  <div className="fixed bottom-6 left-1/2 -translate-x-1/2 md:translate-x-0 md:left-auto md:right-6 w-[95%] md:w-auto p-2 bg-black/80 backdrop-blur-2xl border border-white/10 rounded-2xl z-[100] shadow-[0_10px_40px_rgba(0,0,0,0.5)] animate-in slide-in-from-bottom-10 fade-in duration-500 flex items-center justify-between gap-6 pr-3">
+                     <div className="hidden md:flex flex-col pl-4">
+                        <span className="text-[9px] font-black text-gray-500 uppercase tracking-widest">Total Amount</span>
+                        <div className="text-xl font-black text-white font-mono leading-none flex items-start gap-1">
+                           <span className="text-xs text-amber-500 mt-1">$</span>
+                           {totalAmount.toLocaleString()}
+                        </div>
                      </div>
 
-                     <div className="flex gap-3 w-full md:w-auto flex-shrink-0">
+                     <div className="flex items-center gap-2 w-full md:w-auto">
                         <Button
-                           variant="outline"
-                           className="border-gray-700 hover:bg-gray-800 text-gray-300 flex-1 md:flex-none"
+                           variant="ghost"
+                           className="text-gray-400 hover:text-white hover:bg-white/10 rounded-xl"
                            onClick={() => createPO({ isDraft: true })}
                            disabled={isSaving || !supplierId}
                         >
-                           <Save className="w-4 h-4 mr-2" /> {t('po.saveDraft')}
+                           <Save className="w-4 h-4 mr-2" /> Save Draft
                         </Button>
                         <Button
-                           className="bg-yellow-600 hover:bg-yellow-700 text-white font-bold flex-1 md:flex-none"
+                           className="bg-amber-500 hover:bg-amber-400 text-black font-black rounded-xl px-6 shadow-[0_0_20px_rgba(245,158,11,0.3)] transition-all hover:scale-105"
                            onClick={() => {
                               if (isOwnerOrAdmin) createPO({ isDraft: false });
                               else handleActionWithNote(editingPOData?.id || 'new', 'submission');
                            }}
                            disabled={isSaving || !supplierId}
                         >
-                           <Send className="w-4 h-4 mr-2" /> {isOwnerOrAdmin ? "Send to Supplier" : "Submit for Approval"}
+                           {isOwnerOrAdmin ? (
+                              <>
+                                 <Send className="w-4 h-4 mr-2" /> Send Order
+                              </>
+                           ) : (
+                              <>
+                                 <CheckCircle2 className="w-4 h-4 mr-2" /> Submit
+                              </>
+                           )}
                         </Button>
                      </div>
                   </div>

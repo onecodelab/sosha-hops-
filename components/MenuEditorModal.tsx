@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../supabase';
 import { Dialog, Button, Input, cn, showToast, Badge } from './ui';
-import { Info, BookOpen, Loader2, ListTree, Lock } from 'lucide-react';
+import { Info, BookOpen, Loader2, ListTree, Lock, Upload, Image as ImageIcon, X, RefreshCw } from 'lucide-react';
 import { MenuItem, Category } from '../types';
 import { RecipeEditor } from './RecipeEditor';
 import { RoleGuard } from './RoleGuard';
@@ -32,6 +32,8 @@ export const MenuEditorModal: React.FC<MenuEditorModalProps> = ({
   const [categoryId, setCategoryId] = useState('');
   const [price, setPrice] = useState<number>(0);
   const [imageUrl, setImageUrl] = useState('');
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [isAvailable, setIsAvailable] = useState(true);
   const [recipeCost, setRecipeCost] = useState(0);
 
@@ -91,6 +93,48 @@ export const MenuEditorModal: React.FC<MenuEditorModalProps> = ({
   const fetchCategories = async () => {
     const { data } = await supabase.from('categories').select('*').order('name');
     if (data) setCategories(data);
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      showToast("Please upload an image file", "error");
+      return;
+    }
+
+    // Validate size (e.g., 2MB limit)
+    if (file.size > 2 * 1024 * 1024) {
+      showToast("Image must be smaller than 2MB", "error");
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Math.random().toString(36).substring(2)}_${Date.now()}.${fileExt}`;
+      const filePath = `menu-items/${fileName}`;
+
+      const { error: uploadError, data } = await supabase.storage
+        .from('menu-images')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      // Get Public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('menu-images')
+        .getPublicUrl(filePath);
+
+      setImageUrl(publicUrl);
+      showToast("Image uploaded successfully", "success");
+    } catch (err: any) {
+      showToast(err.message || "Upload failed", "error");
+    } finally {
+      setUploading(false);
+    }
   };
 
   const handleSaveBasic = async () => {
@@ -239,9 +283,74 @@ export const MenuEditorModal: React.FC<MenuEditorModalProps> = ({
                   </RoleGuard>
                 </div>
               </div>
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Display Image URL</label>
-                <Input value={imageUrl} onChange={e => setImageUrl(e.target.value)} placeholder="https://..." className="bg-black/40 border-gray-700" />
+              <div className="space-y-3">
+                <div className="flex items-center justify-between ml-1">
+                  <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em]">Dish Aesthetics</label>
+                  {imageUrl && (
+                    <Badge variant="outline" className="bg-primary/5 text-primary border-primary/10 text-[9px] h-5">
+                      Live Preview
+                    </Badge>
+                  )}
+                </div>
+
+                <div className={cn(
+                  "relative group overflow-hidden rounded-[1.5rem] border-2 border-dashed transition-all duration-500 bg-black/40 h-40 flex flex-col items-center justify-center",
+                  imageUrl ? "border-primary/20 bg-primary/5" : "border-gray-800 hover:border-primary/30"
+                )}>
+                  {imageUrl ? (
+                    <>
+                      <img src={imageUrl} alt="Dish Preview" className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
+                      <div className="absolute inset-0 bg-black/60 backdrop-blur-[2px] opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-3">
+                        <div className="flex gap-2">
+                          <Button
+                            onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}
+                            className="bg-white text-black hover:bg-primary hover:text-black font-black uppercase text-[10px] h-9 px-4 rounded-xl shadow-xl transition-all"
+                            disabled={uploading}
+                          >
+                            {uploading ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-2" /> : <ImageIcon className="w-3.5 h-3.5 mr-2" />}
+                            Swap Photo
+                          </Button>
+                          <Button
+                            onClick={(e) => { e.stopPropagation(); setImageUrl(''); }}
+                            variant="ghost"
+                            className="bg-red-500/20 text-red-500 hover:bg-red-500 hover:text-white font-black uppercase text-[10px] h-9 px-3 rounded-xl border border-red-500/20"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </Button>
+                        </div>
+                        <p className="text-[9px] font-bold text-white/60 uppercase tracking-widest">Supports JPG, PNG, WEBP (Max 2MB)</p>
+                      </div>
+                    </>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="w-full h-full flex flex-col items-center justify-center gap-4 group/btn"
+                      disabled={uploading}
+                    >
+                      <div className="w-14 h-14 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center transition-all group-hover/btn:scale-110 group-hover/btn:border-primary/40 group-hover/btn:bg-primary/5">
+                        {uploading ? (
+                          <Loader2 className="w-7 h-7 animate-spin text-primary" />
+                        ) : (
+                          <Upload className="w-7 h-7 text-gray-500 group-hover:text-primary transition-colors" />
+                        )}
+                      </div>
+                      <div className="text-center space-y-1">
+                        <span className="block text-[11px] font-black text-gray-400 uppercase tracking-widest group-hover:text-white transition-colors">
+                          {uploading ? 'Processing File...' : 'Uplode Dish Photo'}
+                        </span>
+                        <span className="block text-[9px] text-gray-600 font-bold">Standard format (16:9 recommended)</span>
+                      </div>
+                    </button>
+                  )}
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleImageUpload}
+                    accept="image/*"
+                    className="hidden"
+                  />
+                </div>
               </div>
               <div className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/5">
                 <span className="text-sm font-bold text-gray-300">Available for Order</span>

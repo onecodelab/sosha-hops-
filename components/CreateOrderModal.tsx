@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Dialog, Button, Input, Badge, showToast, cn } from './ui';
+import { Dialog, Button, Input, Badge, showToast, cn, Card } from './ui';
 import { supabase } from '../supabase';
 import { useAuth } from '../AuthContext';
 import { useBranch } from '../contexts/BranchContext';
@@ -9,10 +9,12 @@ import { useMenu } from '../hooks/useMenu';
 import { MenuDish, Table, Order } from '../types';
 import {
   Search, Plus, Minus, ShoppingBag, Utensils,
-  Trash2, Loader2, ChevronRight, QrCode,
+  Trash2, Loader2, ChevronRight, QrCode, ClipboardList,
   MessageSquare, Zap, X, Armchair, AlertCircle, Users, FileText
 } from 'lucide-react';
 import { orderService } from '../services/orderService';
+import { useInventoryMapping } from '../hooks/useInventoryMapping';
+import { useRedisStock } from '../hooks/useRedisStock';
 
 interface CreateOrderModalProps {
   isOpen: boolean;
@@ -41,6 +43,82 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
   const [submitting, setSubmitting] = useState(false);
   const [internalAppendId, setInternalAppendId] = useState<string | null>(appendOrderId);
   const [activeOrderSummary, setActiveOrderSummary] = useState<Order | null>(null);
+
+  // 0. Redis Real-time Guard Layer
+  const { mapping: inventoryMapping } = useInventoryMapping();
+  const allIngredientIds = useMemo(() => Array.from(new Set(Object.values(inventoryMapping).flat())), [inventoryMapping]);
+  const { stockMap } = useRedisStock(allIngredientIds);
+
+  const performSqlFallback = async (activeTableId: string, payload: any) => {
+    const now = new Date().toISOString();
+    let finalOrderId = appendOrderId;
+
+    if (!finalOrderId) {
+      // 1. Start NEW session
+      const { data: sessionData, error: sessionErr } = await supabase
+        .from('table_sessions')
+        .insert({
+          table_id: activeTableId,
+          waiter_id: user?.id,
+          is_active: true,
+          seated_at: now
+        })
+        .select()
+        .single();
+
+      if (sessionErr) throw sessionErr;
+
+      // 2. Create NEW order
+      const { data: order, error: orderErr } = await supabase
+        .from('orders')
+        .insert({
+          order_number: payload.order_details.order_number,
+          table_id: activeTableId,
+          table_number: payload.order_details.table_number,
+          waiter_id: user?.id,
+          status: 'pending',
+          payment_status: 'unpaid',
+          total_amount: payload.order_details.total_amount,
+          source: 'dine_in',
+          customer_notes: payload.order_details.customer_notes,
+          created_at: now,
+          created_by_id: user?.id,
+          created_by_name: payload.order_details.created_by_name,
+          branch_id: payload.branch_id
+        })
+        .select()
+        .single();
+
+      if (orderErr) throw orderErr;
+      finalOrderId = order.id;
+
+      // 3. Link Table
+      await supabase.from('tables').update({
+        current_session_id: sessionData.id
+      }).eq('id', activeTableId);
+    } else {
+      // Update existing order for Append
+      const { data: existingOrder } = await supabase.from('orders').select('total_amount').eq('id', finalOrderId).single();
+      if (existingOrder) {
+        await supabase.from('orders').update({
+          total_amount: (existingOrder.total_amount || 0) + payload.order_details.total_amount,
+          status: 'pending'
+        }).eq('id', finalOrderId);
+      }
+    }
+
+    // 4. Record Items
+    const itemsPayload = payload.items.map((i: any) => ({
+      order_id: finalOrderId,
+      menu_item_id: i.menu_item_id,
+      quantity: i.quantity,
+      price: i.price,
+      special_instructions: i.notes
+    }));
+
+    const { error: itemsErr } = await supabase.from('order_items').insert(itemsPayload);
+    if (itemsErr) throw itemsErr;
+  };
 
   // 1. Initial Load
   useEffect(() => {
@@ -168,116 +246,50 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
 
         if (matchedTable) {
           activeTableId = matchedTable.id;
+        }
+      }
 
-          // Auto-detect existing active order if we're not already appending
-          if (matchedTable.status === 'occupied' && matchedTable.current_order_id) {
-            const summary = await orderService.fetchTableOrderSummary(matchedTable.id);
+      if (!activeTableId) throw new Error("Table identification failed.");
 
-            // If we found a valid active order, Ask to Append
-            if (summary && summary.status !== 'paid' && !summary.closed_at) {
-              if (confirm(`Table ${tableNumber} is OCCUPIED. Add items to existing bill (ETB ${summary.total_amount?.toLocaleString()})?`)) {
-                finalOrderId = summary.id;
-                setInternalAppendId(finalOrderId); // Sync state
-              } else {
-                // If user says NO, we stop. We don't support "Double Orders" on one table yet.
-                setSubmitting(false);
-                return;
-              }
-            }
+      // 2. Prep Payload for Edge Function (The Guard)
+      const payload = {
+        branch_id: activeBranchId,
+        user_id: user?.id,
+        items: cart.map(item => ({
+          menu_item_id: item.dish.id,
+          quantity: item.quantity,
+          price: item.dish.price,
+          notes: item.notes
+        })),
+        order_details: {
+          table_id: activeTableId,
+          table_number: tableNumber,
+          total_amount: totalAmount,
+          customer_notes: customerNotes,
+          created_by_name: profile?.full_name || 'Staff',
+          order_number: generateOrderNumber()
+        }
+      };
+
+      // 3. SECURE SUBMISSION via Edge Function
+      try {
+        const { data: result, error: rpcErr } = await supabase.functions.invoke('place-order', {
+          body: payload
+        });
+
+        if (rpcErr || (result && result.error)) {
+          // If Edge Function is explicitly rejecting (Out of Stock), throw it to the user
+          if (rpcErr?.message?.includes('Out of Stock') || result?.error?.includes('Out of Stock')) {
+            throw new Error(rpcErr?.message || result?.error);
           }
+          // For other errors (Not Found/Deployment), we fallback to SQL
+          console.warn("Edge Function unavailable, falling back to direct SQL...", rpcErr || result?.error);
+          await performSqlFallback(activeTableId, payload);
         }
+      } catch (invokeErr) {
+        console.warn("Edge Function call failed, performing SQL fallback:", invokeErr);
+        await performSqlFallback(activeTableId, payload);
       }
-
-      if (!activeTableId) throw new Error("Table identification failed.");
-
-      if (!activeTableId) throw new Error("Table identification failed.");
-
-      // Remove "let finalOrderId = internalAppendId;" here if it was redeclared.
-      // We already declared it at the top of the function.
-
-      if (!finalOrderId) {
-        // --- NEW ORDER (No existing ID found/confirmed) ---
-
-        // 0. Proactively clear any "ghost" sessions for this table
-        try {
-          await orderService.forceClearTable(activeTableId);
-        } catch (clearErr) {
-          console.warn("Table cleanup pre-order failed (non-critical):", clearErr);
-        }
-
-        // 1. Start NEW session
-        const { data: sessionData, error: sessionErr } = await supabase
-          .from('table_sessions')
-          .insert({
-            table_id: activeTableId,
-            waiter_id: user?.id,
-            is_active: true,
-            seated_at: now,
-            guest_count: guestCount
-          })
-          .select()
-          .single();
-
-        if (sessionErr) throw sessionErr;
-
-        // 2. Create NEW order
-        const { data: order, error: orderErr } = await supabase
-          .from('orders')
-          .insert({
-            order_number: generateOrderNumber(),
-            table_id: activeTableId,
-            table_number: tableNumber,
-            waiter_id: user?.id,
-            status: 'pending',
-            payment_status: 'unpaid',
-            total_amount: totalAmount,
-            source: 'dine_in',
-            customer_notes: customerNotes,
-            created_at: now,
-            created_by_id: user?.id,
-            created_by_name: profile?.full_name || 'Staff',
-            branch_id: activeBranchId // CRITICAL: Tag order with current branch
-          })
-          .select()
-          .single();
-
-        if (orderErr) throw orderErr;
-        finalOrderId = order.id;
-
-        // 3. Link Table (Trigger will handle status, but we set session)
-        await supabase.from('tables').update({
-          // status: 'occupied', // Trigger handles this now
-          // current_order_id: finalOrderId, // Trigger handles this now
-          current_session_id: sessionData.id
-          // Removed last_updated since column does not exist
-        }).eq('id', activeTableId);
-      } else {
-        // --- APPEND TO EXISTING BILL ---
-        const { data: existingOrder } = await supabase
-          .from('orders')
-          .select('total_amount, status')
-          .eq('id', finalOrderId)
-          .single();
-
-        if (existingOrder) {
-          await supabase.from('orders').update({
-            total_amount: (existingOrder.total_amount || 0) + totalAmount,
-            last_updated: now,
-            status: 'pending' // Re-activate order for kitchen visibility
-          }).eq('id', finalOrderId);
-        }
-      }
-
-      // 4. Record Items
-      const itemsPayload = cart.map(item => ({
-        order_id: finalOrderId,
-        menu_item_id: item.dish.id,
-        quantity: item.quantity,
-        price: item.dish.price,
-        special_instructions: item.notes
-      }));
-
-      await supabase.from('order_items').insert(itemsPayload);
 
       showToast(internalAppendId ? `Appended to Table ${tableNumber}` : `New Order for Table ${tableNumber}`, "success");
       if (onOrderCreated) await onOrderCreated();
@@ -295,13 +307,14 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
   );
 
   return (
-    <Dialog isOpen={isOpen} onClose={onClose} title={internalAppendId ? `Add to Bill: T-${tableNumber}` : (tableNumber ? `New Order: T-${tableNumber}` : "New Order Entry")} maxWidth="max-w-5xl">
-      <div className="flex h-[75vh] bg-[#09090b] overflow-hidden -m-6 md:-m-0 rounded-b-[2rem]">
+    <Dialog isOpen={isOpen} onClose={onClose} title={internalAppendId ? `Add to Bill: T-${tableNumber}` : (tableNumber ? `New Order: T-${tableNumber}` : "New Order Entry")} maxWidth="max-w-6xl">
+      <div className="flex flex-col md:flex-row h-[85vh] md:h-[80vh] bg-[#09090b] text-white overflow-hidden -m-8 md:-m-0 rounded-b-[2.5rem] md:rounded-3xl relative">
+
         {/* LEFT PANEL: Tables & Menu */}
-        <div className="flex-1 flex flex-col border-r border-white/5 overflow-hidden">
+        <div className="flex-1 flex flex-col border-r border-white/5 bg-black/20 overflow-hidden relative">
 
           {/* Top Section: Table Selector + Search */}
-          <div className="p-4 space-y-4 border-b border-white/5 bg-black/20">
+          <div className="shrink-0 p-4 space-y-4 border-b border-white/5 bg-black/40 backdrop-blur-xl z-20">
             <div className="flex flex-col gap-3">
               {/* Table Selector */}
               <div className="space-y-1.5">
@@ -342,7 +355,7 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
                   <Input
                     value={searchTerm}
                     onChange={e => setSearchTerm(e.target.value)}
-                    className="pl-9 h-9 text-xs bg-white/[0.03] border-white/10 rounded-lg focus:bg-white/[0.05]"
+                    className="pl-9 h-9 text-xs bg-white/[0.05] border-white/10 rounded-xl focus:bg-white/[0.1] text-white placeholder:text-zinc-600"
                     placeholder="Search menu..."
                   />
                 </div>
@@ -357,89 +370,77 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
           </div>
 
           {/* Menu List */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-2 custom-scrollbar bg-gradient-to-b from-transparent to-black/40">
-            {menuLoading ? <Loader2 className="w-6 h-6 animate-spin mx-auto mt-10 text-primary" /> : filteredMenu.map(dish => (
-              <div key={dish.id} className={cn("group p-2 pr-3 border rounded-xl flex items-center justify-between transition-all", !dish.is_available ? "bg-red-900/10 border-red-900/20 opacity-60" : "bg-white/[0.02] border-white/5 hover:bg-white/[0.05] hover:border-white/10")}>
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-zinc-900 border border-white/5 flex items-center justify-center overflow-hidden shrink-0 relative">
-                    {dish.image_url ? <img src={dish.image_url} className={cn("w-full h-full object-cover transition-opacity", !dish.is_available ? "grayscale opacity-50" : "opacity-70 group-hover:opacity-100")} /> : <Utensils className="w-4 h-4 text-zinc-700" />}
-                    {!dish.is_available && (
-                      <div className="absolute inset-0 flex items-center justify-center bg-black/60">
-                        <AlertCircle className="w-4 h-4 text-red-500" />
-                      </div>
-                    )}
+          <div className="flex-1 overflow-y-auto p-4 space-y-2 custom-scrollbar pb-32 md:pb-4">
+            {menuLoading ? <Loader2 className="w-6 h-6 animate-spin mx-auto mt-10 text-primary" /> : filteredMenu.map(dish => {
+              const neededIngredients = inventoryMapping[dish.id] || [];
+              const redisAvailable = neededIngredients.every(ingId => (stockMap[ingId] ?? 1) > 0);
+              const isActuallyAvailable = dish.is_available && redisAvailable;
+
+              return (
+                <div key={dish.id} onClick={() => isActuallyAvailable && addToCart(dish)} className={cn("group p-3 border rounded-2xl flex items-center justify-between transition-all cursor-pointer active:scale-[0.98]", !isActuallyAvailable ? "bg-red-900/10 border-red-900/20 opacity-60 grayscale" : "bg-white/[0.03] border-white/5 hover:bg-white/[0.08] hover:border-white/10")}>
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-xl bg-zinc-900 border border-white/5 flex items-center justify-center overflow-hidden shrink-0 relative">
+                      {dish.image_url ? <img src={dish.image_url} className="w-full h-full object-cover" /> : <Utensils className="w-5 h-5 text-zinc-700" />}
+                    </div>
+                    <div className="flex flex-col">
+                      <h4 className="text-sm font-bold text-white group-hover:text-primary transition-colors">
+                        {dish.name}
+                      </h4>
+                      <p className="text-[10px] font-black text-zinc-500 uppercase tracking-wider mt-0.5">ETB {dish.price.toLocaleString()}</p>
+                    </div>
                   </div>
-                  <div className="flex flex-col">
-                    <h4 className={cn("text-xs font-bold leading-tight transition-colors", !dish.is_available ? "text-zinc-500" : "text-zinc-100 group-hover:text-primary")}>
-                      {dish.name}
-                      {!dish.is_available && <span className="ml-2 text-[8px] font-black text-red-500 uppercase tracking-wider">Out of Stock</span>}
-                    </h4>
-                    <p className="text-[10px] font-mono font-medium text-zinc-500">ETB {dish.price.toLocaleString()}</p>
-                  </div>
+                  <button
+                    disabled={!isActuallyAvailable}
+                    className={cn("w-8 h-8 rounded-full flex items-center justify-center transition-all", !isActuallyAvailable ? "hidden" : "bg-white/10 text-white group-hover:bg-primary group-hover:text-black")}
+                  >
+                    <Plus className="w-4 h-4" />
+                  </button>
                 </div>
-                <button
-                  onClick={() => dish.is_available && addToCart(dish)}
-                  disabled={!dish.is_available}
-                  className={cn("w-8 h-8 rounded-lg flex items-center justify-center transition-all", !dish.is_available ? "bg-transparent text-zinc-700 cursor-not-allowed" : "bg-white/5 text-zinc-400 group-hover:bg-primary group-hover:text-black")}
-                >
-                  <Plus className="w-4 h-4" />
-                </button>
-              </div>
-            ))}
+              );
+            })}
             {filteredMenu.length === 0 && <div className="text-center py-20 text-[10px] uppercase tracking-widest text-zinc-700">No items found</div>}
           </div>
         </div>
 
-        {/* RIGHT PANEL: Cart & Summary */}
-        <div className="w-[320px] flex flex-col bg-[#050505] border-l border-white/5 relative z-10 shadow-2xl">
-          <div className="p-4 border-b border-white/5 flex items-center justify-between bg-black/20">
-            <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400 flex items-center gap-2">Ticket</h3>
-            <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 text-[9px] h-5 px-2">{cart.reduce((sum, i) => sum + i.quantity, 0)} Items</Badge>
+        {/* RIGHT PANEL: CART / TICKET (Hidden on mobile until items added, then becomes a drawer/overlay) */}
+        <div className={cn("md:w-96 flex flex-col bg-[#111] md:bg-black/40 border-t md:border-t-0 md:border-l border-white/10 z-30 transition-all duration-300 absolute md:relative inset-x-0 bottom-0 max-h-[50vh] md:max-h-full shadow-2xl md:shadow-none rounded-t-[2rem] md:rounded-none", cart.length === 0 ? "translate-y-full md:translate-y-0 opacity-0 md:opacity-100 pointer-events-none md:pointer-events-auto" : "translate-y-0 opacity-100")}>
+          {/* Mobile Drawer Handle */}
+          <div className="md:hidden w-12 h-1 bg-white/20 rounded-full mx-auto mt-3 mb-1" />
+
+          <div className="p-4 md:p-6 border-b border-white/5 flex items-center justify-between">
+            <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] flex items-center gap-2">
+              <ClipboardList className="w-4 h-4 text-primary" /> Current Order
+            </h3>
+            <Badge variant="glass" className="bg-primary/20 text-primary border-primary/20">{cart.reduce((s, i) => s + i.quantity, 0)} Items</Badge>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-3 space-y-2 custom-scrollbar">
-            {cart.length === 0 && (
-              <div className="h-full flex flex-col items-center justify-center opacity-30 gap-3">
-                <ShoppingBag className="w-8 h-8 text-zinc-500" />
-                <span className="text-[10px] uppercase tracking-widest font-black text-zinc-600">Cart Empty</span>
-              </div>
-            )}
-            {cart.map(item => (
-              <div key={item.dish.id} className="p-2.5 bg-zinc-900/50 border border-white/5 rounded-lg flex flex-col gap-2">
-                <div className="flex justify-between items-start">
-                  <span className="text-[11px] font-bold text-zinc-200 leading-tight line-clamp-2 w-[70%]">{item.dish.name}</span>
-                  <span className="text-[10px] font-mono text-zinc-500">{(item.dish.price * item.quantity).toLocaleString()}</span>
+          <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar bg-black/20">
+            {cart.map((item, idx) => (
+              <div key={idx} className="p-3 bg-white/[0.03] border border-white/5 rounded-xl flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-bold text-white">{item.dish.name}</p>
+                  <p className="text-[10px] text-zinc-500 font-mono mt-0.5">ETB {item.dish.price * item.quantity}</p>
                 </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1 bg-black rounded-md border border-white/5 p-0.5">
-                    <button onClick={() => removeFromCart(item.dish.id)} className="w-5 h-5 flex items-center justify-center text-zinc-500 hover:text-white"><Minus className="w-3 h-3" /></button>
-                    <span className="text-[10px] font-mono w-4 text-center text-zinc-300">{item.quantity}</span>
-                    <button onClick={() => addToCart(item.dish)} className="w-5 h-5 flex items-center justify-center text-zinc-500 hover:text-white"><Plus className="w-3 h-3" /></button>
-                  </div>
-                  {/* Notes logic could go here */}
+                <div className="flex items-center gap-3 bg-black/40 rounded-lg p-1 border border-white/5">
+                  <button onClick={() => removeFromCart(item.dish.id)} className="w-6 h-6 flex items-center justify-center hover:bg-white/10 rounded-md text-zinc-400"><Minus className="w-3 h-3" /></button>
+                  <span className="text-xs font-bold text-white min-w-[16px] text-center">{item.quantity}</span>
+                  <button onClick={() => addToCart(item.dish)} className="w-6 h-6 flex items-center justify-center hover:bg-white/10 rounded-md text-white"><Plus className="w-3 h-3" /></button>
                 </div>
               </div>
             ))}
           </div>
 
-          <div className="p-4 bg-black border-t border-white/10 space-y-3">
-            {internalAppendId && (
-              <div className="bg-orange-500/10 border border-orange-500/20 px-3 py-2 rounded-lg flex items-center gap-2">
-                <div className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse" />
-                <p className="text-[9px] font-bold text-orange-400 uppercase tracking-wide">Appending to Active Bill</p>
-              </div>
-            )}
-
-            <div className="space-y-1">
-              <div className="flex justify-between items-end">
-                <span className="text-[9px] font-black text-zinc-600 uppercase tracking-widest">Total</span>
-                <span className="text-xl font-black text-white font-mono tracking-tighter">ETB {totalAmount.toLocaleString()}</span>
-              </div>
+          <div className="p-4 border-t border-white/5 bg-black/40 backdrop-blur-xl">
+            <div className="flex justify-between items-end mb-4 px-2">
+              <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Total Estimated</span>
+              <span className="text-2xl font-black text-white tracking-tighter">
+                <small className="text-sm text-zinc-500 mr-1 font-normal">ETB</small>
+                {totalAmount.toLocaleString()}
+              </span>
             </div>
-
-            <Button onClick={submitOrder} disabled={submitting || cart.length === 0} className={cn("w-full h-12 rounded-xl font-black uppercase text-[10px] shadow-lg transition-all flex items-center justify-between px-4 group", cart.length > 0 ? "bg-primary text-black hover:bg-primary/90" : "bg-zinc-900 text-zinc-600")}>
-              <span>{submitting ? 'Processing...' : (internalAppendId ? 'Update Bill' : 'Place Order')}</span>
-              {!submitting && <ChevronRight className="w-4 h-4 opacity-50 group-hover:translate-x-1 transition-transform" />}
+            <Button onClick={submitOrder} disabled={submitting} className={cn("w-full h-14 rounded-2xl font-black uppercase text-xs shadow-[0_0_20px_rgba(251,191,36,0.2)] transition-all flex items-center justify-between px-6 group", submitting ? "bg-zinc-800 text-zinc-600" : "bg-primary text-black hover:bg-white hover:scale-[1.02]")}>
+              <span>{submitting ? 'Sending to Kitchen...' : (internalAppendId ? 'Update Order' : 'Place Order')}</span>
+              {!submitting && <ChevronRight className="w-5 h-5 opacity-50 group-hover:translate-x-1 transition-transform" />}
             </Button>
           </div>
         </div>

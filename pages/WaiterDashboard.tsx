@@ -4,7 +4,7 @@ import { useAuth } from '../AuthContext';
 import { useBranch } from '../contexts/BranchContext';
 import { supabase } from '../supabase';
 import { Order, Table } from '../types';
-import { Button, showToast, cn, Badge } from '../components/ui';
+import { Button, showToast, cn, Badge, Card } from '../components/ui';
 import {
   Clock,
   RefreshCw,
@@ -121,37 +121,47 @@ const WaiterDashboard: React.FC = () => {
       }
     >
       <div className="space-y-10 animate-in fade-in duration-700">
-        {/* Sleek Glassmorphic HUD */}
-        <div className="mx-2 p-1.5 rounded-[2rem] bg-[#0A0A0A]/80 backdrop-blur-xl border border-white/5 shadow-2xl flex flex-col md:flex-row items-center gap-1 md:gap-8 justify-between relative overflow-hidden group">
-          <div className="absolute inset-0 bg-gradient-to-r from-primary/5 via-transparent to-primary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-1000" />
+        {/* Standardized Glass HUD */}
+        <Card variant="elevated" className="mx-2 p-8 flex flex-col md:flex-row items-center justify-between gap-8 relative overflow-hidden group border-primary/10">
+          <div className="absolute inset-0 bg-gradient-to-r from-primary/5 via-transparent to-primary/5 opacity-50" />
 
-          <div className="flex items-center gap-8 pl-8 py-3 z-10 w-full md:w-auto justify-between md:justify-start">
+          <div className="flex items-center gap-12 z-10 w-full md:w-auto justify-between md:justify-start">
             <div className="flex flex-col">
-              <span className="text-[9px] font-black text-zinc-500 uppercase tracking-[0.3em]">Availability</span>
+              <span className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] mb-1">Floor Availability</span>
               <div className="flex items-baseline gap-2">
-                <span className="text-3xl font-black text-foreground spacing-tighter">{tables.filter(t => t.status === 'available').length}</span>
-                <span className="text-[10px] font-bold text-zinc-600">/ {tables.length}</span>
+                <span className="text-4xl font-black text-foreground tracking-tighter">{tables.filter(t => t.status === 'available').length}</span>
+                <span className="text-[10px] font-black text-gray-600 uppercase tracking-widest">/ {tables.length} FREE</span>
               </div>
             </div>
 
-            <div className="w-px h-8 bg-white/5 hidden md:block" />
+            <div className="w-px h-10 bg-white/5 hidden md:block" />
 
             <div className="flex flex-col">
-              <span className="text-[9px] font-black text-zinc-500 uppercase tracking-[0.3em]">Occupied</span>
-              <span className="text-3xl font-black text-red-500 drop-shadow-[0_0_10px_rgba(239,68,68,0.5)]">{tables.filter(t => t.status === 'occupied').length}</span>
+              <span className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] mb-1">Table Load</span>
+              <div className="flex items-center gap-3">
+                <span className="text-4xl font-black text-red-500 tracking-tighter drop-shadow-[0_0_15px_rgba(239,68,68,0.3)]">{tables.filter(t => t.status === 'occupied').length}</span>
+                <Badge variant="destructive" className="text-[8px] h-4">Occupied</Badge>
+              </div>
             </div>
 
-            <div className="w-px h-8 bg-white/5 hidden md:block" />
+            <div className="w-px h-10 bg-white/5 hidden md:block" />
 
             <div className="flex flex-col">
-              <span className="text-[9px] font-black text-zinc-500 uppercase tracking-[0.3em]">Active Tasks</span>
-              <div className="flex items-center gap-2">
-                <span className="text-3xl font-black text-primary drop-shadow-[0_0_10px_rgba(251,191,36,0.2)]">{orders.length}</span>
-                {kitchenPipeline.length > 0 && <span className="text-[10px] font-black text-orange-500 bg-orange-500/10 px-2 rounded-full border border-orange-500/20">+{kitchenPipeline.length} Queue</span>}
+              <span className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] mb-1">Workload</span>
+              <div className="flex items-center gap-3">
+                <span className="text-4xl font-black text-primary tracking-tighter drop-shadow-[0_0_15px_rgba(251,191,36,0.3)]">{orders.length}</span>
+                {kitchenPipeline.length > 0 && <Badge variant="warning" className="text-[8px] h-4">+{kitchenPipeline.length} Queue</Badge>}
               </div>
             </div>
           </div>
-        </div>
+
+          <div className="z-10 hidden lg:block">
+            <Button onClick={refreshAll} variant="outline" size="sm" className="h-10 px-6">
+              <RefreshCw className={cn("h-4 w-4 mr-2", isLoading && "animate-spin")} />
+              Sync Station
+            </Button>
+          </div>
+        </Card>
 
         {/* Task View Only */}
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-10 px-2 pb-32">

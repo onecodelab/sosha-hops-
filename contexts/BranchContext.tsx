@@ -25,7 +25,9 @@ export const useBranch = () => useContext(BranchContext);
 
 export const BranchProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const { profile } = useAuth();
-    const [activeBranchId, setActiveBranchId] = useState<string | null>(null);
+    const [activeBranchId, setActiveBranchId] = useState<string | null>(() => {
+        return localStorage.getItem('sosha-active-branch-id');
+    });
 
     // Fetch all branches (for HQ users or to resolve the active branch)
     const { data: branches = [], isLoading } = useQuery({
@@ -33,8 +35,6 @@ export const BranchProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         queryFn: async () => {
             const { data, error } = await supabase
                 .from('branches')
-                .select('*')
-                .eq('is_active', true)
                 .select('*')
                 .eq('is_active', true)
                 .order('created_at', { ascending: true }); // Ensure main branch comes first
@@ -45,25 +45,33 @@ export const BranchProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         enabled: !!profile,
     });
 
-    // Sync activeBranchId with profile's home_branch_id
+    // Handle initial branch assignment
     useEffect(() => {
         if (!isLoading && branches.length > 0) {
+            // Priority 1: Already selected (from state or localStorage init)
+            if (activeBranchId && branches.some(b => b.id === activeBranchId)) {
+                return;
+            }
+
+            // Priority 2: Profile's home branch
             if (profile?.home_branch_id) {
-                // ALWAYS enforce the home branch if set
-                if (activeBranchId !== profile.home_branch_id) {
-                    setActiveBranchId(profile.home_branch_id);
-                }
-            } else if (!activeBranchId) {
-                // Only if no home branch AND no active branch set, default to first
+                setActiveBranchId(profile.home_branch_id);
+                localStorage.setItem('sosha-active-branch-id', profile.home_branch_id);
+            }
+            // Priority 3: First available branch
+            else if (!activeBranchId) {
                 setActiveBranchId(branches[0].id);
+                localStorage.setItem('sosha-active-branch-id', branches[0].id);
             }
         }
     }, [profile, branches, isLoading]);
 
     const switchBranch = (branchId: string) => {
-        // Only Owners/Admins can switch away from their home branch
-        if (profile?.role === 'owner' || profile?.role === 'admin') {
+        // Only Owners/Admins/Managers can switch branches
+        const allowedRoles = ['owner', 'admin', 'manager'];
+        if (profile?.role && allowedRoles.includes(profile.role)) {
             setActiveBranchId(branchId);
+            localStorage.setItem('sosha-active-branch-id', branchId);
         }
     };
 

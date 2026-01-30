@@ -12,6 +12,9 @@ import { InviteStaffModal } from '../components/InviteStaffModal';
 import { UserProfile } from '../types';
 import { useAuth } from '../AuthContext';
 import { useBranch } from '../contexts/BranchContext';
+import { StaffOrderHistory } from '../components/StaffOrderHistory';
+import { OrderDetailsModal } from '../components/OrderDetailsModal';
+import { Order } from '../types';
 
 interface PerformanceMetric {
    staff_id: string;
@@ -53,6 +56,13 @@ const AdminStaffPerformance: React.FC = () => {
    const [staffToDelete, setStaffToDelete] = useState<string | null>(null);
    const [isDeleting, setIsDeleting] = useState(false);
 
+   // Detailed View State
+   const [selectedStaffHistory, setSelectedStaffHistory] = useState<{ id: string, name: string } | null>(null);
+   const [staffOrders, setStaffOrders] = useState<Order[]>([]);
+   const [historyLoading, setHistoryLoading] = useState(false);
+   const [historyView, setHistoryView] = useState<'daily' | 'weekly' | 'monthly'>('daily');
+   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+
    useEffect(() => {
       fetchData();
    }, [timeRange]);
@@ -91,6 +101,33 @@ const AdminStaffPerformance: React.FC = () => {
       } finally {
          setLoading(false);
          setIsRefreshing(false);
+      }
+   };
+
+   const fetchStaffOrders = async (staffId: string) => {
+      setHistoryLoading(true);
+      try {
+         const { data, error } = await supabase
+            .from('orders')
+            .select(`
+               *,
+               waiter:profiles!orders_waiter_id_fkey (id, full_name, role),
+               order_items (
+                  id,
+                  quantity,
+                  price,
+                  menu_item:menu (name)
+               )
+            `)
+            .eq('waiter_id', staffId)
+            .order('created_at', { ascending: false });
+
+         if (error) throw error;
+         setStaffOrders(data as unknown as Order[] || []);
+      } catch (err: any) {
+         showToast("Failed to load history", "error");
+      } finally {
+         setHistoryLoading(false);
       }
    };
 
@@ -329,22 +366,35 @@ const AdminStaffPerformance: React.FC = () => {
                                     </div>
                                  </td>
                                  <td className="px-6 py-4 text-right">
-                                    <Button
-                                       size="sm"
-                                       variant="ghost"
-                                       onClick={() => handleOpenEdit(m.staff_id)}
-                                       className="h-8 w-8 p-0 hover:bg-white/10"
-                                    >
-                                       <Edit2 className="w-4 h-4 text-gray-400" />
-                                    </Button>
-                                    <Button
-                                       size="sm"
-                                       variant="ghost"
-                                       onClick={() => setStaffToDelete(m.staff_id)}
-                                       className="h-8 w-8 p-0 hover:bg-red-500/10 hover:text-red-500"
-                                    >
-                                       <Trash2 className="w-4 h-4" />
-                                    </Button>
+                                    <div className="flex items-center justify-end gap-2">
+                                       <Button
+                                          size="sm"
+                                          variant="ghost"
+                                          onClick={() => {
+                                             setSelectedStaffHistory({ id: m.staff_id, name: m.staff_name });
+                                             fetchStaffOrders(m.staff_id);
+                                          }}
+                                          className="h-9 px-3 bg-primary/5 border border-primary/10 text-primary hover:bg-primary hover:text-black font-black text-[10px] uppercase tracking-widest rounded-xl transition-all"
+                                       >
+                                          View History
+                                       </Button>
+                                       <Button
+                                          size="sm"
+                                          variant="ghost"
+                                          onClick={() => handleOpenEdit(m.staff_id)}
+                                          className="h-9 w-9 p-0 hover:bg-white/10 rounded-xl"
+                                       >
+                                          <Edit2 className="w-4 h-4 text-gray-400" />
+                                       </Button>
+                                       <Button
+                                          size="sm"
+                                          variant="ghost"
+                                          onClick={() => setStaffToDelete(m.staff_id)}
+                                          className="h-9 w-9 p-0 hover:bg-red-500/10 hover:text-red-500 rounded-xl"
+                                       >
+                                          <Trash2 className="w-4 h-4" />
+                                       </Button>
+                                    </div>
                                  </td>
                               </tr>
                            ))}
@@ -456,6 +506,53 @@ const AdminStaffPerformance: React.FC = () => {
                   </div>
                </div>
             </Dialog>
+
+            {/* Staff Order History Dialog */}
+            <Dialog
+               isOpen={!!selectedStaffHistory}
+               onClose={() => setSelectedStaffHistory(null)}
+               title={`Order History: ${selectedStaffHistory?.name}`}
+               className="max-w-4xl"
+            >
+               <div className="space-y-6">
+                  {/* View Filters */}
+                  <div className="flex bg-black/40 p-1.5 rounded-xl border border-white/5 backdrop-blur-md self-start w-fit">
+                     {(['daily', 'weekly', 'monthly'] as const).map(v => (
+                        <button
+                           key={v}
+                           onClick={() => setHistoryView(v)}
+                           className={cn(
+                              "px-4 py-2 text-[10px] font-black rounded-lg transition-all uppercase tracking-widest",
+                              historyView === v ? "bg-primary text-black shadow-lg" : "text-gray-500 hover:text-white"
+                           )}
+                        >
+                           {v}
+                        </button>
+                     ))}
+                  </div>
+
+                  <div className="max-h-[65vh] overflow-y-auto px-4 -mx-4 custom-scrollbar space-y-2">
+                     {historyLoading ? (
+                        <div className="flex flex-col items-center justify-center py-20 opacity-30">
+                           <RefreshCw className="w-10 h-10 animate-spin mb-4" />
+                           <p className="text-[10px] font-black uppercase tracking-[0.3em]">Syncing History...</p>
+                        </div>
+                     ) : (
+                        <StaffOrderHistory
+                           orders={staffOrders}
+                           view={historyView}
+                           onOrderClick={(order) => setSelectedOrder(order)}
+                        />
+                     )}
+                  </div>
+               </div>
+            </Dialog>
+
+            <OrderDetailsModal
+               isOpen={!!selectedOrder}
+               onClose={() => setSelectedOrder(null)}
+               order={selectedOrder}
+            />
 
             <InviteStaffModal isOpen={isInviteOpen} onClose={() => setIsInviteOpen(false)} onSuccess={fetchData} />
 

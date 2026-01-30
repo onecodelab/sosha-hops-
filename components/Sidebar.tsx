@@ -143,6 +143,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, setIsCollapsed, h
                     allowedRoles={['waiter']}
                 />
                 <NavItem
+                    icon={ShoppingCart}
+                    label="My Order Transaction"
+                    path="/waiter/orders"
+                    allowedRoles={['waiter']}
+                />
+                <NavItem
                     icon={LayoutDashboard}
                     label={t('nav.kds')}
                     path="/kitchen"
@@ -187,11 +193,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, setIsCollapsed, h
                     allowedRoles={['manager', 'admin', 'owner']}
                 />
                 <NavItem
-                    icon={ShoppingBag}
-                    label={t('nav.stock')}
-                    path="/kitchen/stock"
-                    allowedRoles={['kitchen']}
+                    icon={Trash2}
+                    label="Waste Analytics"
+                    path="/admin/waste"
+                    allowedRoles={['manager', 'admin', 'owner']}
                 />
+
                 <NavItem
                     icon={Trash2}
                     label={t('nav.waste')}

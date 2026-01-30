@@ -7,7 +7,7 @@ import {
    TrendingUp, Users, ShoppingBag, AlertTriangle,
    RefreshCw, DollarSign, Activity, ClipboardList, List, Eye, Filter, User, ShieldCheck, Search, Calendar
 } from 'lucide-react';
-import { cn, Badge, Button, showToast } from '../components/ui';
+import { cn, Badge, Button, showToast, Card } from '../components/ui';
 import { supabase } from '../supabase';
 import { useLanguage } from '../contexts/LanguageContext';
 import { ActiveOrdersModal } from '../components/ActiveOrdersModal';
@@ -249,112 +249,115 @@ const AdminDashboard: React.FC = () => {
    };
 
    return (
-      <DashboardLayout title="Executive Dashboard" subtitle="Mission Control" className="overflow-hidden h-screen">
-         <div className="space-y-3 animate-in fade-in duration-500 h-full flex flex-col">
+      <DashboardLayout title="Executive Dashboard" subtitle="Mission Control" className="h-full md:h-screen md:overflow-hidden">
+         <div className="space-y-3 animate-in fade-in duration-500 h-full flex flex-col overflow-y-auto md:overflow-hidden">
 
             {/* Top Compact Metrics Bar */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 shrink-0">
-               <SoshaCard className="p-3 border-l-4 border-l-yellow-500 rounded-sm" indicatorColor="yellow">
-                  <div className="flex justify-between items-center">
-                     <div>
-                        <p className="text-[9px] font-black text-gray-500 uppercase tracking-widest leading-none mb-1">Revenue Today</p>
-                        <h3 className="text-xl font-black text-foreground tracking-tight">ETB {stats.totalRevenue.toLocaleString()}</h3>
-                     </div>
-                     <DollarSign className="w-4 h-4 text-yellow-500 opacity-50" />
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6 shrink-0">
+               <Card variant="elevated" className="p-4 md:p-5 border-l-4 border-l-yellow-500 rounded-2xl relative overflow-hidden group">
+                  <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
+                     <DollarSign className="w-12 h-12" />
                   </div>
-               </SoshaCard>
+                  <div className="flex flex-col">
+                     <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest leading-none mb-2">Revenue Today</p>
+                     <h3 className="text-2xl font-black text-foreground tracking-tight">ETB {stats.totalRevenue.toLocaleString()}</h3>
+                  </div>
+               </Card>
 
-               <SoshaCard
-                  className="p-3 cursor-pointer hover:bg-white/5 transition-colors border-l-4 border-l-blue-500 rounded-sm"
-                  indicatorColor="blue"
+               <Card
+                  variant="interactive"
+                  className="p-4 md:p-5 border-l-4 border-l-blue-500 rounded-2xl relative overflow-hidden group"
                   onClick={() => setIsModalOpen(true)}
                >
-                  <div className="flex justify-between items-center">
-                     <div>
-                        <p className="text-[9px] font-black text-gray-500 uppercase tracking-widest leading-none mb-1">Active / In Kitchen</p>
-                        <h3 className="text-xl font-black text-foreground tracking-tight">{stats.activeOrdersCount}</h3>
-                     </div>
-                     <Activity className="w-4 h-4 text-blue-500 animate-pulse" />
+                  <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
+                     <Activity className="w-12 h-12" />
                   </div>
-               </SoshaCard>
+                  <div className="flex flex-col">
+                     <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest leading-none mb-2">Active / In Kitchen</p>
+                     <div className="flex items-center gap-3">
+                        <h3 className="text-2xl font-black text-foreground tracking-tight">{stats.activeOrdersCount}</h3>
+                        <div className="h-2 w-2 rounded-full bg-blue-500 animate-pulse" />
+                     </div>
+                  </div>
+               </Card>
 
-               {/* Consolidated Quick Actions / Status could go here in remaining col slots if needed, using placeholders for now to maintain grid */}
-               <div className="hidden lg:block lg:col-span-2">
-                  {/* Spacing or additional future compact metrics */}
-               </div>
+               {/* Stats Row Spacing/Filler */}
+               <div className="hidden lg:block lg:col-span-2" />
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 min-h-0 flex-1">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-auto md:h-full md:min-h-0 md:flex-1 pb-20 md:pb-0">
                {/* Left Col: Live Production Board (Takes 4 cols) */}
-               <div className="lg:col-span-4 flex flex-col min-h-0 space-y-2">
-                  <div className="flex items-center justify-between px-1 shrink-0">
-                     <h3 className="text-xs font-black text-foreground flex items-center gap-2 uppercase tracking-widest opacity-70">
-                        <List className="w-3 h-3" /> Live Production
+               <div className="lg:col-span-4 flex flex-col md:min-h-0 space-y-4 h-[500px] md:h-auto shrink-0">
+                  <div className="flex items-center justify-between px-2 shrink-0">
+                     <h3 className="text-[10px] font-black text-gray-500 flex items-center gap-2 uppercase tracking-[0.2em]">
+                        <List className="w-3.5 h-3.5 text-primary" /> Live Production
                      </h3>
 
-                     <div className="flex items-center gap-1 scale-90 origin-right">
+                     <div className="flex items-center gap-2">
                         <select
                            value={selectedStaffId}
                            onChange={(e) => setSelectedStaffId(e.target.value)}
-                           className="bg-black/40 border-b border-white/20 px-2 py-1 text-[10px] font-bold text-white focus:outline-none hover:bg-white/5 transition-all text-right"
+                           className="bg-black/40 border border-white/10 rounded-lg px-3 py-1.5 text-[10px] font-black text-white hover:border-primary/30 transition-all outline-none"
                         >
                            <option value="all">ALL STAFF</option>
                            {staffList.map(s => (
                               <option key={s.id} value={s.id}>{s.full_name}</option>
                            ))}
                         </select>
-                        <Button variant="ghost" size="icon" onClick={fetchDashboardData} className="h-6 w-6 hover:bg-white/10 rounded-sm">
-                           <RefreshCw className={cn("w-3 h-3", loading && "animate-spin")} />
+                        <Button variant="outline" size="icon" onClick={fetchDashboardData} className="h-9 w-9">
+                           <RefreshCw className={cn("w-3.5 h-3.5", loading && "animate-spin")} />
                         </Button>
                      </div>
                   </div>
 
-                  <div className="flex-1 overflow-y-auto pr-1 custom-scrollbar space-y-2 bg-black/20 p-2 rounded-lg border border-white/5">
+                  <Card variant="default" className="flex-1 overflow-y-auto custom-scrollbar p-2 bg-black/40">
                      {filteredActiveOrders.length === 0 ? (
-                        <div className="h-20 flex items-center justify-center text-gray-700 gap-2">
-                           <Activity className="w-4 h-4 opacity-50" />
-                           <span className="text-[10px] font-mono">ALL CLEAR</span>
+                        <div className="h-full flex flex-col items-center justify-center text-gray-700 gap-4 opacity-40">
+                           <Activity className="w-8 h-8" />
+                           <span className="text-[10px] font-black uppercase tracking-[0.3em]">Operational Clear</span>
                         </div>
                      ) : (
-                        filteredActiveOrders.map(order => (
-                           <div key={order.id} className="scale-95 origin-top-left w-full mb-[-10px]">
-                              <OrderCard order={order} role="manager" onAction={handleOrderAction} />
-                           </div>
-                        ))
+                        <div className="space-y-3">
+                           {filteredActiveOrders.map(order => (
+                              <div key={order.id} className="w-full">
+                                 <OrderCard order={order} role="manager" onAction={handleOrderAction} />
+                              </div>
+                           ))}
+                        </div>
                      )}
-                  </div>
+                  </Card>
                </div>
 
                {/* Right Col: Transaction Audit (Takes 8 cols) */}
-               <div className="lg:col-span-8 flex flex-col min-h-0">
-                  <SoshaCard className="flex-1 flex flex-col min-h-0 bg-transparent border-0 p-0" indicatorColor="purple">
-                     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-2 px-1 gap-2 shrink-0">
-                        <SoshaCardTitle className="flex items-center gap-2 text-xs uppercase tracking-widest opacity-70">
-                           <ClipboardList className="w-3 h-3" /> Transaction Log
-                        </SoshaCardTitle>
+               <div className="lg:col-span-8 flex flex-col md:min-h-0 h-[600px] md:h-auto shrink-0">
+                  <Card variant="elevated" className="flex-1 flex flex-col min-h-0 p-0 overflow-hidden" indicatorColor="purple">
+                     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-6 gap-4 shrink-0 border-b border-white/5">
+                        <h3 className="flex items-center gap-3 text-[10px] font-black text-gray-500 uppercase tracking-[0.2em]">
+                           <ClipboardList className="w-4 h-4 text-primary" /> Transaction Log
+                        </h3>
 
-                        <div className="flex flex-wrap items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-3">
                            {/* Search Bar */}
                            <div className="relative group">
-                              <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-500 group-focus-within:text-primary transition-colors" />
+                              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-500 group-focus-within:text-primary transition-colors" />
                               <input
                                  type="text"
-                                 placeholder="Search..."
+                                 placeholder="Audit Search..."
                                  value={searchQuery}
                                  onChange={(e) => setSearchQuery(e.target.value)}
-                                 className="bg-black/40 border border-white/10 rounded-md pl-7 pr-2 py-1 text-[10px] text-white focus:outline-none focus:border-primary/50 transition-all w-32"
+                                 className="bg-black/40 border border-white/10 rounded-xl pl-9 pr-4 py-2 text-[10px] text-white focus:outline-none focus:border-primary/50 transition-all w-40 font-bold"
                               />
                            </div>
 
                            {/* Date Filter */}
-                           <div className="flex bg-black/40 rounded-md p-0.5 border border-white/5">
+                           <div className="flex bg-black/60 rounded-xl p-1 border border-white/5">
                               {(['today', 'yesterday', 'week', 'all'] as const).map((d) => (
                                  <button
                                     key={d}
                                     onClick={() => setDateFilter(d)}
                                     className={cn(
-                                       "px-2 py-0.5 text-[8px] font-black uppercase tracking-wider rounded-sm transition-all",
-                                       dateFilter === d ? "bg-white/10 text-white" : "text-gray-500 hover:text-gray-300"
+                                       "px-3 py-1.5 text-[9px] font-black uppercase tracking-wider rounded-lg transition-all",
+                                       dateFilter === d ? "bg-primary text-black" : "text-gray-500 hover:text-gray-300"
                                     )}
                                  >
                                     {d}
@@ -362,26 +365,26 @@ const AdminDashboard: React.FC = () => {
                               ))}
                            </div>
 
-                           <div className="flex gap-1 border-l border-white/10 pl-2">
+                           <div className="flex gap-1.5 pl-3 border-l border-white/10">
                               {(['all', 'cash', 'digital'] as const).map((filter) => (
-                                 <button
+                                 <Button
                                     key={filter}
+                                    variant={transactionFilter === filter ? 'glass' : 'ghost'}
+                                    size="sm"
                                     onClick={() => setTransactionFilter(filter)}
                                     className={cn(
-                                       "px-3 py-0.5 text-[9px] font-black uppercase tracking-wider rounded-sm transition-all border border-transparent",
-                                       transactionFilter === filter
-                                          ? "bg-purple-900/50 text-purple-200 border-purple-500/20"
-                                          : "text-gray-600 hover:text-gray-400"
+                                       "h-8 px-4",
+                                       transactionFilter === filter && "border-primary/20 text-primary"
                                     )}
                                  >
                                     {filter}
-                                 </button>
+                                 </Button>
                               ))}
                            </div>
                         </div>
                      </div>
 
-                     <div className="flex-1 overflow-y-auto pr-1 custom-scrollbar border border-white/5 rounded-lg bg-black/20 max-h-[calc(100vh-320px)]">
+                     <div className="flex-1 overflow-y-auto custom-scrollbar bg-black/10">
                         <table className="w-full text-left border-collapse">
                            <thead className="sticky top-0 bg-black/90 text-[9px] font-black uppercase text-gray-600 tracking-wider z-10 backdrop-blur-sm">
                               <tr>
@@ -400,16 +403,18 @@ const AdminDashboard: React.FC = () => {
                                     className="group hover:bg-white/10 transition-all cursor-pointer text-xs"
                                  >
                                     <td className="px-3 py-2.5">
-                                       <div className="flex items-center gap-2">
-                                          <span className="font-mono text-gray-400 group-hover:text-primary transition-colors">#{order.order_number || order.id.slice(0, 4)}</span>
-                                          <span className="text-[10px] text-gray-600 font-mono">
+                                       <div className="flex flex-col">
+                                          <span className="font-mono text-[10px] font-black text-white group-hover:text-primary transition-colors truncate max-w-[80px] md:max-w-none">
+                                             #{order.order_number || order.id.slice(0, 4)}
+                                          </span>
+                                          <span className="text-[9px] text-gray-500 font-mono">
                                              {new Date(order.closed_at || order.paid_at || order.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                           </span>
                                        </div>
                                     </td>
                                     <td className="px-3 py-2.5">
-                                       <div className="flex items-center gap-2">
-                                          <span className="font-bold text-gray-200">T-{order.table_number}</span>
+                                       <div className="flex flex-col items-start gap-1">
+                                          <span className="font-bold text-gray-200 text-xs">T-{order.table_number}</span>
                                           <span className="px-1.5 py-0.5 text-[8px] bg-white/5 rounded-sm uppercase tracking-tighter text-gray-500">{order.order_type || 'Dine'}</span>
                                        </div>
                                     </td>
@@ -421,7 +426,6 @@ const AdminDashboard: React.FC = () => {
                                     </td>
                                     <td className="px-3 py-2.5 text-right font-mono font-black text-white">
                                        {order.total_amount.toLocaleString()}
-                                       {order.tip_amount > 0 && <span className="text-[8px] text-green-500 ml-1">+Tip</span>}
                                     </td>
                                     <td className="px-3 py-2.5 text-right">
                                        <div className="flex items-center justify-end gap-2">
@@ -458,7 +462,7 @@ const AdminDashboard: React.FC = () => {
                            </div>
                         )}
                      </div>
-                  </SoshaCard>
+                  </Card>
                </div>
             </div>
          </div>

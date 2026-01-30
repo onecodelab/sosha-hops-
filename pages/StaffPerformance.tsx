@@ -4,12 +4,14 @@ import { DashboardLayout } from '../components/DashboardLayout';
 import {
    Users, UserCheck, Clock, TrendingUp, Zap,
    Search, Filter, Activity, Award, ShieldAlert, CreditCard, Timer, Loader2,
-   Wallet, Banknote, HandCoins, DollarSign
+   Wallet, Banknote, HandCoins, DollarSign, RefreshCw
 } from 'lucide-react';
 import { Badge, Button, Input, cn, showToast, Dialog, Card, CardHeader, CardTitle, CardContent } from '../components/ui';
 import { supabase } from '../supabase';
-import { Role } from '../types';
+import { Role, Order } from '../types';
 import { useBranch } from '../contexts/BranchContext';
+import { StaffOrderHistory } from '../components/StaffOrderHistory';
+import { OrderDetailsModal } from '../components/OrderDetailsModal';
 
 const StaffPerformance: React.FC = () => {
    const { activeBranchId } = useBranch();
@@ -19,7 +21,11 @@ const StaffPerformance: React.FC = () => {
    const [timeRange, setTimeRange] = useState<'today' | '7d' | '30d'>('today');
    const [activeTab, setActiveTab] = useState<'waiter' | 'kitchen' | 'manager'>('waiter');
    const [searchTerm, setSearchTerm] = useState('');
-   const [selectedStaffId, setSelectedStaffId] = useState<string | null>(null);
+   const [selectedStaffHistory, setSelectedStaffHistory] = useState<{ id: string, name: string } | null>(null);
+   const [staffOrders, setStaffOrders] = useState<Order[]>([]);
+   const [historyLoading, setHistoryLoading] = useState(false);
+   const [historyView, setHistoryView] = useState<'daily' | 'weekly' | 'monthly'>('daily');
+   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
 
    useEffect(() => {
       fetchData();
@@ -59,6 +65,33 @@ const StaffPerformance: React.FC = () => {
          showToast(err.message || "Failed to fetch intelligence data", "error");
       } finally {
          setLoading(false);
+      }
+   };
+
+   const fetchStaffOrders = async (staffId: string) => {
+      setHistoryLoading(true);
+      try {
+         const { data, error } = await supabase
+            .from('orders')
+            .select(`
+               *,
+               waiter:profiles!orders_waiter_id_fkey (id, full_name, role),
+               order_items (
+                  id,
+                  quantity,
+                  price,
+                  menu_item:menu (name)
+               )
+            `)
+            .eq('waiter_id', staffId)
+            .order('created_at', { ascending: false });
+
+         if (error) throw error;
+         setStaffOrders(data as unknown as Order[] || []);
+      } catch (err: any) {
+         showToast("Failed to load history", "error");
+      } finally {
+         setHistoryLoading(false);
       }
    };
 
@@ -222,10 +255,13 @@ const StaffPerformance: React.FC = () => {
                                  <td className="px-6 py-5 text-right">
                                     <Button
                                        variant="ghost"
-                                       onClick={() => setSelectedStaffId(m.staff_id)}
-                                       className="h-9 w-9 p-0 bg-white/5 border border-white/5 hover:bg-primary hover:text-black transition-all rounded-xl"
+                                       onClick={() => {
+                                          setSelectedStaffHistory({ id: m.staff_id, name: m.staff_name });
+                                          fetchStaffOrders(m.staff_id);
+                                       }}
+                                       className="h-9 px-4 bg-primary/5 border border-primary/10 text-primary hover:bg-primary hover:text-black font-black text-[10px] uppercase tracking-widest rounded-xl transition-all"
                                     >
-                                       <Zap className="w-4 h-4" />
+                                       Transactions
                                     </Button>
                                  </td>
                               </tr>
@@ -237,55 +273,60 @@ const StaffPerformance: React.FC = () => {
             </Card>
          </div>
 
-         {/* Personnel Master File (Details) */}
+         {/* Personnel Master File (Details / History) */}
          <Dialog
-            isOpen={!!selectedStaffId}
-            onClose={() => setSelectedStaffId(null)}
-            title="Personnel Master File"
+            isOpen={!!selectedStaffHistory}
+            onClose={() => setSelectedStaffHistory(null)}
+            title={`Audit: ${selectedStaffHistory?.name}`}
+            className="max-w-4xl"
          >
-            {(() => {
-               const staff = metrics.find(m => m.staff_id === selectedStaffId);
-               if (!staff) return null;
-               return (
-                  <div className="space-y-6 p-2">
-                     {/* 30D Stats Card */}
-                     <div className="grid grid-cols-3 gap-3">
-                        <div className="bg-white/5 border border-white/5 p-4 rounded-2xl">
-                           <p className="text-[9px] font-black text-gray-500 uppercase tracking-widest">Total Orders</p>
-                           <p className="text-xl font-black text-white font-mono mt-1">{staff.total_orders}</p>
-                        </div>
-                        <div className="bg-white/5 border border-white/5 p-4 rounded-2xl">
-                           <p className="text-[9px] font-black text-gray-500 uppercase tracking-widest">Total Sales</p>
-                           <p className="text-xl font-black text-primary font-mono mt-1">{Math.round(staff.total_sales / 1000)}k</p>
-                        </div>
-                        <div className="bg-white/5 border border-white/5 p-4 rounded-2xl">
-                           <p className="text-[9px] font-black text-gray-500 uppercase tracking-widest">AOV</p>
-                           <p className="text-xl font-black text-white font-mono mt-1">{Math.round(staff.avg_order_value)}</p>
-                        </div>
-                     </div>
+            <div className="space-y-6">
+               <div className="flex bg-black/40 p-1.5 rounded-xl border border-white/5 backdrop-blur-md self-start w-fit">
+                  {(['daily', 'weekly', 'monthly'] as const).map(v => (
+                     <button
+                        key={v}
+                        onClick={() => setHistoryView(v)}
+                        className={cn(
+                           "px-4 py-2 text-[10px] font-black rounded-lg transition-all uppercase tracking-widest",
+                           historyView === v ? "bg-primary text-black shadow-lg" : "text-gray-500 hover:text-white"
+                        )}
+                     >
+                        {v}
+                     </button>
+                  ))}
+               </div>
 
-                     <div className="bg-primary/5 border border-primary/20 p-4 rounded-2xl flex gap-4">
-                        <Award className="w-6 h-6 text-primary shrink-0" />
-                        <div>
-                           <h4 className="text-sm font-bold text-white uppercase tracking-wider">Efficiency Breakdown</h4>
-                           <p className="text-[10px] text-gray-400 mt-1 uppercase font-bold tracking-widest">
-                              {staff.orders_per_shift} Orders per shift • ETB {staff.sales_per_hour} per hour
-                           </p>
-                        </div>
+               <div className="max-h-[65vh] overflow-y-auto px-4 -mx-4 custom-scrollbar space-y-2">
+                  {historyLoading ? (
+                     <div className="flex flex-col items-center justify-center py-20 opacity-30">
+                        <RefreshCw className="w-10 h-10 animate-spin mb-4 text-primary" strokeWidth={3} />
+                        <p className="text-[10px] font-black uppercase tracking-[0.3em]">Syncing Personnel History...</p>
                      </div>
+                  ) : (
+                     <StaffOrderHistory
+                        orders={staffOrders}
+                        view={historyView}
+                        onOrderClick={(order) => setSelectedOrder(order)}
+                     />
+                  )}
+               </div>
 
-                     <div className="pt-6 border-t border-white/5">
-                        <Button
-                           onClick={() => setSelectedStaffId(null)}
-                           className="w-full bg-primary text-black font-black rounded-xl h-12 uppercase tracking-widest text-xs shadow-xl shadow-primary/10 transition-transform active:scale-95"
-                        >
-                           Close Audit
-                        </Button>
-                     </div>
-                  </div>
-               );
-            })()}
+               <div className="pt-6 border-t border-white/5">
+                  <Button
+                     onClick={() => setSelectedStaffHistory(null)}
+                     className="w-full bg-white text-black font-black rounded-xl h-12 uppercase tracking-widest text-xs shadow-xl transition-transform active:scale-95"
+                  >
+                     Close Personnel Audit
+                  </Button>
+               </div>
+            </div>
          </Dialog>
+
+         <OrderDetailsModal
+            isOpen={!!selectedOrder}
+            onClose={() => setSelectedOrder(null)}
+            order={selectedOrder}
+         />
       </DashboardLayout>
    );
 };

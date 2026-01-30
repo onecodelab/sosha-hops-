@@ -25,29 +25,32 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 export const Button: React.FC<ButtonProps> = ({
   className, variant = 'primary', size = 'default', isLoading, children, disabled, ...props
 }) => {
-  const baseStyles = "inline-flex items-center justify-center rounded-xl font-medium transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 disabled:opacity-50 disabled:pointer-events-none active:scale-95";
+  const baseStyles = "inline-flex items-center justify-center rounded-xl font-bold uppercase tracking-widest transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 disabled:opacity-50 disabled:pointer-events-none active:scale-95 select-none";
 
   const variants = {
-    // 2026 Sleek: Gradient + Inner Glow + Colored Shadow
-    primary: "bg-gradient-to-br from-primary via-primary to-primary-hover text-black font-bold shadow-[0_0_20px_-5px_var(--primary-glow)] hover:shadow-[0_0_30px_-5px_var(--primary-glow)] border border-white/10 relative overflow-hidden after:absolute after:inset-0 after:bg-white/20 after:opacity-0 hover:after:opacity-100 after:transition-opacity",
+    // Primary: Brand Gold, high prominence
+    primary: "bg-primary text-black shadow-[0_4px_20px_-5px_var(--primary-glow)] hover:shadow-[0_8px_30px_-5px_var(--primary-glow)] hover:-translate-y-0.5 border border-white/10",
 
-    // Vibrant secondary
-    secondary: "bg-secondary text-black font-bold hover:bg-secondary-hover shadow-[0_0_15px_-3px_var(--bubble-2)]",
+    // Secondary: Brand Lime, for alternative success actions
+    secondary: "bg-secondary text-black shadow-[0_4px_15px_-3px_var(--bubble-2)] hover:shadow-[0_8px_25px_-3px_var(--bubble-2)] hover:-translate-y-0.5",
 
-    destructive: "bg-red-500/10 text-red-500 border border-red-500/20 hover:bg-red-500/20 shadow-sm",
+    // Destructive: Subtle background, clear red text/border
+    destructive: "bg-red-500/5 text-red-500 border border-red-500/20 hover:bg-red-500/10",
 
-    // Glassy Outline
+    // Outline: Professional, low weight
     outline: "border border-white/10 bg-white/5 hover:bg-white/10 text-foreground backdrop-blur-sm",
 
+    // Ghost: Contextual, blends into background
     ghost: "hover:bg-white/5 text-muted-foreground hover:text-foreground",
 
+    // Glass: Specialized elevated surface
     glass: "bg-white/5 backdrop-blur-md border border-white/10 text-foreground hover:bg-white/10 shadow-lg"
   };
 
   const sizes = {
-    default: "h-11 px-5 py-2 text-sm",
-    sm: "h-9 rounded-lg px-3 text-xs",
-    lg: "h-12 rounded-2xl px-8 text-base",
+    default: "h-11 px-6 text-[10px]",
+    sm: "h-9 rounded-lg px-4 text-[9px]",
+    lg: "h-12 rounded-2xl px-10 text-xs",
     icon: "h-11 w-11",
   };
 
@@ -79,9 +82,31 @@ export const Input: React.FC<InputProps> = ({ className, ...props }) => {
 };
 
 // --- Card ---
-export const Card: React.FC<React.HTMLAttributes<HTMLDivElement>> = ({ className, children, ...props }) => {
+interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
+  variant?: 'default' | 'elevated' | 'interactive' | 'outline';
+}
+
+export const Card: React.FC<CardProps> = ({ className, variant = 'default', children, ...props }) => {
+  const variants = {
+    // Default surface: Highly opaque for depth
+    default: "bg-card/90 border-white/10 shadow-xl",
+    // Elevated: Near-solid for maximum contrast
+    elevated: "bg-card/98 border-white/20 shadow-2xl",
+    // Interactive: Clear feedback
+    interactive: "bg-card/80 border-white/10 hover:border-primary/40 hover:bg-card/95 cursor-pointer shadow-md hover:shadow-xl",
+    // Outline: Minimal weight
+    outline: "bg-transparent border-white/20"
+  };
+
   return (
-    <div className={cn("rounded-2xl border border-white/5 bg-card/80 backdrop-blur-xl text-foreground shadow-lg transition-colors hover:border-white/10", className)} {...props}>
+    <div
+      className={cn(
+        "rounded-[1.5rem] border backdrop-blur-xl text-foreground transition-all duration-300",
+        variants[variant],
+        className
+      )}
+      {...props}
+    >
       {children}
     </div>
   );
@@ -133,11 +158,11 @@ interface DialogProps {
 export const Dialog: React.FC<DialogProps> = ({ isOpen, onClose, title, children, maxWidth = "max-w-lg", showTitle = true }) => {
   if (!isOpen) return null;
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-lg p-4 animate-in fade-in duration-300">
-      <div className={cn("w-full max-h-[90vh] rounded-[2rem] bg-card/95 border border-white/10 shadow-2xl animate-in zoom-in-95 duration-300 overflow-hidden flex flex-col relative", maxWidth)}>
-        {/* Glass Header */}
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-300">
+      <div className={cn("w-full max-h-[95vh] rounded-[2.5rem] bg-card border border-white/10 shadow-[0_0_50px_-12px_rgba(0,0,0,0.5)] animate-in zoom-in-95 duration-300 overflow-hidden flex flex-col relative", maxWidth)}>
+        {/* Solid Header */}
         {showTitle && (
-          <div className="flex items-center justify-between px-8 py-5 border-b border-white/5 bg-white/5 backdrop-blur-md">
+          <div className="flex items-center justify-between px-8 py-6 border-b border-white/5 bg-black/40">
             <h2 className="text-lg font-black text-foreground tracking-tight uppercase">{title}</h2>
             <button onClick={onClose} className="p-2 rounded-full hover:bg-white/10 text-muted hover:text-foreground transition-all duration-300 hover:rotate-90">
               <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>

@@ -123,10 +123,6 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ isOpen, on
                         <span>Tax (VAT)</span>
                         <span className="text-white font-mono">{vat.toLocaleString()}</span>
                     </div>
-                    <div className="flex justify-between text-[11px] font-bold uppercase tracking-wider text-green-500/80">
-                        <span>Tip Amount</span>
-                        <span className="font-mono">{tip > 0 ? `+${tip.toLocaleString()}` : '0.00'}</span>
-                    </div>
 
                     <div className="pt-4 border-t border-white/10 flex justify-between items-end">
                         <div>

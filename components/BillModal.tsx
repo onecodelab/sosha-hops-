@@ -159,53 +159,50 @@ export const BillModal: React.FC<BillModalProps> = ({
     try {
       const config = BANK_CONFIG[bank];
 
-      // Construct Bank-Specific Payloads according to PRD
-      let payload: any = {
+      // Build payload for consolidated /verify-payment endpoint
+      const payload: any = {
+        payment_method: bank,
         reference: ref,
+        expected_amount: order.total_amount,  // For secondary validation
         orderId: order.id,
-        branchId: 'main-01',
-        manualOverride: false
+        branchId: 'main-01'
       };
 
+      // Add bank-specific parameters
       if (bank === 'cbe') {
         payload.accountSuffix = config.receiver;
       } else if (bank === 'abyssinia') {
         payload.suffix = config.receiver;
       } else if (bank === 'cbebirr') {
-        payload = {
-          receiptNumber: ref,
-          phoneNumber: '', // Can be extended if you add phone input
-          manualOverride: false
-        };
+        payload.receiptNumber = ref;
+        payload.phoneNumber = ''; // Can be extended if you add phone input
       }
 
-      // 1. Verifier Service URL
-      const VERIFIER_BASE_URL = "http://localhost:3001";
-      const functionUrl = `${VERIFIER_BASE_URL}/verify-${config.endpoint}`;
+      // Use consolidated verify-payment endpoint with secondary validation
+      const VERIFIER_BASE_URL = "http://localhost:3002";
+      const functionUrl = `${VERIFIER_BASE_URL}/verify-payment`;
 
-      // 2. Auth Session
-      const { data: { session } } = await supabase.auth.getSession();
-
-      // 3. Execution
       const response = await fetch(functionUrl, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'x-api-key': 'test-key-123'
         },
         body: JSON.stringify(payload)
       });
 
       const data = await response.json();
 
-      if (response.ok && data.success) {
+      // Check both success (scrape worked) AND validated (secondary checks passed)
+      if (response.ok && data.success && data.validated) {
         setIsVerified(true);
         const finalAmount = data.amount ? parseFloat(data.amount.toString()) : order.total_amount;
-        const finalReceiptNo = data.receiptNo || ref;
+        const finalReceiptNo = data.receipt_reference || ref;
 
         if (data.amount) setAmountPaid(data.amount.toString());
-        if (data.receiptNo) setRefNumber(data.receiptNo);
+        if (data.receipt_reference) setRefNumber(data.receipt_reference);
 
-        showToast("Bank record confirmed", "success");
+        showToast("Payment verified ✓", "success");
 
         // Auto-Trigger Logic: Process payment immediately without manual confirmation
         showToast("Processing automated checkout...", "warning");
@@ -222,7 +219,19 @@ export const BillModal: React.FC<BillModalProps> = ({
         setView('success');
         onSuccess();
       } else {
-        throw new Error(data.message || "Transaction verification failed.");
+        // Handle validation failure - display most critical reason
+        let errorMessage = "Verification failed";
+
+        if (data.validation?.failed_reasons?.length > 0) {
+          // Show only the first (usually most important) mismatch to keep UI clean
+          errorMessage = data.validation.failed_reasons[0];
+        } else if (data.error) {
+          errorMessage = data.error;
+        } else if (data.message) {
+          errorMessage = data.message;
+        }
+
+        throw new Error(errorMessage);
       }
     } catch (err: any) {
       console.error("Verification Fail:", err);

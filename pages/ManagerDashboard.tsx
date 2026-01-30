@@ -110,37 +110,72 @@ const ManagerDashboard: React.FC = () => {
    return (
       <DashboardLayout title="Ops Dashboard" subtitle="Daily operations and staff oversight">
          <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-               <SoshaCard className="p-6">
-                  <div className="flex justify-between items-start">
-                     <div><p className="text-xs text-gray-500 uppercase font-bold tracking-wider">Revenue Today</p><h3 className="text-3xl font-bold text-foreground mt-2">ETB {kpi.revenue.toLocaleString()}</h3></div>
-                     <div className="p-3 bg-primary/10 rounded-xl text-primary"><TrendingUp className="w-6 h-6" /></div>
+            {/* Vibrant 2x2 Stats Grid */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6">
+               {/* Revenue - Gold Theme */}
+               <div className="relative overflow-hidden rounded-[2rem] p-4 md:p-6 bg-gradient-to-br from-amber-500/20 via-black to-black border border-amber-500/20 shadow-[0_0_30px_rgba(245,158,11,0.1)] group">
+                  <div className="absolute top-0 right-0 p-4 opacity-20 group-hover:opacity-40 transition-opacity">
+                     <TrendingUp className="w-12 h-12 text-amber-500" />
                   </div>
-               </SoshaCard>
-               <SoshaCard className="p-6">
-                  <div className="flex justify-between items-start">
-                     <div><p className="text-xs text-gray-500 uppercase font-bold tracking-wider">Total Orders</p><h3 className="text-3xl font-bold text-foreground mt-2">{kpi.orders}</h3></div>
-                     <div className="p-3 bg-blue-500/10 rounded-xl text-blue-500"><BarChart3 className="w-6 h-6" /></div>
+                  <div className="relative z-10">
+                     <p className="text-[9px] md:text-[10px] font-black text-amber-500 uppercase tracking-widest mb-1 md:mb-2">Revenue Today</p>
+                     <h3 className="text-2xl md:text-3xl font-black text-white tracking-tight">
+                        <span className="text-lg align-top opacity-50 mr-1">ETB</span>
+                        {kpi.revenue.toLocaleString()}
+                     </h3>
                   </div>
-               </SoshaCard>
-               <SoshaCard className={cn("p-6", kpi.issues > 0 && "border-red-500/30")}>
-                  <div className="flex justify-between items-start">
-                     <div><p className="text-xs text-gray-500 uppercase font-bold tracking-wider">Issues</p><h3 className={cn("text-3xl font-bold mt-2", kpi.issues > 0 ? "text-red-500" : "text-foreground")}>{kpi.issues}</h3></div>
-                     <div className="p-3 bg-red-500/10 rounded-xl text-red-500"><AlertCircle className="w-6 h-6" /></div>
+               </div>
+
+               {/* Orders - Blue Theme */}
+               <div className="relative overflow-hidden rounded-[2rem] p-4 md:p-6 bg-gradient-to-br from-blue-500/20 via-black to-black border border-blue-500/20 shadow-[0_0_30px_rgba(59,130,246,0.1)] group">
+                  <div className="absolute top-0 right-0 p-4 opacity-20 group-hover:opacity-40 transition-opacity">
+                     <BarChart3 className="w-12 h-12 text-blue-500" />
                   </div>
-               </SoshaCard>
-               <SoshaCard className="p-6">
-                  <div className="flex justify-between items-start">
-                     <div><p className="text-xs text-gray-500 uppercase font-bold tracking-wider">Staff On Shift</p><h3 className="text-3xl font-bold text-foreground mt-2">{kpi.staffActive}</h3></div>
-                     <div className="p-3 bg-green-500/10 rounded-xl text-green-500"><Users className="w-6 h-6" /></div>
+                  <div className="relative z-10">
+                     <p className="text-[9px] md:text-[10px] font-black text-blue-500 uppercase tracking-widest mb-1 md:mb-2">Total Orders</p>
+                     <h3 className="text-2xl md:text-3xl font-black text-white tracking-tight">{kpi.orders}</h3>
                   </div>
-               </SoshaCard>
+               </div>
+
+               {/* Issues - Red Theme (or Gray if 0) */}
+               <div className={cn(
+                  "relative overflow-hidden rounded-[2rem] p-4 md:p-6 bg-gradient-to-br border shadow-lg group transition-all",
+                  kpi.issues > 0
+                     ? "from-red-500/20 via-black to-black border-red-500/40 shadow-[0_0_30px_rgba(239,68,68,0.2)]"
+                     : "from-zinc-800/50 via-black to-black border-white/5"
+               )}>
+                  <div className="absolute top-0 right-0 p-4 opacity-20 group-hover:opacity-40 transition-opacity">
+                     <AlertCircle className={cn("w-12 h-12", kpi.issues > 0 ? "text-red-500" : "text-zinc-600")} />
+                  </div>
+                  <div className="relative z-10">
+                     <p className={cn("text-[9px] md:text-[10px] font-black uppercase tracking-widest mb-1 md:mb-2", kpi.issues > 0 ? "text-red-500" : "text-zinc-500")}>Issues</p>
+                     <h3 className={cn("text-2xl md:text-3xl font-black tracking-tight", kpi.issues > 0 ? "text-white" : "text-zinc-400")}>{kpi.issues}</h3>
+                  </div>
+               </div>
+
+               {/* Staff - Green Theme */}
+               <div className="relative overflow-hidden rounded-[2rem] p-4 md:p-6 bg-gradient-to-br from-green-500/20 via-black to-black border border-green-500/20 shadow-[0_0_30px_rgba(34,197,94,0.1)] group">
+                  <div className="absolute top-0 right-0 p-4 opacity-20 group-hover:opacity-40 transition-opacity">
+                     <Users className="w-12 h-12 text-green-500" />
+                  </div>
+                  <div className="relative z-10">
+                     <p className="text-[9px] md:text-[10px] font-black text-green-500 uppercase tracking-widest mb-1 md:mb-2">Staff Active</p>
+                     <h3 className="text-2xl md:text-3xl font-black text-white tracking-tight">{kpi.staffActive}</h3>
+                  </div>
+               </div>
             </div>
 
-            <SoshaCard indicatorColor="purple">
-               <div className="flex flex-row items-center justify-between mb-6">
-                  <SoshaCardTitle className="flex items-center gap-2"><List className="w-5 h-5 text-blue-400" /> Live Active Orders</SoshaCardTitle>
-                  <Badge variant="outline" className="border-gray-700 text-gray-300">{liveActiveOrders.length} Active</Badge>
+            <SoshaCard indicatorColor="purple" className="border-purple-500/20">
+               <div className="flex flex-row items-center justify-between mb-4 md:mb-6 pl-1">
+                  <SoshaCardTitle className="flex items-center gap-3">
+                     <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-blue-500/20 text-blue-400">
+                        <List className="w-4 h-4" />
+                     </span>
+                     <span>Live Active Orders</span>
+                  </SoshaCardTitle>
+                  <Badge variant="outline" className="border-blue-500/30 text-blue-400 bg-blue-500/10 px-3 py-1 text-[10px] uppercase font-black tracking-wider">
+                     {liveActiveOrders.length} Active
+                  </Badge>
                </div>
                {liveActiveOrders.length === 0 ? (<div className="h-32 flex items-center justify-center text-gray-500 bg-white/5 rounded-2xl border border-white/5 border-dashed">No active orders.</div>) : (
                   <div className="flex gap-4 overflow-x-auto pb-4 custom-scrollbar">
@@ -173,9 +208,19 @@ const ManagerDashboard: React.FC = () => {
                   <SoshaCardTitle className="flex items-center gap-2 mb-4"><Clock className="w-5 h-5 text-green-500" /> Active Team</SoshaCardTitle>
                   <div className="flex-1 overflow-y-auto pr-2 space-y-3 custom-scrollbar">
                      {shiftStaff.map((staff, i) => (
-                        <div key={i} className="flex items-center justify-between p-3 rounded-xl bg-white/5 hover:bg-white/10 transition-colors border border-white/5">
-                           <div><p className="text-sm font-bold text-white capitalize">{staff.name}</p><p className="text-[10px] text-gray-500 capitalize font-bold">{staff.role} • {staff.duration}</p></div>
-                           <div className="w-2.5 h-2.5 rounded-full bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.5)]" />
+                        <div key={i} className="flex items-center justify-between p-3 rounded-2xl bg-white/5 hover:bg-white/10 transition-colors border border-white/5 group">
+                           <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-zinc-800 to-black border border-white/10 flex items-center justify-center text-xs font-black text-gray-400 group-hover:text-white group-hover:border-primary/50 transition-colors">
+                                 {staff.name.substring(0, 2).toUpperCase()}
+                              </div>
+                              <div>
+                                 <p className="text-sm font-bold text-white capitalize">{staff.name}</p>
+                                 <p className="text-[10px] text-gray-500 capitalize font-bold">{staff.role} • {staff.duration}</p>
+                              </div>
+                           </div>
+                           <div className="relative">
+                              <div className="w-2.5 h-2.5 rounded-full bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.5)] animate-pulse" />
+                           </div>
                         </div>
                      ))}
                   </div>

@@ -10,7 +10,7 @@ import {
    AlertTriangle, History, Eye, MapPin,
    Users, TrendingUp, DollarSign, Timer, BarChart3,
    Calendar, Zap, LayoutGrid, Search, Filter, Plus,
-   Sparkles, Trash2, Lock
+   Sparkles, Trash2, Lock, CreditCard, ChevronRight
 } from 'lucide-react';
 import { Table, TableZone, Order } from '../types';
 import { useAuth } from '../AuthContext';
@@ -21,6 +21,8 @@ import { RoleGuard } from '../components/RoleGuard';
 import { analyticsService, TableMetric } from '../services/analyticsService';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FloorMapCanvas } from '../components/FloorMapCanvas';
+import { TableOrderHistory } from '../components/TableOrderHistory';
+import { OrderDetailsModal } from '../components/OrderDetailsModal';
 
 const TableStatus: React.FC = () => {
    const { profile } = useAuth();
@@ -55,6 +57,13 @@ const TableStatus: React.FC = () => {
    const [isAnalyticsMode, setIsAnalyticsMode] = useState(true);
    const [isMapView, setIsMapView] = useState(false);
    const canViewAnalytics = hasPermission('canViewAnalytics');
+
+   // Table History State
+   const [selectedTableHistory, setSelectedTableHistory] = useState<{ id: string, number: string } | null>(null);
+   const [tableOrders, setTableOrders] = useState<Order[]>([]);
+   const [historyLoading, setHistoryLoading] = useState(false);
+   const [historyView, setHistoryView] = useState<'daily' | 'weekly' | 'monthly'>('daily');
+   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
 
    // 1. Fetch Live Data (Filtered by Active Branch)
    const { data: tables, isLoading, refetch } = useQuery({
@@ -243,6 +252,33 @@ const TableStatus: React.FC = () => {
       }
    };
 
+   const fetchTableOrders = async (tableId: string) => {
+      setHistoryLoading(true);
+      try {
+         const { data, error } = await supabase
+            .from('orders')
+            .select(`
+               *,
+               waiter:profiles!orders_waiter_id_fkey (id, full_name, role),
+               order_items (
+                  id,
+                  quantity,
+                  price,
+                  menu_item:menu (name)
+               )
+            `)
+            .eq('table_id', tableId)
+            .order('created_at', { ascending: false });
+
+         if (error) throw error;
+         setTableOrders(data as unknown as Order[] || []);
+      } catch (err: any) {
+         showToast("Failed to load table history", "error");
+      } finally {
+         setHistoryLoading(false);
+      }
+   };
+
    return (
       <DashboardLayout title="Floor Status" subtitle={isAnalyticsMode ? "Performance Heatmap (Today)" : "Real-time occupancy visualization"}>
          <div className="space-y-6 animate-in fade-in duration-500 pb-20">
@@ -342,27 +378,141 @@ const TableStatus: React.FC = () => {
                />
             )}
 
-            {/* Card Grid View */}
+            {/* Card Grid View (Desktop) */}
             {!isMapView && (
-               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                  {filteredTables?.map((table) => {
-                     const metric = analyticsData?.find(m => m.table_id === table.id);
-                     return (
-                        <TableCard
-                           key={table.id}
-                           table={table}
-                           currentTime={currentTime}
-                           onQuickOrder={handleQuickOrder}
-                           isAnalyticsMode={isAnalyticsMode}
-                           metric={metric}
-                        />
-                     );
-                  })}
-               </div>
+               <>
+                  {/* Mobile List View */}
+                  <div className="md:hidden space-y-3">
+                     {filteredTables?.map((table) => {
+                        const metric = analyticsData?.find(m => m.table_id === table.id);
+                        const score = metric?.score || 0;
+                        let scoreColor = "text-red-500";
+                        if (score >= 90) scoreColor = "text-green-500";
+                        else if (score >= 80) scoreColor = "text-green-400";
+                        else if (score >= 65) scoreColor = "text-primary";
+                        else if (score >= 50) scoreColor = "text-orange-400";
+
+                        return (
+                           <div key={table.id} className="bg-black/40 border border-white/10 rounded-2xl p-4 flex items-center justify-between backdrop-blur-md">
+                              <div className="flex items-center gap-4">
+                                 <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center border font-black text-lg bg-white/5", scoreColor, `border-${scoreColor.split('-')[1]}-500/20`)}>
+                                    {table.table_number}
+                                 </div>
+                                 <div>
+                                    <div className="flex items-center gap-2">
+                                       <span className="text-[10px] font-black uppercase text-zinc-500 tracking-widest">{table.zone}</span>
+                                       {metric?.is_camper && <AlertTriangle className="w-3 h-3 text-red-500 animate-bounce" />}
+                                    </div>
+                                    <div className="flex items-center gap-3 mt-1">
+                                       <span className="text-xs font-bold text-white flex items-center gap-1">
+                                          <DollarSign className="w-3 h-3 text-zinc-500" /> {metric?.revenue_per_hour || 0}/hr
+                                       </span>
+                                       <span className="text-[10px] font-bold text-zinc-500 bg-white/5 px-1.5 py-0.5 rounded-md">
+                                          Score: {score}
+                                       </span>
+                                    </div>
+                                 </div>
+                              </div>
+                              <Button
+                                 size="sm"
+                                 variant="ghost"
+                                 onClick={() => {
+                                    if (isAnalyticsMode) {
+                                       setSelectedTableHistory({ id: table.id, number: table.table_number });
+                                       fetchTableOrders(table.id);
+                                    } else {
+                                       handleQuickOrder(table);
+                                    }
+                                 }}
+                                 className="h-10 w-10 p-0 rounded-full border border-white/10"
+                              >
+                                 <ChevronRight className="w-5 h-5 text-zinc-400" />
+                              </Button>
+                           </div>
+                        );
+                     })}
+                  </div>
+
+                  {/* Desktop Grid View */}
+                  <div className="hidden md:grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-6">
+                     {filteredTables?.map((table) => {
+                        const metric = analyticsData?.find(m => m.table_id === table.id);
+                        return (
+                           <TableCard
+                              key={table.id}
+                              table={table}
+                              currentTime={currentTime}
+                              onQuickOrder={handleQuickOrder}
+                              isAnalyticsMode={isAnalyticsMode}
+                              metric={metric}
+                              onViewHistory={(id, num) => {
+                                 setSelectedTableHistory({ id, number: num });
+                                 fetchTableOrders(id);
+                              }}
+                           />
+                        );
+                     })}
+                  </div>
+               </>
             )}
          </div>
 
          <CreateOrderModal isOpen={isOrderModalOpen} onClose={() => setIsOrderModalOpen(false)} initialTableNo={orderInitialTable} appendOrderId={orderAppendId} onOrderCreated={refetch} />
+
+         {/* Table Order History Dialog */}
+         <Dialog
+            isOpen={!!selectedTableHistory}
+            onClose={() => setSelectedTableHistory(null)}
+            title={`Table History: #${selectedTableHistory?.number}`}
+            className="max-w-4xl"
+         >
+            <div className="space-y-6">
+               <div className="flex bg-black/40 p-1.5 rounded-xl border border-white/5 backdrop-blur-md self-start w-fit">
+                  {(['daily', 'weekly', 'monthly'] as const).map(v => (
+                     <button
+                        key={v}
+                        onClick={() => setHistoryView(v)}
+                        className={cn(
+                           "px-4 py-2 text-[10px] font-black rounded-lg transition-all uppercase tracking-widest",
+                           historyView === v ? "bg-primary text-black shadow-lg" : "text-gray-500 hover:text-white"
+                        )}
+                     >
+                        {v}
+                     </button>
+                  ))}
+               </div>
+
+               <div className="max-h-[65vh] overflow-y-auto px-4 -mx-4 custom-scrollbar space-y-2">
+                  {historyLoading ? (
+                     <div className="flex flex-col items-center justify-center py-20 opacity-30">
+                        <RefreshCw className="w-10 h-10 animate-spin mb-4 text-primary" strokeWidth={3} />
+                        <p className="text-[10px] font-black uppercase tracking-[0.3em]">Syncing Table History...</p>
+                     </div>
+                  ) : (
+                     <TableOrderHistory
+                        orders={tableOrders}
+                        view={historyView}
+                        onOrderClick={(order) => setSelectedOrder(order)}
+                     />
+                  )}
+               </div>
+
+               <div className="pt-6 border-t border-white/5">
+                  <button
+                     onClick={() => setSelectedTableHistory(null)}
+                     className="w-full bg-white text-black font-black rounded-xl h-12 uppercase tracking-widest text-xs shadow-xl transition-transform active:scale-95"
+                  >
+                     Exit History
+                  </button>
+               </div>
+            </div>
+         </Dialog>
+
+         <OrderDetailsModal
+            isOpen={!!selectedOrder}
+            onClose={() => setSelectedOrder(null)}
+            order={selectedOrder}
+         />
 
          {/* Add Table Modal */}
          <Dialog isOpen={isAddTableModalOpen} onClose={() => !isAddingTable && setIsAddTableModalOpen(false)} title="Add New Table">
@@ -594,7 +744,15 @@ const TableStatus: React.FC = () => {
 
 const StatPill = ({ label, value, icon: Icon, color }: any) => {
    const colors: any = { default: 'text-gray-400', green: 'text-green-500 bg-green-500/10', red: 'text-red-500 bg-red-500/10', yellow: 'text-yellow-500 bg-yellow-500/10', blue: 'text-blue-400 bg-blue-400/10' };
-   return <div className={cn("px-5 py-4 rounded-[1.5rem] border border-white/5 flex flex-col gap-1 transition-all", colors[color || 'default'])}><div className="flex items-center justify-between"><span className="text-[10px] font-black uppercase tracking-widest opacity-60">{label}</span><Icon className="w-3.5 h-3.5 opacity-60" /></div><span className="text-2xl font-black tracking-tighter">{value}</span></div>;
+   return (
+      <div className={cn("px-5 py-4 rounded-[1.5rem] border border-white/5 flex flex-col gap-1 transition-all", colors[color || 'default'])}>
+         <div className="flex items-center justify-between">
+            <span className="text-[10px] font-black uppercase tracking-widest opacity-60">{label}</span>
+            <Icon className="w-3.5 h-3.5 opacity-60" />
+         </div>
+         <span className="text-2xl font-black tracking-tighter">{value}</span>
+      </div>
+   );
 };
 
 interface TableCardProps {
@@ -603,13 +761,16 @@ interface TableCardProps {
    onQuickOrder: (table: any) => void;
    isAnalyticsMode?: boolean;
    metric?: TableMetric;
+   onViewHistory?: (tableId: string, tableNumber: string) => void;
 }
 
-const TableCard: React.FC<TableCardProps> = ({ table, currentTime, onQuickOrder, isAnalyticsMode, metric }) => {
+const TableCard: React.FC<TableCardProps> = ({ table, currentTime, onQuickOrder, isAnalyticsMode, metric, onViewHistory }) => {
+   const { profile } = useAuth();
    const isOccupied = table.status === 'occupied';
    const isDirty = table.status === 'needs_cleaning';
-   const isAvailable = table.status === 'available';
    const elapsedMins = table.active_session ? Math.floor((currentTime.getTime() - new Date(table.active_session.seated_at).getTime()) / 60000) : 0;
+
+   const isAdmin = profile?.role === 'admin' || profile?.role === 'owner';
 
    // 1. Analytics View Render
    if (isAnalyticsMode) {
@@ -625,55 +786,58 @@ const TableCard: React.FC<TableCardProps> = ({ table, currentTime, onQuickOrder,
 
       return (
          <SoshaCard className={cn(
-            "p-0 flex flex-col h-64 transition-all duration-500 group relative overflow-hidden bg-black/40 backdrop-blur-3xl border border-white/10 rounded-[2.5rem]",
+            "p-0 flex flex-col h-auto min-h-[14rem] md:h-64 transition-all duration-500 group relative overflow-hidden bg-black/40 backdrop-blur-3xl border border-white/10 rounded-[1.5rem] md:rounded-[2.5rem]",
             "hover:border-primary/50 hover:shadow-[0_0_50px_rgba(255,193,7,0.15)] pulse-border"
          )}>
             {/* Glossy Gradient Overlay */}
             <div className="absolute inset-0 bg-gradient-to-br from-white/5 via-transparent to-transparent pointer-events-none" />
 
-            <div className="p-6 flex flex-col h-full relative z-10">
-               <div className="flex justify-between items-start mb-4">
+            <div className="p-3 md:p-6 flex flex-col h-full relative z-10">
+               <div className="flex justify-between items-center mb-2 md:mb-4">
                   <div>
-                     <span className="text-[10px] font-black uppercase tracking-[0.3em] text-zinc-500 mb-1 block">Station</span>
-                     <h3 className="text-4xl font-black tracking-tighter text-white leading-none">{table.table_number}</h3>
+                     <span className="text-[8px] md:text-[10px] font-black uppercase tracking-[0.2em] md:tracking-[0.3em] text-zinc-500 mb-0.5 block">Station</span>
+                     <h3 className="text-2xl md:text-4xl font-black tracking-tighter text-white leading-none">{table.table_number}</h3>
                   </div>
-                  <div className="relative flex items-center justify-center">
-                     <svg className="w-16 h-16 transform -rotate-90">
-                        <circle cx="32" cy="32" r="28" fill="transparent" stroke="currentColor" strokeWidth="4" className="text-white/5" />
-                        <motion.circle
-                           cx="32" cy="32" r="28" fill="transparent" stroke="currentColor" strokeWidth="4"
-                           strokeDasharray={176}
-                           initial={{ strokeDashoffset: 176 }}
-                           animate={{ strokeDashoffset: 176 - (176 * score) / 100 }}
-                           transition={{ duration: 1.5, ease: "easeOut" }}
-                           className={scoreColor}
-                        />
-                     </svg>
-                     <div className="absolute flex flex-col items-center">
-                        <span className={cn("text-2xl font-black tracking-tighter", scoreColor)}>{grade}</span>
+                  {isAdmin && (
+                     <div className="relative flex items-center justify-center">
+                        <svg className="w-10 h-10 md:w-16 md:h-16 transform -rotate-90" viewBox="0 0 64 64">
+                           <circle cx="32" cy="32" r="28" fill="transparent" stroke="currentColor" strokeWidth="4" className="text-white/5" />
+                           <motion.circle
+                              cx="32" cy="32" r="28" fill="transparent" stroke="currentColor" strokeWidth="4"
+                              strokeDasharray={176}
+                              initial={{ strokeDashoffset: 176 }}
+                              animate={{ strokeDashoffset: 176 - (176 * score) / 100 }}
+                              transition={{ duration: 1.5, ease: "easeOut" }}
+                              className={scoreColor}
+                           />
+                        </svg>
+                        <div className="absolute flex flex-col items-center">
+                           <span className={cn("text-lg md:text-2xl font-black tracking-tighter", scoreColor)}>{grade}</span>
+                        </div>
                      </div>
-                  </div>
+                  )}
                </div>
 
-               <div className="mt-auto grid grid-cols-1 gap-2">
-                  <div className="flex flex-col p-3 rounded-2xl bg-white/5 border border-white/5 backdrop-blur-md">
-                     <span className="text-[9px] uppercase font-black tracking-widest text-zinc-500 mb-1">Rev / Hour</span>
-                     <div className="flex items-end justify-between">
-                        <span className="text-xl font-black tracking-tighter text-white">ETB {metric?.revenue_per_hour || 0}</span>
-                        <Zap className="w-3.5 h-3.5 text-primary mb-1" />
+               {isAdmin && (
+                  <div className="grid grid-cols-2 gap-1.5 md:gap-2 mb-2 md:mb-4">
+                     <div className="bg-white/5 p-1.5 md:p-2 rounded-lg md:rounded-xl border border-white/5">
+                        <p className="text-[7px] md:text-[8px] font-black text-zinc-500 uppercase tracking-widest">Rev/Hr</p>
+                        <p className="text-xs md:text-sm font-black text-white font-mono truncate">ETB {metric?.revenue_per_hour || 0}</p>
+                     </div>
+                     <div className="bg-white/5 p-1.5 md:p-2 rounded-lg md:rounded-xl border border-white/5">
+                        <p className="text-[7px] md:text-[8px] font-black text-zinc-500 uppercase tracking-widest">Turns</p>
+                        <p className="text-xs md:text-sm font-black text-white font-mono">{metric?.turnover_rate || 0}</p>
                      </div>
                   </div>
+               )}
 
-                  <div className="grid grid-cols-2 gap-2">
-                     <div className="flex flex-col p-2.5 rounded-xl bg-white/5 border border-white/5">
-                        <span className="text-[8px] uppercase font-black tracking-widest text-zinc-500 mb-0.5">Turnover</span>
-                        <span className="text-sm font-bold text-white">{metric?.avg_duration_minutes || 0}m</span>
-                     </div>
-                     <div className="flex flex-col p-2.5 rounded-xl bg-white/5 border border-white/5">
-                        <span className="text-[8px] uppercase font-black tracking-widest text-zinc-500 mb-0.5">Sessions</span>
-                        <span className="text-sm font-bold text-white">{metric?.total_sessions || 0}</span>
-                     </div>
-                  </div>
+               <div className="mt-auto space-y-2 md:space-y-3">
+                  <Button
+                     onClick={() => onViewHistory?.(table.id, table.table_number)}
+                     className="w-full bg-primary/10 border border-primary/20 text-primary hover:bg-primary hover:text-black font-black text-[9px] md:text-[10px] uppercase tracking-widest h-8 md:h-12 rounded-xl md:rounded-2xl transition-all"
+                  >
+                     History
+                  </Button>
                </div>
 
                {/* Absolute Badges for Alerts */}

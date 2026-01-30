@@ -9,7 +9,9 @@ import { cn, Button } from './ui';
 import { LeafBubbleBackground } from './LeafBubbleBackground';
 import { BackgroundMascots, MascotVariant } from './BackgroundMascots';
 import { Sidebar } from './Sidebar';
+import { Header } from './Header';
 import { RoleGuard } from './RoleGuard';
+import SoshaMenubar from './SoshaMenubar';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -27,6 +29,8 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, titl
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isProfileActive, setIsProfileActive] = useState(false);
+  const profileRef = React.useRef<HTMLButtonElement>(null);
 
   const handleLogout = async () => {
     await signOut();
@@ -53,7 +57,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, titl
   );
 
   return (
-    <div className="flex h-screen bg-background overflow-hidden selection:bg-primary selection:text-black">
+    <div className="flex h-screen bg-[#09090b] text-white overflow-hidden selection:bg-primary selection:text-black">
       <LeafBubbleBackground />
       <div className="fixed inset-0 z-0 bg-gradient-to-b from-background via-background to-transparent transition-colors duration-500 pointer-events-none">
         <BackgroundMascots variant={mascotVariant} />
@@ -65,47 +69,34 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, titl
         handleLogout={handleLogout}
       />
 
-      {/* Mobile Nav Trigger */}
-      <div className="md:hidden fixed top-0 left-0 right-0 h-16 bg-card/80 backdrop-blur-xl border-b border-border z-[100] px-4 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <span className="font-bold text-sm tracking-tighter">Sosha OS</span>
+      {/* Mobile Header with Base UI Menubar */}
+      <div className="md:hidden fixed top-0 left-0 right-0 h-16 bg-black/80 backdrop-blur-xl border-b border-white/10 z-[100] px-4 flex items-center justify-between">
+        <span className="font-black text-sm tracking-tighter text-white">Sosha OS</span>
+        {/* New compact Mobile Menu Bar using Base UI */}
+        <div className="transform scale-90 origin-right">
+          <SoshaMenubar />
         </div>
-        <Button variant="ghost" size="icon" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
-          {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-        </Button>
       </div>
 
-      {/* Mobile Sidebar */}
-      {isMobileMenuOpen && (
-        <div className="md:hidden fixed inset-0 z-[90] bg-background">
-          <div className="flex flex-col h-full pt-20 px-6">
-            <nav className="flex-1 space-y-2 overflow-y-auto">
-              <MobileNavItem icon={LayoutDashboard} label={t('nav.dashboard')} path="/admin" allowedRoles={['owner', 'admin']} />
-              <MobileNavItem icon={LayoutDashboard} label={t('nav.opsDashboard')} path="/manager" allowedRoles={['manager']} />
-              <MobileNavItem icon={LayoutDashboard} label={t('nav.myStation')} path="/waiter" allowedRoles={['waiter']} />
-              <MobileNavItem icon={Monitor} label="Floor Status" path="/tables" allowedRoles={['waiter', 'manager', 'admin', 'owner']} />
-              <MobileNavItem icon={BookOpen} label={t('nav.menuManagement')} path="/admin/menu" allowedRoles={['owner', 'admin', 'manager']} />
-              <MobileNavItem icon={ShoppingBag} label={t('nav.inventory')} path="/inventory" allowedRoles={['manager', 'admin', 'owner']} />
-              <MobileNavItem icon={Users} label={t('nav.staffPerf')} path="/admin/staff-performance" allowedRoles={['owner', 'admin']} />
-              <MobileNavItem icon={ClipboardList} label={t('nav.settings')} path="/settings" allowedRoles={['admin', 'owner']} />
-            </nav>
-            <div className="pb-10 space-y-4">
-              <Button variant="destructive" className="w-full h-14 rounded-2xl text-lg font-bold" onClick={handleLogout}>
-                {t('common.logout')}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <main className="flex-1 flex flex-col h-full overflow-hidden relative z-10 pt-16 md:pt-0">
+      <main className="flex-1 flex flex-col h-full overflow-hidden relative z-10">
+        <Header
+          title={title}
+          subtitle={subtitle}
+          profile={profile}
+          displayName={displayName}
+          role={role}
+          isProfileActive={isProfileActive}
+          setIsProfileActive={setIsProfileActive}
+          profileRef={profileRef}
+          handleLogout={handleLogout}
+        />
         {actions && (
           <div className="flex-none px-8 py-4 bg-black/10 border-b border-white/5">
             {actions}
           </div>
         )}
 
-        <div className={cn("flex-1 overflow-y-auto p-8 relative custom-scrollbar", className)}>
+        <div className={cn("flex-1 overflow-y-auto p-4 md:p-6 relative custom-scrollbar", className)}>
           {children}
         </div>
       </main>

@@ -194,10 +194,10 @@ export interface WasteLog {
   id: string;
   ingredient_id: string;
   quantity: number;
-  waste_category: WasteCategory;
-  reason: string;
-  cost: number;
-  logged_by: string;
+  waste_reason: WasteCategory;
+  notes: string;
+  cost_snapshot: number;
+  reported_by: string;
   created_at: string;
   ingredient?: { name: string; unit_type: string };
 }
