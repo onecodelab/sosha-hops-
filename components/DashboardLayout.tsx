@@ -69,9 +69,15 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, titl
         handleLogout={handleLogout}
       />
 
-      {/* Mobile Header with Base UI Menubar */}
-      <div className="md:hidden fixed top-0 left-0 right-0 h-16 bg-black/80 backdrop-blur-xl border-b border-white/10 z-[100] px-4 flex items-center justify-between">
-        <span className="font-black text-sm tracking-tighter text-white">Sosha OS</span>
+      {/* Mobile Header with refined Sosha style */}
+      <div className="md:hidden fixed top-0 left-0 right-0 h-16 bg-black/40 backdrop-blur-2xl border-b border-white/5 z-[100] px-4 flex items-center justify-between overflow-hidden">
+        {/* Subtle Header Glow */}
+        <div className="absolute -top-10 left-10 w-32 h-32 bg-primary/20 blur-[100px] rounded-full pointer-events-none" />
+
+        <span className="font-black text-xs uppercase tracking-widest text-white/90 drop-shadow-md">
+          Sosha <span className="text-primary italic">OS</span>
+        </span>
+
         {/* New compact Mobile Menu Bar using Base UI */}
         <div className="transform scale-90 origin-right">
           <SoshaMenubar />

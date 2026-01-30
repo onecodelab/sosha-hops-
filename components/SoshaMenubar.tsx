@@ -21,7 +21,7 @@ export default function SoshaMenubar() {
     };
 
     return (
-        <Menubar className="flex rounded-xl border border-white/10 bg-black/80 backdrop-blur-xl p-1 shadow-2xl">
+        <Menubar className="flex rounded-xl border border-white/5 bg-black/40 backdrop-blur-2xl p-1 shadow-[0_0_20px_rgba(0,0,0,0.5)]">
             {/* APPS MENU */}
             <Menu.Root>
                 <Menu.Trigger className="h-9 rounded-lg px-4 text-sm font-black uppercase tracking-wider text-gray-400 outline-none select-none hover:bg-white/5 data-[popup-open]:bg-white/10 data-[popup-open]:text-white transition-all">
