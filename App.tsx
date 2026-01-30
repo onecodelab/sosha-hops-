@@ -19,6 +19,7 @@ import MenuManagement from './pages/MenuManagement';
 import Inventory from './pages/Inventory';
 import StaffPerformance from './pages/StaffPerformance';
 import AdminStaffPerformance from './pages/AdminStaffPerformance';
+import { ChatWidget } from './components/ChatWidget';
 import AdminTableMap from './pages/AdminTableMap';
 import AdminFloorAnalytics from './pages/AdminFloorAnalytics';
 import TableStatus from './pages/TableStatus';
@@ -181,6 +182,7 @@ const App: React.FC = () => {
           </AuthProvider>
         </HashRouter>
       </LanguageProvider>
+      <ChatWidget />
       <ReactQueryDevtools initialIsOpen={false} />
     </QueryClientProvider>
   );
