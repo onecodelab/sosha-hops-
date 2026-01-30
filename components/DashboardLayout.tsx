@@ -59,7 +59,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, titl
   return (
     <div className="flex h-screen bg-[#09090b] text-white overflow-hidden selection:bg-primary selection:text-black">
       <LeafBubbleBackground />
-      <div className="fixed inset-0 z-0 bg-gradient-to-b from-background via-background to-transparent transition-colors duration-500 pointer-events-none">
+      <div className="fixed inset-0 z-0 transition-colors duration-500 pointer-events-none">
         <BackgroundMascots variant={mascotVariant} />
       </div>
 
