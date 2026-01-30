@@ -5,7 +5,7 @@ import { DashboardLayout } from '../components/DashboardLayout';
 import { SoshaCard, SoshaCardTitle } from '../components/SoshaCard';
 import {
    TrendingUp, Users, ShoppingBag, AlertTriangle,
-   RefreshCw, DollarSign, Activity, ClipboardList, List, Eye, Filter, User, ShieldCheck, Search, Calendar
+   RefreshCw, DollarSign, Activity, ClipboardList, List, Eye, Filter, User, ShieldCheck, Search, Calendar, LayoutList
 } from 'lucide-react';
 import { cn, Badge, Button, showToast, Card } from '../components/ui';
 import { supabase } from '../supabase';
@@ -254,7 +254,8 @@ const AdminDashboard: React.FC = () => {
 
             {/* Top Compact Metrics Bar */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6 shrink-0">
-               <Card variant="elevated" className="p-4 md:p-5 border-l-4 border-l-yellow-500 rounded-2xl relative overflow-hidden group">
+               <div className="bg-[#1A1A1A] border border-gray-800 rounded-3xl p-6 relative overflow-hidden group hover:border-amber-500/30 transition-all">
+                  <div className="absolute inset-0 bg-gradient-to-br from-amber-600/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
                   <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
                      <DollarSign className="w-12 h-12" />
                   </div>
@@ -262,7 +263,7 @@ const AdminDashboard: React.FC = () => {
                      <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest leading-none mb-2">Revenue Today</p>
                      <h3 className="text-2xl font-black text-foreground tracking-tight">ETB {stats.totalRevenue.toLocaleString()}</h3>
                   </div>
-               </Card>
+               </div>
 
                <Card
                   variant="interactive"
@@ -288,44 +289,46 @@ const AdminDashboard: React.FC = () => {
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-auto md:h-full md:min-h-0 md:flex-1 pb-20 md:pb-0">
                {/* Left Col: Live Production Board (Takes 4 cols) */}
                <div className="lg:col-span-4 flex flex-col md:min-h-0 space-y-4 h-[500px] md:h-auto shrink-0">
-                  <div className="flex items-center justify-between px-2 shrink-0">
-                     <h3 className="text-[10px] font-black text-gray-500 flex items-center gap-2 uppercase tracking-[0.2em]">
-                        <List className="w-3.5 h-3.5 text-primary" /> Live Production
-                     </h3>
+                  <div className="bg-[#1A1A1A] border border-gray-800 rounded-3xl p-6 flex flex-col h-[400px]">
+                     <div className="flex items-center justify-between mb-6">
+                        <h3 className="text-sm font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                           <LayoutList className="w-4 h-4" /> Live Production
+                        </h3>
 
-                     <div className="flex items-center gap-2">
-                        <select
-                           value={selectedStaffId}
-                           onChange={(e) => setSelectedStaffId(e.target.value)}
-                           className="bg-black/40 border border-white/10 rounded-lg px-3 py-1.5 text-[10px] font-black text-white hover:border-primary/30 transition-all outline-none"
-                        >
-                           <option value="all">ALL STAFF</option>
-                           {staffList.map(s => (
-                              <option key={s.id} value={s.id}>{s.full_name}</option>
-                           ))}
-                        </select>
-                        <Button variant="outline" size="icon" onClick={fetchDashboardData} className="h-9 w-9">
-                           <RefreshCw className={cn("w-3.5 h-3.5", loading && "animate-spin")} />
-                        </Button>
+                        <div className="flex items-center gap-2">
+                           <select
+                              value={selectedStaffId}
+                              onChange={(e) => setSelectedStaffId(e.target.value)}
+                              className="bg-[#111] border border-gray-800 rounded-lg px-3 py-1.5 text-[10px] font-black text-white hover:border-primary/30 transition-all outline-none"
+                           >
+                              <option value="all">ALL STAFF</option>
+                              {staffList.map(s => (
+                                 <option key={s.id} value={s.id}>{s.full_name}</option>
+                              ))}
+                           </select>
+                           <Button variant="outline" size="icon" onClick={fetchDashboardData} className="h-9 w-9">
+                              <RefreshCw className={cn("w-3.5 h-3.5", loading && "animate-spin")} />
+                           </Button>
+                        </div>
                      </div>
-                  </div>
 
-                  <Card variant="default" className="flex-1 overflow-y-auto custom-scrollbar p-2 bg-black/40">
-                     {filteredActiveOrders.length === 0 ? (
-                        <div className="h-full flex flex-col items-center justify-center text-gray-700 gap-4 opacity-40">
-                           <Activity className="w-8 h-8" />
-                           <span className="text-[10px] font-black uppercase tracking-[0.3em]">Operational Clear</span>
-                        </div>
-                     ) : (
-                        <div className="space-y-3">
-                           {filteredActiveOrders.map(order => (
-                              <div key={order.id} className="w-full">
-                                 <OrderCard order={order} role="manager" onAction={handleOrderAction} />
-                              </div>
-                           ))}
-                        </div>
-                     )}
-                  </Card>
+                     <Card variant="default" className="flex-1 overflow-y-auto custom-scrollbar p-2 bg-[#111] border-gray-800">
+                        {filteredActiveOrders.length === 0 ? (
+                           <div className="h-full flex flex-col items-center justify-center text-gray-700 gap-4 opacity-40">
+                              <Activity className="w-8 h-8" />
+                              <span className="text-[10px] font-black uppercase tracking-[0.3em]">Operational Clear</span>
+                           </div>
+                        ) : (
+                           <div className="space-y-3">
+                              {filteredActiveOrders.map(order => (
+                                 <div key={order.id} className="w-full">
+                                    <OrderCard order={order} role="manager" onAction={handleOrderAction} />
+                                 </div>
+                              ))}
+                           </div>
+                        )}
+                     </Card>
+                  </div>
                </div>
 
                {/* Right Col: Transaction Audit (Takes 8 cols) */}
@@ -345,12 +348,12 @@ const AdminDashboard: React.FC = () => {
                                  placeholder="Audit Search..."
                                  value={searchQuery}
                                  onChange={(e) => setSearchQuery(e.target.value)}
-                                 className="bg-black/40 border border-white/10 rounded-xl pl-9 pr-4 py-2 text-[10px] text-white focus:outline-none focus:border-primary/50 transition-all w-40 font-bold"
+                                 className="bg-[#111] border border-gray-800 rounded-xl pl-9 pr-4 py-2 text-[10px] text-white focus:outline-none focus:border-primary/50 transition-all w-40 font-bold"
                               />
                            </div>
 
                            {/* Date Filter */}
-                           <div className="flex bg-black/60 rounded-xl p-1 border border-white/5">
+                           <div className="flex bg-[#111] rounded-xl p-1 border border-gray-800">
                               {(['today', 'yesterday', 'week', 'all'] as const).map((d) => (
                                  <button
                                     key={d}
@@ -365,7 +368,7 @@ const AdminDashboard: React.FC = () => {
                               ))}
                            </div>
 
-                           <div className="flex gap-1.5 pl-3 border-l border-white/10">
+                           <div className="flex gap-1.5 pl-3 border-l border-gray-800">
                               {(['all', 'cash', 'digital'] as const).map((filter) => (
                                  <Button
                                     key={filter}
@@ -395,7 +398,7 @@ const AdminDashboard: React.FC = () => {
                                  <th className="px-3 py-2 text-right">Status</th>
                               </tr>
                            </thead>
-                           <tbody className="divide-y divide-white/5">
+                           <tbody className="divide-y divide-gray-800">
                               {filteredAuditLog.map(order => (
                                  <tr
                                     key={order.id}

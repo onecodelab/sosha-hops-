@@ -96,10 +96,10 @@ export const OrderCard: React.FC<OrderCardProps> = ({
     <div className={cn(
       "relative p-4 rounded-2xl flex flex-col gap-3 transition-all duration-300 group",
       // Status-based Border/Glow
-      order.status === 'pending' ? "bg-black/60 border border-yellow-500/20 shadow-[0_0_15px_rgba(234,179,8,0.05)] hover:border-yellow-500/40" :
-        (order.status === 'accepted' || order.status === 'preparing') ? "bg-black/60 border border-orange-500/20 shadow-[0_0_15px_rgba(249,115,22,0.05)] hover:border-orange-500/40" :
-          order.status === 'ready' ? "bg-black/60 border border-green-500/20 shadow-[0_0_15px_rgba(34,197,94,0.05)] hover:border-green-500/40" :
-            "bg-black/40 border border-white/5 hover:border-white/10"
+      order.status === 'pending' ? "bg-[#252525] border border-yellow-500/20 shadow-[0_0_15px_rgba(234,179,8,0.05)] hover:border-yellow-500/40" :
+        (order.status === 'accepted' || order.status === 'preparing') ? "bg-[#252525] border border-orange-500/20 shadow-[0_0_15px_rgba(249,115,22,0.05)] hover:border-orange-500/40" :
+          order.status === 'ready' ? "bg-[#252525] border border-green-500/20 shadow-[0_0_15px_rgba(34,197,94,0.05)] hover:border-green-500/40" :
+            "bg-[#1A1A1A] border border-gray-800 hover:border-gray-700"
     )}>
       {/* Header */}
       <div className="flex justify-between items-start">

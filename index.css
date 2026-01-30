@@ -1,0 +1,86 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+    :root {
+        --background: #020202;
+        --card: #0A0A0A;
+        --border: #222222;
+        --foreground: #FAFAFA;
+        --muted: #71717A;
+        --primary-glow: rgba(255, 200, 0, 0.15);
+        --glass-bg: rgba(20, 20, 20, 0.4);
+        --glass-border: rgba(255, 255, 255, 0.08);
+        --glass-highlight: rgba(255, 255, 255, 0.03);
+        --input-bg: rgba(255, 255, 255, 0.03);
+        --shadow-color: rgba(0, 0, 0, 0.8);
+        --bubble-1: rgba(16, 185, 129, 0.05);
+        --bubble-2: rgba(132, 204, 22, 0.05);
+    }
+
+    body[data-theme="fresh"] {
+        --background: #F0F2F5;
+        --card: #FFFFFF;
+        --border: #CBD5E1;
+        --foreground: #0F172A;
+        --muted: #475569;
+        --primary-glow: rgba(255, 200, 0, 0.15);
+        --glass-bg: rgba(255, 255, 255, 0.6);
+        --glass-border: rgba(0, 0, 0, 0.1);
+        --glass-highlight: rgba(255, 255, 255, 0.4);
+        --input-bg: #E2E8F0;
+        --shadow-color: rgba(15, 23, 42, 0.1);
+        --bubble-1: rgba(52, 211, 153, 0.1);
+        --bubble-2: rgba(163, 230, 53, 0.1);
+    }
+
+    body {
+        background-color: var(--background);
+        color: var(--foreground);
+        transition: background-color 0.4s cubic-bezier(0.2, 0.8, 0.2, 1), color 0.4s ease;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+    }
+}
+
+@layer components {
+    .glass-panel {
+        background: var(--glass-bg);
+        border: 1px solid var(--glass-border);
+        box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+    }
+
+    /* Optimize blur for mobile */
+    @media (max-width: 768px) {
+        .glass-panel {
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+        }
+    }
+
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+        width: 5px;
+        height: 5px;
+    }
+
+    ::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    ::-webkit-scrollbar-thumb {
+        background: #333;
+        border-radius: 10px;
+    }
+
+    body[data-theme="fresh"] ::-webkit-scrollbar-thumb {
+        background: #CBD5E1;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+        background: var(--muted);
+    }
+}

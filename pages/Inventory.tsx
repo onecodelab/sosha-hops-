@@ -275,32 +275,32 @@ const Inventory: React.FC = () => {
       <div className="space-y-6 animate-in fade-in duration-500">
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Card className="bg-primary/5 border-primary/20 p-5 rounded-2xl shadow-sm">
+          <div className="bg-[#1A1A1A] border border-gray-800 p-5 rounded-2xl shadow-sm">
             <p className="text-[10px] font-black text-gray-500 uppercase tracking-[0.1em]">Total Asset Valuation</p>
             <h3 className="text-2xl font-black text-white mt-1">ETB {(stats.totalValue || 0).toLocaleString()}</h3>
-          </Card>
-          <Card className={cn("p-5 rounded-2xl border shadow-sm transition-colors", stats.lowStockCount > 0 ? "bg-red-500/5 border-red-500/20" : "bg-white/5 border-white/5")}>
+          </div>
+          <div className={cn("p-5 rounded-2xl border shadow-sm transition-colors", stats.lowStockCount > 0 ? "bg-[#1A1A1A] border-red-500/50" : "bg-[#1A1A1A] border-gray-800")}>
             <p className="text-[10px] font-black text-gray-500 uppercase tracking-[0.1em]">Re-order Alerts</p>
             <h3 className={cn("text-2xl font-black mt-1", stats.lowStockCount > 0 ? "text-red-400" : "text-white")}>{stats.lowStockCount} Low SKUs</h3>
-          </Card>
+          </div>
         </div>
 
-        <div className="flex flex-col md:flex-row justify-between gap-4 bg-card/40 p-3 rounded-[1.5rem] border border-white/5 backdrop-blur-xl">
+        <div className="flex flex-col md:flex-row justify-between gap-4 bg-[#1A1A1A] p-3 rounded-[1.5rem] border border-gray-800 shadow-xl">
           <div className="relative w-full md:w-96">
             <Search className="absolute left-3 top-3.5 h-4 w-4 text-gray-500" />
             <Input
               placeholder="Search by name or SKU..."
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
-              className="pl-11 bg-black/40 border-white/10 h-11 rounded-xl"
+              className="pl-11 bg-black/40 border-gray-800 h-11 rounded-xl focus:border-primary/50"
             />
           </div>
-          <Button onClick={fetchInventory} variant="outline" size="icon" className="h-11 w-11 bg-white/5 border-white/10">
+          <Button onClick={fetchInventory} variant="outline" size="icon" className="h-11 w-11 bg-black/40 border-gray-800 hover:bg-black hover:border-gray-700">
             <RefreshCw className={cn("h-4 w-4 text-gray-400", loading && "animate-spin")} />
           </Button>
         </div>
 
-        <Card className="bg-card/30 border-white/5 rounded-[2rem] overflow-hidden backdrop-blur-sm shadow-2xl">
+        <div className="bg-[#1A1A1A] border border-gray-800 rounded-[2rem] overflow-hidden shadow-2xl">
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-left">
               <thead className="text-[10px] text-zinc-500 uppercase bg-black/40 border-b border-white/5 font-bold tracking-widest backdrop-blur-md">
@@ -423,7 +423,7 @@ const Inventory: React.FC = () => {
               </tbody>
             </table>
           </div>
-        </Card>
+        </div>
       </div>
 
       <Dialog isOpen={isModalOpen} onClose={() => !submitting && setIsModalOpen(false)} title="Ingredient Master Adjustment">

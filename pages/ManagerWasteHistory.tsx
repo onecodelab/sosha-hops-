@@ -75,7 +75,7 @@ const ManagerWasteHistory: React.FC = () => {
             <div className="space-y-8 animate-in fade-in duration-500 pb-20">
                 {/* Top Stats - SOSHA STYLE */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div className="bg-black/40 backdrop-blur-2xl border border-white/10 rounded-3xl p-6 relative overflow-hidden group hover:border-red-500/30 transition-all">
+                    <div className="bg-[#1A1A1A] border border-gray-800 rounded-3xl p-6 relative overflow-hidden group hover:border-red-500/30 transition-all">
                         <div className="absolute inset-0 bg-gradient-to-br from-red-600/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
                         <div className="flex justify-between items-start relative z-10">
                             <div>
@@ -91,7 +91,7 @@ const ManagerWasteHistory: React.FC = () => {
                         </div>
                     </div>
 
-                    <div className="bg-black/40 backdrop-blur-2xl border border-white/10 rounded-3xl p-6 relative overflow-hidden group hover:border-blue-500/30 transition-all">
+                    <div className="bg-[#1A1A1A] border border-gray-800 rounded-3xl p-6 relative overflow-hidden group hover:border-blue-500/30 transition-all">
                         <div className="absolute inset-0 bg-gradient-to-br from-blue-600/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
                         <div className="flex justify-between items-start relative z-10">
                             <div>
@@ -106,7 +106,7 @@ const ManagerWasteHistory: React.FC = () => {
                         </div>
                     </div>
 
-                    <div className="bg-black/40 backdrop-blur-2xl border border-white/10 rounded-3xl p-6 relative overflow-hidden group hover:border-amber-500/30 transition-all">
+                    <div className="bg-[#1A1A1A] border border-gray-800 rounded-3xl p-6 relative overflow-hidden group hover:border-amber-500/30 transition-all">
                         <div className="absolute inset-0 bg-gradient-to-br from-amber-600/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
                         <div className="flex justify-between items-start relative z-10">
                             <div>
@@ -123,8 +123,8 @@ const ManagerWasteHistory: React.FC = () => {
                 </div>
 
                 {/* Filters & List - SOSHA STYLE */}
-                <div className="bg-black/40 border border-white/10 rounded-[2.5rem] overflow-hidden backdrop-blur-2xl shadow-2xl flex flex-col min-h-[500px]">
-                    <div className="p-6 border-b border-white/5 flex flex-col md:flex-row items-center justify-between gap-4 bg-white/[0.02]">
+                <div className="bg-[#1A1A1A] border border-gray-800 rounded-[2.5rem] overflow-hidden shadow-2xl flex flex-col min-h-[500px]">
+                    <div className="p-6 border-b border-gray-800 flex flex-col md:flex-row items-center justify-between gap-4 bg-white/[0.02]">
                         <div className="relative w-full md:w-96 group">
                             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 group-focus-within:text-white transition-colors" />
                             <input
@@ -145,8 +145,8 @@ const ManagerWasteHistory: React.FC = () => {
 
                     <div className="flex-1 overflow-x-auto">
                         <table className="w-full text-left border-collapse">
-                            <thead className="sticky top-0 bg-black/60 backdrop-blur-md z-10">
-                                <tr className="border-b border-white/5">
+                            <thead className="sticky top-0 bg-black/40 backdrop-blur-md z-10">
+                                <tr className="border-b border-gray-800">
                                     <th className="px-8 py-5 text-[9px] font-black text-gray-500 uppercase tracking-[0.2em]">Reported</th>
                                     <th className="px-6 py-5 text-[9px] font-black text-gray-500 uppercase tracking-[0.2em]">Staff Member</th>
                                     <th className="px-6 py-5 text-[9px] font-black text-gray-500 uppercase tracking-[0.2em]">Ingredient</th>

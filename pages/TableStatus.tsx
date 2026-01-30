@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '../supabase';
 import { DashboardLayout } from '../components/DashboardLayout';
@@ -103,13 +103,29 @@ const TableStatus: React.FC = () => {
    });
 
    useEffect(() => {
-      const channel = supabase.channel('floor-sync-v10')
-         .on('postgres_changes', { event: '*', schema: 'public', table: 'tables' }, () => refetch())
-         .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => refetch())
+      if (!activeBranchId) return;
+
+      const channel = supabase.channel(`floor-sync-${activeBranchId}`)
+         .on('postgres_changes', {
+            event: '*',
+            schema: 'public',
+            table: 'tables',
+            filter: `branch_id=eq.${activeBranchId}`
+         }, () => refetch())
+         .on('postgres_changes', {
+            event: '*',
+            schema: 'public',
+            table: 'orders',
+            filter: `branch_id=eq.${activeBranchId}`
+         }, () => refetch())
          .subscribe();
+
       const timer = setInterval(() => setCurrentTime(new Date()), 10000);
-      return () => { supabase.removeChannel(channel); clearInterval(timer); };
-   }, [refetch]);
+      return () => {
+         supabase.removeChannel(channel);
+         clearInterval(timer);
+      };
+   }, [refetch, activeBranchId]);
 
    const stats = useMemo(() => {
       if (!tables) return { total: 0, available: 0, occupied: 0, dirty: 0, occupancy: 0 };
@@ -130,7 +146,7 @@ const TableStatus: React.FC = () => {
       });
    }, [tables, zoneFilter, statusFilter]);
 
-   const handleQuickOrder = (table: any) => {
+   const handleQuickOrder = useCallback((table: any) => {
       // 1. Setup Mode Behavior
       if (isSetupMode) {
          openEditModal(table);
@@ -142,7 +158,8 @@ const TableStatus: React.FC = () => {
       setOrderInitialTable(table.table_number.toString());
       setOrderAppendId(table.status === 'occupied' ? table.current_order_id : null);
       setIsOrderModalOpen(true);
-   };
+   }, [isSetupMode, isAnalyticsMode]);
+
 
    const openEditModal = (table: any) => {
       setEditingTableId(table.id);
@@ -252,7 +269,7 @@ const TableStatus: React.FC = () => {
       }
    };
 
-   const fetchTableOrders = async (tableId: string) => {
+   const fetchTableOrders = useCallback(async (tableId: string) => {
       setHistoryLoading(true);
       try {
          const { data, error } = await supabase
@@ -277,15 +294,20 @@ const TableStatus: React.FC = () => {
       } finally {
          setHistoryLoading(false);
       }
-   };
+   }, []);
+
+   const handleViewHistory = useCallback((id: string, num: string) => {
+      setSelectedTableHistory({ id, number: num });
+      fetchTableOrders(id);
+   }, [fetchTableOrders]);
 
    return (
       <DashboardLayout title="Floor Status" subtitle={isAnalyticsMode ? "Performance Heatmap (Today)" : "Real-time occupancy visualization"}>
          <div className="space-y-6 animate-in fade-in duration-500 pb-20">
 
-            <div className="flex flex-col md:flex-row justify-between items-center gap-4 bg-white/5 p-4 rounded-[2rem] border border-white/5">
+            <div className="flex flex-col md:flex-row justify-between items-center gap-4 bg-[#1A1A1A] p-4 rounded-[2rem] border border-gray-800">
                {/* Zone Filter */}
-               <div className="flex bg-black/40 p-1 rounded-xl border border-white/5 overflow-x-auto w-full md:w-auto no-scrollbar">
+               <div className="flex bg-black/40 p-1 rounded-xl border border-gray-800 overflow-x-auto w-full md:w-auto no-scrollbar">
                   {['all', 'indoor', 'outdoor', 'vip', 'bar'].map(z => (
                      <button key={z} onClick={() => setZoneFilter(z as any)} className={cn("px-4 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all", zoneFilter === z ? "bg-primary text-black" : "text-gray-500 hover:text-white")}>{z}</button>
                   ))}
@@ -392,10 +414,18 @@ const TableStatus: React.FC = () => {
                         else if (score >= 65) scoreColor = "text-primary";
                         else if (score >= 50) scoreColor = "text-orange-400";
 
+                        const borderColors: Record<string, string> = {
+                           "text-red-500": "border-red-500/20",
+                           "text-green-500": "border-green-500/20",
+                           "text-green-400": "border-green-400/20",
+                           "text-primary": "border-primary/20",
+                           "text-orange-400": "border-orange-400/20",
+                        };
+
                         return (
-                           <div key={table.id} className="bg-black/40 border border-white/10 rounded-2xl p-4 flex items-center justify-between backdrop-blur-md">
+                           <div key={table.id} className="bg-[#1A1A1A] border border-gray-800 rounded-2xl p-4 flex items-center justify-between shadow-md">
                               <div className="flex items-center gap-4">
-                                 <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center border font-black text-lg bg-white/5", scoreColor, `border-${scoreColor.split('-')[1]}-500/20`)}>
+                                 <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center border font-black text-lg bg-white/5", scoreColor, borderColors[scoreColor] || "border-zinc-500/20")}>
                                     {table.table_number}
                                  </div>
                                  <div>
@@ -445,10 +475,7 @@ const TableStatus: React.FC = () => {
                               onQuickOrder={handleQuickOrder}
                               isAnalyticsMode={isAnalyticsMode}
                               metric={metric}
-                              onViewHistory={(id, num) => {
-                                 setSelectedTableHistory({ id, number: num });
-                                 fetchTableOrders(id);
-                              }}
+                              onViewHistory={handleViewHistory}
                            />
                         );
                      })}
@@ -764,7 +791,7 @@ interface TableCardProps {
    onViewHistory?: (tableId: string, tableNumber: string) => void;
 }
 
-const TableCard: React.FC<TableCardProps> = ({ table, currentTime, onQuickOrder, isAnalyticsMode, metric, onViewHistory }) => {
+const TableCard: React.FC<TableCardProps> = React.memo(({ table, currentTime, onQuickOrder, isAnalyticsMode, metric, onViewHistory }) => {
    const { profile } = useAuth();
    const isOccupied = table.status === 'occupied';
    const isDirty = table.status === 'needs_cleaning';
@@ -786,8 +813,8 @@ const TableCard: React.FC<TableCardProps> = ({ table, currentTime, onQuickOrder,
 
       return (
          <SoshaCard className={cn(
-            "p-0 flex flex-col h-auto min-h-[14rem] md:h-64 transition-all duration-500 group relative overflow-hidden bg-black/40 backdrop-blur-3xl border border-white/10 rounded-[1.5rem] md:rounded-[2.5rem]",
-            "hover:border-primary/50 hover:shadow-[0_0_50px_rgba(255,193,7,0.15)] pulse-border"
+            "p-0 flex flex-col h-auto min-h-[14rem] md:h-64 transition-all duration-500 group relative overflow-hidden bg-[#1A1A1A] border border-gray-800 rounded-[1.5rem] md:rounded-[2.5rem]",
+            "hover:border-primary/50 hover:shadow-[0_0_50px_rgba(255,193,7,0.15)]"
          )}>
             {/* Glossy Gradient Overlay */}
             <div className="absolute inset-0 bg-gradient-to-br from-white/5 via-transparent to-transparent pointer-events-none" />
@@ -874,7 +901,7 @@ const TableCard: React.FC<TableCardProps> = ({ table, currentTime, onQuickOrder,
       <SoshaCard
          onClick={() => onQuickOrder(table)}
          className={cn(
-            "p-0 flex flex-col h-40 transition-all duration-300 group relative overflow-hidden bg-black/40 backdrop-blur-2xl border border-white/5 rounded-[2rem] cursor-pointer",
+            "p-0 flex flex-col h-40 transition-all duration-300 group relative overflow-hidden bg-[#1A1A1A] border border-gray-800 rounded-[2rem] cursor-pointer",
             "hover:border-primary/40 hover:scale-[1.02]",
             isOccupied && "border-red-500/30",
             isDirty && "border-yellow-500/30",
@@ -923,6 +950,6 @@ const TableCard: React.FC<TableCardProps> = ({ table, currentTime, onQuickOrder,
          </div>
       </SoshaCard>
    );
-};
+});
 
 export default TableStatus;

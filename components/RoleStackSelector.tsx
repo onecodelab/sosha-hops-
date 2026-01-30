@@ -49,6 +49,20 @@ export const RoleStackSelector: React.FC<RoleStackSelectorProps> = ({ roles }) =
     red: "bg-red-500/10 text-red-500 border-red-500/20",
   };
 
+  const iconBorderStyles: Record<string, string> = {
+    yellow: "border-yellow-500/40",
+    purple: "border-purple-500/40",
+    orange: "border-orange-500/40",
+    red: "border-red-500/40",
+  };
+
+  const iconTextStyles: Record<string, string> = {
+    yellow: "text-yellow-400",
+    purple: "text-purple-400",
+    orange: "text-orange-400",
+    red: "text-red-400",
+  };
+
   const handleDragEnd = (_: any, info: PanInfo) => {
     if (info.offset.y < -SWIPE_THRESHOLD) {
       if (activeIndex < roles.length - 1) setActiveIndex((prev) => prev + 1);
@@ -94,7 +108,7 @@ export const RoleStackSelector: React.FC<RoleStackSelectorProps> = ({ roles }) =
   }, [activeIndex, roles.length]);
 
   return (
-    <div 
+    <div
       ref={containerRef}
       className="relative flex items-center justify-center w-full max-w-sm md:max-w-md h-[420px] md:h-[480px] touch-none"
       style={{ perspective: "1500px" }}
@@ -115,7 +129,7 @@ export const RoleStackSelector: React.FC<RoleStackSelectorProps> = ({ roles }) =
                 "absolute rounded-[3rem] border shadow-[0_40px_80px_rgba(0,0,0,0.7)] overflow-hidden cursor-pointer flex flex-col select-none origin-center transition-shadow duration-500",
                 "bg-[#080808] border-white/5",
                 isActive ? "z-30 shadow-primary/5" : "z-10",
-                "w-[260px] h-[360px] md:w-[300px] md:h-[420px]" 
+                "w-[260px] h-[360px] md:w-[300px] md:h-[420px]"
               )}
               initial={false}
               animate={{
@@ -144,74 +158,74 @@ export const RoleStackSelector: React.FC<RoleStackSelectorProps> = ({ roles }) =
                 isActive ? "opacity-10" : "opacity-0",
                 colorStyles[role.color]
               )} />
-              
+
               {/* Highlight Glow */}
               <AnimatePresence>
                 {isActive && (
-                  <motion.div 
+                  <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 0.15 }}
                     exit={{ opacity: 0 }}
                     className={cn(
                       "absolute -top-32 -right-32 w-80 h-80 rounded-full blur-[100px]",
                       glowStyles[role.color]
-                    )} 
+                    )}
                   />
                 )}
               </AnimatePresence>
 
               {/* Content Container */}
               <div className="relative z-10 flex flex-col items-center justify-between h-full p-8 text-center">
-                
+
                 {/* Icon Tile */}
                 <div className="mt-2">
-                   <div className={cn(
-                     "w-20 h-20 md:w-24 md:h-24 rounded-[2rem] flex items-center justify-center border transition-all duration-700 bg-white/[0.01]",
-                     isActive ? `border-${role.color}-500/40 shadow-[0_0_50px_rgba(0,0,0,0.5)]` : "border-white/5"
-                   )}>
-                      <Icon className={cn(
-                        "w-8 h-8 md:w-10 md:h-10 transition-colors duration-700",
-                        isActive ? `text-${role.color}-400` : "text-zinc-800"
-                      )} />
-                   </div>
+                  <div className={cn(
+                    "w-20 h-20 md:w-24 md:h-24 rounded-[2rem] flex items-center justify-center border transition-all duration-700 bg-white/[0.01]",
+                    isActive ? (iconBorderStyles[role.color] + " shadow-[0_0_50px_rgba(0,0,0,0.5)]") : "border-white/5"
+                  )}>
+                    <Icon className={cn(
+                      "w-8 h-8 md:w-10 md:h-10 transition-colors duration-700",
+                      isActive ? iconTextStyles[role.color] : "text-zinc-800"
+                    )} />
+                  </div>
                 </div>
 
                 {/* Identity */}
                 <div className="space-y-1.5">
-                   <h2 className={cn(
-                     "text-2xl md:text-3xl font-bold tracking-tighter transition-colors duration-700",
-                     isActive ? "text-white" : "text-zinc-700"
-                   )}>
-                     {role.name}
-                   </h2>
-                   <p className="text-[9px] font-black text-muted uppercase tracking-[0.25em] opacity-40">
-                     {role.subtitle}
-                   </p>
+                  <h2 className={cn(
+                    "text-2xl md:text-3xl font-bold tracking-tighter transition-colors duration-700",
+                    isActive ? "text-white" : "text-zinc-700"
+                  )}>
+                    {role.name}
+                  </h2>
+                  <p className="text-[9px] font-black text-muted uppercase tracking-[0.25em] opacity-40">
+                    {role.subtitle}
+                  </p>
                 </div>
 
                 {/* Action Footer */}
                 <div className="mb-2 space-y-6 w-full flex flex-col items-center">
-                   <span className={cn(
-                     "text-[8px] font-bold uppercase tracking-[0.2em] px-4 py-1.5 rounded-full border transition-all duration-700",
-                     isActive ? pillStyles[role.color] : "bg-transparent border-white/5 text-zinc-800"
-                   )}>
-                     {role.tagline}
-                   </span>
-                   
-                   <div className="h-12 flex items-center justify-center">
+                  <span className={cn(
+                    "text-[8px] font-bold uppercase tracking-[0.2em] px-4 py-1.5 rounded-full border transition-all duration-700",
+                    isActive ? pillStyles[role.color] : "bg-transparent border-white/5 text-zinc-800"
+                  )}>
+                    {role.tagline}
+                  </span>
+
+                  <div className="h-12 flex items-center justify-center">
                     <AnimatePresence>
                       {isActive && (
-                        <motion.button 
+                        <motion.button
                           initial={{ opacity: 0, scale: 0.9, y: 10 }}
                           animate={{ opacity: 1, scale: 1, y: 0 }}
                           exit={{ opacity: 0, scale: 0.9, y: 10 }}
                           className="bg-primary text-black px-10 py-3.5 rounded-2xl font-bold shadow-[0_15px_35px_rgba(255,184,0,0.3)] hover:scale-105 active:scale-95 transition-all text-xs md:text-sm"
                         >
-                           Tap to Login
+                          Tap to Login
                         </motion.button>
                       )}
                     </AnimatePresence>
-                   </div>
+                  </div>
                 </div>
               </div>
             </motion.div>
@@ -227,8 +241,8 @@ export const RoleStackSelector: React.FC<RoleStackSelectorProps> = ({ roles }) =
             onClick={() => setActiveIndex(idx)}
             className={cn(
               "w-1 rounded-full transition-all duration-700",
-              idx === activeIndex 
-                ? "bg-primary h-10 opacity-100 shadow-[0_0_10px_#FFB800]" 
+              idx === activeIndex
+                ? "bg-primary h-10 opacity-100 shadow-[0_0_10px_#FFB800]"
                 : "bg-zinc-800 h-2 hover:bg-zinc-600 opacity-40"
             )}
           />

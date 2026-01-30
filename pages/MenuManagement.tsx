@@ -41,8 +41,8 @@ const MenuManagement: React.FC = () => {
       <div className="space-y-6 animate-in fade-in duration-500 pb-20">
 
         {/* Navigation & Controls */}
-        <div className="flex flex-col md:flex-row justify-between gap-6 items-center bg-card/40 p-3 rounded-[1.5rem] border border-white/5 backdrop-blur-md">
-          <div className="flex bg-black/60 p-1 rounded-xl border border-white/10 w-full md:w-auto overflow-x-auto no-scrollbar">
+        <div className="flex flex-col md:flex-row justify-between gap-6 items-center bg-[#1A1A1A] p-3 rounded-[1.5rem] border border-gray-800 shadow-xl">
+          <div className="flex bg-black/40 p-1 rounded-xl border border-gray-800 w-full md:w-auto overflow-x-auto no-scrollbar">
             <button
               onClick={() => setSelectedCategory('all')}
               className={cn(
@@ -95,7 +95,7 @@ const MenuManagement: React.FC = () => {
               <p className="font-bold uppercase tracking-widest text-[10px]">Syncing Catalog Data...</p>
             </div>
           ) : filteredItems.map(item => (
-            <Card key={item.id} className="bg-card/40 border-white/5 hover:border-primary/20 transition-all group overflow-hidden flex flex-col h-full rounded-[2rem] shadow-2xl">
+            <Card key={item.id} className="bg-[#1A1A1A] border-gray-800 hover:border-primary/50 transition-all group overflow-hidden flex flex-col h-full rounded-[2rem] shadow-lg hover:shadow-2xl hover:shadow-primary/5">
               <div className="h-44 overflow-hidden relative">
                 <img
                   src={item.image_url || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=300&q=80'}
@@ -172,7 +172,7 @@ const MenuManagement: React.FC = () => {
                 {isPrivileged && (
                   <Button
                     variant="secondary"
-                    className="w-full mt-6 bg-white/5 border-white/10 hover:bg-white/10 hover:text-white rounded-xl h-12 font-bold text-xs uppercase tracking-widest group"
+                    className="w-full mt-6 bg-[#252525] border-gray-700 hover:bg-black hover:text-white rounded-xl h-12 font-bold text-xs uppercase tracking-widest group"
                     onClick={() => setSelectedDish(item)}
                   >
                     <ChefHat className="w-4 h-4 mr-2 group-hover:rotate-12 transition-transform" /> Recipe Architect

@@ -95,8 +95,8 @@ const Settings: React.FC = () => {
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                {/* Branch Management Card */}
-               <Card className="bg-[#1A1A1A]/40 border-white/5 rounded-[2.5rem] overflow-hidden backdrop-blur-xl">
-                  <div className="p-8 border-b border-white/5 flex items-center justify-between bg-black/20">
+               <Card className="bg-[#1A1A1A] border-gray-800 rounded-[2.5rem] overflow-hidden">
+                  <div className="p-8 border-b border-gray-800 flex items-center justify-between">
                      <div className="flex items-center gap-4">
                         <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center border border-primary/20">
                            <Building2 className="w-6 h-6 text-primary" />
@@ -109,7 +109,7 @@ const Settings: React.FC = () => {
                   </div>
                   <CardContent className="p-8 space-y-6">
                      {isOwnerOrAdmin && (
-                        <div className="bg-white/5 border border-white/10 p-6 rounded-3xl space-y-4">
+                        <div className="bg-[#252525] border border-gray-700 p-6 rounded-3xl space-y-4">
                            <h4 className="text-xs font-black text-primary uppercase tracking-widest mb-2">New Branch Entry</h4>
                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                               <div className="space-y-1">
@@ -232,8 +232,8 @@ const Settings: React.FC = () => {
                </Card>
 
                {/* System Health Card */}
-               <Card className="bg-[#1A1A1A]/40 border-white/5 rounded-[2.5rem] overflow-hidden backdrop-blur-xl">
-                  <div className="p-8 border-b border-white/5 flex items-center justify-between bg-black/20">
+               <Card className="bg-[#1A1A1A] border-gray-800 rounded-[2.5rem] overflow-hidden">
+                  <div className="p-8 border-b border-gray-800 flex items-center justify-between">
                      <div className="flex items-center gap-4">
                         <div className="w-12 h-12 rounded-2xl bg-green-500/10 flex items-center justify-center border border-green-500/20">
                            <ShieldCheck className="w-6 h-6 text-green-400" />
@@ -270,7 +270,7 @@ const Settings: React.FC = () => {
             </div>
 
             {/* Info Card */}
-            <Card className="bg-zinc-900/10 border-white/5 rounded-[2.5rem] overflow-hidden border-dashed">
+            <Card className="bg-[#1A1A1A] border-gray-800 rounded-[2.5rem] overflow-hidden">
                <div className="p-12 flex flex-col justify-center items-center text-center">
                   <Building2 className="w-16 h-16 text-primary opacity-20 mb-6" />
                   <h3 className="text-white font-bold text-lg">Centralized Logic / Isolated Execution</h3>

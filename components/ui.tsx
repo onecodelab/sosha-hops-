@@ -89,19 +89,19 @@ interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
 export const Card: React.FC<CardProps> = ({ className, variant = 'default', children, ...props }) => {
   const variants = {
     // Default surface: Highly opaque for depth
-    default: "bg-card/90 border-white/10 shadow-xl",
+    default: "bg-[#1A1A1A] border-gray-800 shadow-xl",
     // Elevated: Near-solid for maximum contrast
-    elevated: "bg-card/98 border-white/20 shadow-2xl",
+    elevated: "bg-[#1A1A1A] border-gray-700 shadow-2xl",
     // Interactive: Clear feedback
-    interactive: "bg-card/80 border-white/10 hover:border-primary/40 hover:bg-card/95 cursor-pointer shadow-md hover:shadow-xl",
+    interactive: "bg-[#1A1A1A] border-gray-800 hover:border-primary/40 hover:bg-[#252525] cursor-pointer shadow-md hover:shadow-xl",
     // Outline: Minimal weight
-    outline: "bg-transparent border-white/20"
+    outline: "bg-transparent border-gray-800"
   };
 
   return (
     <div
       className={cn(
-        "rounded-[1.5rem] border backdrop-blur-xl text-foreground transition-all duration-300",
+        "rounded-[1.5rem] border text-foreground transition-all duration-300",
         variants[variant],
         className
       )}

@@ -185,7 +185,7 @@ const MenuAnalytics: React.FC = () => {
       title="Truth Layer Analytics"
       subtitle="Objective performance evidence for your business"
       actions={
-        <div className="flex bg-card/50 p-1 rounded-xl border border-white/5 backdrop-blur-md">
+        <div className="flex bg-[#1A1A1A] p-1 rounded-xl border border-gray-800">
           {(['7d', '30d', '90d'] as const).map((p) => (
             <button
               key={p}
@@ -218,11 +218,11 @@ const MenuAnalytics: React.FC = () => {
                   {bestSeller.name}
                 </h1>
                 <div className="flex flex-wrap gap-4 pt-2">
-                  <div className="bg-white/5 border border-white/10 px-6 py-4 rounded-2xl backdrop-blur-xl">
+                  <div className="bg-[#1A1A1A] border border-gray-800 px-6 py-4 rounded-2xl">
                     <p className="text-[10px] text-muted-foreground uppercase font-black tracking-widest mb-1">Orders</p>
                     <p className="text-3xl font-black text-primary font-mono">{bestSeller.totalSold}</p>
                   </div>
-                  <div className="bg-white/5 border border-white/10 px-6 py-4 rounded-2xl backdrop-blur-xl">
+                  <div className="bg-[#1A1A1A] border border-gray-800 px-6 py-4 rounded-2xl">
                     <p className="text-[10px] text-muted-foreground uppercase font-black tracking-widest mb-1">Profit Share</p>
                     <p className="text-3xl font-black text-foreground font-mono">ETB {bestSeller.profit.toLocaleString()}</p>
                   </div>
@@ -294,7 +294,7 @@ const MenuAnalytics: React.FC = () => {
               <p className="text-xs text-muted-foreground mt-1 font-medium italic">Ranked evidence of your items</p>
             </div>
 
-            <div className="flex bg-card border border-border/50 p-1 rounded-2xl w-fit shadow-md">
+            <div className="flex bg-[#1A1A1A] border border-gray-800 p-1 rounded-2xl w-fit shadow-md">
               <button
                 onClick={() => setActiveRankTab('top')}
                 className={cn("px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all", activeRankTab === 'top' ? "bg-green-500 text-white shadow-lg shadow-green-500/20" : "text-muted-foreground hover:text-foreground")}
@@ -327,7 +327,7 @@ const MenuAnalytics: React.FC = () => {
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
             {rankedData.map((item, i) => (
-              <div key={item.id} className="group relative bg-[#111] border border-white/5 rounded-3xl p-5 hover:border-primary/50 transition-all">
+              <div key={item.id} className="group relative bg-[#1A1A1A] border border-gray-800 rounded-3xl p-5 hover:border-primary/50 transition-all">
                 <div className="absolute -top-3 -right-3 w-8 h-8 rounded-full bg-black border border-white/10 flex items-center justify-center font-black text-xs text-white z-10 shadow-2xl">
                   {i + 1}
                 </div>

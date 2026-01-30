@@ -97,14 +97,14 @@ const KitchenDashboard: React.FC = () => {
          <div className="space-y-6 animate-in fade-in duration-700 h-full flex flex-col">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-1 min-h-0 pb-20">
                {/* INCOMING */}
-               <div className="flex flex-col min-h-0 bg-black/40 backdrop-blur-2xl border border-white/5 rounded-[2.5rem] overflow-hidden shadow-[0_0_50px_rgba(234,179,8,0.1)] relative group hover:border-yellow-500/20 transition-all">
+               <div className="flex flex-col min-h-0 bg-[#1A1A1A] border border-gray-800 rounded-[2.5rem] overflow-hidden shadow-lg relative group hover:border-yellow-500/20 transition-all">
                   <div className="absolute inset-0 bg-gradient-to-br from-yellow-500/5 to-transparent pointer-events-none" />
-                  <div className="p-6 border-b border-white/5 bg-black/20 flex items-center justify-between relative z-10">
+                  <div className="p-6 border-b border-gray-800 bg-black/20 flex items-center justify-between relative z-10">
                      <div className="flex items-center gap-3">
                         <div className="w-2 h-2 rounded-full bg-yellow-400 animate-pulse shadow-[0_0_10px_rgba(234,179,8,0.5)]" />
                         <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-yellow-500/80">Incoming</h3>
                      </div>
-                     <Badge variant="default" className="font-mono bg-yellow-500/10 text-yellow-500 border-yellow-500/20 shadow-lg backdrop-blur-md">{incomingOrders.length}</Badge>
+                     <Badge variant="default" className="font-mono bg-yellow-500/10 text-yellow-500 border-yellow-500/20 shadow-lg">{incomingOrders.length}</Badge>
                   </div>
                   <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar relative z-10">
                      {incomingOrders.map(order => (
@@ -120,14 +120,14 @@ const KitchenDashboard: React.FC = () => {
                </div>
 
                {/* ACCEPTED (PREPARING) */}
-               <div className="flex flex-col min-h-0 bg-black/40 backdrop-blur-2xl border border-white/5 rounded-[2.5rem] overflow-hidden shadow-[0_0_50px_rgba(249,115,22,0.1)] relative group hover:border-orange-500/20 transition-all">
+               <div className="flex flex-col min-h-0 bg-[#1A1A1A] border border-gray-800 rounded-[2.5rem] overflow-hidden shadow-lg relative group hover:border-orange-500/20 transition-all">
                   <div className="absolute inset-0 bg-gradient-to-br from-orange-500/5 to-transparent pointer-events-none" />
-                  <div className="p-6 border-b border-white/5 bg-black/20 flex items-center justify-between relative z-10">
+                  <div className="p-6 border-b border-gray-800 bg-black/20 flex items-center justify-between relative z-10">
                      <div className="flex items-center gap-3">
                         <div className="w-2 h-2 rounded-full bg-orange-500 shadow-[0_0_10px_rgba(249,115,22,0.5)]" />
                         <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-orange-500/80">Prep Station</h3>
                      </div>
-                     <Badge variant="default" className="font-mono bg-orange-500/10 text-orange-500 border-orange-500/20 shadow-lg backdrop-blur-md">{acceptedOrders.length}</Badge>
+                     <Badge variant="default" className="font-mono bg-orange-500/10 text-orange-500 border-orange-500/20 shadow-lg">{acceptedOrders.length}</Badge>
                   </div>
                   <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar relative z-10">
                      {acceptedOrders.map(order => (
@@ -143,14 +143,14 @@ const KitchenDashboard: React.FC = () => {
                </div>
 
                {/* PREPARED (READY) */}
-               <div className="flex flex-col min-h-0 bg-black/40 backdrop-blur-2xl border border-white/5 rounded-[2.5rem] overflow-hidden shadow-[0_0_50px_rgba(34,197,94,0.1)] relative group hover:border-green-500/20 transition-all">
+               <div className="flex flex-col min-h-0 bg-[#1A1A1A] border border-gray-800 rounded-[2.5rem] overflow-hidden shadow-lg relative group hover:border-green-500/20 transition-all">
                   <div className="absolute inset-0 bg-gradient-to-br from-green-500/5 to-transparent pointer-events-none" />
-                  <div className="p-6 border-b border-white/5 bg-black/20 flex items-center justify-between relative z-10">
+                  <div className="p-6 border-b border-gray-800 bg-black/20 flex items-center justify-between relative z-10">
                      <div className="flex items-center gap-3">
                         <div className="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.5)]" />
                         <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-green-500/80">Ready to Serve</h3>
                      </div>
-                     <Badge variant="default" className="font-mono bg-green-500/10 text-green-500 border-green-500/20 shadow-lg backdrop-blur-md">{preparedOrders.length}</Badge>
+                     <Badge variant="default" className="font-mono bg-green-500/10 text-green-500 border-green-500/20 shadow-lg">{preparedOrders.length}</Badge>
                   </div>
                   <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar relative z-10">
                      {preparedOrders.map(order => (

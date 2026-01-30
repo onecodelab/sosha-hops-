@@ -16,7 +16,8 @@ export const SoshaCard: React.FC<SoshaCardProps> = ({
   return (
     <div
       className={cn(
-        "relative rounded-[2.5rem] bg-card/40 border border-white/5 overflow-hidden backdrop-blur-lg transition-all duration-500 group",
+        "relative rounded-[2.5rem] bg-card/40 border border-white/5 overflow-hidden transition-all duration-500 group",
+        "backdrop-blur-lg md:backdrop-blur-xl", // Stronger on desktop, standard on mobile
         "shadow-[0_8px_40px_-10px_var(--shadow-color)]",
         isInteractive && "hover:-translate-y-1 hover:shadow-[0_20px_60px_-10px_var(--glass-glow)] hover:border-white/10 cursor-pointer hover:bg-card/50",
         className
