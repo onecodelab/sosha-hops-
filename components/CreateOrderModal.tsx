@@ -200,6 +200,10 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
     }
   };
 
+  const updateItemNote = (dishId: string, notes: string) => {
+    setCart(prev => prev.map(item => item.dish.id === dishId ? { ...item, notes } : item));
+  };
+
   const addToCart = (dish: MenuDish) => {
     setCart(prev => {
       const existing = prev.find(i => i.dish.id === dish.id);
@@ -308,7 +312,7 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
 
   return (
     <Dialog isOpen={isOpen} onClose={onClose} title={internalAppendId ? `Add to Bill: T-${tableNumber}` : (tableNumber ? `New Order: T-${tableNumber}` : "New Order Entry")} maxWidth="max-w-6xl">
-      <div className="flex flex-col md:flex-row h-[85vh] md:h-[80vh] bg-[#09090b] text-white overflow-hidden -m-8 md:-m-0 rounded-b-[2.5rem] md:rounded-3xl relative">
+      <div className="flex flex-col md:flex-row h-[75vh] md:h-[80vh] bg-[#09090b] text-white overflow-hidden rounded-b-3xl md:rounded-3xl relative">
 
         {/* LEFT PANEL: Tables & Menu */}
         <div className="flex-1 flex flex-col border-r border-white/5 bg-black/20 overflow-hidden relative">
@@ -321,14 +325,14 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
                 <label className="text-[9px] font-black text-zinc-500 uppercase tracking-widest ml-1 flex items-center gap-2">
                   <Armchair className="w-3 h-3" /> {tableId ? `Assigned: Table ${tableNumber}` : 'Select Table'}
                 </label>
-                <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto custom-scrollbar p-1">
+                <div className="flex flex-wrap gap-1.5 max-h-20 md:max-h-24 overflow-y-auto custom-scrollbar p-1">
                   {(!initialTableId && !internalAppendId) ? (
                     tables.map(t => (
                       <button
                         key={t.id}
                         onClick={() => handleTableChange(t.id)}
                         className={cn(
-                          "px-3 h-8 rounded-lg text-[9px] font-black uppercase transition-all border shrink-0 flex items-center justify-center min-w-[3rem]",
+                          "px-2.5 h-7 md:px-3 md:h-8 rounded-lg text-[9px] font-black uppercase transition-all border shrink-0 flex items-center justify-center min-w-[2.5rem] md:min-w-[3rem]",
                           tableId === t.id
                             ? "bg-primary text-black border-primary shadow-[0_0_15px_rgba(251,191,36,0.2)]"
                             : "bg-white/[0.03] text-zinc-400 border-white/5 hover:border-white/20 hover:text-white",
@@ -336,13 +340,13 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
                         )}
                       >
                         {t.table_number}
-                        {t.status === 'occupied' && <div className="ml-1.5 w-1 h-1 rounded-full bg-red-500" />}
+                        {t.status === 'occupied' && <div className="ml-1 w-1 h-1 rounded-full bg-red-500" />}
                       </button>
                     ))
                   ) : (
-                    <div className="h-9 px-4 bg-primary/10 border border-primary/20 rounded-lg flex items-center">
-                      <Armchair className="w-3.5 h-3.5 text-primary mr-2" />
-                      <span className="text-xs font-black text-white">Table {tableNumber}</span>
+                    <div className="h-8 md:h-9 px-3 md:px-4 bg-primary/10 border border-primary/20 rounded-lg flex items-center">
+                      <Armchair className="w-3 h-3 md:w-3.5 md:h-3.5 text-primary mr-2" />
+                      <span className="text-[10px] md:text-xs font-black text-white">Table {tableNumber}</span>
                     </div>
                   )}
                 </div>
@@ -403,7 +407,7 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
         </div>
 
         {/* RIGHT PANEL: CART / TICKET (Hidden on mobile until items added, then becomes a drawer/overlay) */}
-        <div className={cn("md:w-96 flex flex-col bg-[#111] md:bg-black/40 border-t md:border-t-0 md:border-l border-white/10 z-30 transition-all duration-300 absolute md:relative inset-x-0 bottom-0 max-h-[50vh] md:max-h-full shadow-2xl md:shadow-none rounded-t-[2rem] md:rounded-none", cart.length === 0 ? "translate-y-full md:translate-y-0 opacity-0 md:opacity-100 pointer-events-none md:pointer-events-auto" : "translate-y-0 opacity-100")}>
+        <div className={cn("md:w-96 flex flex-col bg-[#111] md:bg-black/40 border-t md:border-t-0 md:border-l border-white/10 z-30 transition-all duration-300 absolute md:relative inset-x-0 bottom-0 max-h-[60vh] md:max-h-full shadow-2xl md:shadow-none rounded-t-3xl md:rounded-none", cart.length === 0 ? "translate-y-full md:translate-y-0 opacity-0 md:opacity-100 pointer-events-none md:pointer-events-auto" : "translate-y-0 opacity-100")}>
           {/* Mobile Drawer Handle */}
           <div className="md:hidden w-12 h-1 bg-white/20 rounded-full mx-auto mt-3 mb-1" />
 
@@ -416,15 +420,29 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
 
           <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar bg-black/20">
             {cart.map((item, idx) => (
-              <div key={idx} className="p-3 bg-white/[0.03] border border-white/5 rounded-xl flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-bold text-white">{item.dish.name}</p>
-                  <p className="text-[10px] text-zinc-500 font-mono mt-0.5">ETB {item.dish.price * item.quantity}</p>
+              <div key={idx} className="flex flex-col gap-2 p-3 bg-white/[0.03] border border-white/5 rounded-xl shadow-inner">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-bold text-white">{item.dish.name}</p>
+                    <p className="text-[10px] text-zinc-500 font-mono mt-0.5">ETB {item.dish.price * item.quantity}</p>
+                  </div>
+                  <div className="flex items-center gap-3 bg-black/40 rounded-lg p-1 border border-white/5">
+                    <button onClick={() => removeFromCart(item.dish.id)} className="w-6 h-6 flex items-center justify-center hover:bg-white/10 rounded-md text-zinc-400"><Minus className="w-3 h-3" /></button>
+                    <span className="text-xs font-bold text-white min-w-[16px] text-center">{item.quantity}</span>
+                    <button onClick={() => addToCart(item.dish)} className="w-6 h-6 flex items-center justify-center hover:bg-white/10 rounded-md text-white"><Plus className="w-3 h-3" /></button>
+                  </div>
                 </div>
-                <div className="flex items-center gap-3 bg-black/40 rounded-lg p-1 border border-white/5">
-                  <button onClick={() => removeFromCart(item.dish.id)} className="w-6 h-6 flex items-center justify-center hover:bg-white/10 rounded-md text-zinc-400"><Minus className="w-3 h-3" /></button>
-                  <span className="text-xs font-bold text-white min-w-[16px] text-center">{item.quantity}</span>
-                  <button onClick={() => addToCart(item.dish)} className="w-6 h-6 flex items-center justify-center hover:bg-white/10 rounded-md text-white"><Plus className="w-3 h-3" /></button>
+
+                {/* Per-Item Note Input */}
+                <div className="relative group">
+                  <MessageSquare className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-zinc-600 group-focus-within:text-primary transition-colors" />
+                  <input
+                    type="text"
+                    placeholder="Add item instructions..."
+                    value={item.notes}
+                    onChange={(e) => updateItemNote(item.dish.id, e.target.value)}
+                    className="w-full h-8 pl-8 pr-3 bg-black/40 border border-white/5 rounded-lg text-[10px] text-white placeholder:text-zinc-700 focus:outline-none focus:border-primary/30 transition-all font-medium"
+                  />
                 </div>
               </div>
             ))}
@@ -438,9 +456,9 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
                 {totalAmount.toLocaleString()}
               </span>
             </div>
-            <Button onClick={submitOrder} disabled={submitting} className={cn("w-full h-14 rounded-2xl font-black uppercase text-xs shadow-[0_0_20px_rgba(251,191,36,0.2)] transition-all flex items-center justify-between px-6 group", submitting ? "bg-zinc-800 text-zinc-600" : "bg-primary text-black hover:bg-white hover:scale-[1.02]")}>
-              <span>{submitting ? 'Sending to Kitchen...' : (internalAppendId ? 'Update Order' : 'Place Order')}</span>
-              {!submitting && <ChevronRight className="w-5 h-5 opacity-50 group-hover:translate-x-1 transition-transform" />}
+            <Button onClick={submitOrder} disabled={submitting} className={cn("w-full h-12 md:h-14 rounded-2xl font-black uppercase text-[10px] md:text-xs shadow-[0_0_20px_rgba(251,191,36,0.2)] transition-all flex items-center justify-between px-6 group", submitting ? "bg-zinc-800 text-zinc-600" : "bg-primary text-black hover:bg-white hover:scale-[1.02]")}>
+              <span>{submitting ? 'Sending...' : (internalAppendId ? 'Update Order' : 'Place Order')}</span>
+              {!submitting && <ChevronRight className="w-4 h-4 md:w-5 md:h-5 opacity-50 group-hover:translate-x-1 transition-transform" />}
             </Button>
           </div>
         </div>

@@ -185,17 +185,17 @@ const MenuAnalytics: React.FC = () => {
       title="Truth Layer Analytics"
       subtitle="Objective performance evidence for your business"
       actions={
-        <div className="flex bg-[#1A1A1A] p-1 rounded-xl border border-gray-800">
+        <div className="flex bg-muted/10 p-1.5 rounded-[1.25rem] border border-border backdrop-blur-md">
           {(['7d', '30d', '90d'] as const).map((p) => (
             <button
               key={p}
               onClick={() => setPeriod(p)}
               className={cn(
-                "px-4 py-1.5 text-xs font-bold rounded-lg transition-all",
-                period === p ? "bg-primary text-black" : "text-muted hover:text-white"
+                "px-6 py-2.5 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all",
+                period === p ? "bg-primary text-black shadow-lg shadow-primary/20" : "text-muted hover:text-foreground hover:bg-muted/10"
               )}
             >
-              Last {p === '7d' ? '7 Days' : p === '30d' ? '30 Days' : '90 Days'}
+              {p === '7d' ? '7 Days' : p === '30d' ? '30 Days' : '90 Days'}
             </button>
           ))}
         </div>
@@ -205,83 +205,92 @@ const MenuAnalytics: React.FC = () => {
 
         {/* Section 1: Best Seller Spotlight (Rolling Plate) - PRIORITIZED TOP */}
         {bestSeller && bestSeller.totalSold > 0 && (
-          <div className="relative overflow-hidden rounded-[2.5rem] bg-gradient-to-br from-primary/20 via-card to-card border border-primary/10 p-8 lg:p-10 shadow-2xl">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-center">
-              <div className="space-y-5 relative z-10">
-                <div className="flex items-center gap-3">
-                  <Badge variant="default" className="px-3 py-1 animate-pulse">
-                    <Award className="w-3 h-3 mr-1" /> BEST SELLER
+          <div className="relative overflow-hidden rounded-[4rem] bg-card/60 backdrop-blur-xl border border-border p-10 lg:p-14 shadow-2xl group">
+            <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-transparent pointer-events-none" />
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-14 items-center relative z-10">
+              <div className="space-y-8">
+                <div className="flex items-center gap-4">
+                  <Badge className="bg-primary text-black font-black px-4 py-1.5 rounded-full shadow-[0_0_20px_rgba(255,184,0,0.3)] animate-pulse border-none">
+                    <Award className="w-4 h-4 mr-2" strokeWidth={3} /> CHAMPION
                   </Badge>
-                  <span className="text-[10px] text-muted-foreground font-black uppercase tracking-widest">Current Period Champion</span>
+                  <span className="text-[10px] text-muted font-black uppercase tracking-[0.3em] opacity-60">Peak Intelligence Node</span>
                 </div>
-                <h1 className="text-5xl lg:text-6xl font-black text-foreground tracking-tighter leading-[0.9] uppercase">
+                <h1 className="text-6xl lg:text-7xl font-black text-foreground tracking-tighter leading-[0.8] uppercase">
                   {bestSeller.name}
                 </h1>
-                <div className="flex flex-wrap gap-4 pt-2">
-                  <div className="bg-[#1A1A1A] border border-gray-800 px-6 py-4 rounded-2xl">
-                    <p className="text-[10px] text-muted-foreground uppercase font-black tracking-widest mb-1">Orders</p>
-                    <p className="text-3xl font-black text-primary font-mono">{bestSeller.totalSold}</p>
+                <div className="flex flex-wrap gap-6 pt-4">
+                  <div className="bg-muted/5 border border-border px-8 py-5 rounded-[2rem] shadow-inner">
+                    <p className="text-[10px] text-muted uppercase font-black tracking-widest mb-1.5 opacity-60">Session Velocity</p>
+                    <p className="text-4xl font-black text-primary tracking-tighter">{bestSeller.totalSold} <span className="text-xs font-black opacity-40">Orders</span></p>
                   </div>
-                  <div className="bg-[#1A1A1A] border border-gray-800 px-6 py-4 rounded-2xl">
-                    <p className="text-[10px] text-muted-foreground uppercase font-black tracking-widest mb-1">Profit Share</p>
-                    <p className="text-3xl font-black text-foreground font-mono">ETB {bestSeller.profit.toLocaleString()}</p>
+                  <div className="bg-muted/5 border border-border px-8 py-5 rounded-[2rem] shadow-inner">
+                    <p className="text-[10px] text-muted uppercase font-black tracking-widest mb-1.5 opacity-60">Profit Injection</p>
+                    <p className="text-4xl font-black text-foreground tracking-tighter"><span className="text-xs font-black mr-1 opacity-40">ETB</span>{bestSeller.profit.toLocaleString()}</p>
                   </div>
                 </div>
-                <div className="flex flex-wrap gap-2 pt-2">
+                <div className="flex flex-wrap gap-3 pt-4">
                   {bestSeller.labels.map(label => (
-                    <Badge key={label} variant="glass" className="font-bold px-4 py-1.5 rounded-full flex items-center gap-2">
-                      <Flame className="w-3 h-3 text-orange-500" /> {label}
-                    </Badge>
+                    <span key={label} className="bg-card text-[9px] font-black text-muted uppercase tracking-widest px-5 py-2 rounded-xl border border-border shadow-sm flex items-center gap-2 group-hover:text-primary transition-colors">
+                      <div className="w-2 h-2 rounded-full bg-primary shadow-[0_0_10px_rgba(255,184,0,0.5)]" /> {label}
+                    </span>
                   ))}
                 </div>
               </div>
 
               <div className="relative flex justify-center items-center">
-                {/* Rolling Plate Animation Container */}
-                <div className="relative w-56 h-56 lg:w-80 lg:h-80">
-                  {/* Outer Orbit */}
-                  <div className="absolute inset-0 rounded-full border border-primary/20 animate-[spin_20s_linear_infinite]" />
-                  {/* Inner Content */}
-                  <div className="absolute inset-4 rounded-full border border-primary/40 p-4">
-                    <div className="w-full h-full rounded-full overflow-hidden shadow-[0_0_80px_rgba(255,184,0,0.2)] border-4 border-primary shadow-primary/20 animate-[spin_12s_linear_infinite_reverse]">
+                <div className="relative w-64 h-64 lg:w-96 lg:h-96">
+                  {/* Outer Orbit Layers */}
+                  <div className="absolute inset-0 rounded-full border border-primary/20 animate-[spin_30s_linear_infinite]" />
+                  <div className="absolute inset-8 rounded-full border border-primary/10 animate-[spin_20s_linear_infinite_reverse]" />
+                  {/* Image Container */}
+                  <div className="absolute inset-16 rounded-full p-1.5 bg-gradient-to-br from-primary to-primary/20 shadow-[0_0_100px_rgba(255,184,0,0.2)]">
+                    <div className="w-full h-full rounded-full overflow-hidden border-8 border-card shadow-2xl">
                       <img
                         src={bestSeller.image_url || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c'}
                         alt={bestSeller.name}
-                        className="w-full h-full object-cover scale-110"
+                        className="w-full h-full object-cover scale-110 group-hover:scale-125 transition-transform duration-1000"
                       />
                     </div>
                   </div>
-                  {/* Floating Stats Orbits */}
-                  <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-primary text-black font-black px-4 py-1 rounded-full text-xs shadow-xl animate-bounce">
-                    #{bestSeller.totalSold} SOLD
+                  {/* Floating Stat Pill */}
+                  <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-foreground text-background font-black px-6 py-2 rounded-full text-[10px] uppercase tracking-widest shadow-2xl animate-bounce">
+                    #{bestSeller.totalSold} TOTAL SOLD
                   </div>
                 </div>
               </div>
             </div>
-
-            {/* Background Decorations */}
-            <div className="absolute -right-20 -bottom-20 w-96 h-96 bg-primary/5 rounded-full blur-[100px]" />
-            <div className="absolute -left-20 -top-20 w-96 h-96 bg-blue-500/5 rounded-full blur-[100px]" />
           </div>
         )}
 
         {/* Section 2: Dynamic Metric Bar - Moved Below Spotlight */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <Card variant="elevated" className="p-6">
-            <p className="text-[10px] text-muted-foreground uppercase font-black tracking-widest mb-1">Total Revenue ({period})</p>
-            <p className="text-3xl font-black text-foreground font-mono">ETB {analyticsData.reduce((sum, s) => sum + s.revenue, 0).toLocaleString()}</p>
-          </Card>
-          <Card variant="elevated" className="p-6">
-            <p className="text-[10px] text-muted-foreground uppercase font-black tracking-widest mb-1">Total Profit</p>
-            <p className="text-3xl font-black text-primary font-mono">ETB {analyticsData.reduce((sum, s) => sum + s.profit, 0).toLocaleString()}</p>
-          </Card>
-          <Card variant="outline" className="bg-red-500/5 border-red-500/20 p-6 relative overflow-hidden group">
-            <div className="relative z-10">
-              <p className="text-[10px] text-red-500 uppercase font-black tracking-widest mb-1">Revenue at Risk ⚠️</p>
-              <p className="text-3xl font-black text-foreground font-mono">ETB {revenueAtRisk.toLocaleString()}</p>
-            </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="bg-card/60 backdrop-blur-xl border border-border p-8 rounded-[2.5rem] shadow-2xl group overflow-hidden relative">
+            <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent pointer-events-none" />
+            <p className="text-[10px] text-muted uppercase font-black tracking-[0.2em] mb-2 opacity-60">Total Revenue ({period})</p>
+            <p className="text-4xl font-black text-foreground tracking-tighter">
+              <span className="text-xs font-black mr-1 opacity-40">ETB</span>
+              {analyticsData.reduce((sum, s) => sum + s.revenue, 0).toLocaleString()}
+            </p>
+            <DollarSign className="absolute -right-4 -bottom-4 w-24 h-24 text-primary/5 group-hover:scale-110 transition-transform" />
+          </div>
+          <div className="bg-card/60 backdrop-blur-xl border border-border p-8 rounded-[2.5rem] shadow-2xl group overflow-hidden relative">
+            <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-transparent pointer-events-none" />
+            <p className="text-[10px] text-muted uppercase font-black tracking-[0.2em] mb-2 opacity-60">Total Profit Injection</p>
+            <p className="text-4xl font-black text-emerald-500 tracking-tighter">
+              <span className="text-xs font-black mr-1 opacity-40">ETB</span>
+              {analyticsData.reduce((sum, s) => sum + s.profit, 0).toLocaleString()}
+            </p>
+            <TrendingUp className="absolute -right-4 -bottom-4 w-24 h-24 text-emerald-500/5 group-hover:scale-110 transition-transform" />
+          </div>
+          <div className="bg-card/60 backdrop-blur-xl border border-border p-8 rounded-[2.5rem] shadow-2xl group overflow-hidden relative">
+            <div className="absolute inset-0 bg-gradient-to-br from-red-500/5 to-transparent pointer-events-none" />
+            <p className="text-[10px] text-red-500 uppercase font-black tracking-[0.2em] mb-2 opacity-80">Revenue At Risk Node</p>
+            <p className="text-4xl font-black text-foreground tracking-tighter">
+              <span className="text-xs font-black mr-1 opacity-40">ETB</span>
+              {revenueAtRisk.toLocaleString()}
+            </p>
             <AlertOctagon className="absolute -right-4 -bottom-4 w-24 h-24 text-red-500/5 group-hover:scale-110 transition-transform" />
-          </Card>
+          </div>
         </div>
 
         {/* Section 2: Blunt Rankings - Moved up and expanded */}
@@ -294,30 +303,30 @@ const MenuAnalytics: React.FC = () => {
               <p className="text-xs text-muted-foreground mt-1 font-medium italic">Ranked evidence of your items</p>
             </div>
 
-            <div className="flex bg-[#1A1A1A] border border-gray-800 p-1 rounded-2xl w-fit shadow-md">
+            <div className="flex bg-muted/10 border border-border p-1.5 rounded-[1.5rem] w-fit shadow-inner backdrop-blur-sm">
               <button
                 onClick={() => setActiveRankTab('top')}
-                className={cn("px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all", activeRankTab === 'top' ? "bg-green-500 text-white shadow-lg shadow-green-500/20" : "text-muted-foreground hover:text-foreground")}
+                className={cn("px-8 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all", activeRankTab === 'top' ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/30" : "text-muted hover:text-foreground")}
               >
-                Top Performers
+                Top Assets
               </button>
               <button
                 onClick={() => setActiveRankTab('bottom')}
-                className={cn("px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all", activeRankTab === 'bottom' ? "bg-red-500 text-white shadow-lg shadow-red-500/20" : "text-muted-foreground hover:text-foreground")}
+                className={cn("px-8 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all", activeRankTab === 'bottom' ? "bg-red-500 text-white shadow-lg shadow-red-500/30" : "text-muted hover:text-foreground")}
               >
-                Bottom Performers
+                Bottom Assets
               </button>
             </div>
           </div>
 
-          <div className="flex flex-wrap gap-2 pb-4">
+          <div className="flex flex-wrap gap-3 pb-4">
             {(['revenue', 'profit', 'margin', 'orders', 'wasteRisk'] as const).map(tab => (
               <button
                 key={tab}
                 onClick={() => setRankBy(tab)}
                 className={cn(
-                  "px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-tighter border transition-all",
-                  rankBy === tab ? "bg-primary border-primary text-black" : "bg-white/5 border-white/10 text-muted-foreground hover:border-white/20"
+                  "px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all shadow-sm",
+                  rankBy === tab ? "bg-foreground border-foreground text-background" : "bg-card border-border text-muted hover:border-primary/50"
                 )}
               >
                 By {tab === 'wasteRisk' ? 'Waste Risk' : tab}
@@ -325,30 +334,30 @@ const MenuAnalytics: React.FC = () => {
             ))}
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
             {rankedData.map((item, i) => (
-              <div key={item.id} className="group relative bg-[#1A1A1A] border border-gray-800 rounded-3xl p-5 hover:border-primary/50 transition-all">
-                <div className="absolute -top-3 -right-3 w-8 h-8 rounded-full bg-black border border-white/10 flex items-center justify-center font-black text-xs text-white z-10 shadow-2xl">
+              <div key={item.id} className="group relative bg-card/60 backdrop-blur-xl border border-border rounded-[2.5rem] p-6 hover:border-primary/50 transition-all shadow-xl hover:shadow-2xl hover:-translate-y-1">
+                <div className="absolute -top-3 -right-3 w-10 h-10 rounded-2xl bg-foreground border border-border flex items-center justify-center font-black text-xs text-background z-10 shadow-2xl">
                   {i + 1}
                 </div>
-                <div className="space-y-3">
-                  <div className="w-full aspect-square rounded-2xl overflow-hidden grayscale group-hover:grayscale-0 transition-all duration-500">
-                    <img src={item.image_url || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c'} className="w-full h-full object-cover scale-110" />
+                <div className="space-y-4">
+                  <div className="w-full aspect-square rounded-[2rem] overflow-hidden grayscale group-hover:grayscale-0 transition-all duration-700 shadow-inner">
+                    <img src={item.image_url || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c'} className="w-full h-full object-cover scale-110 group-hover:scale-125 transition-transform duration-1000" />
                   </div>
-                  <div>
-                    <h4 className="font-black text-white text-sm truncate leading-tight group-hover:text-primary transition-colors">{item.name}</h4>
-                    <div className="flex items-center gap-2 mt-2">
-                      <span className="text-[10px] font-mono font-bold text-primary">
-                        {rankBy === 'orders' ? `${item.totalSold} Sold` :
+                  <div className="space-y-1.5">
+                    <h4 className="font-black text-foreground text-sm truncate uppercase tracking-tight group-hover:text-primary transition-colors">{item.name}</h4>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-black text-primary uppercase tracking-widest">
+                        {rankBy === 'orders' ? `${item.totalSold} Units` :
                           rankBy === 'wasteRisk' ? `Risk: ${item.wasteRisk.toFixed(0)}%` :
                             rankBy === 'margin' ? `${item.marginPercent.toFixed(1)}%` :
                               `ETB ${(item as any)[rankBy].toLocaleString()}`}
                       </span>
                     </div>
                     {/* Tiny stats inside card */}
-                    <div className="mt-3 flex gap-2">
-                      {item.labels.slice(0, 1).map((label, idx) => (
-                        <span key={idx} className="text-[7px] text-muted-foreground font-black uppercase tracking-tighter">{label.split(' – ')[0]}</span>
+                    <div className="pt-2 flex flex-wrap gap-2">
+                      {item.labels.slice(0, 2).map((label, idx) => (
+                        <span key={idx} className="text-[7px] text-muted font-black uppercase tracking-widest opacity-60 bg-muted/10 px-2 py-0.5 rounded-md">{label.split(' – ')[0]}</span>
                       ))}
                     </div>
                   </div>
@@ -359,29 +368,42 @@ const MenuAnalytics: React.FC = () => {
         </div>
 
         {/* Section 3: Revenue Split (Simplified and full width) */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <Card variant="elevated" className="lg:col-span-3">
-            <CardHeader className="p-8 pb-2">
-              <CardTitle className="text-lg font-black text-foreground uppercase tracking-widest flex items-center gap-3">
-                <PieIcon className="w-5 h-5 text-blue-400" /> Category Revenue Split
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-8 pt-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="lg:col-span-3 bg-card/60 backdrop-blur-xl border border-border rounded-[3rem] shadow-2xl overflow-hidden relative group">
+            <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-primary/50 via-primary to-primary/50 opacity-20" />
+            <div className="p-10 pb-4">
+              <h3 className="text-xl font-black text-foreground uppercase tracking-[0.2em] flex items-center gap-4">
+                <div className="p-3 bg-blue-500/10 rounded-2xl">
+                  <PieIcon className="w-6 h-6 text-blue-500" strokeWidth={3} />
+                </div>
+                Category Revenue Distribution
+              </h3>
+            </div>
+            <div className="p-10 pt-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10">
                 {categoryBreakdown.map(cat => (
-                  <div key={cat.name} className="space-y-2">
-                    <div className="flex justify-between text-[10px] font-bold uppercase tracking-tight">
-                      <span className="text-muted-foreground">{cat.name}</span>
-                      <span className="text-foreground">{cat.percentage.toFixed(1)}%</span>
+                  <div key={cat.name} className="space-y-4 group/cat">
+                    <div className="flex justify-between items-end">
+                      <div className="flex flex-col">
+                        <span className="text-[10px] font-black text-muted uppercase tracking-widest opacity-60 mb-1">{cat.name}</span>
+                        <span className="text-xl font-black text-foreground tracking-tighter">
+                          <span className="text-[10px] font-black mr-1 opacity-40">ETB</span>
+                          {cat.revenue.toLocaleString()}
+                        </span>
+                      </div>
+                      <span className="text-xs font-black text-primary mb-1">{cat.percentage.toFixed(1)}%</span>
                     </div>
-                    <div className="h-1.5 w-full bg-border/20 rounded-full overflow-hidden border border-border/10">
-                      <div className="h-full bg-primary" style={{ width: `${cat.percentage}%` }} />
+                    <div className="h-3 w-full bg-muted/10 rounded-full overflow-hidden border border-border shadow-inner relative">
+                      <div
+                        className="h-full bg-primary shadow-[0_0_15px_rgba(255,184,0,0.4)] transition-all duration-1000 ease-out"
+                        style={{ width: `${cat.percentage}%` }}
+                      />
                     </div>
                   </div>
                 ))}
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </div>
 
       </div>

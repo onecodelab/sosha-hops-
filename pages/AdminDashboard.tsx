@@ -112,6 +112,7 @@ const AdminDashboard: React.FC = () => {
                 id,
                 quantity,
                 price,
+                special_instructions,
                 menu_item:menu (name)
              )
           `;
@@ -123,6 +124,7 @@ const AdminDashboard: React.FC = () => {
                 id,
                 quantity,
                 price,
+                special_instructions,
                 menu_item:menu (name)
              )
           `;
@@ -253,31 +255,38 @@ const AdminDashboard: React.FC = () => {
          <div className="space-y-3 animate-in fade-in duration-500 h-full flex flex-col overflow-y-auto md:overflow-hidden">
 
             {/* Top Compact Metrics Bar */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6 shrink-0">
-               <div className="bg-[#1A1A1A] border border-gray-800 rounded-3xl p-6 relative overflow-hidden group hover:border-amber-500/30 transition-all">
-                  <div className="absolute inset-0 bg-gradient-to-br from-amber-600/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
-                  <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
-                     <DollarSign className="w-12 h-12" />
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 shrink-0">
+               <Card className="bg-card/60 backdrop-blur-xl border border-border rounded-[2rem] shadow-xl overflow-hidden group">
+                  <div className="p-6 relative">
+                     <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/5 rounded-full -mr-16 -mt-16 blur-3xl" />
+                     <div className="relative z-10 flex flex-col">
+                        <p className="text-[10px] font-black text-muted uppercase tracking-[0.2em] opacity-60 mb-2">Revenue Today</p>
+                        <h3 className="text-3xl font-black text-foreground tracking-tighter">
+                           <span className="text-sm mr-1 opacity-40">ETB</span>
+                           {stats.totalRevenue.toLocaleString()}
+                        </h3>
+                     </div>
+                     <div className="absolute bottom-4 right-4 p-3 bg-amber-500/10 rounded-2xl group-hover:scale-110 transition-transform duration-500 shadow-inner">
+                        <DollarSign className="w-5 h-5 text-amber-500" strokeWidth={3} />
+                     </div>
                   </div>
-                  <div className="flex flex-col">
-                     <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest leading-none mb-2">Revenue Today</p>
-                     <h3 className="text-2xl font-black text-foreground tracking-tight">ETB {stats.totalRevenue.toLocaleString()}</h3>
-                  </div>
-               </div>
+               </Card>
 
                <Card
-                  variant="interactive"
-                  className="p-4 md:p-5 border-l-4 border-l-blue-500 rounded-2xl relative overflow-hidden group"
+                  className="bg-card/60 backdrop-blur-xl border border-border rounded-[2rem] shadow-xl overflow-hidden group cursor-pointer hover:border-primary/50 transition-all"
                   onClick={() => setIsModalOpen(true)}
                >
-                  <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
-                     <Activity className="w-12 h-12" />
-                  </div>
-                  <div className="flex flex-col">
-                     <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest leading-none mb-2">Active / In Kitchen</p>
-                     <div className="flex items-center gap-3">
-                        <h3 className="text-2xl font-black text-foreground tracking-tight">{stats.activeOrdersCount}</h3>
-                        <div className="h-2 w-2 rounded-full bg-blue-500 animate-pulse" />
+                  <div className="p-6 relative">
+                     <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full -mr-16 -mt-16 blur-3xl" />
+                     <div className="relative z-10 flex flex-col">
+                        <p className="text-[10px] font-black text-muted uppercase tracking-[0.2em] opacity-60 mb-2">Live Activity</p>
+                        <div className="flex items-center gap-3">
+                           <h3 className="text-3xl font-black text-foreground tracking-tighter">{stats.activeOrdersCount}</h3>
+                           <div className="h-2.5 w-2.5 rounded-full bg-blue-500 animate-pulse shadow-glow" />
+                        </div>
+                     </div>
+                     <div className="absolute bottom-4 right-4 p-3 bg-blue-500/10 rounded-2xl group-hover:scale-110 transition-transform duration-500 shadow-inner">
+                        <Activity className="w-5 h-5 text-blue-500" strokeWidth={3} />
                      </div>
                   </div>
                </Card>
@@ -289,37 +298,37 @@ const AdminDashboard: React.FC = () => {
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-auto md:h-full md:min-h-0 md:flex-1 pb-20 md:pb-0">
                {/* Left Col: Live Production Board (Takes 4 cols) */}
                <div className="lg:col-span-4 flex flex-col md:min-h-0 space-y-4 h-[500px] md:h-auto shrink-0">
-                  <div className="bg-[#1A1A1A] border border-gray-800 rounded-3xl p-6 flex flex-col h-[400px]">
-                     <div className="flex items-center justify-between mb-6">
-                        <h3 className="text-sm font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
-                           <LayoutList className="w-4 h-4" /> Live Production
+                  <div className="bg-card/60 backdrop-blur-xl border border-border rounded-[2.5rem] p-8 flex flex-col h-full shadow-2xl">
+                     <div className="flex items-center justify-between mb-8">
+                        <h3 className="text-[10px] font-black text-muted uppercase tracking-[0.2em] flex items-center gap-3 opacity-60">
+                           <LayoutList className="w-4 h-4 text-primary" strokeWidth={3} /> Live System Production
                         </h3>
 
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-3">
                            <select
                               value={selectedStaffId}
                               onChange={(e) => setSelectedStaffId(e.target.value)}
-                              className="bg-[#111] border border-gray-800 rounded-lg px-3 py-1.5 text-[10px] font-black text-white hover:border-primary/30 transition-all outline-none"
+                              className="bg-muted/10 border border-border rounded-xl px-4 py-2 text-[10px] font-black text-foreground hover:border-primary/30 transition-all outline-none uppercase tracking-widest"
                            >
-                              <option value="all">ALL STAFF</option>
+                              <option value="all">ALL_NODES</option>
                               {staffList.map(s => (
-                                 <option key={s.id} value={s.id}>{s.full_name}</option>
+                                 <option key={s.id} value={s.id}>{s.full_name.toUpperCase()}</option>
                               ))}
                            </select>
-                           <Button variant="outline" size="icon" onClick={fetchDashboardData} className="h-9 w-9">
-                              <RefreshCw className={cn("w-3.5 h-3.5", loading && "animate-spin")} />
+                           <Button variant="outline" size="icon" onClick={fetchDashboardData} className="h-10 w-10 rounded-xl border-border bg-muted/5">
+                              <RefreshCw className={cn("w-4 h-4 text-primary", loading && "animate-spin")} strokeWidth={3} />
                            </Button>
                         </div>
                      </div>
 
-                     <Card variant="default" className="flex-1 overflow-y-auto custom-scrollbar p-2 bg-[#111] border-gray-800">
+                     <div className="flex-1 overflow-y-auto custom-scrollbar p-1 space-y-4 pr-3">
                         {filteredActiveOrders.length === 0 ? (
-                           <div className="h-full flex flex-col items-center justify-center text-gray-700 gap-4 opacity-40">
-                              <Activity className="w-8 h-8" />
-                              <span className="text-[10px] font-black uppercase tracking-[0.3em]">Operational Clear</span>
+                           <div className="h-full flex flex-col items-center justify-center text-muted gap-4 opacity-30 mt-10">
+                              <Activity className="w-12 h-12" strokeWidth={3} />
+                              <span className="text-[10px] font-black uppercase tracking-[0.4em] italic text-center">Operational_Clear<br />Wait_State_Active</span>
                            </div>
                         ) : (
-                           <div className="space-y-3">
+                           <div className="space-y-4">
                               {filteredActiveOrders.map(order => (
                                  <div key={order.id} className="w-full">
                                     <OrderCard order={order} role="manager" onAction={handleOrderAction} />
@@ -327,40 +336,40 @@ const AdminDashboard: React.FC = () => {
                               ))}
                            </div>
                         )}
-                     </Card>
+                     </div>
                   </div>
                </div>
 
                {/* Right Col: Transaction Audit (Takes 8 cols) */}
                <div className="lg:col-span-8 flex flex-col md:min-h-0 h-[600px] md:h-auto shrink-0">
-                  <Card variant="elevated" className="flex-1 flex flex-col min-h-0 p-0 overflow-hidden" indicatorColor="purple">
-                     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-6 gap-4 shrink-0 border-b border-white/5">
-                        <h3 className="flex items-center gap-3 text-[10px] font-black text-gray-500 uppercase tracking-[0.2em]">
-                           <ClipboardList className="w-4 h-4 text-primary" /> Transaction Log
+                  <Card className="bg-card/60 backdrop-blur-xl border border-border rounded-[2.5rem] flex-1 flex flex-col min-h-0 p-0 overflow-hidden shadow-2xl">
+                     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-8 gap-6 shrink-0 border-b border-border bg-muted/5">
+                        <h3 className="flex items-center gap-3 text-[10px] font-black text-muted uppercase tracking-[0.2em] opacity-60">
+                           <ClipboardList className="w-4 h-4 text-primary" strokeWidth={3} /> Finalized_Node_Audit
                         </h3>
 
-                        <div className="flex flex-wrap items-center gap-3">
+                        <div className="flex flex-wrap items-center gap-4">
                            {/* Search Bar */}
                            <div className="relative group">
-                              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-500 group-focus-within:text-primary transition-colors" />
+                              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted group-focus-within:text-primary transition-colors" strokeWidth={3} />
                               <input
                                  type="text"
-                                 placeholder="Audit Search..."
+                                 placeholder="AUDIT_QUERY..."
                                  value={searchQuery}
                                  onChange={(e) => setSearchQuery(e.target.value)}
-                                 className="bg-[#111] border border-gray-800 rounded-xl pl-9 pr-4 py-2 text-[10px] text-white focus:outline-none focus:border-primary/50 transition-all w-40 font-bold"
+                                 className="bg-muted/10 border border-border rounded-[1.2rem] pl-11 pr-5 py-2.5 text-[10px] text-foreground font-black focus:outline-none focus:border-primary/50 transition-all w-48 uppercase tracking-widest placeholder:opacity-30"
                               />
                            </div>
 
                            {/* Date Filter */}
-                           <div className="flex bg-[#111] rounded-xl p-1 border border-gray-800">
+                           <div className="flex bg-muted/10 rounded-[1.2rem] p-1.5 border border-border backdrop-blur-md">
                               {(['today', 'yesterday', 'week', 'all'] as const).map((d) => (
                                  <button
                                     key={d}
                                     onClick={() => setDateFilter(d)}
                                     className={cn(
-                                       "px-3 py-1.5 text-[9px] font-black uppercase tracking-wider rounded-lg transition-all",
-                                       dateFilter === d ? "bg-primary text-black" : "text-gray-500 hover:text-gray-300"
+                                       "px-4 py-2 text-[9px] font-black uppercase tracking-widest rounded-xl transition-all",
+                                       dateFilter === d ? "bg-primary text-black shadow-lg shadow-primary/20" : "text-muted hover:text-foreground opacity-60"
                                     )}
                                  >
                                     {d}
@@ -368,76 +377,77 @@ const AdminDashboard: React.FC = () => {
                               ))}
                            </div>
 
-                           <div className="flex gap-1.5 pl-3 border-l border-gray-800">
+                           <div className="flex gap-2 pl-4 border-l border-border">
                               {(['all', 'cash', 'digital'] as const).map((filter) => (
-                                 <Button
+                                 <button
                                     key={filter}
-                                    variant={transactionFilter === filter ? 'glass' : 'ghost'}
-                                    size="sm"
                                     onClick={() => setTransactionFilter(filter)}
                                     className={cn(
-                                       "h-8 px-4",
-                                       transactionFilter === filter && "border-primary/20 text-primary"
+                                       "px-4 py-2 text-[9px] font-black uppercase tracking-widest rounded-xl transition-all border",
+                                       transactionFilter === filter
+                                          ? "bg-primary/10 border-primary/20 text-primary"
+                                          : "bg-transparent border-transparent text-muted opacity-60 hover:opacity-100"
                                     )}
                                  >
                                     {filter}
-                                 </Button>
+                                 </button>
                               ))}
                            </div>
                         </div>
                      </div>
 
-                     <div className="flex-1 overflow-y-auto custom-scrollbar bg-black/10">
+                     <div className="flex-1 overflow-y-auto custom-scrollbar">
                         <table className="w-full text-left border-collapse">
-                           <thead className="sticky top-0 bg-black/90 text-[9px] font-black uppercase text-gray-600 tracking-wider z-10 backdrop-blur-sm">
+                           <thead className="sticky top-0 bg-muted/5 border-b border-border text-[9px] font-black uppercase text-muted tracking-widest z-10 backdrop-blur-xl">
                               <tr>
-                                 <th className="px-3 py-2">ID / Time</th>
-                                 <th className="px-3 py-2">Table / Type</th>
-                                 <th className="px-3 py-2 hidden sm:table-cell">Staff</th>
-                                 <th className="px-3 py-2 text-right">Total</th>
-                                 <th className="px-3 py-2 text-right">Status</th>
+                                 <th className="px-6 py-4">IDENT_VECTOR</th>
+                                 <th className="px-6 py-4">SPATIAL_NODE</th>
+                                 <th className="px-6 py-4 hidden sm:table-cell">HUMAN_ORIGIN</th>
+                                 <th className="px-6 py-4 text-right">GROSS_VAL</th>
+                                 <th className="px-6 py-4 text-right">STATUS</th>
                               </tr>
                            </thead>
-                           <tbody className="divide-y divide-gray-800">
+                           <tbody className="divide-y divide-border">
                               {filteredAuditLog.map(order => (
                                  <tr
                                     key={order.id}
                                     onClick={() => handleRowClick(order)}
-                                    className="group hover:bg-white/10 transition-all cursor-pointer text-xs"
+                                    className="group hover:bg-muted/5 transition-all cursor-pointer"
                                  >
-                                    <td className="px-3 py-2.5">
+                                    <td className="px-6 py-5">
                                        <div className="flex flex-col">
-                                          <span className="font-mono text-[10px] font-black text-white group-hover:text-primary transition-colors truncate max-w-[80px] md:max-w-none">
-                                             #{order.order_number || order.id.slice(0, 4)}
+                                          <span className="font-mono text-xs font-black text-foreground group-hover:text-primary transition-colors">
+                                             #{order.order_number || order.id.slice(0, 4).toUpperCase()}
                                           </span>
-                                          <span className="text-[9px] text-gray-500 font-mono">
+                                          <span className="text-[9px] text-muted font-black opacity-40 uppercase tracking-widest">
                                              {new Date(order.closed_at || order.paid_at || order.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                           </span>
                                        </div>
                                     </td>
-                                    <td className="px-3 py-2.5">
+                                    <td className="px-6 py-5">
                                        <div className="flex flex-col items-start gap-1">
-                                          <span className="font-bold text-gray-200 text-xs">T-{order.table_number}</span>
-                                          <span className="px-1.5 py-0.5 text-[8px] bg-white/5 rounded-sm uppercase tracking-tighter text-gray-500">{order.order_type || 'Dine'}</span>
+                                          <span className="font-black text-foreground text-xs uppercase italic group-hover:text-primary">T-{order.table_number}</span>
+                                          <span className="px-2 py-0.5 text-[8px] bg-primary/5 text-primary border border-primary/10 rounded-full font-black uppercase tracking-tighter opacity-70">{order.order_type || 'DINE-IN'}</span>
                                        </div>
                                     </td>
-                                    <td className="px-3 py-2.5 hidden sm:table-cell">
+                                    <td className="px-6 py-5 hidden sm:table-cell">
                                        <div className="flex flex-col">
-                                          <span className="text-[10px] text-white font-black truncate max-w-[80px]">{order.waiter?.full_name || 'Sys'}</span>
-                                          <span className="text-[8px] text-primary uppercase font-bold">{(order as any).waiter?.role || (order.closed_by_user ? 'Admin' : 'Staff')}</span>
+                                          <span className="text-[10px] text-foreground font-black uppercase italic group-hover:text-primary">{order.waiter?.full_name || 'SYSTEM_NODE'}</span>
+                                          <span className="text-[8px] text-muted font-black uppercase tracking-[0.2em] opacity-40">{(order as any).waiter?.role || (order.closed_by_user ? 'ADMIN' : 'STAFF')}</span>
                                        </div>
                                     </td>
-                                    <td className="px-3 py-2.5 text-right font-mono font-black text-white">
+                                    <td className="px-6 py-5 text-right font-mono font-black text-foreground text-sm">
+                                       <span className="text-[9px] mr-1 opacity-20 font-sans NOT-italic">ETB</span>
                                        {order.total_amount.toLocaleString()}
                                     </td>
-                                    <td className="px-3 py-2.5 text-right">
-                                       <div className="flex items-center justify-end gap-2">
+                                    <td className="px-6 py-5 text-right">
+                                       <div className="flex items-center justify-end gap-3">
                                           {order.payment_method && (
-                                             <span className="text-[9px] font-black uppercase text-zinc-500 bg-white/5 px-2 py-0.5 rounded-sm">{order.payment_method}</span>
+                                             <span className="text-[9px] font-black uppercase text-muted bg-muted/10 px-3 py-1 rounded-full border border-border">{order.payment_method}</span>
                                           )}
-                                          <span className={cn("text-[9px] uppercase font-black px-1.5 py-0.5 rounded-sm",
-                                             order.status === 'paid' ? "text-green-500 bg-green-500/10" :
-                                                order.status === 'served' ? "text-purple-400 bg-purple-500/10" : "text-gray-500"
+                                          <span className={cn("text-[9px] uppercase font-black px-3 py-1 rounded-full border tracking-[0.1em]",
+                                             order.status === 'paid' ? "text-emerald-500 bg-emerald-500/10 border-emerald-500/20" :
+                                                order.status === 'served' ? "text-purple-500 bg-purple-500/10 border-purple-500/20" : "text-muted bg-muted/5 border-border"
                                           )}>
                                              {order.status}
                                           </span>
@@ -449,17 +459,17 @@ const AdminDashboard: React.FC = () => {
                         </table>
 
                         {filteredAuditLog.length === 0 && (
-                           <div className="text-center py-10 opacity-30">
-                              <ClipboardList className="w-8 h-8 mx-auto mb-2" />
-                              <p className="text-xs mb-2">No records found</p>
+                           <div className="text-center py-20 opacity-30 mt-10">
+                              <ClipboardList className="w-16 h-16 mx-auto mb-4" strokeWidth={3} />
+                              <p className="text-[10px] font-black uppercase tracking-[0.4em]">Zero_Result_Found</p>
                               {searchQuery && (
                                  <Button
                                     variant="link"
                                     size="sm"
                                     onClick={() => setSearchQuery('')}
-                                    className="text-[10px] text-primary h-auto p-0"
+                                    className="text-[10px] font-black text-primary mt-4 uppercase tracking-[0.2em] h-auto p-0"
                                  >
-                                    Clear Search
+                                    Reset_Global_Query
                                  </Button>
                               )}
                            </div>

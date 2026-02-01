@@ -548,70 +548,73 @@ const ManagerPurchaseOrders: React.FC = () => {
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                      {/* LEFT: Order Details */}
                      <div className="md:col-span-1 space-y-6">
-                        <div className="bg-black/40 backdrop-blur-xl border border-white/10 rounded-3xl p-6 shadow-2xl relative overflow-hidden group">
-                           <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
-                           <h3 className="flex items-center gap-2 text-sm font-black text-blue-400 uppercase tracking-widest mb-6">
-                              <Truck className="w-4 h-4" /> Order Details
-                           </h3>
+                        <div className="md:col-span-1 space-y-8">
+                           <div className="bg-card/60 backdrop-blur-xl border border-border rounded-[2.5rem] p-8 shadow-2xl relative overflow-hidden group">
+                              <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent pointer-events-none" />
+                              <h3 className="flex items-center gap-3 text-[10px] font-black text-primary uppercase tracking-[0.2em] mb-8">
+                                 <Truck className="w-4 h-4" strokeWidth={3} /> Procurement Protocol
+                              </h3>
 
-                           <div className="space-y-5">
-                              <div className="space-y-2">
-                                 <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest pl-1">{t('po.supplier')}</label>
-                                 <div className="relative">
-                                    <select
-                                       className="w-full h-12 bg-black/20 border border-white/10 rounded-xl px-4 text-sm font-bold text-white focus:outline-none focus:border-blue-500/50 focus:bg-white/5 appearance-none hover:border-white/20 transition-all cursor-pointer z-10 relative"
-                                       value={supplierId}
-                                       onChange={(e) => setSupplierId(e.target.value)}
-                                    >
-                                       <option value="" className="bg-black text-gray-500">{t('po.selectSupplier')}</option>
-                                       {suppliers?.map(s => (
-                                          <option key={s.id} value={s.id} className="bg-zinc-900">{s.name}</option>
-                                       ))}
-                                    </select>
-                                    <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500">
-                                       <ArrowRight className="w-3 h-3 text-white/20" />
+                              <div className="space-y-6">
+                                 <div className="space-y-2.5">
+                                    <label className="text-[9px] font-black text-muted uppercase tracking-[0.2em] pl-1 opacity-60">Strategic Partner (Supplier)</label>
+                                    <div className="relative group/select">
+                                       <select
+                                          className="w-full h-14 bg-muted/10 border border-border rounded-2xl px-5 text-sm font-black text-foreground focus:outline-none focus:border-primary/50 focus:bg-muted/5 appearance-none hover:border-border/60 transition-all cursor-pointer z-10 relative shadow-inner"
+                                          value={supplierId}
+                                          onChange={(e) => setSupplierId(e.target.value)}
+                                       >
+                                          <option value="" className="bg-background text-muted">{t('po.selectSupplier')}</option>
+                                          {suppliers?.map(s => (
+                                             <option key={s.id} value={s.id} className="bg-background text-foreground font-bold">{s.name}</option>
+                                          ))}
+                                       </select>
+                                       <div className="absolute right-5 top-1/2 -translate-y-1/2 pointer-events-none text-muted group-hover/select:text-primary transition-colors">
+                                          <PlusCircle className="w-4 h-4 opacity-40" />
+                                       </div>
+                                    </div>
+                                 </div>
+
+                                 <div className="space-y-2.5">
+                                    <label className="text-[9px] font-black text-muted uppercase tracking-[0.2em] pl-1 opacity-60">Expected Delivery Node</label>
+                                    <div className="relative group/date">
+                                       <Calendar className="absolute left-5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted group-hover/date:text-primary transition-colors" strokeWidth={3} />
+                                       <Input
+                                          type="date"
+                                          value={deliveryDate}
+                                          onChange={(e) => setDeliveryDate(e.target.value)}
+                                          className="pl-14 h-14 bg-muted/10 border-border rounded-2xl text-foreground font-black focus:border-primary/50 focus:bg-muted/5 text-sm shadow-inner"
+                                       />
                                     </div>
                                  </div>
                               </div>
-
-                              <div className="space-y-2">
-                                 <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest pl-1">{t('po.deliveryDate')}</label>
-                                 <div className="relative group/date">
-                                    <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500 group-hover/date:text-blue-400 transition-colors" />
-                                    <Input
-                                       type="date"
-                                       value={deliveryDate}
-                                       onChange={(e) => setDeliveryDate(e.target.value)}
-                                       className="pl-12 h-12 bg-black/20 border-white/10 rounded-xl text-white font-bold focus:border-blue-500/50 focus:bg-white/5"
-                                    />
-                                 </div>
-                              </div>
                            </div>
-                        </div>
 
-                        {/* Summary Card */}
-                        <div className="bg-gradient-to-br from-amber-500/10 to-black/40 border border-amber-500/20 rounded-3xl p-6 text-center">
-                           <p className="text-[10px] font-black text-amber-500 uppercase tracking-widest mb-1">Total Estimated Cost</p>
-                           <h2 className="text-4xl font-black text-white tracking-tight drop-shadow-[0_0_15px_rgba(245,158,11,0.3)]">
-                              <span className="text-lg align-top opacity-50 mr-1">$</span>
-                              {totalAmount.toLocaleString()}
-                           </h2>
+                           {/* Summary Card */}
+                           <div className="bg-card/60 backdrop-blur-xl border border-border rounded-[2.5rem] p-8 text-center relative overflow-hidden group shadow-2xl">
+                              <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-transparent pointer-events-none opacity-40" />
+                              <p className="text-[10px] font-black text-muted uppercase tracking-[0.3em] mb-2 relative z-10 opacity-60">Active Commitment Val.</p>
+                              <h2 className="text-5xl font-black text-foreground tracking-tighter relative z-10">
+                                 <span className="text-xs font-black mr-1 opacity-40 align-top mt-2 inline-block">ETB</span>
+                                 {totalAmount.toLocaleString()}
+                              </h2>
+                           </div>
                         </div>
                      </div>
 
                      {/* RIGHT: Items Table */}
                      <div className="md:col-span-2">
-                        <div className="bg-black/40 backdrop-blur-xl border border-white/10 rounded-3xl overflow-hidden shadow-2xl flex flex-col h-full min-h-[500px]">
-                           <div className="p-6 border-b border-white/5 flex items-center justify-between bg-white/[0.02]">
-                              <h3 className="flex items-center gap-2 text-sm font-black text-amber-400 uppercase tracking-widest">
-                                 <ShoppingBag className="w-4 h-4" /> Order Items
+                        <div className="bg-card/60 backdrop-blur-xl border border-border rounded-[2.5rem] overflow-hidden shadow-2xl flex flex-col h-full min-h-[550px] group">
+                           <div className="p-8 border-b border-border flex items-center justify-between bg-muted/5">
+                              <h3 className="flex items-center gap-3 text-[10px] font-black text-foreground uppercase tracking-[0.2em]">
+                                 <ShoppingBag className="w-4 h-4 text-primary" strokeWidth={3} /> Manifest Nodes (Items)
                               </h3>
                               <Button
                                  size="sm"
                                  onClick={addItem}
-                                 className="bg-white/5 text-white hover:bg-white/10 border border-white/5 rounded-xl font-bold text-xs h-9 px-4 backdrop-blur-md"
+                                 className="bg-muted/10 text-foreground hover:bg-muted/20 border border-border rounded-xl font-black text-[10px] uppercase tracking-widest h-10 px-6 backdrop-blur-md shadow-sm transition-all hover:scale-105"
                               >
-                                 <Plus className="w-3.5 h-3.5 mr-2" /> Add Item
+                                 <Plus className="w-4 h-4 mr-2" strokeWidth={3} /> Inject Item
                               </Button>
                            </div>
 
@@ -715,40 +718,41 @@ const ManagerPurchaseOrders: React.FC = () => {
                      </div>
                   </div>
 
-                  {/* Footer Actions - FLOATING GLASS */}
-                  <div className="fixed bottom-6 left-1/2 -translate-x-1/2 md:translate-x-0 md:left-auto md:right-6 w-[95%] md:w-auto p-2 bg-black/80 backdrop-blur-2xl border border-white/10 rounded-2xl z-[100] shadow-[0_10px_40px_rgba(0,0,0,0.5)] animate-in slide-in-from-bottom-10 fade-in duration-500 flex items-center justify-between gap-6 pr-3">
-                     <div className="hidden md:flex flex-col pl-4">
-                        <span className="text-[9px] font-black text-gray-500 uppercase tracking-widest">Total Amount</span>
-                        <div className="text-xl font-black text-white font-mono leading-none flex items-start gap-1">
-                           <span className="text-xs text-amber-500 mt-1">$</span>
+                  {/* Footer Actions - PREMIUM FLOATING GLASS */}
+                  <div className="fixed bottom-10 left-1/2 -translate-x-1/2 md:translate-x-0 md:left-auto md:right-10 w-[90%] md:w-auto p-3 bg-card/80 backdrop-blur-3xl border border-border rounded-[2rem] z-[100] shadow-[0_20px_60px_rgba(0,0,0,0.15)] animate-in slide-in-from-bottom-20 fade-in duration-700 flex items-center justify-between gap-10 pr-4">
+                     <div className="hidden md:flex flex-col pl-6">
+                        <span className="text-[9px] font-black text-muted uppercase tracking-[0.3em] opacity-60">Commitment Total</span>
+                        <div className="text-2xl font-black text-foreground font-mono tracking-tighter leading-none flex items-start gap-1">
+                           <span className="text-xs text-primary mt-1 opacity-60">ETB</span>
                            {totalAmount.toLocaleString()}
                         </div>
                      </div>
 
-                     <div className="flex items-center gap-2 w-full md:w-auto">
+                     <div className="flex items-center gap-3 w-full md:w-auto">
                         <Button
                            variant="ghost"
-                           className="text-gray-400 hover:text-white hover:bg-white/10 rounded-xl"
+                           className="text-muted hover:text-foreground hover:bg-muted/10 rounded-2xl h-14 px-8 text-[10px] font-black uppercase tracking-widest transition-all"
                            onClick={() => createPO({ isDraft: true })}
                            disabled={isSaving || !supplierId}
                         >
-                           <Save className="w-4 h-4 mr-2" /> Save Draft
+                           <Save className="w-5 h-5 mr-3" strokeWidth={3} /> Save Draft
                         </Button>
                         <Button
-                           className="bg-amber-500 hover:bg-amber-400 text-black font-black rounded-xl px-6 shadow-[0_0_20px_rgba(245,158,11,0.3)] transition-all hover:scale-105"
+                           className="bg-foreground text-background hover:bg-foreground/90 font-black rounded-2xl px-10 h-14 text-[10px] uppercase tracking-[0.2em] shadow-xl shadow-foreground/10 transition-all hover:scale-105 active:scale-95 group overflow-hidden relative"
                            onClick={() => {
                               if (isOwnerOrAdmin) createPO({ isDraft: false });
                               else handleActionWithNote(editingPOData?.id || 'new', 'submission');
                            }}
                            disabled={isSaving || !supplierId}
                         >
+                           <div className="absolute inset-0 bg-gradient-to-r from-primary/0 via-primary/20 to-primary/0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
                            {isOwnerOrAdmin ? (
                               <>
-                                 <Send className="w-4 h-4 mr-2" /> Send Order
+                                 <Send className="w-5 h-5 mr-3" strokeWidth={3} /> Finalize & Dispatch
                               </>
                            ) : (
                               <>
-                                 <CheckCircle2 className="w-4 h-4 mr-2" /> Submit
+                                 <CheckCircle2 className="w-5 h-5 mr-3" strokeWidth={3} /> Submit for Review
                               </>
                            )}
                         </Button>
@@ -758,9 +762,9 @@ const ManagerPurchaseOrders: React.FC = () => {
             ) : (
                <>
                   {/* Controls */}
-                  <div className="flex flex-col md:flex-row justify-between gap-4 items-center">
+                  <div className="flex flex-col md:flex-row justify-between gap-6 items-center">
                      {/* Tabs */}
-                     <div className="flex bg-[#1A1A1A] p-1 rounded-lg border border-gray-800 w-full md:w-auto overflow-x-auto">
+                     <div className="flex bg-muted/10 p-1.5 rounded-[1.5rem] border border-border w-full md:w-auto overflow-x-auto custom-scrollbar backdrop-blur-md">
                         {['all', 'draft', 'sent', 'partial', 'received'].map(status => {
                            const count = visiblePOs.filter(po => {
                               if (status === 'all') return true;
@@ -772,11 +776,11 @@ const ManagerPurchaseOrders: React.FC = () => {
                            }).length;
 
                            const labels: Record<string, string> = {
-                              all: 'All',
-                              draft: 'Draft',
-                              sent: 'Sent',
-                              partial: 'Partial / Approved',
-                              received: 'Received'
+                              all: 'Total Manifest',
+                              draft: 'Drafts',
+                              sent: 'Dispatched',
+                              partial: 'In Transit / Pending',
+                              received: 'Settled'
                            };
 
                            return (
@@ -784,14 +788,14 @@ const ManagerPurchaseOrders: React.FC = () => {
                                  key={status}
                                  onClick={() => setFilterStatus(status)}
                                  className={cn(
-                                    "px-4 py-2 text-sm font-medium rounded-md transition-all flex items-center gap-2 whitespace-nowrap",
+                                    "px-6 py-2.5 text-[10px] font-black uppercase tracking-widest rounded-[1.1rem] transition-all flex items-center gap-3 whitespace-nowrap",
                                     filterStatus === status
-                                       ? "bg-white/10 text-white shadow-sm"
-                                       : "text-gray-400 hover:text-white hover:bg-white/5"
+                                       ? "bg-primary text-black shadow-lg shadow-primary/20"
+                                       : "text-muted hover:text-foreground hover:bg-muted/10 opacity-60 hover:opacity-100"
                                  )}
                               >
                                  {labels[status]}
-                                 <span className={cn("text-xs px-1.5 py-0.5 rounded-full", filterStatus === status ? "bg-black/40 text-white" : "bg-black/20 text-gray-500")}>
+                                 <span className={cn("text-[9px] px-2 py-0.5 rounded-full font-black", filterStatus === status ? "bg-black/20 text-black" : "bg-muted/20 text-muted")}>
                                     {count}
                                  </span>
                               </button>
@@ -800,39 +804,39 @@ const ManagerPurchaseOrders: React.FC = () => {
                      </div>
 
                      {/* Search */}
-                     <div className="relative w-full md:w-72">
-                        <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
+                     <div className="relative w-full md:w-80 group">
+                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted group-hover:text-primary transition-colors" strokeWidth={3} />
                         <Input
                            placeholder={t('common.search')}
                            value={searchTerm}
                            onChange={(e) => setSearchTerm(e.target.value)}
-                           className="pl-9 bg-[#1A1A1A] border-gray-800 focus:border-primary/50"
+                           className="pl-12 h-12 bg-muted/10 border-border focus:border-primary/50 text-foreground font-black rounded-xl"
                         />
                      </div>
                   </div>
 
                   {/* Table */}
-                  <Card className="bg-[#1A1A1A] border-gray-800 min-h-[500px] flex flex-col">
-                     <CardHeader className="border-b border-gray-800 pb-3">
-                        <CardTitle className="text-white flex items-center gap-2 text-base">
-                           <Truck className="w-5 h-5 text-gray-400" /> {t('po.listTitle')}
-                        </CardTitle>
-                     </CardHeader>
-                     <CardContent className="p-0 flex-1 overflow-x-auto">
-                        <table className="w-full text-sm text-left">
-                           <thead className="text-xs text-gray-500 uppercase bg-black/40 border-b border-gray-800">
+                  <div className="bg-card/60 backdrop-blur-xl border border-border rounded-[2.5rem] min-h-[550px] flex flex-col shadow-2xl group overflow-hidden">
+                     <div className="p-8 border-b border-border bg-muted/5">
+                        <h3 className="text-foreground flex items-center gap-3 text-[10px] font-black uppercase tracking-[0.2em]">
+                           <Truck className="w-4 h-4 text-primary" strokeWidth={3} /> Active Procurement Streams
+                        </h3>
+                     </div>
+                     <div className="p-0 flex-1 overflow-x-auto">
+                        <table className="w-full text-sm text-left border-collapse">
+                           <thead className="text-[10px] font-black text-muted uppercase bg-muted/5 border-b border-border tracking-widest">
                               <tr>
-                                 <th className="px-6 py-4">{t('po.table.poNumber')}</th>
-                                 <th className="px-6 py-4">{t('po.table.supplier')}</th>
-                                 <th className="px-6 py-4">Created By</th>
-                                 <th className="px-6 py-4">{t('po.table.created')}</th>
-                                 <th className="px-6 py-4">{t('po.table.expected')}</th>
-                                 <th className="px-6 py-4 text-right">{t('po.table.amount')}</th>
-                                 <th className="px-6 py-4 text-center">{t('po.table.status')}</th>
-                                 <th className="px-6 py-4 text-right w-20">{t('po.table.actions')}</th>
+                                 <th className="px-8 py-5">Ident. (PO#)</th>
+                                 <th className="px-8 py-5">Strategic Partner</th>
+                                 <th className="px-8 py-5">Lead Node</th>
+                                 <th className="px-8 py-5">Initiated</th>
+                                 <th className="px-8 py-5">Deadline</th>
+                                 <th className="px-8 py-5 text-right">Commitment</th>
+                                 <th className="px-8 py-5 text-center">Status</th>
+                                 <th className="px-8 py-5 text-right w-20">Control</th>
                               </tr>
                            </thead>
-                           <tbody className="divide-y divide-gray-800">
+                           <tbody className="divide-y divide-border">
                               {isLoading && (
                                  <tr><td colSpan={7} className="p-8 text-center text-gray-500">{t('common.loading')}</td></tr>
                               )}
@@ -840,104 +844,105 @@ const ManagerPurchaseOrders: React.FC = () => {
                                  <tr><td colSpan={7} className="p-8 text-center text-gray-500">{t('po.empty')}</td></tr>
                               )}
                               {filteredPOs.map((po) => (
-                                 <tr key={po.id} className="hover:bg-white/5 transition-colors group">
-                                    <td className="px-6 py-4 font-mono font-bold text-white">{po.po_number}</td>
-                                    <td className="px-6 py-4 text-gray-300 font-medium">{po.supplier?.name || 'Unknown'}</td>
-                                    <td className="px-6 py-4 text-gray-400 text-xs italic">{po.creator?.full_name || 'System'}</td>
-                                    <td className="px-6 py-4 text-gray-400 text-xs">
+                                 <tr key={po.id} className="hover:bg-muted/5 transition-colors group">
+                                    <td className="px-8 py-5 font-mono font-black text-foreground">{po.po_number}</td>
+                                    <td className="px-8 py-5 text-foreground font-black text-[11px] uppercase tracking-tight">{po.supplier?.name || 'Unknown'}</td>
+                                    <td className="px-8 py-5 text-muted text-[10px] font-black uppercase tracking-widest opacity-60">{po.creator?.full_name || 'System'}</td>
+                                    <td className="px-8 py-5 text-muted text-[10px] font-black font-mono">
                                        {new Date(po.created_at).toLocaleDateString()}
                                     </td>
-                                    <td className="px-6 py-4 text-gray-400 text-xs">
+                                    <td className="px-8 py-5 text-muted text-[10px] font-black font-mono">
                                        {new Date(po.expected_delivery).toLocaleDateString()}
                                     </td>
-                                    <td className="px-6 py-4 text-right font-mono text-primary font-bold">
-                                       ETB {po.total_amount.toLocaleString()}
+                                    <td className="px-8 py-5 text-right font-mono text-foreground font-black tracking-tighter text-base">
+                                       <span className="text-[10px] mr-1 opacity-40">ETB</span>
+                                       {po.total_amount.toLocaleString()}
                                     </td>
-                                    <td className="px-6 py-4 text-center">
-                                       <div className="flex flex-col items-center gap-1">
+                                    <td className="px-8 py-5 text-center">
+                                       <div className="flex flex-col items-center gap-1.5">
                                           {getStatusBadge(po.status)}
                                           {po.activity_log && po.activity_log.length > 0 && po.activity_log[po.activity_log.length - 1].notes && (
-                                             <div className="max-w-[150px] truncate text-[10px] text-gray-400 italic" title={po.activity_log[po.activity_log.length - 1].notes}>
+                                             <div className="max-w-[150px] truncate text-[8px] text-muted font-black uppercase tracking-widest opacity-40 italic" title={po.activity_log[po.activity_log.length - 1].notes}>
                                                 "{po.activity_log[po.activity_log.length - 1].notes}"
                                              </div>
                                           )}
                                        </div>
                                     </td>
-                                    <td className="px-6 py-4 text-right relative">
+                                    <td className="px-8 py-5 text-right relative">
                                        <button
                                           onClick={(e) => { e.stopPropagation(); setActiveDropdown(activeDropdown === po.id ? null : po.id); }}
-                                          className="p-2 hover:bg-white/10 rounded-full text-gray-400 hover:text-white transition-colors"
+                                          className="p-3 hover:bg-muted/20 rounded-xl text-muted hover:text-foreground transition-all duration-300"
                                        >
-                                          <MoreVertical className="w-4 h-4" />
+                                          <MoreVertical className="w-4 h-4" strokeWidth={3} />
                                        </button>
 
                                        {activeDropdown === po.id && (
-                                          <div className="absolute right-8 top-8 w-48 bg-[#222] border border-gray-700 rounded-lg shadow-xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-100">
-                                             <div className="p-1">
+                                          <div className="absolute right-8 top-12 w-56 bg-card border border-border rounded-2xl shadow-3xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200 backdrop-blur-3xl shadow-2xl">
+                                             <div className="p-1.5 space-y-1">
                                                 <button
                                                    onClick={() => handleViewDetails(po)}
-                                                   className="w-full text-left px-3 py-2 text-sm text-gray-300 hover:bg-white/10 hover:text-white rounded flex items-center gap-2"
+                                                   className="w-full text-left px-4 py-3 text-[10px] font-black uppercase tracking-widest text-muted hover:bg-muted/10 hover:text-foreground rounded-xl flex items-center gap-3 transition-colors"
                                                 >
-                                                   <Eye className="w-4 h-4" /> {t('po.actions.view')}
+                                                   <Eye className="w-4 h-4" strokeWidth={3} /> {t('po.actions.view')}
                                                 </button>
                                                 <button
                                                    onClick={handleDownload}
-                                                   className="w-full text-left px-3 py-2 text-sm text-gray-300 hover:bg-white/10 hover:text-white rounded flex items-center gap-2"
+                                                   className="w-full text-left px-4 py-3 text-[10px] font-black uppercase tracking-widest text-muted hover:bg-muted/10 hover:text-foreground rounded-xl flex items-center gap-3 transition-colors"
                                                 >
-                                                   <Download className="w-4 h-4" /> {t('po.actions.download')}
+                                                   <Download className="w-4 h-4" strokeWidth={3} /> {t('po.actions.download')}
                                                 </button>
 
                                                 {(po.status === 'draft' || po.status === 'needs_revision') && (
                                                    <button
                                                       onClick={() => handleEdit(po)}
-                                                      className="w-full text-left px-3 py-2 text-sm text-yellow-400 hover:bg-yellow-500/10 rounded flex items-center gap-2"
+                                                      className="w-full text-left px-4 py-3 text-[10px] font-black uppercase tracking-widest text-primary hover:bg-primary/10 rounded-xl flex items-center gap-3 transition-colors"
                                                    >
-                                                      <Plus className="w-4 h-4" /> {t('po.actions.edit')}
+                                                      <Plus className="w-4 h-4" strokeWidth={3} /> {t('po.actions.edit')}
                                                    </button>
                                                 )}
 
                                                 {/* Owner Approval Actions */}
                                                 {isOwnerOrAdmin && (po.status === 'pending_approval' || po.status === 'pending') && (
-                                                   <>
+                                                   <div className="pt-1.5 mt-1.5 border-t border-border space-y-1">
                                                       <button
                                                          onClick={() => handleActionWithNote(po.id, 'approval')}
-                                                         className="w-full text-left px-3 py-2 text-sm text-emerald-400 hover:bg-emerald-500/10 rounded flex items-center gap-2 border-t border-gray-700 mt-1"
+                                                         className="w-full text-left px-4 py-3 text-[10px] font-black uppercase tracking-widest text-emerald-500 hover:bg-emerald-500/10 rounded-xl flex items-center gap-3 transition-colors"
                                                       >
-                                                         <CheckCircle className="w-4 h-4" /> Approve Only
+                                                         <CheckCircle className="w-4 h-4" strokeWidth={3} /> Approve Only
                                                       </button>
                                                       <button
                                                          onClick={() => { approveAndSendPO(po.id); setActiveDropdown(null); }}
-                                                         className="w-full text-left px-3 py-2 text-sm text-green-400 hover:bg-green-500/10 rounded flex items-center gap-2"
+                                                         className="w-full text-left px-4 py-3 text-[10px] font-black uppercase tracking-widest text-green-500 hover:bg-green-500/10 rounded-xl flex items-center gap-3 transition-colors"
                                                       >
-                                                         <Send className="w-4 h-4" /> Approve & Send
+                                                         <Send className="w-4 h-4" strokeWidth={3} /> Dispatch Node
                                                       </button>
                                                       <button
                                                          onClick={() => handleActionWithNote(po.id, 'revision')}
-                                                         className="w-full text-left px-3 py-2 text-sm text-orange-400 hover:bg-orange-500/10 rounded flex items-center gap-2"
+                                                         className="w-full text-left px-4 py-3 text-[10px] font-black uppercase tracking-widest text-orange-500 hover:bg-orange-500/10 rounded-xl flex items-center gap-3 transition-colors"
                                                       >
-                                                         <RotateCcw className="w-4 h-4" /> Send Back (Revision)
+                                                         <RotateCcw className="w-4 h-4" strokeWidth={3} /> Request Revision
                                                       </button>
-                                                   </>
+                                                   </div>
                                                 )}
 
                                                 {po.status === 'approved' && (
                                                    <button
                                                       onClick={() => { sendPO(po.id); setActiveDropdown(null); }}
-                                                      className="w-full text-left px-3 py-2 text-sm text-blue-400 hover:bg-blue-500/10 rounded flex items-center gap-2"
+                                                      className="w-full text-left px-4 py-3 text-[10px] font-black uppercase tracking-widest text-blue-500 hover:bg-blue-500/10 rounded-xl flex items-center gap-3 transition-colors"
                                                    >
-                                                      <Send className="w-4 h-4" /> Send to Supplier
+                                                      <Send className="w-4 h-4" strokeWidth={3} /> Dispatch to Partner
                                                    </button>
                                                 )}
 
                                                 {(po.status === 'sent' || po.status === 'partial_received') && (
-                                                   <button onClick={() => openReceiveModal(po)} className="w-full text-left px-3 py-2 text-sm text-blue-400 hover:bg-blue-500/10 rounded flex items-center gap-2">
-                                                      <PackageCheck className="w-4 h-4" /> {t('po.actions.receive')}
+                                                   <button onClick={() => openReceiveModal(po)} className="w-full text-left px-4 py-3 text-[10px] font-black uppercase tracking-widest text-blue-500 hover:bg-blue-500/10 rounded-xl flex items-center gap-3 transition-colors">
+                                                      <PackageCheck className="w-4 h-4" strokeWidth={3} /> Confirm Receipt
                                                    </button>
                                                 )}
 
                                                 {po.status === 'draft' && (
-                                                   <button onClick={() => handleDelete(po.id)} className="w-full text-left px-3 py-2 text-sm text-red-400 hover:bg-red-500/10 rounded flex items-center gap-2 border-t border-gray-700 mt-1">
-                                                      <Trash2 className="w-4 h-4" /> {t('po.actions.delete')}
+                                                   <button onClick={() => handleDelete(po.id)} className="w-full text-left px-4 py-3 text-[10px] font-black uppercase tracking-widest text-red-500 hover:bg-red-500/10 rounded-xl flex items-center gap-3 border-t border-border mt-1.5 transition-colors">
+                                                      <Trash2 className="w-4 h-4" strokeWidth={3} /> Terminate Draft
                                                    </button>
                                                 )}
                                              </div>
@@ -948,9 +953,8 @@ const ManagerPurchaseOrders: React.FC = () => {
                               ))}
                            </tbody>
                         </table>
-                     </CardContent>
-                  </Card>
-
+                     </div>
+                  </div>
                </>
             )}
          </div>
@@ -963,108 +967,110 @@ const ManagerPurchaseOrders: React.FC = () => {
                      initial={{ opacity: 0, scale: 0.95, y: 20 }}
                      animate={{ opacity: 1, scale: 1, y: 0 }}
                      exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                     className="space-y-6 max-h-[85vh] overflow-y-auto pr-2 custom-scrollbar p-1"
+                     className="space-y-8 max-h-[85vh] overflow-y-auto pr-2 custom-scrollbar p-2"
                   >
                      {/* Header with High-Contrast Highlight */}
-                     <div className="flex items-center justify-between mb-8">
-                        <div className="bg-[#FFCC00] px-3 py-1 inline-block -skew-x-2">
+                     <div className="flex items-center justify-between mb-2">
+                        <div className="bg-primary px-4 py-2 rounded-xl -skew-x-6 shadow-xl shadow-primary/20">
                            <h2 className="text-black font-black text-xl italic uppercase tracking-tighter">
                               {t('grn.receiveModalTitle')}
                            </h2>
                         </div>
                         <button
                            onClick={() => setIsReceiveModalOpen(false)}
-                           className="p-2 hover:bg-white/10 rounded-full text-gray-400 transition-colors"
+                           className="p-3 hover:bg-muted/10 rounded-2xl text-muted hover:text-foreground transition-all"
                         >
-                           <XCircle className="w-6 h-6" />
+                           <XCircle className="w-6 h-6" strokeWidth={3} />
                         </button>
                      </div>
 
                      {/* PO Info Cards */}
-                     <div className="grid grid-cols-2 gap-4">
-                        <div className="p-4 bg-black/40 rounded-xl border border-gray-800/50 backdrop-blur-md relative overflow-hidden group">
-                           <div className="bg-[#FFCC00] px-2 py-0.5 inline-block text-[10px] font-black text-black uppercase mb-2">
+                     <div className="grid grid-cols-2 gap-6">
+                        <div className="p-6 bg-card/40 rounded-3xl border border-border backdrop-blur-xl relative overflow-hidden group shadow-xl">
+                           <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent pointer-events-none" />
+                           <div className="text-[10px] font-black text-muted uppercase tracking-widest mb-3 opacity-60">
                               {t('grn.poNumber')}
                            </div>
-                           <p className="text-white font-mono text-lg font-bold group-hover:text-[#FFCC00] transition-colors">
+                           <p className="text-foreground font-mono text-2xl font-black group-hover:text-primary transition-colors">
                               {selectedPOForReceive?.po_number}
                            </p>
                         </div>
-                        <div className="p-4 bg-black/40 rounded-xl border border-gray-800/50 backdrop-blur-md group">
-                           <div className="bg-[#FFCC00] px-2 py-0.5 inline-block text-[10px] font-black text-black uppercase mb-2">
+                        <div className="p-6 bg-card/40 rounded-3xl border border-border backdrop-blur-xl relative overflow-hidden group shadow-xl">
+                           <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent pointer-events-none" />
+                           <div className="text-[10px] font-black text-muted uppercase tracking-widest mb-3 opacity-60">
                               {t('stock.supplier')}
                            </div>
-                           <p className="text-white text-lg font-bold group-hover:text-[#FFCC00] transition-colors">
+                           <p className="text-foreground text-2xl font-black group-hover:text-primary transition-colors truncate">
                               {selectedPOForReceive?.supplier?.name}
                            </p>
                         </div>
                      </div>
 
                      {/* Date & Invoice Inputs */}
-                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6 bg-white/5 rounded-2xl border border-white/10">
+                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-8 bg-muted/5 rounded-[2.5rem] border border-border shadow-inner">
                         <div className="space-y-3">
-                           <div className="bg-[#FFCC00] px-2 py-0.5 inline-block text-[10px] font-black text-black uppercase">
+                           <label className="text-[10px] font-black text-muted uppercase tracking-widest pl-1 opacity-60">
                               {t('grn.receivedDate')}
-                           </div>
+                           </label>
                            <div className="relative group">
-                              <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-[#FFCC00] pointer-events-none" />
+                              <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-primary pointer-events-none transition-transform group-focus-within:scale-110" strokeWidth={3} />
                               <Input
                                  type="date"
                                  value={receivedDate}
                                  onChange={(e) => setReceivedDate(e.target.value)}
-                                 className="pl-11 h-12 bg-black/40 border-gray-800 focus:border-[#FFCC00] focus:ring-1 focus:ring-[#FFCC00] text-white rounded-xl transition-all"
+                                 className="pl-12 h-14 bg-card border-border focus:border-primary/50 text-foreground font-black rounded-2xl transition-all shadow-sm"
                               />
                            </div>
                         </div>
                         <div className="space-y-3">
-                           <div className="bg-[#FFCC00] px-2 py-0.5 inline-block text-[10px] font-black text-black uppercase">
+                           <label className="text-[10px] font-black text-muted uppercase tracking-widest pl-1 opacity-60">
                               {t('grn.invoiceNumber')}
-                           </div>
+                           </label>
                            <div className="relative group">
-                              <FileText className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-[#FFCC00] pointer-events-none" />
+                              <FileText className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-primary pointer-events-none transition-transform group-focus-within:scale-110" strokeWidth={3} />
                               <Input
                                  type="text"
                                  value={invoiceNumber}
                                  onChange={(e) => setInvoiceNumber(e.target.value)}
                                  placeholder="e.g. INV-0092"
-                                 className="pl-11 h-12 bg-black/40 border-gray-800 focus:border-[#FFCC00] focus:ring-1 focus:ring-[#FFCC00] text-white rounded-xl transition-all"
+                                 className="pl-12 h-14 bg-card border-border focus:border-primary/50 text-foreground font-black rounded-2xl transition-all shadow-sm"
                               />
                            </div>
                         </div>
                      </div>
 
                      {/* Items Section Header */}
-                     <div className="flex items-center justify-between px-2">
-                        <div className="flex items-center gap-2">
-                           <Package className="w-5 h-5 text-[#FFCC00]" />
-                           <h3 className="text-sm font-black text-gray-400 uppercase tracking-widest italic font-mono">
-                              GRN.ITEMS
+                     <div className="flex items-center justify-between px-4">
+                        <div className="flex items-center gap-3">
+                           <Package className="w-5 h-5 text-primary" strokeWidth={3} />
+                           <h3 className="text-[10px] font-black text-muted uppercase tracking-[0.2em] italic font-mono">
+                              GRN.MANIFEST_EXECUTION
                            </h3>
                         </div>
                         <Button
                            size="sm"
                            variant="ghost"
                            onClick={matchAllQuantities}
-                           className="text-[10px] font-bold text-blue-400 hover:text-blue-300 hover:bg-blue-400/10 flex items-center gap-1.5 transition-all"
+                           className="text-[10px] font-black text-primary hover:text-primary hover:bg-primary/10 flex items-center gap-2 transition-all p-0 h-auto"
                         >
-                           <CheckCircle2 className="w-3.5 h-3.5" />
-                           {t('grn.matchAll') || 'Match Order Quantities'}
+                           <CheckCircle2 className="w-4 h-4" strokeWidth={3} />
+                           SYNC QUANTITIES
                         </Button>
                      </div>
 
                      {/* Items Table */}
-                     <div className="border border-gray-800/50 rounded-2xl overflow-hidden bg-black/20 backdrop-blur-sm">
+                     <div className="bg-card/40 backdrop-blur-xl border border-border rounded-[2.5rem] overflow-hidden shadow-2xl">
                         <table className="w-full text-sm text-left">
-                           <thead className="text-[10px] font-black text-gray-500 uppercase bg-black/60 border-b border-gray-800 tracking-wider font-mono">
+                           <thead className="text-[10px] font-black text-muted uppercase bg-muted/5 border-b border-border tracking-widest font-mono">
                               <tr>
-                                 <th className="px-6 py-4 italic font-bold">INGREDIENT</th>
-                                 <th className="px-4 py-4 w-24 text-center italic font-bold">ORDERED</th>
-                                 <th className="px-4 py-4 w-24 text-center italic font-bold text-gray-400">PREV</th>
-                                 <th className="px-4 py-4 w-28 text-center italic font-bold">RECEIVING</th>
-                                 <th className="px-6 py-4 w-32 text-right italic font-bold uppercase">STATUS</th>
+                                 <th className="px-8 py-5">NODE_IDENT</th>
+                                 <th className="px-5 py-5 w-24 text-center">ORDERED</th>
+                                 <th className="px-5 py-5 w-24 text-center text-muted opacity-40">SETTLED</th>
+                                 <th className="px-5 py-5 w-32 text-center">RECEIVING</th>
+                                 <th className="px-8 py-5 w-32 text-right">STATUS</th>
                               </tr>
                            </thead>
-                           <tbody className="divide-y divide-gray-800">
+                           <tbody className="divide-y divide-border">
                               {receiveItems.map((item, idx) => {
                                  const status = getMatchStatus(item.ordered_quantity, item.received_quantity, item.previously_received);
                                  return (
@@ -1073,37 +1079,37 @@ const ManagerPurchaseOrders: React.FC = () => {
                                        initial={{ opacity: 0, x: -10 }}
                                        animate={{ opacity: 1, x: 0 }}
                                        transition={{ delay: idx * 0.05 }}
-                                       className="hover:bg-white/5 transition-colors group"
+                                       className="hover:bg-muted/5 transition-colors group"
                                     >
-                                       <td className="px-6 py-5">
-                                          <p className="font-black text-gray-100 uppercase italic tracking-tight group-hover:text-[#FFCC00] transition-colors">{item.ingredient?.name}</p>
-                                          <p className="text-[10px] text-gray-500 font-mono mt-0.5">{item.ingredient?.unit_type}</p>
+                                       <td className="px-8 py-5">
+                                          <p className="font-black text-foreground uppercase italic tracking-tight group-hover:text-primary transition-colors">{item.ingredient?.name}</p>
+                                          <p className="text-[9px] text-muted font-black uppercase tracking-widest mt-1 opacity-60">{item.ingredient?.unit_type}</p>
                                        </td>
-                                       <td className="px-4 py-5 text-center text-gray-400 font-mono text-base">
+                                       <td className="px-5 py-5 text-center text-foreground font-mono font-black text-base opacity-40">
                                           {item.ordered_quantity}
                                        </td>
-                                       <td className="px-4 py-5 text-center text-gray-500 font-mono text-sm">
+                                       <td className="px-5 py-5 text-center text-muted font-mono font-black italic">
                                           {item.previously_received}
                                        </td>
-                                       <td className="px-4 py-5">
+                                       <td className="px-5 py-5">
                                           <div className="relative group/input flex justify-center">
                                              <Input
                                                 type="text"
                                                 inputMode="decimal"
-                                                className="h-10 w-24 bg-black/60 border-gray-800 group-hover/input:border-[#FFCC00]/50 focus:border-[#FFCC00] text-center font-bold text-white transition-all rounded-lg"
+                                                className="h-12 w-28 bg-muted/10 border-border group-hover/input:border-primary/40 focus:border-primary text-center font-black text-foreground transition-all rounded-xl shadow-inner"
                                                 value={qtyBuffer[item.id] || ""}
                                                 onChange={(e) => updateReceivedQty(item.id, e.target.value)}
                                              />
                                           </div>
                                        </td>
-                                       <td className="px-6 py-5 text-right">
+                                       <td className="px-8 py-5 text-right">
                                           <Badge className={cn(
-                                             "px-3 py-1 font-black text-[10px] tracking-widest uppercase italic border-0 shadow-lg",
+                                             "px-4 py-1.5 font-black text-[9px] tracking-widest uppercase italic border-0 shadow-lg",
                                              status.label === t('grn.complete') || status.label === 'Complete'
                                                 ? "bg-emerald-500/10 text-emerald-500 shadow-emerald-500/5 ring-1 ring-emerald-500/20"
                                                 : status.label === t('grn.over') || status.label === 'Over'
                                                    ? "bg-orange-500/10 text-orange-500 ring-1 ring-orange-500/20"
-                                                   : "bg-yellow-500/10 text-yellow-500 ring-1 ring-yellow-500/20"
+                                                   : "bg-primary/10 text-primary ring-1 ring-primary/20 shadow-primary/5"
                                           )}>
                                              {status.label}
                                           </Badge>
@@ -1116,24 +1122,24 @@ const ManagerPurchaseOrders: React.FC = () => {
                      </div>
 
                      {/* Action Buttons */}
-                     <div className="flex items-center justify-end gap-6 pt-4">
+                     <div className="flex items-center justify-end gap-8 pt-4">
                         <button
                            onClick={() => setIsReceiveModalOpen(false)}
                            disabled={isConfirmingReceipt}
-                           className="text-white font-black text-sm uppercase tracking-widest hover:text-[#FFCC00] transition-colors disabled:opacity-50"
+                           className="text-muted font-black text-[10px] uppercase tracking-widest hover:text-foreground transition-colors disabled:opacity-50"
                         >
                            {t('common.cancel')}
                         </button>
                         <Button
-                           className="h-14 px-10 bg-[#FFCC00] hover:bg-[#E6B800] active:scale-95 text-black font-black uppercase italic tracking-tighter text-lg rounded-2xl shadow-[0_0_20px_rgba(255,204,0,0.3)] transition-all flex items-center gap-3 disabled:opacity-50"
+                           className="h-16 px-12 bg-primary hover:bg-primary/90 active:scale-95 text-black font-black uppercase italic tracking-tighter text-lg rounded-[2rem] shadow-2xl shadow-primary/30 transition-all flex items-center gap-4 disabled:opacity-50"
                            onClick={() => confirmReceipt()}
                            disabled={isConfirmingReceipt || !invoiceNumber}
                         >
                            {isConfirmingReceipt ? (
-                              <div className="w-5 h-5 border-2 border-black/30 border-t-black rounded-full animate-spin" />
+                              <div className="w-6 h-6 border-3 border-black/30 border-t-black rounded-full animate-spin" />
                            ) : (
                               <>
-                                 <CheckCircle2 className="w-6 h-6" />
+                                 <CheckCircle2 className="w-6 h-6" strokeWidth={3} />
                                  {t('grn.confirm')}
                               </>
                            )}
@@ -1151,10 +1157,10 @@ const ManagerPurchaseOrders: React.FC = () => {
                      initial={{ opacity: 0, scale: 0.95, y: 20 }}
                      animate={{ opacity: 1, scale: 1, y: 0 }}
                      exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                     className="p-8 space-y-6"
+                     className="p-10 space-y-8"
                   >
                      <div className="flex items-center gap-4 mb-2">
-                        <div className="bg-[#FFCC00] px-3 py-1 inline-block -skew-x-2">
+                        <div className="bg-primary px-4 py-2 rounded-xl -skew-x-6 shadow-xl shadow-primary/20">
                            <h2 className="text-black font-black text-xl italic uppercase tracking-tighter">
                               {noteModalData.title}
                            </h2>
@@ -1162,31 +1168,31 @@ const ManagerPurchaseOrders: React.FC = () => {
                      </div>
 
                      <div className="space-y-4">
-                        <p className="text-gray-400 text-sm font-medium uppercase tracking-wider">
-                           Add a message or reason for this action:
+                        <p className="text-muted text-[10px] font-black uppercase tracking-[0.2em] pl-1 opacity-60">
+                           TRANSACTIONAL CONTEXT / REASONING:
                         </p>
                         <textarea
                            autoFocus
                            value={noteText}
                            onChange={(e) => setNoteText(e.target.value)}
-                           placeholder={noteModalData.action === 'revision' ? "e.g. We already have 10kg of onions. Please verify stock." : "Add a note..."}
-                           className="w-full h-32 bg-black/40 border border-gray-800 focus:border-[#FFCC00] focus:ring-1 focus:ring-[#FFCC00] text-white rounded-2xl p-4 transition-all resize-none custom-scrollbar"
+                           placeholder={noteModalData.action === 'revision' ? "e.g. Audit mismatch detected in node 04. Verify physical inventory." : "Add a transactional note..."}
+                           className="w-full h-40 bg-muted/5 border border-border focus:border-primary/50 focus:ring-1 focus:ring-primary/20 text-foreground font-medium rounded-[1.5rem] p-6 transition-all resize-none custom-scrollbar shadow-inner text-sm"
                         />
                      </div>
 
-                     <div className="flex gap-4 pt-2">
+                     <div className="flex gap-4 pt-4">
                         <Button
-                           variant="outline"
+                           variant="ghost"
                            onClick={() => setNoteModalData(null)}
-                           className="flex-1 h-14 border-gray-700 hover:bg-white/5 text-gray-300 text-lg font-bold rounded-2xl"
+                           className="flex-1 h-16 border border-border text-muted hover:text-foreground hover:bg-muted/10 text-xs font-black uppercase tracking-widest rounded-2xl transition-all"
                         >
-                           Cancel
+                           Abort Action
                         </Button>
                         <Button
                            onClick={submitNoteAction}
-                           className="flex-1 h-14 bg-[#FFCC00] hover:bg-[#E6B800] text-black text-lg font-black uppercase italic rounded-2xl shadow-xl shadow-[#FFCC00]/10"
+                           className="flex-1 h-16 bg-primary hover:bg-primary/90 text-black text-xs font-black uppercase italic tracking-widest rounded-2xl shadow-2xl shadow-primary/20 transition-all hover:scale-[1.02] active:scale-95"
                         >
-                           Confirm
+                           Confirm Execution
                         </Button>
                      </div>
                   </motion.div>
@@ -1202,80 +1208,82 @@ const ManagerPurchaseOrders: React.FC = () => {
                      initial={{ opacity: 0, scale: 0.95, y: 20 }}
                      animate={{ opacity: 1, scale: 1, y: 0 }}
                      exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                     className="space-y-6 max-h-[90vh] overflow-y-auto pr-2 custom-scrollbar p-1"
+                     className="space-y-10 max-h-[90vh] overflow-y-auto pr-2 custom-scrollbar p-2"
                   >
                      {/* Header */}
                      <div className="flex items-center justify-between mb-2">
-                        <div className="bg-[#FFCC00] px-3 py-1 inline-block -skew-x-2">
+                        <div className="bg-primary px-4 py-2 rounded-xl -skew-x-6 shadow-xl shadow-primary/20">
                            <h2 className="text-black font-black text-xl italic uppercase tracking-tighter">
-                              ORDER.DETAILS
+                              ORDER.MANIFEST.EXTRACT
                            </h2>
                         </div>
                         <button
                            onClick={() => setIsDetailsModalOpen(false)}
-                           className="p-2 hover:bg-white/10 rounded-full text-gray-400 transition-colors"
+                           className="p-3 hover:bg-muted/10 rounded-2xl text-muted hover:text-foreground transition-all"
                         >
-                           <XCircle className="w-6 h-6" />
+                           <XCircle className="w-6 h-6" strokeWidth={3} />
                         </button>
                      </div>
 
                      {/* Top Info Bar */}
-                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <div className="p-4 bg-black/40 rounded-xl border border-gray-800/50 backdrop-blur-md">
-                           <div className="text-[10px] font-black text-gray-500 uppercase mb-1">PO NUMBER</div>
-                           <p className="text-white font-mono font-bold">{selectedPODetails.po_number}</p>
+                     <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                        <div className="p-6 bg-card/40 rounded-3xl border border-border backdrop-blur-xl relative overflow-hidden group shadow-xl">
+                           <div className="text-[9px] font-black text-muted uppercase tracking-widest mb-2 opacity-60">DESCRIPTOR</div>
+                           <p className="text-foreground font-mono font-black text-lg">{selectedPODetails.po_number}</p>
                         </div>
-                        <div className="p-4 bg-black/40 rounded-xl border border-gray-800/50 backdrop-blur-md">
-                           <div className="text-[10px] font-black text-gray-500 uppercase mb-1">STATUS</div>
+                        <div className="p-6 bg-card/40 rounded-3xl border border-border backdrop-blur-xl relative overflow-hidden group shadow-xl">
+                           <div className="text-[9px] font-black text-muted uppercase tracking-widest mb-2 opacity-60">PROTOCOL_STATE</div>
                            <div>{getStatusBadge(selectedPODetails.status)}</div>
                         </div>
-                        <div className="p-4 bg-black/40 rounded-xl border border-gray-800/50 backdrop-blur-md col-span-2">
-                           <div className="text-[10px] font-black text-gray-500 uppercase mb-1">SUPPLIER</div>
-                           <p className="text-white font-bold">{selectedPODetails.supplier?.name}</p>
+                        <div className="p-6 bg-card/40 rounded-3xl border border-border backdrop-blur-xl relative overflow-hidden group shadow-xl col-span-2">
+                           <div className="text-[9px] font-black text-muted uppercase tracking-widest mb-2 opacity-60">STRATEGIC_PARTNER</div>
+                           <p className="text-foreground font-black text-lg uppercase tracking-tight">{selectedPODetails.supplier?.name}</p>
                         </div>
                      </div>
 
-                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                     <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                         {/* Details Column */}
-                        <div className="md:col-span-2 space-y-6">
+                        <div className="md:col-span-2 space-y-8">
                            {/* Items Table */}
-                           <div className="bg-white/5 rounded-2xl border border-white/10 overflow-hidden">
-                              <div className="px-6 py-4 bg-black/40 border-b border-white/5 flex items-center gap-2">
-                                 <Package className="w-4 h-4 text-[#FFCC00]" />
-                                 <h3 className="text-xs font-black text-white uppercase tracking-widest italic font-mono">ORDERED.ITEMS</h3>
+                           <div className="bg-card/60 backdrop-blur-xl border border-border rounded-[2.5rem] overflow-hidden shadow-2xl">
+                              <div className="px-8 py-6 border-b border-border bg-muted/5 flex items-center gap-3">
+                                 <ShoppingBag className="w-4 h-4 text-primary" strokeWidth={3} />
+                                 <h3 className="text-[10px] font-black text-foreground uppercase tracking-[0.2em] italic font-mono">MANIFEST.CONTENT</h3>
                               </div>
                               <table className="w-full text-sm text-left">
-                                 <thead className="text-[10px] font-black text-gray-500 uppercase bg-black/20 border-b border-gray-800 font-mono">
+                                 <thead className="text-[9px] font-black text-muted uppercase bg-muted/5 border-b border-border tracking-widest font-mono">
                                     <tr>
-                                       <th className="px-6 py-4">ITEM</th>
-                                       <th className="px-4 py-4 text-center">QTY</th>
-                                       <th className="px-4 py-4 text-right">UNIT PRICE</th>
-                                       <th className="px-6 py-4 text-right">SUBTOTAL</th>
+                                       <th className="px-8 py-4">ITEM_NODE</th>
+                                       <th className="px-5 py-4 text-center">VOLUME</th>
+                                       <th className="px-5 py-4 text-right">UNIT_VAL</th>
+                                       <th className="px-8 py-4 text-right">EXTENSION</th>
                                     </tr>
                                  </thead>
-                                 <tbody className="divide-y divide-gray-800">
+                                 <tbody className="divide-y divide-border">
                                     {selectedPODetails.items?.map((item) => (
-                                       <tr key={item.id} className="hover:bg-white/5 transition-colors">
-                                          <td className="px-6 py-4">
-                                             <p className="font-bold text-gray-100 uppercase italic">{item.ingredient?.name}</p>
-                                             <p className="text-[10px] text-gray-500 font-mono">{item.ingredient?.unit_type}</p>
+                                       <tr key={item.id} className="hover:bg-muted/5 transition-colors group">
+                                          <td className="px-8 py-5">
+                                             <p className="font-black text-foreground uppercase italic tracking-tight group-hover:text-primary transition-colors">{item.ingredient?.name}</p>
+                                             <p className="text-[9px] text-muted font-black uppercase tracking-widest mt-1 opacity-60">{item.ingredient?.unit_type}</p>
                                           </td>
-                                          <td className="px-4 py-4 text-center text-gray-300 font-mono text-base">
+                                          <td className="px-5 py-5 text-center text-foreground font-mono font-black text-base opacity-40">
                                              {item.ordered_quantity}
                                           </td>
-                                          <td className="px-4 py-4 text-right text-gray-400 font-mono">
-                                             ETB {item.unit_price.toLocaleString()}
+                                          <td className="px-5 py-5 text-right text-muted font-mono font-black text-xs">
+                                             <span className="text-[8px] mr-1 opacity-30">ETB</span>
+                                             {item.unit_price.toLocaleString()}
                                           </td>
-                                          <td className="px-6 py-4 text-right text-primary font-bold font-mono">
-                                             ETB {(item.ordered_quantity * item.unit_price).toLocaleString()}
+                                          <td className="px-8 py-5 text-right text-foreground font-black font-mono">
+                                             <span className="text-[9px] mr-1 opacity-30">ETB</span>
+                                             {(item.ordered_quantity * item.unit_price).toLocaleString()}
                                           </td>
                                        </tr>
                                     ))}
                                  </tbody>
-                                 <tfoot className="bg-black/40 font-mono">
+                                 <tfoot className="bg-muted/10 font-mono">
                                     <tr>
-                                       <td colSpan={3} className="px-6 py-4 text-right text-[10px] font-black text-gray-500 uppercase">{t('po.total')}</td>
-                                       <td className="px-6 py-4 text-right text-lg font-black text-primary italic">ETB {selectedPODetails.total_amount.toLocaleString()}</td>
+                                       <td colSpan={3} className="px-8 py-6 text-right text-[10px] font-black text-muted uppercase tracking-widest opacity-60">TOTAL COMMITMENT</td>
+                                       <td className="px-8 py-6 text-right text-xl font-black text-foreground italic tracking-tighter"><span className="text-xs mr-1 opacity-30 NOT-italic">ETB</span>{selectedPODetails.total_amount.toLocaleString()}</td>
                                     </tr>
                                  </tfoot>
                               </table>
@@ -1283,24 +1291,24 @@ const ManagerPurchaseOrders: React.FC = () => {
 
                            {/* Shipments / GRNs if any */}
                            {selectedPODetails.grns && selectedPODetails.grns.length > 0 && (
-                              <div className="bg-emerald-500/5 rounded-2xl border border-emerald-500/10 overflow-hidden">
-                                 <div className="px-6 py-4 bg-emerald-500/10 border-b border-emerald-500/10 flex items-center justify-between">
-                                    <div className="flex items-center gap-2">
-                                       <Truck className="w-4 h-4 text-emerald-400" />
-                                       <h3 className="text-xs font-black text-emerald-400 uppercase tracking-widest italic font-mono">SHIPMENT.HISTORY</h3>
+                              <div className="bg-emerald-500/5 rounded-[2.5rem] border border-emerald-500/10 overflow-hidden shadow-xl">
+                                 <div className="px-8 py-6 bg-emerald-500/10 border-b border-emerald-500/10 flex items-center justify-between">
+                                    <div className="flex items-center gap-3">
+                                       <Truck className="w-4 h-4 text-emerald-500" strokeWidth={3} />
+                                       <h3 className="text-[10px] font-black text-emerald-500 uppercase tracking-[0.2em] italic font-mono">SHIPMENT.LOGS</h3>
                                     </div>
-                                    <Badge variant="success" className="bg-emerald-500/20 text-emerald-400 border-none">{selectedPODetails.grns.length} SHIPMENTS</Badge>
+                                    <Badge className="bg-emerald-500/20 text-emerald-500 border-none font-black text-[9px] tracking-widest">{selectedPODetails.grns.length} VECTORS</Badge>
                                  </div>
                                  <div className="divide-y divide-emerald-500/10">
                                     {selectedPODetails.grns.map((grn) => (
-                                       <div key={grn.id} className="px-6 py-4 flex items-center justify-between group hover:bg-emerald-500/5 transition-colors">
+                                       <div key={grn.id} className="px-8 py-5 flex items-center justify-between group hover:bg-emerald-500/5 transition-colors">
                                           <div>
-                                             <p className="text-xs font-mono font-bold text-gray-300 group-hover:text-emerald-400">{grn.grn_number}</p>
-                                             <p className="text-[10px] text-gray-500">{new Date(grn.received_date).toLocaleDateString()}</p>
+                                             <p className="text-xs font-mono font-black text-foreground group-hover:text-emerald-500 transition-colors uppercase">{grn.grn_number}</p>
+                                             <p className="text-[9px] text-muted font-black uppercase tracking-widest opacity-60 mt-1">{new Date(grn.received_date).toLocaleDateString()}</p>
                                           </div>
                                           <div className="text-right">
-                                             <p className="text-[10px] font-black text-gray-500 uppercase">INVOICE</p>
-                                             <p className="text-xs font-mono text-gray-400">{grn.invoice_number}</p>
+                                             <p className="text-[9px] font-black text-muted uppercase tracking-widest opacity-40 mb-1">TXNV_AUTH</p>
+                                             <p className="text-xs font-mono text-foreground opacity-60 font-black">{grn.invoice_number}</p>
                                           </div>
                                        </div>
                                     ))}
@@ -1310,29 +1318,31 @@ const ManagerPurchaseOrders: React.FC = () => {
                         </div>
 
                         {/* Activity Sidebar */}
-                        <div className="space-y-6">
-                           <div className="bg-black/40 rounded-2xl border border-gray-800/50 p-6 backdrop-blur-md">
-                              <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest italic font-mono mb-6 border-b border-gray-800 pb-4">ACTIVITY.FEED</h3>
-                              <div className="space-y-8 relative">
+                        <div className="space-y-8">
+                           <div className="bg-card/40 rounded-[2.5rem] border border-border p-8 backdrop-blur-xl shadow-2xl relative overflow-hidden">
+                              <div className="absolute inset-x-0 top-0 h-2 bg-gradient-to-r from-primary/0 via-primary/10 to-primary/0" />
+                              <h3 className="text-[10px] font-black text-muted uppercase tracking-[0.3em] italic font-mono mb-10 pb-5 border-b border-border">EVENT.LIFECYCLE</h3>
+                              <div className="space-y-10 relative">
                                  {/* Timeline Line */}
-                                 <div className="absolute left-[11px] top-2 bottom-2 w-[2px] bg-gray-800" />
+                                 <div className="absolute left-[13px] top-3 bottom-3 w-[2px] bg-border opacity-60" />
 
                                  {selectedPODetails.activity_log?.slice().reverse().map((log, idx) => (
-                                    <div key={log.id} className="relative pl-8">
+                                    <div key={log.id} className="relative pl-10 group/log">
                                        <div className={cn(
-                                          "absolute left-0 top-1 w-6 h-6 rounded-full flex items-center justify-center ring-4 ring-[#1A1A1A] z-10",
-                                          idx === 0 ? "bg-[#FFCC00] text-black" : "bg-gray-800 text-gray-400"
+                                          "absolute left-0 top-1 w-7 h-7 rounded-lg flex items-center justify-center ring-4 ring-card z-10 transition-all duration-500 group-hover/log:scale-110",
+                                          idx === 0 ? "bg-primary text-black shadow-lg shadow-primary/30" : "bg-muted/10 text-muted"
                                        )}>
-                                          <CheckCircle2 className="w-3.5 h-3.5" />
+                                          <CheckCircle2 className="w-4 h-4" strokeWidth={3} />
                                        </div>
-                                       <div className="space-y-1">
+                                       <div className="space-y-2">
                                           <div className="flex items-center justify-between">
-                                             <span className="text-[10px] font-black text-white uppercase tracking-tighter italic">{log.action_type}</span>
-                                             <span className="text-[10px] text-gray-600 font-mono">{new Date(log.created_at).toLocaleDateString()}</span>
+                                             <span className="text-[10px] font-black text-foreground uppercase tracking-widest italic">{log.action_type}</span>
+                                             <span className="text-[9px] text-muted font-black font-mono opacity-40">{new Date(log.created_at).toLocaleDateString()}</span>
                                           </div>
-                                          <p className="text-[11px] text-gray-400 italic">By {log.performer?.full_name || 'System'}</p>
+                                          <p className="text-[10px] text-muted font-black uppercase tracking-tight opacity-60">Auth: {log.performer?.full_name || 'System'}</p>
                                           {log.notes && (
-                                             <div className="mt-2 p-3 bg-white/5 rounded-lg border border-white/5 text-[11px] text-gray-300 italic ring-1 ring-inset ring-white/5">
+                                             <div className="mt-3 p-4 bg-muted/5 rounded-2xl border border-border text-[10px] text-foreground font-medium italic relative overflow-hidden">
+                                                <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary/20" />
                                                 "{log.notes}"
                                              </div>
                                           )}
@@ -1342,10 +1352,10 @@ const ManagerPurchaseOrders: React.FC = () => {
                               </div>
                            </div>
 
-                           <div className="p-4 bg-[#FFCC00]/5 rounded-xl border border-[#FFCC00]/10 border-dashed">
-                              <p className="text-[10px] font-black text-[#FFCC00] uppercase italic mb-1">Created By</p>
-                              <p className="text-xs text-gray-400 font-bold">{selectedPODetails.creator?.full_name}</p>
-                              <p className="text-[10px] text-gray-600 font-mono mt-0.5">{new Date(selectedPODetails.created_at).toLocaleString()}</p>
+                           <div className="p-6 bg-primary/5 rounded-3xl border border-primary/10 border-dashed group hover:bg-primary/10 transition-colors">
+                              <p className="text-[9px] font-black text-primary uppercase tracking-[0.3em] italic mb-2">ORIGIN_NODE</p>
+                              <p className="text-xs text-foreground font-black uppercase">{selectedPODetails.creator?.full_name}</p>
+                              <p className="text-[9px] text-muted font-mono mt-1 font-black opacity-40">{new Date(selectedPODetails.created_at).toLocaleString()}</p>
                            </div>
                         </div>
                      </div>
@@ -1361,36 +1371,37 @@ const ManagerPurchaseOrders: React.FC = () => {
                      initial={{ opacity: 0, scale: 0.95, y: 20 }}
                      animate={{ opacity: 1, scale: 1, y: 0 }}
                      exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                     className="p-8 space-y-8 text-center"
+                     className="p-12 space-y-10 text-center"
                   >
-                     <div className="mx-auto w-20 h-20 bg-red-500/10 rounded-full flex items-center justify-center mb-4">
-                        <AlertCircle className="w-10 h-10 text-red-500 animate-pulse" />
+                     <div className="mx-auto w-24 h-24 bg-red-500/10 rounded-[2rem] flex items-center justify-center mb-4 relative group">
+                        <div className="absolute inset-0 bg-red-500/20 blur-2xl opacity-0 group-hover:opacity-100 transition-opacity" />
+                        <AlertCircle className="w-12 h-12 text-red-500 animate-pulse relative z-10" strokeWidth={3} />
                      </div>
 
-                     <div className="space-y-3">
-                        <div className="bg-red-500 px-3 py-1 inline-block -skew-x-2">
-                           <h2 className="text-black font-black text-2xl italic uppercase tracking-tighter">
+                     <div className="space-y-4">
+                        <div className="bg-red-500 px-5 py-2 rounded-xl -skew-x-6 inline-block shadow-xl shadow-red-500/20">
+                           <h2 className="text-white font-black text-2xl italic uppercase tracking-tighter">
                               {t('common.delete')}?
                            </h2>
                         </div>
-                        <p className="text-gray-400 text-lg">
-                           Are you sure you want to delete this purchase order? This action cannot be undone.
+                        <p className="text-muted text-lg font-medium max-w-sm mx-auto">
+                           Are you sure you want to terminate this procurement draft? This action is irreversible.
                         </p>
                      </div>
 
-                     <div className="flex gap-4 pt-4">
+                     <div className="flex gap-4 pt-6">
                         <Button
-                           variant="outline"
+                           variant="ghost"
                            onClick={() => setDeleteConfirmationPOId(null)}
-                           className="flex-1 h-14 border-gray-700 hover:bg-white/5 text-gray-300 text-lg font-bold rounded-2xl"
+                           className="flex-1 h-16 border border-border text-muted hover:text-foreground hover:bg-muted/10 text-xs font-black uppercase tracking-widest rounded-2xl transition-all"
                         >
-                           {t('common.cancel')}
+                           Abort
                         </Button>
                         <Button
                            onClick={confirmDelete}
-                           className="flex-1 h-14 bg-red-600 hover:bg-red-700 text-white text-lg font-black uppercase italic rounded-2xl shadow-xl shadow-red-600/20"
+                           className="flex-1 h-16 bg-red-600 hover:bg-red-700 text-white text-xs font-black uppercase italic tracking-widest rounded-2xl shadow-2xl shadow-red-600/30 transition-all hover:scale-[1.02] active:scale-95"
                         >
-                           {t('common.delete')}
+                           Terminate Draft
                         </Button>
                      </div>
                   </motion.div>

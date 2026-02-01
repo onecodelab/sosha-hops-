@@ -29,9 +29,12 @@ const KitchenDashboard: React.FC = () => {
             .from('orders')
             .select(`
                *,
+               waiter:profiles!orders_waiter_id_fkey (full_name),
                order_items (
                   id,
                   quantity,
+                  price,
+                  special_instructions,
                   menu_item:menu (name)
                )
             `)
@@ -95,71 +98,77 @@ const KitchenDashboard: React.FC = () => {
          }
       >
          <div className="space-y-6 animate-in fade-in duration-700 h-full flex flex-col">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-1 min-h-0 pb-20">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 flex-1 min-h-0 pb-20">
                {/* INCOMING */}
-               <div className="flex flex-col min-h-0 bg-[#1A1A1A] border border-gray-800 rounded-[2.5rem] overflow-hidden shadow-lg relative group hover:border-yellow-500/20 transition-all">
+               <div className="flex flex-col min-h-0 bg-card/60 backdrop-blur-xl border border-border rounded-[2.5rem] overflow-hidden shadow-2xl relative group hover:border-yellow-500/30 transition-all">
                   <div className="absolute inset-0 bg-gradient-to-br from-yellow-500/5 to-transparent pointer-events-none" />
-                  <div className="p-6 border-b border-gray-800 bg-black/20 flex items-center justify-between relative z-10">
-                     <div className="flex items-center gap-3">
-                        <div className="w-2 h-2 rounded-full bg-yellow-400 animate-pulse shadow-[0_0_10px_rgba(234,179,8,0.5)]" />
-                        <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-yellow-500/80">Incoming</h3>
+                  <div className="p-8 border-b border-border bg-muted/5 flex items-center justify-between relative z-10">
+                     <div className="flex items-center gap-4">
+                        <div className="w-3 h-3 rounded-full bg-yellow-400 animate-pulse shadow-[0_0_15px_rgba(234,179,8,0.5)]" />
+                        <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-yellow-500">Incoming</h3>
                      </div>
-                     <Badge variant="default" className="font-mono bg-yellow-500/10 text-yellow-500 border-yellow-500/20 shadow-lg">{incomingOrders.length}</Badge>
+                     <Badge className="bg-yellow-500/10 text-yellow-500 border-yellow-500/20 px-4 py-1.5 font-mono text-xs font-black shadow-lg">{incomingOrders.length}</Badge>
                   </div>
-                  <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar relative z-10">
+                  <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar relative z-10">
                      {incomingOrders.map(order => (
                         <OrderCard key={order.id} order={order} role="kitchen" onAction={handleOrderAction} />
                      ))}
                      {incomingOrders.length === 0 && (
-                        <div className="h-full flex flex-col items-center justify-center opacity-30 gap-4">
-                           <Monitor className="w-12 h-12 text-yellow-500" />
-                           <span className="text-[10px] font-black uppercase tracking-[0.2em] text-yellow-500">Queue Clear</span>
+                        <div className="h-full flex flex-col items-center justify-center opacity-20 gap-6">
+                           <div className="p-6 bg-yellow-500/10 rounded-full">
+                              <Monitor className="w-12 h-12 text-yellow-500" />
+                           </div>
+                           <span className="text-[10px] font-black uppercase tracking-[0.4em] text-yellow-500">Queue Clear</span>
                         </div>
                      )}
                   </div>
                </div>
 
                {/* ACCEPTED (PREPARING) */}
-               <div className="flex flex-col min-h-0 bg-[#1A1A1A] border border-gray-800 rounded-[2.5rem] overflow-hidden shadow-lg relative group hover:border-orange-500/20 transition-all">
+               <div className="flex flex-col min-h-0 bg-card/60 backdrop-blur-xl border border-border rounded-[2.5rem] overflow-hidden shadow-2xl relative group hover:border-orange-500/30 transition-all">
                   <div className="absolute inset-0 bg-gradient-to-br from-orange-500/5 to-transparent pointer-events-none" />
-                  <div className="p-6 border-b border-gray-800 bg-black/20 flex items-center justify-between relative z-10">
-                     <div className="flex items-center gap-3">
-                        <div className="w-2 h-2 rounded-full bg-orange-500 shadow-[0_0_10px_rgba(249,115,22,0.5)]" />
-                        <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-orange-500/80">Prep Station</h3>
+                  <div className="p-8 border-b border-border bg-muted/5 flex items-center justify-between relative z-10">
+                     <div className="flex items-center gap-4">
+                        <div className="w-3 h-3 rounded-full bg-orange-500 shadow-[0_0_15px_rgba(249,115,22,0.5)]" />
+                        <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-orange-500">Prep Station</h3>
                      </div>
-                     <Badge variant="default" className="font-mono bg-orange-500/10 text-orange-500 border-orange-500/20 shadow-lg">{acceptedOrders.length}</Badge>
+                     <Badge className="bg-orange-500/10 text-orange-500 border-orange-500/20 px-4 py-1.5 font-mono text-xs font-black shadow-lg">{acceptedOrders.length}</Badge>
                   </div>
-                  <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar relative z-10">
+                  <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar relative z-10">
                      {acceptedOrders.map(order => (
                         <OrderCard key={order.id} order={order} role="kitchen" onAction={handleOrderAction} />
                      ))}
                      {acceptedOrders.length === 0 && (
-                        <div className="h-full flex flex-col items-center justify-center opacity-30 gap-4">
-                           <ChefHat className="w-12 h-12 text-orange-500" />
-                           <span className="text-[10px] font-black uppercase tracking-[0.2em] text-orange-500">Station Idle</span>
+                        <div className="h-full flex flex-col items-center justify-center opacity-20 gap-6">
+                           <div className="p-6 bg-orange-500/10 rounded-full">
+                              <ChefHat className="w-12 h-12 text-orange-500" />
+                           </div>
+                           <span className="text-[10px] font-black uppercase tracking-[0.4em] text-orange-500">Station Idle</span>
                         </div>
                      )}
                   </div>
                </div>
 
                {/* PREPARED (READY) */}
-               <div className="flex flex-col min-h-0 bg-[#1A1A1A] border border-gray-800 rounded-[2.5rem] overflow-hidden shadow-lg relative group hover:border-green-500/20 transition-all">
-                  <div className="absolute inset-0 bg-gradient-to-br from-green-500/5 to-transparent pointer-events-none" />
-                  <div className="p-6 border-b border-gray-800 bg-black/20 flex items-center justify-between relative z-10">
-                     <div className="flex items-center gap-3">
-                        <div className="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.5)]" />
-                        <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-green-500/80">Ready to Serve</h3>
+               <div className="flex flex-col min-h-0 bg-card/60 backdrop-blur-xl border border-border rounded-[2.5rem] overflow-hidden shadow-2xl relative group hover:border-emerald-500/30 transition-all">
+                  <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-transparent pointer-events-none" />
+                  <div className="p-8 border-b border-border bg-muted/5 flex items-center justify-between relative z-10">
+                     <div className="flex items-center gap-4">
+                        <div className="w-3 h-3 rounded-full bg-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.5)]" />
+                        <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-emerald-500">Ready to Serve</h3>
                      </div>
-                     <Badge variant="default" className="font-mono bg-green-500/10 text-green-500 border-green-500/20 shadow-lg">{preparedOrders.length}</Badge>
+                     <Badge className="bg-emerald-500/10 text-emerald-500 border-emerald-500/20 px-4 py-1.5 font-mono text-xs font-black shadow-lg">{preparedOrders.length}</Badge>
                   </div>
-                  <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar relative z-10">
+                  <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar relative z-10">
                      {preparedOrders.map(order => (
                         <OrderCard key={order.id} order={order} role="kitchen" onAction={handleOrderAction} />
                      ))}
                      {preparedOrders.length === 0 && (
-                        <div className="h-full flex flex-col items-center justify-center opacity-30 gap-4">
-                           <CheckCircle2 className="w-12 h-12 text-green-500" />
-                           <span className="text-[10px] font-black uppercase tracking-[0.2em] text-green-500">All Cleared</span>
+                        <div className="h-full flex flex-col items-center justify-center opacity-20 gap-6">
+                           <div className="p-6 bg-emerald-500/10 rounded-full">
+                              <CheckCircle2 className="w-12 h-12 text-emerald-500" />
+                           </div>
+                           <span className="text-[10px] font-black uppercase tracking-[0.4em] text-emerald-500">All Cleared</span>
                         </div>
                      )}
                   </div>

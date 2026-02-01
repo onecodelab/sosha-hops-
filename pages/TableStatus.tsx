@@ -305,27 +305,36 @@ const TableStatus: React.FC = () => {
       <DashboardLayout title="Floor Status" subtitle={isAnalyticsMode ? "Performance Heatmap (Today)" : "Real-time occupancy visualization"}>
          <div className="space-y-6 animate-in fade-in duration-500 pb-20">
 
-            <div className="flex flex-col md:flex-row justify-between items-center gap-4 bg-[#1A1A1A] p-4 rounded-[2rem] border border-gray-800">
+            <div className="flex flex-col md:flex-row justify-between items-center gap-6 bg-card/60 backdrop-blur-xl p-6 rounded-[2.5rem] border border-border shadow-2xl">
                {/* Zone Filter */}
-               <div className="flex bg-black/40 p-1 rounded-xl border border-gray-800 overflow-x-auto w-full md:w-auto no-scrollbar">
+               <div className="flex bg-muted/10 p-1.5 rounded-2xl border border-border overflow-x-auto w-full md:w-auto no-scrollbar snap-x">
                   {['all', 'indoor', 'outdoor', 'vip', 'bar'].map(z => (
-                     <button key={z} onClick={() => setZoneFilter(z as any)} className={cn("px-4 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all", zoneFilter === z ? "bg-primary text-black" : "text-gray-500 hover:text-white")}>{z}</button>
+                     <button
+                        key={z}
+                        onClick={() => setZoneFilter(z as any)}
+                        className={cn(
+                           "px-6 py-2.5 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all whitespace-nowrap snap-start",
+                           zoneFilter === z ? "bg-primary text-black shadow-lg" : "text-muted hover:text-foreground hover:bg-muted/10 font-bold"
+                        )}
+                     >
+                        {z}
+                     </button>
                   ))}
                </div>
 
-               <div className="flex gap-2">
-                  {/* Analytics Toggle (Restricted) */}
+               <div className="flex flex-wrap items-center justify-center gap-3">
+                  {/* Analytics Toggle */}
                   {canViewAnalytics && (
-                     <div className="flex items-center gap-2">
+                     <div className="flex items-center gap-3">
                         {isAnalyticsMode && (
-                           <div className="flex bg-black/40 p-1 rounded-lg border border-white/5 animate-in slide-in-from-right-4 duration-300">
+                           <div className="flex bg-muted/10 p-1 rounded-xl border border-border animate-in fade-in slide-in-from-right-4">
                               {(['today', 'week', 'month'] as const).map(r => (
                                  <button
                                     key={r}
                                     onClick={() => setAnalyticsRange(r)}
                                     className={cn(
-                                       "px-3 py-1 text-[9px] uppercase font-black tracking-widest rounded-md transition-all",
-                                       analyticsRange === r ? "bg-primary text-black" : "text-zinc-500 hover:text-white"
+                                       "px-4 py-1.5 text-[9px] uppercase font-black tracking-[0.2em] rounded-lg transition-all",
+                                       analyticsRange === r ? "bg-card text-foreground shadow-sm border border-border" : "text-muted hover:text-foreground"
                                     )}
                                  >
                                     {r}
@@ -333,24 +342,24 @@ const TableStatus: React.FC = () => {
                               ))}
                            </div>
                         )}
-                        <div className="flex bg-black/40 p-1 rounded-lg border border-white/5">
+                        <div className="flex bg-muted/10 p-1 rounded-xl border border-border shadow-inner">
                            <button
                               onClick={() => { setIsAnalyticsMode(false); setIsMapView(false); }}
-                              className={cn("px-3 py-1.5 text-[10px] uppercase font-black tracking-wider rounded-md transition-all flex items-center gap-2", !isAnalyticsMode && !isMapView ? "bg-zinc-800 text-white" : "text-zinc-500 hover:text-white")}
+                              className={cn("px-4 py-2 text-[10px] uppercase font-black tracking-widest rounded-lg transition-all flex items-center gap-2", !isAnalyticsMode && !isMapView ? "bg-primary text-black shadow-md" : "text-muted hover:text-foreground")}
                            >
-                              <LayoutGrid className="w-3 h-3" /> Live
+                              <LayoutGrid className="w-3.5 h-3.5" strokeWidth={3} /> LIVE
                            </button>
                            <button
                               onClick={() => { setIsAnalyticsMode(false); setIsMapView(true); }}
-                              className={cn("px-3 py-1.5 text-[10px] uppercase font-black tracking-wider rounded-md transition-all flex items-center gap-2", isMapView ? "bg-blue-600 text-white" : "text-zinc-500 hover:text-white")}
+                              className={cn("px-4 py-2 text-[10px] uppercase font-black tracking-widest rounded-lg transition-all flex items-center gap-2", isMapView ? "bg-blue-500 text-white shadow-md" : "text-muted hover:text-foreground")}
                            >
-                              <MapPin className="w-3 h-3" /> Map
+                              <MapPin className="w-3.5 h-3.5" strokeWidth={3} /> MAP
                            </button>
                            <button
                               onClick={() => { setIsAnalyticsMode(true); setIsMapView(false); }}
-                              className={cn("px-3 py-1.5 text-[10px] uppercase font-black tracking-wider rounded-md transition-all flex items-center gap-2", isAnalyticsMode ? "bg-primary text-black" : "text-zinc-500 hover:text-white")}
+                              className={cn("px-4 py-2 text-[10px] uppercase font-black tracking-widest rounded-lg transition-all flex items-center gap-2", isAnalyticsMode ? "bg-purple-500 text-white shadow-md" : "text-muted hover:text-foreground")}
                            >
-                              <TrendingUp className="w-3 h-3" /> Analytics
+                              <TrendingUp className="w-3.5 h-3.5" strokeWidth={3} /> DATA
                            </button>
                         </div>
                      </div>
@@ -361,23 +370,24 @@ const TableStatus: React.FC = () => {
                         <button
                            onClick={() => setIsSetupMode(!isSetupMode)}
                            className={cn(
-                              "px-3 py-1.5 text-[10px] uppercase font-black tracking-wider rounded-lg transition-all flex items-center gap-2 border",
+                              "px-4 py-2 text-[10px] uppercase font-black tracking-widest rounded-xl transition-all flex items-center gap-2 border",
                               isSetupMode
-                                 ? "bg-orange-500 text-black border-orange-500 animate-pulse"
-                                 : "bg-black/40 text-zinc-500 border-white/5 hover:text-white"
+                                 ? "bg-orange-500 text-white border-orange-400 shadow-[0_0_15px_rgba(249,115,22,0.4)] animate-pulse"
+                                 : "bg-muted/10 text-muted border-border hover:text-foreground"
                            )}
                         >
-                           <AlertTriangle className="w-3.5 h-3.5" />
-                           {isSetupMode ? 'Setup ON' : 'Setup'}
+                           <Zap className="w-3.5 h-3.5" /> {isSetupMode ? 'SYNC ON' : 'SETUP'}
                         </button>
 
-                        <Button variant="outline" onClick={openAddTableModal} size="sm" className="border-primary/30 bg-primary/10 text-primary rounded-lg hover:bg-primary/20">
-                           <Plus className="w-3.5 h-3.5 mr-2" /> Add Table
+                        <Button onClick={openAddTableModal} size="sm" className="h-10 bg-primary/10 text-primary border-primary/20 hover:bg-primary/20 rounded-xl font-black text-[10px] uppercase tracking-widest">
+                           <Plus className="w-4 h-4 mr-2" strokeWidth={3} /> TABLE
                         </Button>
                      </div>
                   </RoleGuard>
 
-                  <Button variant="outline" onClick={() => refetch()} size="sm" className="border-white/10 bg-white/5 rounded-lg"><RefreshCw className={cn("w-3.5 h-3.5 mr-2", isLoading && "animate-spin")} /> Refresh</Button>
+                  <Button variant="ghost" onClick={() => refetch()} size="sm" className="h-10 w-10 p-0 rounded-xl bg-muted/5 border border-border text-muted hover:text-foreground transition-all">
+                     <RefreshCw className={cn("w-4 h-4", isLoading && "animate-spin")} />
+                  </Button>
                </div>
             </div>
 
@@ -404,42 +414,41 @@ const TableStatus: React.FC = () => {
             {!isMapView && (
                <>
                   {/* Mobile List View */}
-                  <div className="md:hidden space-y-3">
+                  <div className="md:hidden space-y-4">
                      {filteredTables?.map((table) => {
                         const metric = analyticsData?.find(m => m.table_id === table.id);
                         const score = metric?.score || 0;
-                        let scoreColor = "text-red-500";
-                        if (score >= 90) scoreColor = "text-green-500";
-                        else if (score >= 80) scoreColor = "text-green-400";
-                        else if (score >= 65) scoreColor = "text-primary";
-                        else if (score >= 50) scoreColor = "text-orange-400";
-
-                        const borderColors: Record<string, string> = {
-                           "text-red-500": "border-red-500/20",
-                           "text-green-500": "border-green-500/20",
-                           "text-green-400": "border-green-400/20",
-                           "text-primary": "border-primary/20",
-                           "text-orange-400": "border-orange-400/20",
-                        };
+                        let scoreColor = "text-red-500 bg-red-500/10 border-red-500/20";
+                        if (score >= 90) scoreColor = "text-emerald-500 bg-emerald-500/10 border-emerald-500/20";
+                        else if (score >= 80) scoreColor = "text-green-500 bg-green-500/10 border-green-500/20";
+                        else if (score >= 65) scoreColor = "text-primary bg-primary/10 border-primary/20";
+                        else if (score >= 50) scoreColor = "text-orange-500 bg-orange-500/10 border-orange-500/20";
 
                         return (
-                           <div key={table.id} className="bg-[#1A1A1A] border border-gray-800 rounded-2xl p-4 flex items-center justify-between shadow-md">
-                              <div className="flex items-center gap-4">
-                                 <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center border font-black text-lg bg-white/5", scoreColor, borderColors[scoreColor] || "border-zinc-500/20")}>
-                                    {table.table_number}
+                           <div key={table.id} className="bg-card/60 backdrop-blur-xl border border-border rounded-3xl p-5 flex items-center justify-between shadow-xl">
+                              <div className="flex items-center gap-5">
+                                 <div className={cn("w-14 h-14 rounded-2xl flex flex-col items-center justify-center border font-black shadow-inner", scoreColor)}>
+                                    <span className="text-lg leading-none">{table.table_number}</span>
+                                    {isAnalyticsMode && <span className="text-[7px] mt-1 opacity-60 uppercase">{score}pts</span>}
                                  </div>
-                                 <div>
+                                 <div className="space-y-1.5">
                                     <div className="flex items-center gap-2">
-                                       <span className="text-[10px] font-black uppercase text-zinc-500 tracking-widest">{table.zone}</span>
-                                       {metric?.is_camper && <AlertTriangle className="w-3 h-3 text-red-500 animate-bounce" />}
+                                       <span className="text-[9px] font-black uppercase text-muted tracking-widest">{table.zone}</span>
+                                       {metric?.is_camper && <div className="w-2 h-2 rounded-full bg-red-500 animate-ping shadow-[0_0_10px_rgba(239,68,68,0.5)]" />}
                                     </div>
-                                    <div className="flex items-center gap-3 mt-1">
-                                       <span className="text-xs font-bold text-white flex items-center gap-1">
-                                          <DollarSign className="w-3 h-3 text-zinc-500" /> {metric?.revenue_per_hour || 0}/hr
-                                       </span>
-                                       <span className="text-[10px] font-bold text-zinc-500 bg-white/5 px-1.5 py-0.5 rounded-md">
-                                          Score: {score}
-                                       </span>
+                                    <div className="flex items-center gap-4">
+                                       <div className="flex items-center gap-1.5">
+                                          <DollarSign className="w-3.5 h-3.5 text-primary" strokeWidth={3} />
+                                          <span className="text-xs font-black text-foreground">{metric?.revenue_per_hour || 0}<span className="text-[8px] opacity-40 ml-0.5">/hr</span></span>
+                                       </div>
+                                       {table.active_session && (
+                                          <div className="flex items-center gap-1.5">
+                                             <Timer className="w-3.5 h-3.5 text-muted" />
+                                             <span className="text-[10px] font-bold text-muted">
+                                                {Math.floor((currentTime.getTime() - new Date(table.active_session.seated_at).getTime()) / 60000)}m
+                                             </span>
+                                          </div>
+                                       )}
                                     </div>
                                  </div>
                               </div>
@@ -454,9 +463,9 @@ const TableStatus: React.FC = () => {
                                        handleQuickOrder(table);
                                     }
                                  }}
-                                 className="h-10 w-10 p-0 rounded-full border border-white/10"
+                                 className="h-12 w-12 rounded-2xl bg-muted/5 border border-border group hover:bg-primary/10 transition-all"
                               >
-                                 <ChevronRight className="w-5 h-5 text-zinc-400" />
+                                 <ChevronRight className="w-6 h-6 text-muted group-hover:text-primary transition-colors" strokeWidth={3} />
                               </Button>
                            </div>
                         );
@@ -770,14 +779,20 @@ const TableStatus: React.FC = () => {
 };
 
 const StatPill = ({ label, value, icon: Icon, color }: any) => {
-   const colors: any = { default: 'text-gray-400', green: 'text-green-500 bg-green-500/10', red: 'text-red-500 bg-red-500/10', yellow: 'text-yellow-500 bg-yellow-500/10', blue: 'text-blue-400 bg-blue-400/10' };
+   const colors: any = {
+      default: 'text-muted border-border bg-muted/5',
+      green: 'text-emerald-500 border-emerald-500/20 bg-emerald-500/10',
+      red: 'text-red-500 border-red-500/20 bg-red-500/10',
+      yellow: 'text-yellow-500 border-yellow-500/20 bg-yellow-500/10',
+      blue: 'text-blue-500 border-blue-500/20 bg-blue-500/10'
+   };
    return (
-      <div className={cn("px-5 py-4 rounded-[1.5rem] border border-white/5 flex flex-col gap-1 transition-all", colors[color || 'default'])}>
+      <div className={cn("px-6 py-5 rounded-[2rem] border flex flex-col gap-2 transition-all shadow-lg hover:shadow-xl", colors[color || 'default'])}>
          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-black uppercase tracking-widest opacity-60">{label}</span>
-            <Icon className="w-3.5 h-3.5 opacity-60" />
+            <span className="text-[10px] font-black uppercase tracking-[0.2em] opacity-40">{label}</span>
+            <Icon className="w-4 h-4 opacity-40" strokeWidth={3} />
          </div>
-         <span className="text-2xl font-black tracking-tighter">{value}</span>
+         <span className="text-2xl font-black tracking-tighter text-foreground">{value}</span>
       </div>
    );
 };
@@ -797,158 +812,113 @@ const TableCard: React.FC<TableCardProps> = React.memo(({ table, currentTime, on
    const isDirty = table.status === 'needs_cleaning';
    const elapsedMins = table.active_session ? Math.floor((currentTime.getTime() - new Date(table.active_session.seated_at).getTime()) / 60000) : 0;
 
-   const isAdmin = profile?.role === 'admin' || profile?.role === 'owner';
+   // Theme-aware status colors
+   const statusStyles = {
+      available: "text-emerald-500 bg-emerald-500/10 border-emerald-500/20",
+      occupied: "text-red-500 bg-red-500/10 border-red-500/20",
+      needs_cleaning: "text-amber-500 bg-amber-500/10 border-amber-500/20"
+   };
 
-   // 1. Analytics View Render
+   // Heatmap color logic
+   const score = metric?.score || 0;
+   let heatColor = "text-muted border-border bg-muted/5";
    if (isAnalyticsMode) {
-      const score = metric?.score || 0;
-      let scoreColor = "text-red-500";
-      let grade = "F";
-
-      if (score >= 90) { scoreColor = "text-green-500"; grade = "A"; }
-      else if (score >= 80) { scoreColor = "text-green-400"; grade = "B"; }
-      else if (score >= 65) { scoreColor = "text-primary"; grade = "C"; }
-      else if (score >= 50) { scoreColor = "text-orange-400"; grade = "D"; }
-      else { scoreColor = "text-red-500"; grade = "F"; }
-
-      return (
-         <SoshaCard className={cn(
-            "p-0 flex flex-col h-auto min-h-[14rem] md:h-64 transition-all duration-500 group relative overflow-hidden bg-[#1A1A1A] border border-gray-800 rounded-[1.5rem] md:rounded-[2.5rem]",
-            "hover:border-primary/50 hover:shadow-[0_0_50px_rgba(255,193,7,0.15)]"
-         )}>
-            {/* Glossy Gradient Overlay */}
-            <div className="absolute inset-0 bg-gradient-to-br from-white/5 via-transparent to-transparent pointer-events-none" />
-
-            <div className="p-3 md:p-6 flex flex-col h-full relative z-10">
-               <div className="flex justify-between items-center mb-2 md:mb-4">
-                  <div>
-                     <span className="text-[8px] md:text-[10px] font-black uppercase tracking-[0.2em] md:tracking-[0.3em] text-zinc-500 mb-0.5 block">Station</span>
-                     <h3 className="text-2xl md:text-4xl font-black tracking-tighter text-white leading-none">{table.table_number}</h3>
-                  </div>
-                  {isAdmin && (
-                     <div className="relative flex items-center justify-center">
-                        <svg className="w-10 h-10 md:w-16 md:h-16 transform -rotate-90" viewBox="0 0 64 64">
-                           <circle cx="32" cy="32" r="28" fill="transparent" stroke="currentColor" strokeWidth="4" className="text-white/5" />
-                           <motion.circle
-                              cx="32" cy="32" r="28" fill="transparent" stroke="currentColor" strokeWidth="4"
-                              strokeDasharray={176}
-                              initial={{ strokeDashoffset: 176 }}
-                              animate={{ strokeDashoffset: 176 - (176 * score) / 100 }}
-                              transition={{ duration: 1.5, ease: "easeOut" }}
-                              className={scoreColor}
-                           />
-                        </svg>
-                        <div className="absolute flex flex-col items-center">
-                           <span className={cn("text-lg md:text-2xl font-black tracking-tighter", scoreColor)}>{grade}</span>
-                        </div>
-                     </div>
-                  )}
-               </div>
-
-               {isAdmin && (
-                  <div className="grid grid-cols-2 gap-1.5 md:gap-2 mb-2 md:mb-4">
-                     <div className="bg-white/5 p-1.5 md:p-2 rounded-lg md:rounded-xl border border-white/5">
-                        <p className="text-[7px] md:text-[8px] font-black text-zinc-500 uppercase tracking-widest">Rev/Hr</p>
-                        <p className="text-xs md:text-sm font-black text-white font-mono truncate">ETB {metric?.revenue_per_hour || 0}</p>
-                     </div>
-                     <div className="bg-white/5 p-1.5 md:p-2 rounded-lg md:rounded-xl border border-white/5">
-                        <p className="text-[7px] md:text-[8px] font-black text-zinc-500 uppercase tracking-widest">Turns</p>
-                        <p className="text-xs md:text-sm font-black text-white font-mono">{metric?.turnover_rate || 0}</p>
-                     </div>
-                  </div>
-               )}
-
-               <div className="mt-auto space-y-2 md:space-y-3">
-                  <Button
-                     onClick={() => onViewHistory?.(table.id, table.table_number)}
-                     className="w-full bg-primary/10 border border-primary/20 text-primary hover:bg-primary hover:text-black font-black text-[9px] md:text-[10px] uppercase tracking-widest h-8 md:h-12 rounded-xl md:rounded-2xl transition-all"
-                  >
-                     History
-                  </Button>
-               </div>
-
-               {/* Absolute Badges for Alerts */}
-               <div className="absolute top-2 right-20 flex gap-1">
-                  {metric?.is_camper && (
-                     <div className="p-1.5 rounded-full bg-red-500 text-white shadow-lg shadow-red-500/20 animate-bounce">
-                        <AlertTriangle className="w-3 h-3" />
-                     </div>
-                  )}
-                  {metric?.reopen_abuse && (
-                     <div className="p-1.5 rounded-full bg-orange-500 text-white shadow-lg shadow-orange-500/20 animate-pulse">
-                        <RefreshCw className="w-3 h-3" />
-                     </div>
-                  )}
-               </div>
-            </div>
-
-            <style>{`
-               .pulse-border:hover {
-                  animation: border-pulse 2s infinite;
-               }
-               @keyframes border-pulse {
-                  0% { border-color: rgba(255, 193, 7, 0.1); }
-                  50% { border-color: rgba(255, 193, 7, 0.5); }
-                  100% { border-color: rgba(255, 193, 7, 0.1); }
-               }
-            `}</style>
-         </SoshaCard>
-      );
+      if (score >= 90) heatColor = "text-emerald-500 bg-emerald-500/10 border-emerald-500/25";
+      else if (score >= 80) heatColor = "text-green-500 bg-green-500/10 border-green-500/25";
+      else if (score >= 65) heatColor = "text-primary bg-primary/10 border-primary/25";
+      else if (score >= 50) heatColor = "text-orange-500 bg-orange-500/10 border-orange-500/25";
+      else heatColor = "text-red-500 bg-red-500/10 border-red-500/25";
    }
 
-   // 2. Sleek & Small Live Logic
    return (
-      <SoshaCard
-         onClick={() => onQuickOrder(table)}
+      <motion.div
+         layout
+         initial={{ opacity: 0, scale: 0.95 }}
+         animate={{ opacity: 1, scale: 1 }}
+         transition={{ duration: 0.4 }}
          className={cn(
-            "p-0 flex flex-col h-40 transition-all duration-300 group relative overflow-hidden bg-[#1A1A1A] border border-gray-800 rounded-[2rem] cursor-pointer",
-            "hover:border-primary/40 hover:scale-[1.02]",
-            isOccupied && "border-red-500/30",
-            isDirty && "border-yellow-500/30",
-            table.needs_cleanup && "border-purple-500/40"
-         )}>
-
-         <div className="p-4 h-full flex flex-col items-center justify-center relative z-10">
-            <div className="flex flex-col items-center gap-1">
-               <span className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500 opacity-50">Station</span>
-               <h3 className={cn(
-                  "text-4xl font-black tracking-tighter transition-all duration-500",
-                  isOccupied ? "text-red-500 drop-shadow-[0_0_10px_rgba(239,68,68,0.3)]" :
-                     isDirty ? "text-yellow-500" : "text-white/90"
-               )}>
-                  {table.table_number}
-               </h3>
+            "bg-card/60 backdrop-blur-xl border border-border rounded-[2.5rem] p-6 shadow-2xl relative group transition-all duration-500",
+            isAnalyticsMode ? heatColor : "hover:scale-[1.02] hover:border-primary/30",
+            isDirty && !isAnalyticsMode && "bg-amber-500/5 border-amber-500/20"
+         )}
+      >
+         <div className="flex justify-between items-start mb-6">
+            <div className="space-y-1">
+               <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-black uppercase text-muted tracking-widest">{table.zone}</span>
+                  {metric?.is_camper && (
+                     <div className="flex items-center gap-1 bg-red-500/10 px-2 py-0.5 rounded-full">
+                        <Zap className="w-2.5 h-2.5 text-red-500" />
+                        <span className="text-[8px] font-black text-red-500 uppercase">CAMPER</span>
+                     </div>
+                  )}
+               </div>
+               <h3 className="text-3xl font-black text-foreground tracking-tighter">#{table.table_number}</h3>
             </div>
+            <div className={cn("p-3 rounded-2xl shadow-inner", isAnalyticsMode ? heatColor : statusStyles[table.status as keyof typeof statusStyles])}>
+               <Armchair className="w-6 h-6" strokeWidth={3} />
+            </div>
+         </div>
 
-            <div className="mt-3 flex flex-col items-center gap-2">
-               <Badge className={cn("text-[8px] font-black uppercase px-2 py-0.5 rounded-full border border-white/5",
-                  table.needs_cleanup ? "bg-purple-500/20 text-purple-400 border-purple-500/20" :
-                     isOccupied ? "bg-red-500/20 text-red-400 border-red-500/20" :
-                        isDirty ? "bg-yellow-500/20 text-yellow-400 border-yellow-500/20" :
-                           "bg-green-500/20 text-green-400 border-green-500/20"
-               )}>
-                  {table.needs_cleanup ? 'Ready' : table.status.replace('_', ' ')}
-               </Badge>
-
-               {isOccupied && (
-                  <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-black/20 border border-white/5">
-                     <Clock className="w-2.5 h-2.5 text-zinc-500" />
-                     <span className="text-[10px] font-bold text-zinc-400">{elapsedMins}m</span>
+         {isAnalyticsMode ? (
+            <div className="space-y-4">
+               <div className="grid grid-cols-2 gap-3">
+                  <div className="bg-muted/5 border border-border p-3 rounded-2xl">
+                     <p className="text-[8px] font-black text-muted uppercase tracking-widest mb-1">Score</p>
+                     <p className="text-lg font-black text-foreground">{score}%</p>
                   </div>
-               )}
+                  <div className="bg-muted/5 border border-border p-3 rounded-2xl">
+                     <p className="text-[8px] font-black text-muted uppercase tracking-widest mb-1">Orders</p>
+                     <p className="text-lg font-black text-foreground">{metric?.orders_count || 0}</p>
+                  </div>
+               </div>
+               <div className="flex items-center justify-between p-3 rounded-2xl bg-primary/5 border border-primary/10">
+                  <div className="flex items-center gap-2">
+                     <DollarSign className="w-4 h-4 text-primary" strokeWidth={3} />
+                     <span className="text-xs font-black text-foreground">{metric?.revenue_per_hour || 0}<span className="text-[8px] opacity-40">/hr</span></span>
+                  </div>
+                  <Button
+                     size="sm"
+                     variant="ghost"
+                     onClick={() => onViewHistory?.(table.id, table.table_number)}
+                     className="h-8 px-3 rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-primary/10 hover:text-primary transition-all"
+                  >
+                     <History className="w-3.5 h-3.5 mr-1.5" /> History
+                  </Button>
+               </div>
             </div>
-         </div>
+         ) : (
+            <div className="space-y-6">
+               <div className="flex flex-wrap gap-2">
+                  <Badge className={cn("px-3 py-1 font-black text-[9px] uppercase tracking-widest shadow-md", statusStyles[table.status as keyof typeof statusStyles])}>
+                     {table.status}
+                  </Badge>
+                  {isOccupied && (
+                     <Badge className="bg-blue-500/10 text-blue-500 border-blue-500/20 px-3 py-1 font-black text-[9px] uppercase tracking-widest">
+                        {elapsedMins}m In
+                     </Badge>
+                  )}
+               </div>
 
-         {/* Selection Glow */}
-         {isOccupied && <div className="absolute inset-0 bg-red-500/5 animate-pulse pointer-events-none" />}
-
-         {/* Hover Overlay for Actions (Lightweight) */}
-         <div className="absolute inset-0 bg-primary/10 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
-            <div className="bg-primary text-black p-2 rounded-full shadow-lg transform scale-0 group-hover:scale-100 transition-transform duration-300">
-               <Plus className="w-4 h-4" />
+               <div className="pt-4 border-t border-border flex gap-3">
+                  <Button
+                     onClick={() => onQuickOrder(table)}
+                     className="flex-1 bg-foreground text-background font-black rounded-2xl h-12 text-[10px] uppercase tracking-widest shadow-xl hover:bg-foreground/90 transition-all active:scale-95"
+                  >
+                     Quick Order
+                  </Button>
+                  <Button
+                     variant="ghost"
+                     size="sm"
+                     onClick={() => onViewHistory?.(table.id, table.table_number)}
+                     className="w-12 h-12 rounded-2xl bg-muted/5 border border-border text-muted hover:text-foreground transition-all shrink-0"
+                  >
+                     <History className="w-4 h-4" />
+                  </Button>
+               </div>
             </div>
-         </div>
-      </SoshaCard>
+         )}
+      </motion.div>
    );
 });
 

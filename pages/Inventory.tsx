@@ -274,45 +274,65 @@ const Inventory: React.FC = () => {
     <DashboardLayout title="Inventory Management" subtitle="Master Registry Control">
       <div className="space-y-6 animate-in fade-in duration-500">
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="bg-[#1A1A1A] border border-gray-800 p-5 rounded-2xl shadow-sm">
-            <p className="text-[10px] font-black text-gray-500 uppercase tracking-[0.1em]">Total Asset Valuation</p>
-            <h3 className="text-2xl font-black text-white mt-1">ETB {(stats.totalValue || 0).toLocaleString()}</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="bg-card/60 backdrop-blur-xl border border-border p-8 rounded-[2.5rem] shadow-2xl relative group overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent pointer-events-none" />
+            <div className="relative z-10 flex flex-col gap-2">
+              <p className="text-[10px] font-black text-muted uppercase tracking-[0.2em]">Total Asset Valuation</p>
+              <h3 className="text-4xl font-black text-foreground tracking-tighter">
+                <span className="text-xs font-black mr-1 opacity-40">ETB</span>
+                {(stats.totalValue || 0).toLocaleString()}
+              </h3>
+            </div>
+            <div className="absolute top-6 right-6 p-4 bg-primary/10 rounded-2xl group-hover:scale-110 transition-transform">
+              <DollarSign className="w-6 h-6 text-primary" strokeWidth={3} />
+            </div>
           </div>
-          <div className={cn("p-5 rounded-2xl border shadow-sm transition-colors", stats.lowStockCount > 0 ? "bg-[#1A1A1A] border-red-500/50" : "bg-[#1A1A1A] border-gray-800")}>
-            <p className="text-[10px] font-black text-gray-500 uppercase tracking-[0.1em]">Re-order Alerts</p>
-            <h3 className={cn("text-2xl font-black mt-1", stats.lowStockCount > 0 ? "text-red-400" : "text-white")}>{stats.lowStockCount} Low SKUs</h3>
+          <div className={cn(
+            "p-8 rounded-[2.5rem] border shadow-2xl transition-all relative group overflow-hidden",
+            stats.lowStockCount > 0 ? "bg-red-500/5 border-red-500/20" : "bg-card/60 backdrop-blur-xl border-border"
+          )}>
+            {stats.lowStockCount > 0 && <div className="absolute inset-0 bg-gradient-to-br from-red-500/10 to-transparent pointer-events-none" />}
+            <div className="relative z-10 flex flex-col gap-2">
+              <p className="text-[10px] font-black text-muted uppercase tracking-[0.2em]">Re-order Alerts</p>
+              <h3 className={cn("text-4xl font-black tracking-tighter", stats.lowStockCount > 0 ? "text-red-500" : "text-foreground")}>
+                {stats.lowStockCount} <span className="text-xs font-black opacity-40">Low SKUs</span>
+              </h3>
+            </div>
+            <div className={cn("absolute top-6 right-6 p-4 rounded-2xl group-hover:scale-110 transition-transform", stats.lowStockCount > 0 ? "bg-red-500/10" : "bg-muted/10")}>
+              <AlertTriangle className={cn("w-6 h-6", stats.lowStockCount > 0 ? "text-red-500" : "text-muted")} strokeWidth={3} />
+            </div>
           </div>
         </div>
 
-        <div className="flex flex-col md:flex-row justify-between gap-4 bg-[#1A1A1A] p-3 rounded-[1.5rem] border border-gray-800 shadow-xl">
-          <div className="relative w-full md:w-96">
-            <Search className="absolute left-3 top-3.5 h-4 w-4 text-gray-500" />
+        <div className="flex flex-col md:flex-row justify-between gap-6 bg-card/60 backdrop-blur-xl p-6 rounded-[2.5rem] border border-border shadow-2xl">
+          <div className="relative w-full md:w-96 group">
+            <Search className="absolute left-6 top-1/2 -translate-y-1/2 h-4 w-4 text-muted group-focus-within:text-primary transition-colors" />
             <Input
               placeholder="Search by name or SKU..."
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
-              className="pl-11 bg-black/40 border-gray-800 h-11 rounded-xl focus:border-primary/50"
+              className="pl-14 bg-muted/10 border-border h-14 rounded-2xl focus:border-primary/50 text-sm font-bold shadow-inner"
             />
           </div>
-          <Button onClick={fetchInventory} variant="outline" size="icon" className="h-11 w-11 bg-black/40 border-gray-800 hover:bg-black hover:border-gray-700">
-            <RefreshCw className={cn("h-4 w-4 text-gray-400", loading && "animate-spin")} />
+          <Button onClick={fetchInventory} variant="ghost" className="h-14 w-14 p-0 rounded-2xl bg-muted/5 border border-border text-muted hover:text-foreground transition-all">
+            <RefreshCw className={cn("h-6 w-6", loading && "animate-spin")} strokeWidth={3} />
           </Button>
         </div>
 
-        <div className="bg-[#1A1A1A] border border-gray-800 rounded-[2rem] overflow-hidden shadow-2xl">
-          <div className="overflow-x-auto">
+        <div className="bg-card/60 backdrop-blur-xl border border-border rounded-[2.5rem] overflow-hidden shadow-2xl">
+          <div className="overflow-x-auto custom-scrollbar">
             <table className="w-full text-sm text-left">
-              <thead className="text-[10px] text-zinc-500 uppercase bg-black/40 border-b border-white/5 font-bold tracking-widest backdrop-blur-md">
+              <thead className="text-[10px] text-muted uppercase bg-muted/10 border-b border-border font-black tracking-[0.2em] backdrop-blur-md">
                 <tr>
-                  <th className="px-6 py-4 text-left w-[25%]">Item Details</th>
-                  {canViewStock && <th className="px-6 py-4 text-center w-[15%]">Supply Health</th>}
-                  {canViewCost && <th className="px-6 py-4 text-right w-[25%]">Financial & Risk</th>}
-                  <th className="px-6 py-4 text-left w-[25%]">Intelligence & Status</th>
-                  <th className="px-6 py-4 text-right w-[10%]">Action</th>
+                  <th className="px-8 py-6 text-left w-[25%]">Asset Node</th>
+                  {canViewStock && <th className="px-8 py-6 text-center w-[15%]">Stock Health</th>}
+                  {canViewCost && <th className="px-8 py-6 text-right w-[25%]">Risk & Valuation</th>}
+                  <th className="px-8 py-6 text-left w-[25%]">Intelligence</th>
+                  <th className="px-8 py-6 text-right w-[10%]">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/5">
+              <tbody className="divide-y divide-border/40">
                 {processedInventory.map((item) => {
                   const status = getStockStatus(item);
                   const stockVal = Number(item?.current_stock) || 0;
@@ -322,34 +342,34 @@ const Inventory: React.FC = () => {
                   const daysLeft = (item as any).days_of_stock_left || 0;
 
                   return (
-                    <tr key={item.id} className="hover:bg-white/[0.02] transition-colors group border-b border-white/5 last:border-0">
+                    <tr key={item.id} className="hover:bg-primary/[0.02] transition-colors group">
 
                       {/* 1. Item Details */}
-                      <td className="px-6 py-4">
+                      <td className="px-8 py-6">
                         <div className="flex flex-col">
-                          <span className="font-bold text-white text-sm tracking-tight">{item.name || 'Unnamed'}</span>
-                          <div className="flex items-center gap-2 mt-1">
-                            <span className="text-[10px] text-zinc-500 font-mono bg-white/5 px-1.5 py-0.5 rounded uppercase tracking-wider">{item.sku || '---'}</span>
-                            <span className="text-[10px] text-zinc-500 font-medium">per {item.unit_type || 'unit'}</span>
+                          <span className="font-black text-foreground text-base tracking-tight">{item.name || 'Unnamed'}</span>
+                          <div className="flex items-center gap-3 mt-1.5">
+                            <span className="text-[10px] text-muted font-black bg-muted/10 px-2 py-0.5 rounded-lg uppercase tracking-widest shadow-inner">{item.sku || '---'}</span>
+                            <span className="text-[10px] text-muted font-black uppercase tracking-widest opacity-60">per {item.unit_type || 'unit'}</span>
                           </div>
                         </div>
                       </td>
 
                       {/* 2. Supply Health (Days Left + Stock) */}
                       {canViewStock && (
-                        <td className="px-6 py-4 text-center">
-                          <div className="flex flex-col items-center">
-                            <div className="flex items-baseline gap-1">
+                        <td className="px-8 py-6 text-center">
+                          <div className="flex flex-col items-center gap-1">
+                            <div className="flex items-baseline gap-2">
                               <span className={cn(
-                                "text-lg font-black font-mono tracking-tighter",
-                                daysLeft < 3 ? "text-red-500 drop-shadow-[0_0_8px_rgba(239,68,68,0.5)]" :
-                                  daysLeft < 7 ? "text-yellow-400" : "text-emerald-400"
+                                "text-2xl font-black tracking-tighter",
+                                daysLeft < 3 ? "text-red-500 drop-shadow-[0_0_10px_rgba(239,68,68,0.4)]" :
+                                  daysLeft < 7 ? "text-amber-500" : "text-emerald-500"
                               )}>
                                 {daysLeft > 90 ? '90+' : Math.round(daysLeft)}
                               </span>
-                              <span className="text-[10px] font-bold text-zinc-600 uppercase">Days</span>
+                              <span className="text-[10px] font-black text-muted uppercase tracking-widest opacity-40">Days</span>
                             </div>
-                            <span className="text-[10px] font-medium text-zinc-400 mt-1">
+                            <span className="text-[10px] font-black text-muted uppercase tracking-widest opacity-60">
                               {stockVal.toLocaleString()} {item.unit_type}
                             </span>
                           </div>
@@ -358,54 +378,55 @@ const Inventory: React.FC = () => {
 
                       {/* 3. Financial & Risk */}
                       {canViewCost && (
-                        <td className="px-6 py-4 text-right">
-                          <div className="flex flex-col items-end gap-1">
-                            <span className="font-mono text-zinc-300 font-medium text-sm">
-                              ETB {totalVal.toLocaleString()}
+                        <td className="px-8 py-6 text-right">
+                          <div className="flex flex-col items-end gap-2">
+                            <span className="font-black text-foreground text-base tracking-tight">
+                              <span className="text-[10px] font-black mr-1 opacity-40">ETB</span>
+                              {totalVal.toLocaleString()}
                             </span>
                             {riskVal > 0 ? (
-                              <div className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-red-500/10 border border-red-500/20">
-                                <AlertTriangle className="w-3 h-3 text-red-500" />
-                                <span className="text-[10px] font-bold text-red-400 uppercase tracking-wide">
+                              <div className="flex items-center gap-2 px-3 py-1 rounded-xl bg-red-500/10 border border-red-500/20 shadow-sm animate-pulse">
+                                <AlertTriangle className="w-3.5 h-3.5 text-red-500" strokeWidth={3} />
+                                <span className="text-[9px] font-black text-red-500 uppercase tracking-[0.2em]">
                                   Risk: {riskVal.toLocaleString()}
                                 </span>
                               </div>
                             ) : (
-                              <span className="text-[10px] text-zinc-700 font-medium">Safe</span>
+                              <span className="text-[9px] font-black text-emerald-500/40 uppercase tracking-[0.2em]">Asset Secured</span>
                             )}
                           </div>
                         </td>
                       )}
 
                       {/* 4. Intelligence & Status */}
-                      <td className="px-6 py-4">
+                      <td className="px-8 py-6">
                         <div className="flex flex-wrap gap-2">
                           {getSmartLabels(item).map((label, idx) => (
-                            <span key={idx} className={cn("px-2 py-1 rounded border text-[9px] font-black uppercase tracking-wider shadow-sm", label.color)}>
+                            <span key={idx} className={cn("px-4 py-1.5 rounded-xl border text-[9px] font-black uppercase tracking-widest shadow-lg", label.color)}>
                               {label.text}
                             </span>
                           ))}
                           {getSmartLabels(item).length === 0 && (
-                            <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-emerald-500/5 border border-emerald-500/10 text-emerald-500/60 text-[9px] font-bold uppercase tracking-wider">
-                              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500/40" /> Stable
+                            <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-xl bg-emerald-500/5 border border-emerald-500/20 text-emerald-500 text-[9px] font-black uppercase tracking-widest shadow-lg">
+                              <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_10px_rgba(16,185,129,0.5)]" /> Optimized
                             </span>
                           )}
                         </div>
                       </td>
 
                       {/* 5. Action */}
-                      <td className="px-6 py-4 text-right">
+                      <td className="px-8 py-6 text-right">
                         <RoleGuard
                           allowedRoles={['owner', 'admin']}
-                          fallback={<Eye className="w-4 h-4 text-zinc-700 mx-auto" />}
+                          fallback={<Eye className="w-5 h-5 text-muted mx-auto opacity-20" />}
                         >
                           <Button
                             size="sm"
                             variant="ghost"
                             onClick={() => handleEditClick(item)}
-                            className="h-8 w-8 p-0 rounded-lg hover:bg-white/10 hover:text-white transition-all"
+                            className="h-12 w-12 p-0 rounded-2xl bg-muted/5 border border-border text-muted hover:text-primary transition-all shadow-inner"
                           >
-                            <Edit3 className="w-4 h-4 text-zinc-400" />
+                            <Edit3 className="w-5 h-5" strokeWidth={3} />
                           </Button>
                         </RoleGuard>
                       </td>
@@ -426,20 +447,21 @@ const Inventory: React.FC = () => {
         </div>
       </div>
 
-      <Dialog isOpen={isModalOpen} onClose={() => !submitting && setIsModalOpen(false)} title="Ingredient Master Adjustment">
-        <div className="space-y-6 max-h-[75vh] overflow-y-auto pr-2 custom-scrollbar">
+      <Dialog isOpen={isModalOpen} onClose={() => !submitting && setIsModalOpen(false)} title="Intelligence Node: Master Adjustment">
+        <div className="space-y-8 max-h-[75vh] overflow-y-auto px-1 py-2 custom-scrollbar">
 
-          <div className="grid grid-cols-2 gap-4 p-5 bg-white/5 border border-white/10 rounded-2xl">
-            <div className="space-y-1">
-              <p className="text-[9px] font-black text-gray-500 uppercase tracking-widest">SKU Identity</p>
-              <p className="text-sm font-mono text-primary font-bold">{selectedItem?.sku || 'N/A'}</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-8 bg-muted/5 border border-border rounded-[2rem] shadow-inner relative overflow-hidden group">
+            <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent pointer-events-none" />
+            <div className="space-y-1.5 relative z-10">
+              <p className="text-[9px] font-black text-muted uppercase tracking-[0.2em]">Node Identity (SKU)</p>
+              <p className="text-sm font-mono text-primary font-black uppercase">{selectedItem?.sku || 'N/A'}</p>
             </div>
-            <div className="space-y-1">
-              <p className="text-[9px] font-black text-gray-500 uppercase tracking-widest">Master Unit</p>
+            <div className="space-y-1.5 relative z-10">
+              <p className="text-[9px] font-black text-muted uppercase tracking-[0.2em]">Master Metric Unit</p>
               <select
                 value={formData.unit_type}
                 onChange={e => setFormData({ ...formData, unit_type: e.target.value })}
-                className="bg-black/60 border border-white/10 rounded-lg px-2 py-1 text-sm text-primary font-bold outline-none focus:border-primary/50 w-full"
+                className="bg-card border border-border rounded-xl px-3 py-1.5 text-xs text-foreground font-black outline-none focus:border-primary/50 w-full transition-all shadow-sm"
               >
                 <option value="g">g (Grams)</option>
                 <option value="kg">kg (Kilograms)</option>
@@ -450,108 +472,117 @@ const Inventory: React.FC = () => {
                 <option value="unit">unit (General)</option>
               </select>
             </div>
-            <div className="space-y-1">
-              <p className="text-[9px] font-black text-gray-500 uppercase tracking-widest">Ingredient Name</p>
-              <p className="text-sm text-white font-bold">{selectedItem?.name}</p>
+            <div className="space-y-1.5 relative z-10">
+              <p className="text-[9px] font-black text-muted uppercase tracking-[0.2em]">Asset Descriptor</p>
+              <p className="text-base text-foreground font-black tracking-tight">{selectedItem?.name}</p>
             </div>
-            <div className="space-y-1">
-              <p className="text-[9px] font-black text-gray-500 uppercase tracking-widest">Category</p>
-              <p className="text-sm text-white font-bold">{selectedItem?.category}</p>
+            <div className="space-y-1.5 relative z-10">
+              <p className="text-[9px] font-black text-muted uppercase tracking-[0.2em]">Asset Class</p>
+              <p className="text-[10px] text-foreground font-black uppercase tracking-widest">{selectedItem?.category}</p>
             </div>
           </div>
 
-          <div className="space-y-4">
-            <h4 className="text-[11px] font-black text-white uppercase tracking-[0.2em] flex items-center gap-2">
-              <Scale className="w-4 h-4 text-primary" /> Stock Configuration
+          <div className="space-y-6">
+            <h4 className="text-[10px] font-black text-foreground uppercase tracking-[0.3em] flex items-center gap-3">
+              <div className="p-2 bg-primary/10 rounded-lg">
+                <Scale className="w-4 h-4 text-primary" strokeWidth={3} />
+              </div>
+              Stock Capacity Protocol
             </h4>
-            <div className="grid grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <label className="text-[10px] font-bold text-gray-500 uppercase">Current Stock</label>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="space-y-2.5">
+                <label className="text-[9px] font-black text-muted uppercase tracking-widest px-1">Live Reality (Current)</label>
                 <Input
                   type="number"
                   step="any"
                   value={formData.current_stock === 0 ? '0' : formData.current_stock}
                   onChange={e => setFormData({ ...formData, current_stock: e.target.value === '' ? '' : parseFloat(e.target.value) } as any)}
-                  className="bg-black/60 border-white/10 text-primary font-mono font-bold"
+                  className="bg-muted/10 border-border text-primary font-mono font-black h-12 rounded-xl text-lg shadow-inner"
                 />
               </div>
-              <div className="space-y-2">
-                <label className="text-[10px] font-bold text-gray-500 uppercase">Par Min</label>
+              <div className="space-y-2.5">
+                <label className="text-[9px] font-black text-muted uppercase tracking-widest px-1">Lower Bound (Min)</label>
                 <Input
                   type="number"
                   value={formData.par_min === 0 ? '0' : formData.par_min}
                   onChange={e => setFormData({ ...formData, par_min: e.target.value === '' ? '' : parseFloat(e.target.value) } as any)}
-                  className="bg-black/60 border-white/10 font-mono"
+                  className="bg-muted/10 border-border text-foreground font-mono font-black h-12 rounded-xl text-lg shadow-inner"
                 />
               </div>
-              <div className="space-y-2">
-                <label className="text-[10px] font-bold text-gray-500 uppercase">Par Max</label>
+              <div className="space-y-2.5">
+                <label className="text-[9px] font-black text-muted uppercase tracking-widest px-1">Upper Bound (Max)</label>
                 <Input
                   type="number"
                   value={formData.par_max === 0 ? '0' : formData.par_max}
                   onChange={e => setFormData({ ...formData, par_max: e.target.value === '' ? '' : parseFloat(e.target.value) } as any)}
-                  className="bg-black/60 border-white/10 font-mono"
+                  className="bg-muted/10 border-border text-foreground font-mono font-black h-12 rounded-xl text-lg shadow-inner"
                 />
               </div>
             </div>
           </div>
 
-          <div className="space-y-4">
-            <h4 className="text-[11px] font-black text-white uppercase tracking-[0.2em] flex items-center gap-2">
-              <DollarSign className="w-4 h-4 text-green-500" /> Valuation & Life
+          <div className="space-y-6">
+            <h4 className="text-[10px] font-black text-foreground uppercase tracking-[0.3em] flex items-center gap-3">
+              <div className="p-2 bg-emerald-500/10 rounded-lg">
+                <DollarSign className="w-4 h-4 text-emerald-500" strokeWidth={3} />
+              </div>
+              Valuation & Lifecycle
             </h4>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <label className="text-[10px] font-bold text-gray-500 uppercase">Cost Per Unit (ETB)</label>
-                <div className="relative">
-                  <Tag className="absolute left-3 top-3 w-4 h-4 text-gray-600" />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2.5">
+                <label className="text-[9px] font-black text-muted uppercase tracking-widest px-1">Acquisition Cost (ETB)</label>
+                <div className="relative group">
+                  <Tag className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted group-focus-within:text-emerald-500 transition-colors" strokeWidth={3} />
                   <Input
                     type="number"
                     step="any"
                     value={formData.cost_per_unit === 0 ? '0' : formData.cost_per_unit}
                     onChange={e => setFormData({ ...formData, cost_per_unit: e.target.value === '' ? '' : parseFloat(e.target.value) } as any)}
-                    className="pl-9 bg-black/60 border-white/10 font-mono"
+                    className="pl-12 bg-muted/10 border-border text-foreground font-mono font-black h-12 rounded-xl shadow-inner text-lg"
                   />
                 </div>
               </div>
-              <div className="space-y-2">
-                <label className="text-[10px] font-bold text-gray-500 uppercase">Expiry Days</label>
-                <div className="relative">
-                  <Calendar className="absolute left-3 top-3 w-4 h-4 text-gray-600" />
+              <div className="space-y-2.5">
+                <label className="text-[9px] font-black text-muted uppercase tracking-widest px-1">Shelf Stability (Days)</label>
+                <div className="relative group">
+                  <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted group-focus-within:text-amber-500 transition-colors" strokeWidth={3} />
                   <Input
                     type="number"
                     value={formData.expiry_days === 0 ? '0' : formData.expiry_days}
                     onChange={e => setFormData({ ...formData, expiry_days: e.target.value === '' ? '' : parseInt(e.target.value) } as any)}
-                    className="pl-9 bg-black/60 border-white/10 font-mono"
+                    className="pl-12 bg-muted/10 border-border text-foreground font-mono font-black h-12 rounded-xl shadow-inner text-lg"
                   />
                 </div>
               </div>
             </div>
           </div>
 
-          <div className="pt-6 flex flex-col gap-3">
+          <div className="pt-8 flex flex-col gap-4">
             {(formData.unit_type === 'pcs' || formData.unit_type === 'slice' || formData.unit_type === 'unit') && (
-              <div className="mb-6 p-5 bg-primary/5 border border-primary/20 rounded-2xl animate-in zoom-in-95 duration-300">
-                <div className="flex items-center gap-2 mb-3">
-                  <Scale className="w-4 h-4 text-primary" />
-                  <h4 className="text-[10px] font-black text-white uppercase tracking-widest">Yield Mapping (Conversion)</h4>
+              <div className="mb-8 p-6 bg-primary/5 border border-primary/20 rounded-[2rem] animate-in zoom-in-95 duration-500 shadow-xl relative overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent pointer-events-none" />
+                <div className="flex items-center gap-3 mb-4 relative z-10">
+                  <Scale className="w-5 h-5 text-primary" strokeWidth={3} />
+                  <h4 className="text-[10px] font-black text-foreground uppercase tracking-[0.2em]">Yield Mapping Protocol</h4>
                 </div>
-                <div className="grid grid-cols-1 gap-2">
-                  <p className="text-[10px] text-gray-500 mb-2">How much does <strong>1 {formData.unit_type}</strong> weigh/measure in your base unit?</p>
-                  <div className="flex items-center gap-3">
-                    <div className="flex-1 space-y-2">
-                      <label className="text-[9px] font-bold text-gray-500 uppercase">Weight per Piece (Grams/ML)</label>
+                <div className="space-y-4 relative z-10">
+                  <p className="text-[11px] text-muted font-bold leading-relaxed px-1">Configure conversion ratio: define the mass/volume equivalent for a single discrete unit.</p>
+                  <div className="flex flex-col md:flex-row items-center gap-6">
+                    <div className="flex-1 w-full space-y-2">
+                      <label className="text-[9px] font-black text-muted uppercase tracking-widest px-1">Base Metric Weight (g/ml)</label>
                       <Input
                         type="number"
                         value={formData.weight_per_unit}
                         onChange={e => setFormData({ ...formData, weight_per_unit: parseFloat(e.target.value) || 1 })}
-                        className="bg-black/60 border-white/10 font-mono text-primary font-bold"
+                        className="bg-muted/10 border-border font-mono text-primary font-black h-12 rounded-xl shadow-inner text-lg"
                       />
                     </div>
-                    <div className="pt-6">
-                      <Badge className="bg-primary/20 text-primary border-primary/20 font-black h-11 px-4">
-                        1 {formData.unit_type} = {formData.weight_per_unit}g/ml
-                      </Badge>
+                    <div className="pt-2 md:pt-6 w-full md:w-auto">
+                      <div className="bg-primary/10 border border-primary/30 rounded-2xl h-14 px-6 flex items-center justify-center gap-3 shadow-lg">
+                        <span className="text-[10px] font-black text-primary uppercase">1 {formData.unit_type}</span>
+                        <div className="w-3 h-[1px] bg-primary/30" />
+                        <span className="text-xl font-black text-primary tracking-tighter">{formData.weight_per_unit}g/ml</span>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -559,18 +590,19 @@ const Inventory: React.FC = () => {
             )}
             <Button
               onClick={handleSave}
-              className="w-full bg-primary text-black font-black h-14 rounded-2xl shadow-xl shadow-primary/10 text-sm uppercase tracking-widest transition-all hover:scale-[1.01]"
+              className="w-full bg-foreground text-background font-black h-16 rounded-[2rem] shadow-2xl text-[10px] uppercase tracking-[0.3em] transition-all hover:scale-[1.02] active:scale-95 group relative overflow-hidden"
               isLoading={submitting}
             >
-              {submitting ? "Processing Update..." : "Finalize Audit Updates"}
+              <div className="absolute inset-0 bg-gradient-to-r from-primary/0 via-primary/10 to-primary/0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
+              {submitting ? "Processing Node Sync..." : "Confirm Intelligence Update"}
             </Button>
             <Button
               variant="ghost"
               onClick={() => setIsModalOpen(false)}
-              className="text-gray-500 text-xs font-bold uppercase tracking-widest"
+              className="text-muted text-[9px] font-black uppercase tracking-[0.2em] h-12 hover:text-foreground transition-colors"
               disabled={submitting}
             >
-              Discard Changes
+              Terminate Session
             </Button>
           </div>
         </div>

@@ -36,6 +36,7 @@ const WaiterOrders: React.FC = () => {
                   id,
                   quantity,
                   price,
+                  special_instructions,
                   menu_item:menu (name)
                )
             `)
@@ -84,9 +85,9 @@ const WaiterOrders: React.FC = () => {
         >
             <div className="space-y-6 animate-in fade-in duration-500">
                 {/* Controls */}
-                <div className="flex flex-col md:flex-row justify-between gap-4 items-center px-1">
-                    {/* Tabs */}
-                    <div className="flex bg-[#1A1A1A] p-1 rounded-lg border border-gray-800 w-full md:w-auto overflow-x-auto">
+                <div className="flex flex-col lg:flex-row justify-between gap-6 items-center">
+                    {/* Premium Segmented Tabs */}
+                    <div className="flex bg-muted/10 p-1.5 rounded-2xl border border-border w-full lg:w-auto overflow-x-auto no-scrollbar snap-x">
                         {['all', 'pending', 'paid', 'cancelled'].map(status => {
                             const count = orders?.filter(o => {
                                 if (status === 'all') return true;
@@ -100,14 +101,17 @@ const WaiterOrders: React.FC = () => {
                                     key={status}
                                     onClick={() => setFilterStatus(status)}
                                     className={cn(
-                                        "px-4 py-2 text-sm font-medium rounded-md transition-all flex items-center gap-2 whitespace-nowrap",
+                                        "px-6 py-2.5 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all flex items-center gap-3 whitespace-nowrap snap-start",
                                         filterStatus === status
-                                            ? "bg-white/10 text-white shadow-sm"
-                                            : "text-gray-400 hover:text-white hover:bg-white/5"
+                                            ? "bg-primary text-black shadow-lg"
+                                            : "text-muted hover:text-foreground hover:bg-muted/10"
                                     )}
                                 >
-                                    <span className="capitalize">{status}</span>
-                                    <span className={cn("text-xs px-1.5 py-0.5 rounded-full", filterStatus === status ? "bg-black/40 text-white" : "bg-black/20 text-gray-500")}>
+                                    <span>{status}</span>
+                                    <span className={cn(
+                                        "text-[9px] px-2 py-0.5 rounded-full font-bold",
+                                        filterStatus === status ? "bg-black/20 text-black" : "bg-muted/20 text-muted"
+                                    )}>
                                         {count}
                                     </span>
                                 </button>
@@ -115,83 +119,94 @@ const WaiterOrders: React.FC = () => {
                         })}
                     </div>
 
-                    {/* Search */}
-                    <div className="relative w-full md:w-72">
-                        <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
+                    {/* Premium Search */}
+                    <div className="relative w-full lg:w-80 group">
+                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted group-focus-within:text-primary transition-colors" />
                         <Input
                             placeholder="Search order or table..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="pl-9 bg-[#1A1A1A] border-gray-800 focus:border-primary/50 h-10"
+                            className="pl-12 bg-card/60 backdrop-blur-xl border-border focus:border-primary/50 h-12 rounded-2xl shadow-inner text-sm font-bold"
                         />
                     </div>
                 </div>
 
-                {/* Table */}
-                <Card className="bg-[#1A1A1A] border-gray-800 min-h-[500px] flex flex-col overflow-hidden">
-                    <CardHeader className="border-b border-gray-800 pb-3 bg-black/20">
-                        <CardTitle className="text-white flex items-center gap-2 text-base">
-                            <FileText className="w-5 h-5 text-gray-400" /> Transaction History
-                        </CardTitle>
+                {/* Premium Transaction Card */}
+                <Card className="bg-card/60 backdrop-blur-xl border-border rounded-[2.5rem] shadow-2xl overflow-hidden min-h-[500px] flex flex-col">
+                    <CardHeader className="border-b border-border p-8 bg-muted/5">
+                        <div className="flex items-center justify-between">
+                            <CardTitle className="flex items-center gap-4 text-foreground">
+                                <div className="p-3 bg-primary/10 rounded-2xl">
+                                    <FileText className="w-6 h-6 text-primary" strokeWidth={3} />
+                                </div>
+                                <div className="flex flex-col">
+                                    <span className="text-xl font-black tracking-tight">Audit Trail</span>
+                                    <span className="text-[10px] text-muted uppercase font-black tracking-widest mt-1">Order Transaction History</span>
+                                </div>
+                            </CardTitle>
+                            <Button variant="ghost" className="h-10 px-4 rounded-xl bg-muted/5 border border-border text-muted hover:text-foreground text-[10px] font-black uppercase tracking-widest">
+                                <Download className="w-4 h-4 mr-2" /> Export CSV
+                            </Button>
+                        </div>
                     </CardHeader>
-                    <CardContent className="p-0 flex-1 overflow-x-auto">
+                    <CardContent className="p-0 flex-1 overflow-x-auto custom-scrollbar">
                         <table className="w-full text-sm text-left">
-                            <thead className="text-[10px] text-gray-500 uppercase bg-black/40 border-b border-gray-800 font-black tracking-widest">
+                            <thead className="text-[10px] text-muted uppercase bg-muted/10 border-b border-border font-black tracking-[0.2em]">
                                 <tr>
-                                    <th className="px-6 py-4">Order Number</th>
-                                    <th className="px-6 py-4">Table</th>
-                                    <th className="px-6 py-4">Created</th>
-                                    <th className="px-6 py-4">Method</th>
-                                    <th className="px-6 py-4 text-right">Amount</th>
-                                    <th className="px-6 py-4 text-center">Status</th>
-                                    <th className="px-6 py-4 text-right w-20">Actions</th>
+                                    <th className="px-8 py-5">Sync ID</th>
+                                    <th className="px-8 py-5">Station</th>
+                                    <th className="px-8 py-5">Timestamp</th>
+                                    <th className="px-8 py-5">Flow</th>
+                                    <th className="px-8 py-5 text-right">Value</th>
+                                    <th className="px-8 py-5 text-center">Protocol</th>
+                                    <th className="px-8 py-5 text-right w-20">Actions</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-gray-800">
+                            <tbody className="divide-y divide-border/40">
                                 {isLoading ? (
-                                    <tr><td colSpan={7} className="p-20 text-center"><div className="flex flex-col items-center gap-3 opacity-20"><RefreshCw className="w-10 h-10 animate-spin text-primary" /><p className="text-[10px] font-black uppercase tracking-widest">Syncing Records...</p></div></td></tr>
+                                    <tr><td colSpan={7} className="p-20 text-center"><div className="flex flex-col items-center gap-4 opacity-20"><RefreshCw className="w-12 h-12 animate-spin text-primary" /><p className="text-[10px] font-black uppercase tracking-[0.4em]">Optimizing Cache...</p></div></td></tr>
                                 ) : filteredOrders.length === 0 ? (
-                                    <tr><td colSpan={7} className="p-20 text-center text-gray-600 uppercase font-black tracking-widest text-xs">No transactions detected</td></tr>
+                                    <tr><td colSpan={7} className="p-24 text-center text-muted uppercase font-black tracking-[0.4em] text-xs">No records initialized</td></tr>
                                 ) : filteredOrders.map((order) => (
-                                    <tr key={order.id} className="hover:bg-white/5 transition-colors group">
-                                        <td className="px-6 py-4 font-mono font-bold text-white text-xs">{order.order_number}</td>
-                                        <td className="px-6 py-4">
-                                            <Badge variant="outline" className="bg-black/40 border-white/5 text-gray-300 font-black">#{order.table_number}</Badge>
+                                    <tr key={order.id} className="hover:bg-primary/[0.02] transition-colors group">
+                                        <td className="px-8 py-5 font-mono font-black text-foreground text-xs uppercase opacity-80">{order.order_number}</td>
+                                        <td className="px-8 py-5">
+                                            <Badge className="bg-muted/10 border-border text-foreground font-black px-3 py-1 rounded-lg shadow-sm">#{order.table_number}</Badge>
                                         </td>
-                                        <td className="px-6 py-4">
+                                        <td className="px-8 py-5">
                                             <div className="flex flex-col">
-                                                <span className="text-gray-300 font-bold text-xs">{format(new Date(order.created_at), 'MMM dd, yyyy')}</span>
-                                                <span className="text-[10px] text-gray-500 font-black uppercase">{format(new Date(order.created_at), 'hh:mm a')}</span>
+                                                <span className="text-foreground font-black text-xs uppercase">{format(new Date(order.created_at), 'MMM dd')}</span>
+                                                <span className="text-[9px] text-muted font-black uppercase tracking-widest mt-1">{format(new Date(order.created_at), 'hh:mm a')}</span>
                                             </div>
                                         </td>
-                                        <td className="px-6 py-4">
-                                            <div className="flex items-center gap-2 text-gray-400">
-                                                <CreditCard className="w-3.5 h-3.5 opacity-50" />
-                                                <span className="text-[10px] font-black uppercase tracking-widest">{order.payment_method || 'CASH'}</span>
+                                        <td className="px-8 py-5">
+                                            <div className="flex items-center gap-3 text-muted">
+                                                <CreditCard className="w-4 h-4 opacity-30" strokeWidth={3} />
+                                                <span className="text-[9px] font-black uppercase tracking-[0.2em]">{order.payment_method || 'CASH'}</span>
                                             </div>
                                         </td>
-                                        <td className="px-6 py-4 text-right font-mono text-primary font-black text-sm">
+                                        <td className="px-8 py-5 text-right font-mono text-foreground font-black text-sm">
                                             ETB {order.total_amount?.toLocaleString() || '0'}
                                         </td>
-                                        <td className="px-6 py-4 text-center">
+                                        <td className="px-8 py-5 text-center">
                                             {getStatusBadge(order)}
                                         </td>
-                                        <td className="px-6 py-4 text-right relative">
+                                        <td className="px-8 py-5 text-right relative">
                                             <button
                                                 onClick={(e) => { e.stopPropagation(); setActiveDropdown(activeDropdown === order.id ? null : order.id); }}
-                                                className="p-2 hover:bg-white/10 rounded-full text-gray-400 hover:text-white transition-colors"
+                                                className="p-2.5 bg-muted/5 hover:bg-primary/10 rounded-xl text-muted hover:text-primary transition-all shadow-inner"
                                             >
                                                 <MoreVertical className="w-4 h-4" />
                                             </button>
 
                                             {activeDropdown === order.id && (
-                                                <div className="absolute right-8 top-8 w-48 bg-[#222] border border-gray-700 rounded-lg shadow-xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-100">
-                                                    <div className="p-1">
+                                                <div className="absolute right-12 top-12 w-56 bg-card border border-border rounded-2xl shadow-2xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                                                    <div className="p-2">
                                                         <button
                                                             onClick={() => setSelectedOrder(order)}
-                                                            className="w-full text-left px-3 py-2 text-sm text-gray-300 hover:bg-white/10 hover:text-white rounded flex items-center gap-2"
+                                                            className="w-full text-left px-4 py-3 text-[10px] font-black uppercase tracking-widest text-muted hover:bg-primary/10 hover:text-primary rounded-xl flex items-center gap-3 transition-colors"
                                                         >
-                                                            <Eye className="w-4 h-4" /> View Details
+                                                            <Eye className="w-4 h-4" /> Inspect Node
                                                         </button>
                                                     </div>
                                                 </div>

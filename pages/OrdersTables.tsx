@@ -5,7 +5,7 @@ import {
    BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
    PieChart, Pie, Cell
 } from 'recharts';
-import { Card, CardContent, CardHeader, CardTitle, cn, showToast } from '../components/ui';
+import { Card, CardContent, CardHeader, CardTitle, cn, showToast, Badge } from '../components/ui';
 import {
    ClipboardList, Clock, AlertOctagon, TrendingUp, DollarSign,
    Armchair, Utensils, Truck, CheckCircle2, AlertTriangle, ArrowRight, Loader2
@@ -249,120 +249,151 @@ const OrdersTables: React.FC = () => {
    };
 
    return (
-      <DashboardLayout>
-         <div className="space-y-6 animate-in fade-in duration-500">
+      <DashboardLayout title="Orders & Tables" subtitle="Throughput analysis and service efficiency">
+         <div className="space-y-8 animate-in fade-in duration-700">
 
-            {/* Header */}
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-               <div className="flex items-center gap-3">
-                  <div>
-                     <h1 className="text-2xl font-bold text-white">Orders & Tables</h1>
-                     <p className="text-gray-400 text-sm">Throughput analysis and service efficiency</p>
-                  </div>
-                  {loading && <Loader2 className="w-5 h-5 animate-spin text-primary" />}
-               </div>
-
-               <div className="flex bg-[#1A1A1A] p-1 rounded-lg border border-gray-800">
+            {/* Header Controls */}
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
+               <div className="flex bg-muted/10 p-1.5 rounded-[1.5rem] border border-border backdrop-blur-md">
                   {(['today', 'week', 'month'] as const).map((p) => (
                      <button
                         key={p}
                         onClick={() => setPeriod(p)}
                         className={cn(
-                           "px-4 py-1.5 text-xs font-bold rounded-md capitalize transition-all",
+                           "px-6 py-2.5 text-[10px] font-black uppercase tracking-widest rounded-[1.1rem] transition-all",
                            period === p
-                              ? "bg-primary text-black shadow-md"
-                              : "text-gray-400 hover:text-white"
+                              ? "bg-primary text-black shadow-lg shadow-primary/20"
+                              : "text-muted hover:text-foreground hover:bg-muted/10 opacity-60 hover:opacity-100"
                         )}
                      >
                         {p}
                      </button>
                   ))}
                </div>
+               {loading && (
+                  <div className="flex items-center gap-3 px-4 py-2 bg-primary/10 rounded-full border border-primary/20">
+                     <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                     <span className="text-[10px] font-black text-primary uppercase tracking-[0.2em]">Syncing Nodes...</span>
+                  </div>
+               )}
             </div>
 
             {/* KPI Row */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-               <Card className="bg-[#1A1A1A] border-gray-800">
-                  <CardContent className="p-5 flex justify-between items-start">
-                     <div>
-                        <p className="text-xs text-gray-500 uppercase font-bold tracking-wider">Total Orders</p>
-                        <h3 className="text-2xl font-bold text-white mt-1">{kpi.totalOrders}</h3>
-                        <div className="text-xs text-[#84CC16] font-bold mt-1 flex items-center">
-                           <TrendingUp className="w-3 h-3 mr-1" /> Volume
+               <Card className="bg-card/60 backdrop-blur-xl border border-border rounded-[2rem] shadow-xl overflow-hidden group">
+                  <div className="p-6 flex justify-between items-start relative">
+                     <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full -mr-16 -mt-16 blur-3xl" />
+                     <div className="relative z-10">
+                        <p className="text-[10px] font-black text-muted uppercase tracking-[0.2em] opacity-60">Total Orders</p>
+                        <h3 className="text-3xl font-black text-foreground mt-2 tracking-tighter">{kpi.totalOrders}</h3>
+                        <div className="text-[10px] text-emerald-500 font-black mt-2 flex items-center gap-1 uppercase tracking-widest">
+                           <TrendingUp className="w-3 h-3" strokeWidth={3} /> High_Activity
                         </div>
                      </div>
-                     <div className="p-2 bg-primary/10 rounded-full">
-                        <ClipboardList className="w-5 h-5 text-primary" />
+                     <div className="p-4 bg-primary/10 rounded-2xl group-hover:scale-110 transition-transform duration-500 shadow-inner">
+                        <ClipboardList className="w-6 h-6 text-primary" strokeWidth={3} />
                      </div>
-                  </CardContent>
+                  </div>
                </Card>
-               <Card className="bg-[#1A1A1A] border-gray-800">
-                  <CardContent className="p-5 flex justify-between items-start">
-                     <div>
-                        <p className="text-xs text-gray-500 uppercase font-bold tracking-wider">Avg Order Value</p>
-                        <h3 className="text-2xl font-bold text-white mt-1">ETB {kpi.avgValue}</h3>
-                        <div className="text-xs text-[#84CC16] font-bold mt-1 flex items-center">
-                           <TrendingUp className="w-3 h-3 mr-1" /> Per Ticket
+
+               <Card className="bg-card/60 backdrop-blur-xl border border-border rounded-[2rem] shadow-xl overflow-hidden group">
+                  <div className="p-6 flex justify-between items-start relative">
+                     <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full -mr-16 -mt-16 blur-3xl" />
+                     <div className="relative z-10">
+                        <p className="text-[10px] font-black text-muted uppercase tracking-[0.2em] opacity-60">Avg Order Value</p>
+                        <h3 className="text-3xl font-black text-foreground mt-2 tracking-tighter">
+                           <span className="text-sm mr-1 opacity-40">ETB</span>
+                           {kpi.avgValue}
+                        </h3>
+                        <div className="text-[10px] text-emerald-500 font-black mt-2 flex items-center gap-1 uppercase tracking-widest">
+                           <TrendingUp className="w-3 h-3" strokeWidth={3} /> Per Ticket
                         </div>
                      </div>
-                     <div className="p-2 bg-green-500/10 rounded-full">
-                        <DollarSign className="w-5 h-5 text-green-500" />
+                     <div className="p-4 bg-emerald-500/10 rounded-2xl group-hover:scale-110 transition-transform duration-500 shadow-inner">
+                        <DollarSign className="w-6 h-6 text-emerald-500" strokeWidth={3} />
                      </div>
-                  </CardContent>
+                  </div>
                </Card>
-               <Card className="bg-[#1A1A1A] border-gray-800">
-                  <CardContent className="p-5 flex justify-between items-start">
-                     <div>
-                        <p className="text-xs text-gray-500 uppercase font-bold tracking-wider">Cancellations</p>
-                        <h3 className="text-2xl font-bold text-white mt-1">{kpi.cancellationRate}% <span className="text-sm font-normal text-gray-500">({kpi.cancellations})</span></h3>
-                        <div className={cn("text-xs font-bold mt-1 flex items-center", kpi.cancellations > 5 ? "text-red-500" : "text-gray-500")}>
-                           <AlertOctagon className="w-3 h-3 mr-1" /> {kpi.cancellations > 5 ? 'High Rate' : 'Normal'}
+
+               <Card className="bg-card/60 backdrop-blur-xl border border-border rounded-[2rem] shadow-xl overflow-hidden group">
+                  <div className="p-6 flex justify-between items-start relative">
+                     <div className="absolute top-0 right-0 w-32 h-32 bg-red-500/5 rounded-full -mr-16 -mt-16 blur-3xl" />
+                     <div className="relative z-10">
+                        <p className="text-[10px] font-black text-muted uppercase tracking-[0.2em] opacity-60">Cancellations</p>
+                        <h3 className="text-3xl font-black text-foreground mt-2 tracking-tighter">
+                           {kpi.cancellationRate}%
+                           <span className="text-sm font-black text-muted/40 ml-2">({kpi.cancellations})</span>
+                        </h3>
+                        <div className={cn(
+                           "text-[10px] font-black mt-2 flex items-center gap-1 uppercase tracking-widest",
+                           kpi.cancellations > 5 ? "text-red-500" : "text-muted opacity-40"
+                        )}>
+                           <AlertOctagon className="w-3 h-3" strokeWidth={3} /> {kpi.cancellations > 5 ? 'High Rate' : 'Stable'}
                         </div>
                      </div>
-                     <div className="p-2 bg-red-500/10 rounded-full">
-                        <AlertTriangle className="w-5 h-5 text-red-500" />
+                     <div className="p-4 bg-red-500/10 rounded-2xl group-hover:scale-110 transition-transform duration-500 shadow-inner">
+                        <AlertTriangle className="w-6 h-6 text-red-500" strokeWidth={3} />
                      </div>
-                  </CardContent>
+                  </div>
                </Card>
-               <Card className="bg-[#1A1A1A] border-gray-800">
-                  <CardContent className="p-5 flex justify-between items-start">
-                     <div>
-                        <p className="text-xs text-gray-500 uppercase font-bold tracking-wider">Table Turnover</p>
-                        <h3 className="text-2xl font-bold text-white mt-1">{kpi.turnover > 0 ? kpi.turnover + ' min' : '-'}</h3>
-                        <div className="text-xs text-blue-400 font-bold mt-1 flex items-center">
-                           <Clock className="w-3 h-3 mr-1" /> Cycle Time
+
+               <Card className="bg-card/60 backdrop-blur-xl border border-border rounded-[2rem] shadow-xl overflow-hidden group">
+                  <div className="p-6 flex justify-between items-start relative">
+                     <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full -mr-16 -mt-16 blur-3xl" />
+                     <div className="relative z-10">
+                        <p className="text-[10px] font-black text-muted uppercase tracking-[0.2em] opacity-60">Table Turnover</p>
+                        <h3 className="text-3xl font-black text-foreground mt-2 tracking-tighter">{kpi.turnover > 0 ? kpi.turnover + ' MIN' : 'N/A'}</h3>
+                        <div className="text-[10px] text-blue-500 font-black mt-2 flex items-center gap-1 uppercase tracking-widest">
+                           <Clock className="w-3 h-3" strokeWidth={3} /> Cycle Time
                         </div>
                      </div>
-                     <div className="p-2 bg-blue-500/10 rounded-full">
-                        <Armchair className="w-5 h-5 text-blue-500" />
+                     <div className="p-4 bg-blue-500/10 rounded-2xl group-hover:scale-110 transition-transform duration-500 shadow-inner">
+                        <Armchair className="w-6 h-6 text-blue-500" strokeWidth={3} />
                      </div>
-                  </CardContent>
+                  </div>
                </Card>
             </div>
 
             {/* Charts Row */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
                {/* Hourly Volume */}
-               <Card className="lg:col-span-2 bg-[#1A1A1A] border-gray-800">
-                  <CardHeader>
-                     <CardTitle className="text-white">Order Volume by Hour</CardTitle>
+               <Card className="lg:col-span-2 bg-card/60 backdrop-blur-xl border border-border rounded-[2.5rem] shadow-2xl overflow-hidden">
+                  <CardHeader className="p-8 border-b border-border bg-muted/5">
+                     <CardTitle className="text-[10px] font-black text-foreground uppercase tracking-[0.2em] flex items-center gap-3">
+                        <TrendingUp className="w-4 h-4 text-primary" strokeWidth={3} /> Hourly Load Distribution
+                     </CardTitle>
                   </CardHeader>
-                  <CardContent>
-                     <div className="h-[300px] w-full">
+                  <CardContent className="p-8">
+                     <div className="h-[350px] w-full">
                         {hourlyData.length === 0 ? (
-                           <div className="h-full flex items-center justify-center text-gray-500">No hourly data available</div>
+                           <div className="h-full flex items-center justify-center text-muted uppercase font-black text-[10px] tracking-widest opacity-40">Zero Data Point Signal</div>
                         ) : (
                            <ResponsiveContainer width="100%" height="100%">
                               <BarChart data={hourlyData} margin={{ top: 20, right: 30, left: 0, bottom: 0 }}>
-                                 <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
-                                 <XAxis dataKey="time" stroke="#666" fontSize={12} tickLine={false} axisLine={false} />
-                                 <YAxis stroke="#666" fontSize={12} tickLine={false} axisLine={false} />
+                                 <defs>
+                                    <linearGradient id="barGradient" x1="0" y1="0" x2="0" y2="1">
+                                       <stop offset="0%" stopColor="var(--primary)" stopOpacity={1} />
+                                       <stop offset="100%" stopColor="var(--primary)" stopOpacity={0.3} />
+                                    </linearGradient>
+                                 </defs>
+                                 <CartesianGrid strokeDasharray="3 3" stroke="currentColor" className="opacity-5" vertical={false} />
+                                 <XAxis dataKey="time" stroke="currentColor" className="opacity-40" fontSize={10} fontWeight="900" tickLine={false} axisLine={false} />
+                                 <YAxis stroke="currentColor" className="opacity-40" fontSize={10} fontWeight="900" tickLine={false} axisLine={false} />
                                  <Tooltip
-                                    cursor={{ fill: 'rgba(255,255,255,0.05)' }}
-                                    contentStyle={{ backgroundColor: '#1A1A1A', border: '1px solid #333', color: '#fff' }}
+                                    cursor={{ fill: 'var(--muted)', opacity: 0.1 }}
+                                    contentStyle={{
+                                       backgroundColor: 'var(--card)',
+                                       border: '1px solid var(--border)',
+                                       borderRadius: '1.25rem',
+                                       boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)',
+                                       backdropFilter: 'blur(16px)',
+                                       padding: '12px'
+                                    }}
+                                    itemStyle={{ color: 'var(--foreground)', fontWeight: '900', fontSize: '12px', textTransform: 'uppercase' }}
+                                    labelStyle={{ display: 'none' }}
                                  />
-                                 <Bar dataKey="orders" fill="#FFB800" radius={[4, 4, 0, 0]} maxBarSize={40} />
+                                 <Bar dataKey="orders" fill="url(#barGradient)" radius={[8, 8, 4, 4]} maxBarSize={32} />
                               </BarChart>
                            </ResponsiveContainer>
                         )}
@@ -371,22 +402,24 @@ const OrdersTables: React.FC = () => {
                </Card>
 
                {/* Order Type Split */}
-               <Card className="bg-[#1A1A1A] border-gray-800">
-                  <CardHeader>
-                     <CardTitle className="text-white">Source Split</CardTitle>
+               <Card className="bg-card/60 backdrop-blur-xl border border-border rounded-[2.5rem] shadow-2xl overflow-hidden">
+                  <CardHeader className="p-8 border-b border-border bg-muted/5">
+                     <CardTitle className="text-[10px] font-black text-foreground uppercase tracking-[0.2em] flex items-center gap-3">
+                        <Utensils className="w-4 h-4 text-primary" strokeWidth={3} /> Channel Fragmentation
+                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="flex flex-col items-center justify-center">
-                     <div className="h-[200px] w-full relative">
+                  <CardContent className="p-8 flex flex-col items-center justify-center min-h-[400px]">
+                     <div className="h-[250px] w-full relative">
                         {orderTypeData.length === 0 ? (
-                           <div className="h-full flex items-center justify-center text-gray-500">No data</div>
+                           <div className="h-full flex items-center justify-center text-muted uppercase font-black text-[10px] tracking-widest opacity-40">Empty_Set</div>
                         ) : (
                            <ResponsiveContainer width="100%" height="100%">
                               <PieChart>
                                  <Pie
                                     data={orderTypeData}
-                                    innerRadius={60}
-                                    outerRadius={80}
-                                    paddingAngle={5}
+                                    innerRadius={70}
+                                    outerRadius={95}
+                                    paddingAngle={8}
                                     dataKey="value"
                                     stroke="none"
                                  >
@@ -395,128 +428,141 @@ const OrdersTables: React.FC = () => {
                                     ))}
                                  </Pie>
                                  <Tooltip
-                                    contentStyle={{ backgroundColor: '#1A1A1A', border: '1px solid #333', borderRadius: '8px' }}
-                                    itemStyle={{ color: '#fff' }}
+                                    contentStyle={{
+                                       backgroundColor: 'var(--card)',
+                                       border: '1px solid var(--border)',
+                                       borderRadius: '1.25rem',
+                                       backdropFilter: 'blur(16px)',
+                                       boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)'
+                                    }}
+                                    itemStyle={{ color: 'var(--foreground)', fontWeight: '900', fontSize: '10px', textTransform: 'uppercase' }}
                                  />
                               </PieChart>
                            </ResponsiveContainer>
                         )}
                         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                           <span className="text-3xl font-bold text-white">{kpi.totalOrders}</span>
-                           <span className="text-xs text-gray-500 uppercase">Total Orders</span>
+                           <span className="text-4xl font-black text-foreground italic tracking-tighter">{kpi.totalOrders}</span>
+                           <span className="text-[9px] text-muted font-black uppercase tracking-widest opacity-40">AGGREGATE_VOL</span>
                         </div>
                      </div>
-                     <div className="w-full space-y-3 mt-4">
+                     <div className="w-full space-y-4 mt-8">
                         {orderTypeData.map((type) => (
-                           <div key={type.name} className="flex justify-between items-center text-sm">
-                              <div className="flex items-center gap-2">
-                                 <div className="w-3 h-3 rounded-full" style={{ backgroundColor: type.color }} />
-                                 <span className="text-gray-300">{type.name}</span>
+                           <div key={type.name} className="flex justify-between items-center group">
+                              <div className="flex items-center gap-3">
+                                 <div className="w-2.5 h-2.5 rounded-full shadow-lg" style={{ backgroundColor: type.color }} />
+                                 <span className="text-[10px] font-black text-muted uppercase tracking-widest group-hover:text-foreground transition-colors">{type.name}</span>
                               </div>
-                              <span className="font-bold text-white">{type.value}</span>
+                              <span className="font-mono font-black text-foreground text-sm">{type.value}</span>
                            </div>
                         ))}
-                        {orderTypeData.length === 0 && <p className="text-center text-gray-500 text-sm">No orders yet</p>}
                      </div>
                   </CardContent>
                </Card>
             </div>
 
             {/* Order Flow Timeline */}
-            <Card className="bg-[#1A1A1A] border-gray-800">
-               <CardHeader>
-                  <CardTitle className="text-white">Average Service Flow</CardTitle>
+            <Card className="bg-card/60 backdrop-blur-xl border border-border rounded-[2.5rem] shadow-2xl overflow-hidden">
+               <CardHeader className="p-8 border-b border-border bg-muted/5">
+                  <CardTitle className="text-[10px] font-black text-foreground uppercase tracking-[0.2em] flex items-center gap-3">
+                     <Clock className="w-4 h-4 text-primary" strokeWidth={3} /> Node Latency & Internal Service Flow
+                  </CardTitle>
                </CardHeader>
-               <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+               <CardContent className="p-10">
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
 
                      {/* Step 1 */}
-                     <div className="relative p-4 bg-black/20 rounded-xl border border-gray-800 flex flex-col items-center text-center">
-                        <div className="w-10 h-10 rounded-full bg-blue-500/10 flex items-center justify-center mb-3">
-                           <ClipboardList className="w-5 h-5 text-blue-500" />
+                     <div className="relative p-8 bg-muted/5 rounded-3xl border border-border flex flex-col items-center text-center group hover:bg-muted/10 transition-colors">
+                        <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mb-4 shadow-inner group-hover:scale-110 transition-transform">
+                           <ClipboardList className="w-6 h-6 text-primary" strokeWidth={3} />
                         </div>
-                        <p className="text-sm font-bold text-white">Placed</p>
-                        <p className="text-xs text-gray-500 mt-1">Start</p>
+                        <p className="text-[11px] font-black text-foreground uppercase italic tracking-tighter">Order_Origin</p>
+                        <p className="text-[9px] text-muted font-black uppercase tracking-widest mt-1 opacity-40">Node_Start</p>
 
-                        <div className="hidden md:flex absolute top-1/2 -right-5 w-6 h-6 z-10 items-center justify-center bg-gray-800 rounded-full border border-gray-700">
-                           <ArrowRight className="w-3 h-3 text-gray-400" />
+                        <div className="hidden md:flex absolute top-1/2 -right-8 w-8 h-8 z-10 items-center justify-center bg-card rounded-full border border-border shadow-lg">
+                           <ArrowRight className="w-4 h-4 text-primary" strokeWidth={3} />
                         </div>
                      </div>
 
                      {/* Step 2 */}
-                     <div className="relative p-4 bg-black/20 rounded-xl border border-gray-800 flex flex-col items-center text-center">
-                        <div className="w-10 h-10 rounded-full bg-purple-500/10 flex items-center justify-center mb-3">
-                           <CheckCircle2 className="w-5 h-5 text-purple-500" />
+                     <div className="relative p-8 bg-muted/5 rounded-3xl border border-border flex flex-col items-center text-center group hover:bg-muted/10 transition-colors">
+                        <div className="w-14 h-14 rounded-2xl bg-purple-500/10 flex items-center justify-center mb-4 shadow-inner group-hover:scale-110 transition-transform">
+                           <CheckCircle2 className="w-6 h-6 text-purple-500" strokeWidth={3} />
                         </div>
-                        <p className="text-sm font-bold text-white">Kitchen Accept</p>
-                        <p className="text-xs text-primary font-bold mt-1">{serviceFlow.toKitchen}m avg</p>
+                        <p className="text-[11px] font-black text-foreground uppercase italic tracking-tighter">Kitchen_Sync</p>
+                        <p className="text-[10px] text-primary font-black mt-1 font-mono">{serviceFlow.toKitchen} MIN</p>
 
-                        <div className="hidden md:flex absolute top-1/2 -right-5 w-6 h-6 z-10 items-center justify-center bg-gray-800 rounded-full border border-gray-700">
-                           <ArrowRight className="w-3 h-3 text-gray-400" />
+                        <div className="hidden md:flex absolute top-1/2 -right-8 w-8 h-8 z-10 items-center justify-center bg-card rounded-full border border-border shadow-lg">
+                           <ArrowRight className="w-4 h-4 text-primary" strokeWidth={3} />
                         </div>
                      </div>
 
                      {/* Step 3 */}
-                     <div className="relative p-4 bg-black/20 rounded-xl border border-gray-800 flex flex-col items-center text-center">
-                        <div className="w-10 h-10 rounded-full bg-orange-500/10 flex items-center justify-center mb-3">
-                           <Utensils className="w-5 h-5 text-orange-500" />
+                     <div className="relative p-8 bg-muted/5 rounded-3xl border border-border flex flex-col items-center text-center group hover:bg-muted/10 transition-colors">
+                        <div className="w-14 h-14 rounded-2xl bg-orange-500/10 flex items-center justify-center mb-4 shadow-inner group-hover:scale-110 transition-transform">
+                           <Utensils className="w-6 h-6 text-orange-500" strokeWidth={3} />
                         </div>
-                        <p className="text-sm font-bold text-white">Ready</p>
-                        <p className="text-xs text-primary font-bold mt-1">{serviceFlow.toReady}m avg</p>
+                        <p className="text-[11px] font-black text-foreground uppercase italic tracking-tighter">Production_Ready</p>
+                        <p className="text-[10px] text-primary font-black mt-1 font-mono">{serviceFlow.toReady} MIN</p>
 
-                        <div className="hidden md:flex absolute top-1/2 -right-5 w-6 h-6 z-10 items-center justify-center bg-gray-800 rounded-full border border-gray-700">
-                           <ArrowRight className="w-3 h-3 text-gray-400" />
+                        <div className="hidden md:flex absolute top-1/2 -right-8 w-8 h-8 z-10 items-center justify-center bg-card rounded-full border border-border shadow-lg">
+                           <ArrowRight className="w-4 h-4 text-primary" strokeWidth={3} />
                         </div>
                      </div>
 
                      {/* Step 4 */}
-                     <div className="relative p-4 bg-black/20 rounded-xl border border-gray-800 flex flex-col items-center text-center">
-                        <div className="w-10 h-10 rounded-full bg-green-500/10 flex items-center justify-center mb-3">
-                           <Truck className="w-5 h-5 text-green-500" />
+                     <div className="relative p-8 bg-muted/5 rounded-3xl border border-border flex flex-col items-center text-center group hover:bg-muted/10 transition-colors">
+                        <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 flex items-center justify-center mb-4 shadow-inner group-hover:scale-110 transition-transform">
+                           <Truck className="w-6 h-6 text-emerald-500" strokeWidth={3} />
                         </div>
-                        <p className="text-sm font-bold text-white">Served</p>
-                        <p className="text-xs text-primary font-bold mt-1">{serviceFlow.toServed}m avg</p>
+                        <p className="text-[11px] font-black text-foreground uppercase italic tracking-tighter">Settle_Vector</p>
+                        <p className="text-[10px] text-primary font-black mt-1 font-mono">{serviceFlow.toServed} MIN</p>
                      </div>
 
                   </div>
-                  <div className="mt-4 text-center text-xs text-gray-500">
-                     Total Cycle Time: <span className="text-white font-bold">{serviceFlow.total} min</span>
-                     <span className="ml-2 italic text-gray-600">(Note: Requires Kitchen Display usage for accuracy)</span>
+                  <div className="mt-8 flex items-center justify-center gap-8 bg-muted/5 p-4 rounded-2xl border border-dashed border-border">
+                     <div className="flex items-center gap-3">
+                        <span className="text-[9px] font-black text-muted uppercase tracking-[0.3em]">Total_Cycle_Latency:</span>
+                        <span className="text-lg font-black text-foreground italic font-mono">{serviceFlow.total} MIN</span>
+                     </div>
+                     <span className="text-[9px] font-black text-muted/40 uppercase tracking-widest italic">Requires KDS node engagement for extreme accuracy</span>
                   </div>
                </CardContent>
             </Card>
 
             {/* Bottom Section: Tables & Staff */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
 
                {/* Table Stats */}
-               <Card className="bg-[#1A1A1A] border-gray-800">
-                  <CardHeader>
-                     <CardTitle className="text-white flex items-center gap-2">
-                        <Armchair className="w-5 h-5 text-gray-400" /> Table Analytics
+               <Card className="bg-card/60 backdrop-blur-xl border border-border rounded-[2.5rem] shadow-2xl overflow-hidden">
+                  <CardHeader className="p-8 border-b border-border bg-muted/5">
+                     <CardTitle className="text-[10px] font-black text-foreground uppercase tracking-[0.2em] flex items-center gap-3">
+                        <Armchair className="w-4 h-4 text-primary" strokeWidth={3} /> Spatial Utilization Analytics
                      </CardTitle>
                   </CardHeader>
                   <CardContent className="p-0">
-                     <div className="overflow-x-auto max-h-[300px]">
-                        <table className="w-full text-sm text-left">
-                           <thead className="text-xs text-gray-500 uppercase bg-black/20 border-b border-gray-800 sticky top-0 backdrop-blur-sm z-10">
+                     <div className="overflow-x-auto max-h-[400px] custom-scrollbar">
+                        <table className="w-full text-sm text-left border-collapse">
+                           <thead className="text-[9px] font-black text-muted uppercase bg-muted/5 border-b border-border sticky top-0 backdrop-blur-xl z-10 tracking-widest">
                               <tr>
-                                 <th className="px-6 py-3">Table</th>
-                                 <th className="px-6 py-3">Turns</th>
-                                 <th className="px-6 py-3">Avg Time</th>
-                                 <th className="px-6 py-3 text-right">Revenue</th>
+                                 <th className="px-8 py-5">NODE_IDENT</th>
+                                 <th className="px-8 py-5">SESSIONS</th>
+                                 <th className="px-8 py-5">LATENCY</th>
+                                 <th className="px-8 py-5 text-right">GROSS_REV</th>
                               </tr>
                            </thead>
-                           <tbody className="divide-y divide-gray-800">
-                              {tableStats.length === 0 && <tr><td colSpan={4} className="p-4 text-center text-gray-500">No table data</td></tr>}
+                           <tbody className="divide-y divide-border">
+                              {tableStats.length === 0 && <tr><td colSpan={4} className="p-8 text-center text-muted uppercase font-black text-[10px] tracking-widest opacity-40">No spatial load detected</td></tr>}
                               {tableStats.map((table) => (
-                                 <tr key={table.id} className="hover:bg-white/5 transition-colors">
-                                    <td className="px-6 py-3 font-bold text-white">{table.id}</td>
-                                    <td className="px-6 py-3 text-gray-300">
-                                       {table.usage} <span className="text-xs text-gray-500">sessions</span>
+                                 <tr key={table.id} className="hover:bg-muted/5 transition-colors group">
+                                    <td className="px-8 py-5 font-black text-foreground italic group-hover:text-primary transition-colors text-lg">{table.id}</td>
+                                    <td className="px-8 py-5 font-mono text-xs text-muted font-black uppercase">
+                                       {table.usage} <span className="opacity-40">TXN</span>
                                     </td>
-                                    <td className="px-6 py-3 text-gray-300">{table.avgTurnover}</td>
-                                    <td className="px-6 py-3 text-right font-mono text-primary">ETB {table.revenue.toLocaleString()}</td>
+                                    <td className="px-8 py-5 font-mono text-xs text-muted font-black">{table.avgTurnover}</td>
+                                    <td className="px-8 py-5 text-right font-mono text-foreground font-black text-base">
+                                       <span className="text-[10px] mr-1 opacity-30 font-sans NOT-italic">ETB</span>
+                                       {table.revenue.toLocaleString()}
+                                    </td>
                                  </tr>
                               ))}
                            </tbody>
@@ -526,38 +572,38 @@ const OrdersTables: React.FC = () => {
                </Card>
 
                {/* Staff Performance Context */}
-               <Card className="bg-[#1A1A1A] border-gray-800">
-                  <CardHeader>
-                     <CardTitle className="text-white flex items-center gap-2">
-                        <CheckCircle2 className="w-5 h-5 text-green-400" /> Service Quality
+               <Card className="bg-card/60 backdrop-blur-xl border border-border rounded-[2.5rem] shadow-2xl overflow-hidden">
+                  <CardHeader className="p-8 border-b border-border bg-muted/5">
+                     <CardTitle className="text-[10px] font-black text-foreground uppercase tracking-[0.2em] flex items-center gap-3">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-500" strokeWidth={3} /> Human Resource Efficiency
                      </CardTitle>
                   </CardHeader>
                   <CardContent className="p-0">
-                     <div className="overflow-x-auto max-h-[300px]">
-                        <table className="w-full text-sm text-left">
-                           <thead className="text-xs text-gray-500 uppercase bg-black/20 border-b border-gray-800 sticky top-0 backdrop-blur-sm z-10">
+                     <div className="overflow-x-auto max-h-[400px] custom-scrollbar">
+                        <table className="w-full text-sm text-left border-collapse">
+                           <thead className="text-[9px] font-black text-muted uppercase bg-muted/5 border-b border-border sticky top-0 backdrop-blur-xl z-10 tracking-widest">
                               <tr>
-                                 <th className="px-6 py-3">Waiter</th>
-                                 <th className="px-6 py-3">Volume</th>
-                                 <th className="px-6 py-3">Avg Speed</th>
-                                 <th className="px-6 py-3 text-right">Errors</th>
+                                 <th className="px-8 py-5">HUMAN_NODE</th>
+                                 <th className="px-8 py-5">VOLUME</th>
+                                 <th className="px-8 py-5">SPEED_COEFF</th>
+                                 <th className="px-8 py-5 text-right">ERR_VECTOR</th>
                               </tr>
                            </thead>
-                           <tbody className="divide-y divide-gray-800">
-                              {staffStats.length === 0 && <tr><td colSpan={4} className="p-4 text-center text-gray-500">No staff activity</td></tr>}
+                           <tbody className="divide-y divide-border">
+                              {staffStats.length === 0 && <tr><td colSpan={4} className="p-8 text-center text-muted uppercase font-black text-[10px] tracking-widest opacity-40">No active human nodes</td></tr>}
                               {staffStats.map((staff) => (
-                                 <tr key={staff.name} className="hover:bg-white/5 transition-colors">
-                                    <td className="px-6 py-3 font-medium text-white">
-                                       {staff.name}
-                                       <div className="text-xs text-gray-500">{staff.role}</div>
+                                 <tr key={staff.name} className="hover:bg-muted/5 transition-colors group">
+                                    <td className="px-8 py-5">
+                                       <div className="font-black text-foreground uppercase italic group-hover:text-primary transition-colors">{staff.name}</div>
+                                       <div className="text-[9px] text-muted font-black uppercase tracking-widest opacity-40 mt-1">{staff.role}</div>
                                     </td>
-                                    <td className="px-6 py-3 text-gray-300">{staff.orders}</td>
-                                    <td className="px-6 py-3 text-gray-300">{staff.speed}</td>
-                                    <td className="px-6 py-3 text-right">
+                                    <td className="px-8 py-5 font-mono text-xs text-muted font-black">{staff.orders}</td>
+                                    <td className="px-8 py-5 font-mono text-xs text-muted font-black">{staff.speed}</td>
+                                    <td className="px-8 py-5 text-right">
                                        {staff.errors === 0 ? (
-                                          <span className="text-green-500 text-xs font-bold">Perfect</span>
+                                          <Badge className="bg-emerald-500/10 text-emerald-500 border-none font-black text-[9px] tracking-[0.2em] px-3 py-1">ULTRA_PERFECT</Badge>
                                        ) : (
-                                          <span className="text-red-400 text-xs font-bold">{staff.errors} Issues</span>
+                                          <Badge className="bg-red-500/10 text-red-500 border-none font-black text-[9px] tracking-[0.2em] px-3 py-1">{staff.errors} V-ERRORS</Badge>
                                        )}
                                     </td>
                                  </tr>

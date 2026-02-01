@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { Order } from '../types';
 import { cn, Badge, Button, showToast } from './ui';
 import { useAuth } from '../AuthContext';
-import { Clock, MessageSquare, PlusCircle, CheckCircle2, Loader2, Flag, Receipt, FileText } from 'lucide-react';
+import { Clock, MessageSquare, PlusCircle, CheckCircle2, Loader2, Flag, Receipt, FileText, User } from 'lucide-react';
 
 import { orderService } from '../services/orderService';
 import { SoshaLeafyCard } from './ElectricCard';
@@ -112,6 +112,11 @@ export const OrderCard: React.FC<OrderCardProps> = ({
             {showTimer && <span className={cn("text-[9px] font-mono font-bold flex items-center", elapsed > 20 ? "text-red-500 animate-pulse" : "text-zinc-500")}>
               <Clock className="w-2.5 h-2.5 mr-1" />{elapsed}m
             </span>}
+            {order.waiter?.full_name && (
+              <span className="text-[9px] font-black text-primary/70 uppercase tracking-widest flex items-center gap-1 border-l border-white/10 pl-2">
+                <User className="w-2.5 h-2.5" /> {order.waiter.full_name}
+              </span>
+            )}
           </div>
         </div>
         <Badge className={cn("text-[8px] uppercase font-black px-2 py-1 tracking-widest border shadow-lg backdrop-blur-md", getStatusColor(order.status))}>
@@ -130,11 +135,19 @@ export const OrderCard: React.FC<OrderCardProps> = ({
       {/* Items List - Cleaner Look */}
       <div className="bg-white/[0.03] p-3 rounded-xl space-y-2 border border-white/5">
         {order.order_items?.map((item: any) => (
-          <div key={item.id} className="flex justify-between items-start border-b border-white/5 last:border-0 pb-1.5 last:pb-0 mb-1 last:mb-0">
-            <div className="flex items-start gap-2 leading-tight">
-              <span className="text-primary font-black text-xs min-w-[18px] text-center bg-primary/10 rounded-sm">{item.quantity}x</span>
-              <span className="text-xs font-bold text-gray-200">{item.menu_item?.name}</span>
+          <div key={item.id} className="flex flex-col border-b border-white/5 last:border-0 pb-2 last:pb-0">
+            <div className="flex justify-between items-start">
+              <div className="flex items-start gap-2 leading-tight">
+                <span className="text-primary font-black text-xs min-w-[18px] text-center bg-primary/10 rounded-sm">{item.quantity}x</span>
+                <span className="text-xs font-bold text-gray-200">{item.menu_item?.name}</span>
+              </div>
             </div>
+            {item.special_instructions && (
+              <div className="ml-6 mt-1 flex items-start gap-1.5 p-1.5 bg-yellow-500/5 rounded-lg border border-yellow-500/10">
+                <MessageSquare className="w-2.5 h-2.5 text-yellow-500 shrink-0 mt-0.5" />
+                <p className="text-[10px] text-yellow-200/90 italic leading-snug">{item.special_instructions}</p>
+              </div>
+            )}
           </div>
         ))}
       </div>
