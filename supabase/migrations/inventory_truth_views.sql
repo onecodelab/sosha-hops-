@@ -97,12 +97,14 @@ SELECT
   m.price,
   m.category,
   m.image_url,
-  COALESCE(c.calculated_cost, 0) as cost_price,
+  m.branch_id,
+  c.recipe_id,
+  COALESCE(c.calculated_cost, 0) as cost_per_plate,
   COALESCE(a.is_available, true) as is_available,
   (m.price - COALESCE(c.calculated_cost, 0)) as margin,
   CASE WHEN m.price > 0 THEN ((m.price - COALESCE(c.calculated_cost, 0)) / m.price) * 100 ELSE 0 END as margin_percent
 FROM 
-  menu m -- Assuming 'menu' is the table name based on useMenu.ts
+  menu m
 LEFT JOIN 
   view_recipe_costs c ON m.id = c.menu_item_id
 LEFT JOIN 

@@ -59,17 +59,22 @@ export const getConversionFactor = (
 /**
  * Calculates the cost for a single recipe ingredient based on inventory cost.
  */
-export const calculateIngredientCost = (ri: RecipeIngredient): number => {
-    if (!ri.ingredient || ri.ingredient.cost_per_unit === undefined) return 0;
+export const calculateIngredientCost = (ri: any): number => {
+    // Determine cost and weight from either the nested ingredient object or the flattened props
+    const costPerUnit = ri.ingredient?.cost_per_unit ?? ri.cost_per_unit;
+    const weightPerUnit = ri.ingredient?.weight_per_unit ?? ri.weight_per_unit ?? 1;
+    const inventoryUnit = ri.ingredient?.unit_type ?? ri.ingredient?.unittype ?? ri.inventory_unit ?? 'g';
+
+    if (costPerUnit === undefined || costPerUnit === null) return 0;
 
     const factor = getConversionFactor(
-        ri.ingredient.unit_type || ri.ingredient.unittype || 'g',
+        inventoryUnit,
         ri.unit_type,
-        ri.ingredient.weight_per_unit || 1
+        weightPerUnit
     );
 
     const recipeQtyInInventoryUnits = ri.quantity_needed * factor;
-    return recipeQtyInInventoryUnits * (ri.ingredient.cost_per_unit || 0);
+    return recipeQtyInInventoryUnits * (costPerUnit || 0);
 };
 
 /**

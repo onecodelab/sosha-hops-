@@ -242,7 +242,7 @@ const AdminDashboard: React.FC = () => {
    const getPaymentIcon = (method?: string) => {
       if (method === 'cash') return <DollarSign className="w-3 h-3 text-green-500" />;
       if (['telebirr', 'abyssinia', 'cbe'].includes(method || '')) return <Activity className="w-3 h-3 text-blue-500" />;
-      return <AlertTriangle className="w-3 h-3 text-gray-500" />;
+      return <AlertTriangle className="w-3 h-3 text-muted" />;
    };
 
    const handleRowClick = (order: any) => {
@@ -325,7 +325,7 @@ const AdminDashboard: React.FC = () => {
                         {filteredActiveOrders.length === 0 ? (
                            <div className="h-full flex flex-col items-center justify-center text-muted gap-4 opacity-30 mt-10">
                               <Activity className="w-12 h-12" strokeWidth={3} />
-                              <span className="text-[10px] font-black uppercase tracking-[0.4em] italic text-center">Operational_Clear<br />Wait_State_Active</span>
+                              <span className="text-[10px] font-black uppercase tracking-[0.4em] italic text-center text-muted">Operational_Clear<br />Wait_State_Active</span>
                            </div>
                         ) : (
                            <div className="space-y-4">

@@ -312,17 +312,17 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
 
   return (
     <Dialog isOpen={isOpen} onClose={onClose} title={internalAppendId ? `Add to Bill: T-${tableNumber}` : (tableNumber ? `New Order: T-${tableNumber}` : "New Order Entry")} maxWidth="max-w-6xl">
-      <div className="flex flex-col md:flex-row h-[75vh] md:h-[80vh] bg-[#09090b] text-white overflow-hidden rounded-b-3xl md:rounded-3xl relative">
+      <div className="flex flex-col md:flex-row h-[75vh] md:h-[80vh] bg-card text-foreground overflow-hidden rounded-b-3xl md:rounded-3xl relative">
 
         {/* LEFT PANEL: Tables & Menu */}
-        <div className="flex-1 flex flex-col border-r border-white/5 bg-black/20 overflow-hidden relative">
+        <div className="flex-1 flex flex-col border-r border-border bg-muted/5 overflow-hidden relative">
 
           {/* Top Section: Table Selector + Search */}
-          <div className="shrink-0 p-4 space-y-4 border-b border-white/5 bg-black/40 backdrop-blur-xl z-20">
+          <div className="shrink-0 p-4 space-y-4 border-b border-border bg-card/60 backdrop-blur-xl z-20">
             <div className="flex flex-col gap-3">
               {/* Table Selector */}
               <div className="space-y-1.5">
-                <label className="text-[9px] font-black text-zinc-500 uppercase tracking-widest ml-1 flex items-center gap-2">
+                <label className="text-[9px] font-black text-muted uppercase tracking-widest ml-1 flex items-center gap-2">
                   <Armchair className="w-3 h-3" /> {tableId ? `Assigned: Table ${tableNumber}` : 'Select Table'}
                 </label>
                 <div className="flex flex-wrap gap-1.5 max-h-20 md:max-h-24 overflow-y-auto custom-scrollbar p-1">
@@ -335,7 +335,7 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
                           "px-2.5 h-7 md:px-3 md:h-8 rounded-lg text-[9px] font-black uppercase transition-all border shrink-0 flex items-center justify-center min-w-[2.5rem] md:min-w-[3rem]",
                           tableId === t.id
                             ? "bg-primary text-black border-primary shadow-[0_0_15px_rgba(251,191,36,0.2)]"
-                            : "bg-white/[0.03] text-zinc-400 border-white/5 hover:border-white/20 hover:text-white",
+                            : "bg-muted/10 text-muted border-border hover:border-muted hover:text-foreground",
                           t.status === 'occupied' && tableId !== t.id && "bg-red-500/5 text-red-500/50 border-red-500/10"
                         )}
                       >
@@ -346,7 +346,7 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
                   ) : (
                     <div className="h-8 md:h-9 px-3 md:px-4 bg-primary/10 border border-primary/20 rounded-lg flex items-center">
                       <Armchair className="w-3 h-3 md:w-3.5 md:h-3.5 text-primary mr-2" />
-                      <span className="text-[10px] md:text-xs font-black text-white">Table {tableNumber}</span>
+                      <span className="text-[10px] md:text-xs font-black text-foreground">Table {tableNumber}</span>
                     </div>
                   )}
                 </div>
@@ -355,18 +355,18 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
               {/* Search & Categories */}
               <div className="flex gap-3">
                 <div className="relative flex-1">
-                  <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-zinc-600" />
+                  <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-muted/60" />
                   <Input
                     value={searchTerm}
                     onChange={e => setSearchTerm(e.target.value)}
-                    className="pl-9 h-9 text-xs bg-white/[0.05] border-white/10 rounded-xl focus:bg-white/[0.1] text-white placeholder:text-zinc-600"
+                    className="pl-9 h-9 text-xs bg-muted/10 border-border rounded-xl focus:bg-muted/20 text-foreground placeholder:text-muted/60"
                     placeholder="Search menu..."
                   />
                 </div>
                 <div className="flex gap-1.5 overflow-x-auto no-scrollbar max-w-[50%]">
-                  <button onClick={() => setSelectedCategory('All')} className={cn("px-3 h-9 rounded-lg text-[9px] font-black uppercase tracking-widest border transition-all", selectedCategory === 'All' ? "bg-white text-black border-white" : "bg-transparent text-zinc-500 border-white/10 hover:border-white/30")}>ALL</button>
+                  <button onClick={() => setSelectedCategory('All')} className={cn("px-3 h-9 rounded-lg text-[9px] font-black uppercase tracking-widest border transition-all", selectedCategory === 'All' ? "bg-foreground text-background border-foreground" : "bg-transparent text-muted border-border hover:border-muted")}>ALL</button>
                   {categories.map(cat => (
-                    <button key={cat} onClick={() => setSelectedCategory(cat)} className={cn("px-3 h-9 rounded-lg text-[9px] font-black uppercase tracking-widest border transition-all whitespace-nowrap", selectedCategory === cat ? "bg-white text-black border-white" : "bg-transparent text-zinc-500 border-white/10 hover:border-white/30")}>{cat}</button>
+                    <button key={cat} onClick={() => setSelectedCategory(cat)} className={cn("px-3 h-9 rounded-lg text-[9px] font-black uppercase tracking-widest border transition-all whitespace-nowrap", selectedCategory === cat ? "bg-foreground text-background border-foreground" : "bg-transparent text-muted border-border hover:border-muted")}>{cat}</button>
                   ))}
                 </div>
               </div>
@@ -381,21 +381,21 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
               const isActuallyAvailable = dish.is_available && redisAvailable;
 
               return (
-                <div key={dish.id} onClick={() => isActuallyAvailable && addToCart(dish)} className={cn("group p-3 border rounded-2xl flex items-center justify-between transition-all cursor-pointer active:scale-[0.98]", !isActuallyAvailable ? "bg-red-900/10 border-red-900/20 opacity-60 grayscale" : "bg-white/[0.03] border-white/5 hover:bg-white/[0.08] hover:border-white/10")}>
+                <div key={dish.id} onClick={() => isActuallyAvailable && addToCart(dish)} className={cn("group p-3 border rounded-2xl flex items-center justify-between transition-all cursor-pointer active:scale-[0.98]", !isActuallyAvailable ? "bg-red-900/10 border-red-900/20 opacity-60 grayscale" : "bg-card border-border hover:bg-muted/10 hover:border-muted")}>
                   <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-xl bg-zinc-900 border border-white/5 flex items-center justify-center overflow-hidden shrink-0 relative">
-                      {dish.image_url ? <img src={dish.image_url} className="w-full h-full object-cover" /> : <Utensils className="w-5 h-5 text-zinc-700" />}
+                    <div className="w-12 h-12 rounded-xl bg-card border border-border flex items-center justify-center overflow-hidden shrink-0 relative">
+                      {dish.image_url ? <img src={dish.image_url} className="w-full h-full object-cover" /> : <Utensils className="w-5 h-5 text-muted" />}
                     </div>
                     <div className="flex flex-col">
-                      <h4 className="text-sm font-bold text-white group-hover:text-primary transition-colors">
+                      <h4 className="text-sm font-bold text-foreground group-hover:text-primary transition-colors">
                         {dish.name}
                       </h4>
-                      <p className="text-[10px] font-black text-zinc-500 uppercase tracking-wider mt-0.5">ETB {dish.price.toLocaleString()}</p>
+                      <p className="text-[10px] font-black text-muted uppercase tracking-wider mt-0.5">ETB {dish.price.toLocaleString()}</p>
                     </div>
                   </div>
                   <button
                     disabled={!isActuallyAvailable}
-                    className={cn("w-8 h-8 rounded-full flex items-center justify-center transition-all", !isActuallyAvailable ? "hidden" : "bg-white/10 text-white group-hover:bg-primary group-hover:text-black")}
+                    className={cn("w-8 h-8 rounded-full flex items-center justify-center transition-all", !isActuallyAvailable ? "hidden" : "bg-muted/10 text-foreground group-hover:bg-primary group-hover:text-black")}
                   >
                     <Plus className="w-4 h-4" />
                   </button>
@@ -407,52 +407,52 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
         </div>
 
         {/* RIGHT PANEL: CART / TICKET (Hidden on mobile until items added, then becomes a drawer/overlay) */}
-        <div className={cn("md:w-96 flex flex-col bg-[#111] md:bg-black/40 border-t md:border-t-0 md:border-l border-white/10 z-30 transition-all duration-300 absolute md:relative inset-x-0 bottom-0 max-h-[60vh] md:max-h-full shadow-2xl md:shadow-none rounded-t-3xl md:rounded-none", cart.length === 0 ? "translate-y-full md:translate-y-0 opacity-0 md:opacity-100 pointer-events-none md:pointer-events-auto" : "translate-y-0 opacity-100")}>
+        <div className={cn("md:w-96 flex flex-col bg-card border-t md:border-t-0 md:border-l border-border z-30 transition-all duration-300 absolute md:relative inset-x-0 bottom-0 max-h-[60vh] md:max-h-full shadow-2xl md:shadow-none rounded-t-3xl md:rounded-none", cart.length === 0 ? "translate-y-full md:translate-y-0 opacity-0 md:opacity-100 pointer-events-none md:pointer-events-auto" : "translate-y-0 opacity-100")}>
           {/* Mobile Drawer Handle */}
-          <div className="md:hidden w-12 h-1 bg-white/20 rounded-full mx-auto mt-3 mb-1" />
+          <div className="md:hidden w-12 h-1 bg-muted/20 rounded-full mx-auto mt-3 mb-1" />
 
-          <div className="p-4 md:p-6 border-b border-white/5 flex items-center justify-between">
-            <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] flex items-center gap-2">
+          <div className="p-4 md:p-6 border-b border-border flex items-center justify-between">
+            <h3 className="text-[10px] font-black text-muted uppercase tracking-[0.2em] flex items-center gap-2">
               <ClipboardList className="w-4 h-4 text-primary" /> Current Order
             </h3>
             <Badge variant="glass" className="bg-primary/20 text-primary border-primary/20">{cart.reduce((s, i) => s + i.quantity, 0)} Items</Badge>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar bg-black/20">
+          <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar bg-muted/5">
             {cart.map((item, idx) => (
-              <div key={idx} className="flex flex-col gap-2 p-3 bg-white/[0.03] border border-white/5 rounded-xl shadow-inner">
+              <div key={idx} className="flex flex-col gap-2 p-3 bg-muted/10 border border-border rounded-xl shadow-inner">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-bold text-white">{item.dish.name}</p>
-                    <p className="text-[10px] text-zinc-500 font-mono mt-0.5">ETB {item.dish.price * item.quantity}</p>
+                    <p className="text-sm font-bold text-foreground">{item.dish.name}</p>
+                    <p className="text-[10px] text-muted font-mono mt-0.5">ETB {item.dish.price * item.quantity}</p>
                   </div>
-                  <div className="flex items-center gap-3 bg-black/40 rounded-lg p-1 border border-white/5">
-                    <button onClick={() => removeFromCart(item.dish.id)} className="w-6 h-6 flex items-center justify-center hover:bg-white/10 rounded-md text-zinc-400"><Minus className="w-3 h-3" /></button>
-                    <span className="text-xs font-bold text-white min-w-[16px] text-center">{item.quantity}</span>
-                    <button onClick={() => addToCart(item.dish)} className="w-6 h-6 flex items-center justify-center hover:bg-white/10 rounded-md text-white"><Plus className="w-3 h-3" /></button>
+                  <div className="flex items-center gap-3 bg-card rounded-lg p-1 border border-border">
+                    <button onClick={() => removeFromCart(item.dish.id)} className="w-6 h-6 flex items-center justify-center hover:bg-muted/10 rounded-md text-muted"><Minus className="w-3 h-3" /></button>
+                    <span className="text-xs font-bold text-foreground min-w-[16px] text-center">{item.quantity}</span>
+                    <button onClick={() => addToCart(item.dish)} className="w-6 h-6 flex items-center justify-center hover:bg-muted/10 rounded-md text-foreground"><Plus className="w-3 h-3" /></button>
                   </div>
                 </div>
 
                 {/* Per-Item Note Input */}
                 <div className="relative group">
-                  <MessageSquare className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-zinc-600 group-focus-within:text-primary transition-colors" />
+                  <MessageSquare className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-muted/40 group-focus-within:text-primary transition-colors" />
                   <input
                     type="text"
                     placeholder="Add item instructions..."
                     value={item.notes}
                     onChange={(e) => updateItemNote(item.dish.id, e.target.value)}
-                    className="w-full h-8 pl-8 pr-3 bg-black/40 border border-white/5 rounded-lg text-[10px] text-white placeholder:text-zinc-700 focus:outline-none focus:border-primary/30 transition-all font-medium"
+                    className="w-full h-8 pl-8 pr-3 bg-card border border-border rounded-lg text-[10px] text-foreground placeholder:text-muted/40 focus:outline-none focus:border-primary/30 transition-all font-medium"
                   />
                 </div>
               </div>
             ))}
           </div>
 
-          <div className="p-4 border-t border-white/5 bg-black/40 backdrop-blur-xl">
+          <div className="p-4 border-t border-border bg-card/60 backdrop-blur-xl">
             <div className="flex justify-between items-end mb-4 px-2">
-              <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Total Estimated</span>
-              <span className="text-2xl font-black text-white tracking-tighter">
-                <small className="text-sm text-zinc-500 mr-1 font-normal">ETB</small>
+              <span className="text-[10px] font-black text-muted uppercase tracking-widest">Total Estimated</span>
+              <span className="text-2xl font-black text-foreground tracking-tighter">
+                <small className="text-sm text-muted mr-1 font-normal">ETB</small>
                 {totalAmount.toLocaleString()}
               </span>
             </div>

@@ -96,24 +96,24 @@ export const OrderCard: React.FC<OrderCardProps> = ({
     <div className={cn(
       "relative p-4 rounded-2xl flex flex-col gap-3 transition-all duration-300 group",
       // Status-based Border/Glow
-      order.status === 'pending' ? "bg-[#252525] border border-yellow-500/20 shadow-[0_0_15px_rgba(234,179,8,0.05)] hover:border-yellow-500/40" :
-        (order.status === 'accepted' || order.status === 'preparing') ? "bg-[#252525] border border-orange-500/20 shadow-[0_0_15px_rgba(249,115,22,0.05)] hover:border-orange-500/40" :
-          order.status === 'ready' ? "bg-[#252525] border border-green-500/20 shadow-[0_0_15px_rgba(34,197,94,0.05)] hover:border-green-500/40" :
-            "bg-[#1A1A1A] border border-gray-800 hover:border-gray-700"
+      order.status === 'pending' ? "bg-card border border-yellow-500/20 shadow-[0_0_15px_rgba(234,179,8,0.05)] hover:border-yellow-500/40" :
+        (order.status === 'accepted' || order.status === 'preparing') ? "bg-card border border-orange-500/20 shadow-[0_0_15px_rgba(249,115,22,0.05)] hover:border-orange-500/40" :
+          order.status === 'ready' ? "bg-card border border-green-500/20 shadow-[0_0_15px_rgba(34,197,94,0.05)] hover:border-green-500/40" :
+            "bg-card border border-border hover:border-muted"
     )}>
       {/* Header */}
       <div className="flex justify-between items-start">
         <div className="min-w-0 flex-1">
-          <span className="text-lg font-black text-white tracking-tight">#{order.order_number?.slice(-4) || order.id.slice(0, 5)}</span>
+          <span className="text-lg font-black text-foreground tracking-tight">#{order.order_number?.slice(-4) || order.id.slice(0, 5)}</span>
           <div className="flex items-center gap-2 mt-1">
-            <span className="text-[9px] font-black text-zinc-500 px-1.5 py-0.5 bg-white/5 rounded-md border border-white/5 uppercase tracking-widest">
+            <span className="text-[9px] font-black text-muted px-1.5 py-0.5 bg-muted/10 rounded-md border border-border uppercase tracking-widest">
               T-{order.table_number}
             </span>
             {showTimer && <span className={cn("text-[9px] font-mono font-bold flex items-center", elapsed > 20 ? "text-red-500 animate-pulse" : "text-zinc-500")}>
               <Clock className="w-2.5 h-2.5 mr-1" />{elapsed}m
             </span>}
             {order.waiter?.full_name && (
-              <span className="text-[9px] font-black text-primary/70 uppercase tracking-widest flex items-center gap-1 border-l border-white/10 pl-2">
+              <span className="text-[9px] font-black text-primary/70 uppercase tracking-widest flex items-center gap-1 border-l border-border pl-2">
                 <User className="w-2.5 h-2.5" /> {order.waiter.full_name}
               </span>
             )}
@@ -126,20 +126,20 @@ export const OrderCard: React.FC<OrderCardProps> = ({
                 order.status}
         </Badge>
         {order.source === 'chatbot' && (
-          <Badge className="absolute -top-2 -right-2 bg-primary text-black border-2 border-[#1A1A1A] text-[8px] font-black px-2 py-1 shadow-xl flex items-center gap-1 animate-bounce">
+          <Badge className="absolute -top-2 -right-2 bg-primary text-black border-2 border-background text-[8px] font-black px-2 py-1 shadow-xl flex items-center gap-1 animate-bounce">
             <MessageSquare className="w-3 h-3" /> BOT
           </Badge>
         )}
       </div>
 
       {/* Items List - Cleaner Look */}
-      <div className="bg-white/[0.03] p-3 rounded-xl space-y-2 border border-white/5">
+      <div className="bg-muted/5 p-3 rounded-xl space-y-2 border border-border">
         {order.order_items?.map((item: any) => (
           <div key={item.id} className="flex flex-col border-b border-white/5 last:border-0 pb-2 last:pb-0">
             <div className="flex justify-between items-start">
               <div className="flex items-start gap-2 leading-tight">
                 <span className="text-primary font-black text-xs min-w-[18px] text-center bg-primary/10 rounded-sm">{item.quantity}x</span>
-                <span className="text-xs font-bold text-gray-200">{item.menu_item?.name}</span>
+                <span className="text-xs font-bold text-foreground/90">{item.menu_item?.name}</span>
               </div>
             </div>
             {item.special_instructions && (
@@ -173,7 +173,7 @@ export const OrderCard: React.FC<OrderCardProps> = ({
         {/* Waiter Actions - Same Style */}
         {/* Action: Add Items */}
         {isWaiter && !['closed', 'cancelled', 'paid'].includes(order.status) && (
-          <Button size="sm" onClick={() => onAction?.('append', order.id)} className="w-full bg-white/5 text-gray-400 font-black uppercase text-[10px] h-9 rounded-xl hover:bg-white/10 hover:text-white border border-transparent hover:border-white/10">
+          <Button size="sm" onClick={() => onAction?.('append', order.id)} className="w-full bg-muted/10 text-muted font-black uppercase text-[10px] h-9 rounded-xl hover:bg-muted/20 hover:text-foreground border border-transparent hover:border-border">
             <PlusCircle className="w-3 h-3 mr-2" /> Add Items
           </Button>
         )}
@@ -206,7 +206,7 @@ export const OrderCard: React.FC<OrderCardProps> = ({
                 </Button>
               )}
               {((order.status === 'paid' || order.payment_status === 'paid') && !order.closed_at) && (
-                <Button size="sm" onClick={() => onAction?.('completed', order.id)} disabled={isActing} className="bg-zinc-800 hover:bg-zinc-700 text-zinc-300 flex-1 h-10 font-black uppercase text-[10px] tracking-widest shadow-lg rounded-xl border border-white/5">
+                <Button size="sm" onClick={() => onAction?.('completed', order.id)} disabled={isActing} className="bg-muted hover:bg-muted/80 text-foreground flex-1 h-10 font-black uppercase text-[10px] tracking-widest shadow-lg rounded-xl border border-border">
                   <Flag className="w-3.5 h-3.5 mr-2" /> Clear
                 </Button>
               )}

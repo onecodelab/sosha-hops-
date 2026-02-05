@@ -360,11 +360,12 @@ const Inventory: React.FC = () => {
                         <td className="px-8 py-6 text-center">
                           <div className="flex flex-col items-center gap-1">
                             <div className="flex items-baseline gap-2">
-                              <span className={cn(
-                                "text-2xl font-black tracking-tighter",
-                                daysLeft < 3 ? "text-red-500 drop-shadow-[0_0_10px_rgba(239,68,68,0.4)]" :
-                                  daysLeft < 7 ? "text-amber-500" : "text-emerald-500"
-                              )}>
+                              <span
+                                className={cn(
+                                  "text-2xl font-black tracking-tighter",
+                                  daysLeft < 3 ? "text-red-500 drop-shadow-[0_0_10px_rgba(239,68,68,0.4)]" :
+                                    daysLeft < 7 ? "text-amber-500" : "text-emerald-500"
+                                )}>
                                 {daysLeft > 90 ? '90+' : Math.round(daysLeft)}
                               </span>
                               <span className="text-[10px] font-black text-muted uppercase tracking-widest opacity-40">Days</span>
@@ -435,7 +436,7 @@ const Inventory: React.FC = () => {
                 })}
                 {processedInventory.length === 0 && !loading && (
                   <tr>
-                    <td colSpan={6} className="py-32 text-center text-gray-600">
+                    <td colSpan={6} className="py-32 text-center text-muted">
                       <Database className="w-16 h-16 mx-auto mb-4 opacity-10" />
                       <p className="font-black uppercase tracking-[0.2em] text-xs">No SKUs Matched</p>
                     </td>
@@ -558,36 +559,35 @@ const Inventory: React.FC = () => {
           </div>
 
           <div className="pt-8 flex flex-col gap-4">
-            {(formData.unit_type === 'pcs' || formData.unit_type === 'slice' || formData.unit_type === 'unit') && (
-              <div className="mb-8 p-6 bg-primary/5 border border-primary/20 rounded-[2rem] animate-in zoom-in-95 duration-500 shadow-xl relative overflow-hidden">
-                <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent pointer-events-none" />
-                <div className="flex items-center gap-3 mb-4 relative z-10">
-                  <Scale className="w-5 h-5 text-primary" strokeWidth={3} />
-                  <h4 className="text-[10px] font-black text-foreground uppercase tracking-[0.2em]">Yield Mapping Protocol</h4>
-                </div>
-                <div className="space-y-4 relative z-10">
-                  <p className="text-[11px] text-muted font-bold leading-relaxed px-1">Configure conversion ratio: define the mass/volume equivalent for a single discrete unit.</p>
-                  <div className="flex flex-col md:flex-row items-center gap-6">
-                    <div className="flex-1 w-full space-y-2">
-                      <label className="text-[9px] font-black text-muted uppercase tracking-widest px-1">Base Metric Weight (g/ml)</label>
-                      <Input
-                        type="number"
-                        value={formData.weight_per_unit}
-                        onChange={e => setFormData({ ...formData, weight_per_unit: parseFloat(e.target.value) || 1 })}
-                        className="bg-muted/10 border-border font-mono text-primary font-black h-12 rounded-xl shadow-inner text-lg"
-                      />
-                    </div>
-                    <div className="pt-2 md:pt-6 w-full md:w-auto">
-                      <div className="bg-primary/10 border border-primary/30 rounded-2xl h-14 px-6 flex items-center justify-center gap-3 shadow-lg">
-                        <span className="text-[10px] font-black text-primary uppercase">1 {formData.unit_type}</span>
-                        <div className="w-3 h-[1px] bg-primary/30" />
-                        <span className="text-xl font-black text-primary tracking-tighter">{formData.weight_per_unit}g/ml</span>
-                      </div>
+            {/* Yield Mapping Protocol - Always visible to allow KG -> PCS conversion */}
+            <div className="mb-8 p-6 bg-primary/5 border border-primary/20 rounded-[2rem] animate-in zoom-in-95 duration-500 shadow-xl relative overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent pointer-events-none" />
+              <div className="flex items-center gap-3 mb-4 relative z-10">
+                <Scale className="w-5 h-5 text-primary" strokeWidth={3} />
+                <h4 className="text-[10px] font-black text-foreground uppercase tracking-[0.2em]">Yield Mapping Protocol</h4>
+              </div>
+              <div className="space-y-4 relative z-10">
+                <p className="text-[11px] text-muted font-bold leading-relaxed px-1">Configure conversion ratio: define the mass/volume equivalent for a single discrete unit.</p>
+                <div className="flex flex-col md:flex-row items-center gap-6">
+                  <div className="flex-1 w-full space-y-2">
+                    <label className="text-[9px] font-black text-muted uppercase tracking-widest px-1">Base Metric Weight (g/ml)</label>
+                    <Input
+                      type="number"
+                      value={formData.weight_per_unit}
+                      onChange={e => setFormData({ ...formData, weight_per_unit: parseFloat(e.target.value) || 1 })}
+                      className="bg-muted/10 border-border font-mono text-primary font-black h-12 rounded-xl shadow-inner text-lg"
+                    />
+                  </div>
+                  <div className="pt-2 md:pt-6 w-full md:w-auto">
+                    <div className="bg-primary/10 border border-primary/30 rounded-2xl h-14 px-6 flex items-center justify-center gap-3 shadow-lg">
+                      <span className="text-[10px] font-black text-primary uppercase">1 {formData.unit_type}</span>
+                      <div className="w-3 h-[1px] bg-primary/30" />
+                      <span className="text-xl font-black text-primary tracking-tighter">{formData.weight_per_unit}g/ml</span>
                     </div>
                   </div>
                 </div>
               </div>
-            )}
+            </div>
             <Button
               onClick={handleSave}
               className="w-full bg-foreground text-background font-black h-16 rounded-[2rem] shadow-2xl text-[10px] uppercase tracking-[0.3em] transition-all hover:scale-[1.02] active:scale-95 group relative overflow-hidden"

@@ -40,7 +40,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, setIsCollapsed, h
                         "w-full flex items-center gap-4 px-4 py-3 rounded-2xl transition-all duration-300 group",
                         isActive
                             ? "bg-primary text-black shadow-lg shadow-primary/20"
-                            : "text-muted hover:text-foreground hover:bg-white/5"
+                            : "text-muted hover:text-foreground hover:bg-muted/10"
                     )}
                 >
                     <Icon className={cn("w-5 h-5", isActive ? "text-black" : "text-muted group-hover:text-primary")} />
@@ -80,14 +80,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, setIsCollapsed, h
                                 "w-full flex items-center justify-between gap-3 px-4 py-3 rounded-2xl border transition-all duration-300",
                                 isOwnerOrAdmin
                                     ? "bg-primary/5 border-primary/20 hover:bg-primary/10 group"
-                                    : "bg-white/5 border-white/5 cursor-default"
+                                    : "bg-muted/5 border-border cursor-default"
                             )}
                         >
                             <div className="flex items-center gap-3 overflow-hidden">
                                 <MapPin className={cn("w-4 h-4 shrink-0", isOwnerOrAdmin ? "text-primary" : "text-gray-500")} />
                                 <div className="flex flex-col items-start leading-none overflow-hidden text-left">
-                                    <span className="text-[9px] font-black text-gray-500 uppercase tracking-widest mb-0.5">Active Branch</span>
-                                    <span className="text-sm font-bold text-white truncate w-full">
+                                    <span className="text-[9px] font-black text-muted uppercase tracking-widest mb-0.5">Active Branch</span>
+                                    <span className="text-sm font-bold text-foreground truncate w-full">
                                         {branchesLoading ? "Loading..." : (activeBranch?.name || "System Global")}
                                     </span>
                                 </div>
@@ -98,7 +98,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, setIsCollapsed, h
                         </button>
 
                         {isBranchSelectorOpen && isOwnerOrAdmin && (
-                            <div className="absolute top-full left-0 right-0 mt-2 py-2 bg-[#1A1A1A] border border-white/10 rounded-2xl shadow-2xl z-[100] animate-in fade-in zoom-in-95 duration-200">
+                            <div className="absolute top-full left-0 right-0 mt-2 py-2 bg-card border border-border rounded-2xl shadow-2xl z-[100] animate-in fade-in zoom-in-95 duration-200">
                                 {branches.map((branch) => (
                                     <button
                                         key={branch.id}
@@ -110,7 +110,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, setIsCollapsed, h
                                             "w-full text-left px-4 py-2 text-sm font-bold transition-colors",
                                             activeBranch?.id === branch.id
                                                 ? "text-primary bg-primary/10"
-                                                : "text-gray-400 hover:text-white hover:bg-white/5"
+                                                : "text-muted hover:text-foreground hover:bg-muted/10"
                                         )}
                                     >
                                         {branch.name}

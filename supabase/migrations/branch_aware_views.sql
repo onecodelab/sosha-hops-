@@ -62,7 +62,8 @@ SELECT
   m.category,
   m.image_url,
   b.id as branch_id,
-  COALESCE(c.calculated_cost, 0) as cost_price,
+  c.recipe_id,
+  COALESCE(c.calculated_cost, 0) as cost_per_plate,
   COALESCE(a.is_available, true) as is_available,
   (m.price - COALESCE(c.calculated_cost, 0)) as margin,
   CASE WHEN m.price > 0 THEN ((m.price - COALESCE(c.calculated_cost, 0)) / m.price) * 100 ELSE 0 END as margin_percent

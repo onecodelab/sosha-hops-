@@ -41,13 +41,13 @@ const MenuManagement: React.FC = () => {
       <div className="space-y-6 animate-in fade-in duration-500 pb-20">
 
         {/* Navigation & Controls */}
-        <div className="flex flex-col md:flex-row justify-between gap-6 items-center bg-[#1A1A1A] p-3 rounded-[1.5rem] border border-gray-800 shadow-xl">
-          <div className="flex bg-black/40 p-1 rounded-xl border border-gray-800 w-full md:w-auto overflow-x-auto no-scrollbar">
+        <div className="flex flex-col md:flex-row justify-between gap-6 items-center bg-card p-3 rounded-[1.5rem] border border-border shadow-xl">
+          <div className="flex bg-muted/10 p-1 rounded-xl border border-border w-full md:w-auto overflow-x-auto no-scrollbar">
             <button
               onClick={() => setSelectedCategory('all')}
               className={cn(
                 "px-5 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all whitespace-nowrap",
-                selectedCategory === 'all' ? "bg-primary text-black" : "text-gray-500 hover:text-white"
+                selectedCategory === 'all' ? "bg-primary text-black" : "text-muted hover:text-foreground"
               )}
             >
               All Dishes
@@ -58,7 +58,7 @@ const MenuManagement: React.FC = () => {
                 onClick={() => setSelectedCategory(cat)}
                 className={cn(
                   "px-5 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all whitespace-nowrap",
-                  selectedCategory === cat ? "bg-primary text-black" : "text-gray-500 hover:text-white"
+                  selectedCategory === cat ? "bg-primary text-black" : "text-muted hover:text-foreground"
                 )}
               >
                 {cat}
@@ -68,12 +68,12 @@ const MenuManagement: React.FC = () => {
 
           <div className="flex items-center gap-3 w-full md:w-auto">
             <div className="relative flex-1 md:w-80">
-              <Search className="absolute left-4 top-3.5 h-4 w-4 text-gray-500" />
+              <Search className="absolute left-4 top-3.5 h-4 w-4 text-muted" />
               <Input
                 placeholder="Search catalog..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-12 bg-black/20 border-white/10 h-12 rounded-2xl"
+                className="pl-12 bg-muted/5 border-border h-12 rounded-2xl"
               />
             </div>
             {isPrivileged && (
@@ -95,7 +95,7 @@ const MenuManagement: React.FC = () => {
               <p className="font-bold uppercase tracking-widest text-[10px]">Syncing Catalog Data...</p>
             </div>
           ) : filteredItems.map(item => (
-            <Card key={item.id} className="bg-[#1A1A1A] border-gray-800 hover:border-primary/50 transition-all group overflow-hidden flex flex-col h-full rounded-[2rem] shadow-lg hover:shadow-2xl hover:shadow-primary/5">
+            <Card key={item.id} className="bg-card border-border hover:border-primary/50 transition-all group overflow-hidden flex flex-col h-full rounded-[2rem] shadow-lg hover:shadow-2xl hover:shadow-primary/5">
               <div className="h-44 overflow-hidden relative">
                 <img
                   src={item.image_url || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=300&q=80'}
@@ -114,7 +114,7 @@ const MenuManagement: React.FC = () => {
                     </Badge>
                   )}
                 </div>
-                <div className="absolute inset-0 bg-gradient-to-t from-[#0A0A0A] to-transparent opacity-90" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-90" />
                 <div className="absolute bottom-4 left-4 right-12">
                   <p className="text-[10px] font-black text-primary uppercase tracking-widest mb-1">{item.category}</p>
                   <h3 className="font-bold text-white text-lg truncate w-full">{item.name}</h3>
@@ -145,7 +145,7 @@ const MenuManagement: React.FC = () => {
               <CardContent className="p-5 flex-1 flex flex-col justify-between">
                 <div>
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-2xl font-black text-white font-mono tracking-tighter">ETB {item.price.toLocaleString()}</span>
+                    <span className="text-2xl font-black text-foreground font-mono tracking-tighter">ETB {item.price.toLocaleString()}</span>
 
                     {/* Real Margin & Cost Logic */}
                     <div className="flex flex-col items-end">
@@ -159,7 +159,7 @@ const MenuManagement: React.FC = () => {
                           )}>
                             {(((item.price - item.cost_per_plate) / item.price) * 100).toFixed(0)}% Margin
                           </Badge>
-                          <span className="text-[8px] text-gray-600 mt-1 uppercase font-bold tracking-tighter">
+                          <span className="text-[8px] text-muted mt-1 uppercase font-bold tracking-tighter">
                             Cost: ETB {item.cost_per_plate.toFixed(2)}
                           </span>
                         </>
@@ -172,7 +172,7 @@ const MenuManagement: React.FC = () => {
                 {isPrivileged && (
                   <Button
                     variant="secondary"
-                    className="w-full mt-6 bg-[#252525] border-gray-700 hover:bg-black hover:text-white rounded-xl h-12 font-bold text-xs uppercase tracking-widest group"
+                    className="w-full mt-6 bg-muted/10 border-border hover:bg-muted/20 hover:text-foreground rounded-xl h-12 font-bold text-xs uppercase tracking-widest group"
                     onClick={() => setSelectedDish(item)}
                   >
                     <ChefHat className="w-4 h-4 mr-2 group-hover:rotate-12 transition-transform" /> Recipe Architect

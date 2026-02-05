@@ -88,7 +88,7 @@ const MenuAnalytics: React.FC = () => {
 
         // Cost comes directly from the DB View (Single Source of Truth)
         // We type cast item as any because MenuDish type might not officially have cost_price yet in types.ts
-        const unitCost = (item as any).cost_price || 0;
+        const unitCost = (item as any).cost_per_plate || 0;
         const totalCost = data.sold * unitCost;
         const { margin, marginPercent } = calculateMargins(item.price, unitCost);
 
