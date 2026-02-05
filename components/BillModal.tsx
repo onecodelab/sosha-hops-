@@ -179,7 +179,7 @@ export const BillModal: React.FC<BillModalProps> = ({
       }
 
       // Use consolidated verify-payment endpoint with secondary validation
-      const VERIFIER_BASE_URL = "http://localhost:3002";
+      const VERIFIER_BASE_URL = (import.meta as any).env?.VITE_VERIFIER_URL || "http://76.13.138.74:3002";
       const functionUrl = `${VERIFIER_BASE_URL}/verify-payment`;
 
       const response = await fetch(functionUrl, {
