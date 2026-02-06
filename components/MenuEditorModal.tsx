@@ -154,15 +154,15 @@ export const MenuEditorModal: React.FC<MenuEditorModalProps> = ({
         category: categoryName, // Backward compatibility for NOT NULL constraint
         price: parseFloat(price.toString()),
         image_url: imageUrl.trim() || null,
-        is_available: isAvailable
+        status: isAvailable ? 'available' : 'unavailable'
       };
 
       if (internalItem) {
-        const { error } = await supabase.from('menu_items').update(payload).eq('id', internalItem.id);
+        const { error } = await supabase.from('menu').update(payload).eq('id', internalItem.id);
         if (error) throw error;
         showToast("Dish updated", "success");
       } else {
-        const { data, error } = await supabase.from('menu_items').insert(payload).select().single();
+        const { data, error } = await supabase.from('menu').insert(payload).select().single();
         if (error) throw error;
 
         // Critical: Set internalItem to the newly created dish so the Recipe tab works
