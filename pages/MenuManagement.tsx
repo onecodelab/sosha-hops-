@@ -131,8 +131,8 @@ const MenuManagement: React.FC = () => {
                     </button>
                     <button
                       onClick={() => {
-                        if (confirm(`Are you sure you want to delete "${item.name}"?`)) {
-                          supabase.from('menu').delete().eq('id', item.id).then(() => refreshMenu());
+                        if (confirm(`PERMANENT DELETE: Are you sure you want to wipe "${item.name}" and ALL its history? This action cannot be undone.`)) {
+                          supabase.rpc('permanently_delete_menu_item', { target_id: item.id }).then(() => refreshMenu());
                         }
                       }}
                       className="p-2 bg-red-500/20 hover:bg-red-500/40 text-red-500 rounded-lg border border-red-500/20 backdrop-blur-md transition-all active:scale-95"
