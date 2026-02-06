@@ -4,7 +4,6 @@ export type Role = 'owner' | 'admin' | 'manager' | 'waiter' | 'kitchen';
 export interface UserProfile {
   id: string;
   full_name?: string;
-  name?: string;
   email?: string;
   role: Role;
   phone?: string;
@@ -79,8 +78,8 @@ export interface Order {
 export interface OrderItem {
   id: string;
   order_id: string;
-  menu_id: string;
-  menu_item_id?: string;
+  menu_id?: string; // Deprecated: use menu_item_id
+  menu_item_id: string;
   quantity: number;
   price: number;
   special_instructions?: string;

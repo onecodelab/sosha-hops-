@@ -45,11 +45,11 @@ const ManagerDashboard: React.FC = () => {
          setOrders(todayOrders as Order[] || []);
 
          const { data: allStaff } = await supabase.from('profiles').select('*').in('role', ['waiter', 'kitchen', 'manager', 'security']);
-         const { data: issuesData } = await supabase.from('operational_issues').select('*').gte('created_at', `${todayStr}T00:00:00`);
 
          const activeOrders = todayOrders || [];
          const revenue = activeOrders.filter(o => o.status !== 'cancelled').reduce((sum, o) => sum + (o.total_amount || 0), 0);
-         const issuesCount = (issuesData?.filter((i: any) => i.status === 'open').length || 0) + activeOrders.filter(o => o.status === 'cancelled').length;
+         // Issues now only tracks cancelled orders (operational_issues table was removed)
+         const issuesCount = activeOrders.filter(o => o.status === 'cancelled').length;
 
          const staffActivityMap = new Set(activeOrders.map(o => o.waiter_id).filter(Boolean));
          const activeStaffCount = allStaff?.filter((u: any) => u.is_online || staffActivityMap.has(u.id)).length || 0;
@@ -223,7 +223,10 @@ const ManagerDashboard: React.FC = () => {
             </div>
          </div>
          <PaymentVerificationModal isOpen={isPaymentOpen} onClose={() => setIsPaymentOpen(false)} orders={unpaidServedOrders} onPaymentSuccess={fetchDashboardData} />
+
          <FloatingPaymentButton count={unpaidServedOrders.length} onClick={() => setIsPaymentOpen(true)} />
+
+
       </DashboardLayout>
    );
 };
