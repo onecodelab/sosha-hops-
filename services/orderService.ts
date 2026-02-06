@@ -67,6 +67,115 @@ export const orderService = {
         }
     },
 
+    /**
+     * Add a partial or full payment to an order
+     */
+    async addPayment(order: Order, payment: {
+        amount: number;
+        method: string;
+        reference?: string;
+        is_tip?: boolean;
+    }): Promise<void> {
+        const now = new Date().toISOString();
+
+        // 1. Record the Payment in order_payments
+        const { error: payErr } = await supabase
+            .from('order_payments')
+            .insert({
+                order_id: order.id,
+                amount: payment.amount,
+                payment_method: payment.method,
+                reference: payment.reference,
+                created_at: now
+            });
+
+        if (payErr) throw payErr;
+
+        // 2. Calculate new totals
+        // We fetch fresh to ensure we have all concurrent payments
+        const { data: payments, error: fetchErr } = await supabase
+            .from('order_payments')
+            .select('amount')
+            .eq('order_id', order.id);
+
+        if (fetchErr) throw fetchErr;
+
+        const totalPaid = payments?.reduce((sum, p) => sum + Number(p.amount), 0) || 0;
+        const remaining = order.total_amount - totalPaid;
+        const isFullyPaid = remaining <= 0;
+
+        // 3. Update Order Status
+        const updatePayload: any = {
+            amount_paid: totalPaid,
+            last_updated: now,
+            payment_status: isFullyPaid ? 'paid' : 'split', // 'split' indicates partial payment active
+            // transaction_reference: isFullyPaid ? payment.reference : null // Keep ref only on close or store separately? 
+            // Better to keep the last ref or just rely on order_payments table for refs.
+            // usage of transaction_reference on order table is somewhat deprecated by order_payments but kept for backward compat if needed.
+        };
+
+        if (isFullyPaid) {
+            // Apply standard closing logic if fully paid
+            // We use the existing closeOrder logic but adapted. 
+            // Actually, we should just call closeOrder if it's the final payment? 
+            // Or replicate the logic here to avoid double-payment recording.
+
+            // Let's implement the closing logic here to be safe and atomic-ish
+            updatePayload.status = 'closed';
+            updatePayload.paid_at = now;
+            updatePayload.closed_at = now;
+            updatePayload.completed_at = now;
+
+            // Calculate VAT/Subtotal for final record
+            const subtotal = order.total_amount / 1.15;
+            const vat = order.total_amount - subtotal;
+            const tin = "0043819230";
+
+            const qrData = {
+                v: "1.0",
+                oid: order.id,
+                onum: order.order_number,
+                tin: tin,
+                tot: order.total_amount,
+                vat: parseFloat(vat.toFixed(2)),
+                ts: now
+            };
+
+            updatePayload.subtotal_amount = parseFloat(subtotal.toFixed(2));
+            updatePayload.vat_amount = parseFloat(vat.toFixed(2));
+            updatePayload.vat_rate = 15.0;
+            updatePayload.qr_verification_code = btoa(JSON.stringify(qrData));
+
+            // Handle Tips (Overpayment)
+            const trueTip = Math.max(0, -remaining); // remaining is negative if overpaid
+            if (trueTip > 0) {
+                updatePayload.tip_amount = trueTip;
+                // Log tip
+                if (order.waiter_id) {
+                    await supabase.from('tips_ledger').insert({
+                        staff_id: order.waiter_id,
+                        order_id: order.id,
+                        amount: trueTip,
+                        tip_type: payment.method === 'cash' ? 'cash' : 'digital',
+                        created_at: now
+                    });
+                }
+            }
+
+            // Close the table session
+            if (order.table_id) {
+                await this.forceClearTable(order.table_id);
+            }
+        }
+
+        const { error: updateErr } = await supabase
+            .from('orders')
+            .update(updatePayload)
+            .eq('id', order.id);
+
+        if (updateErr) throw updateErr;
+    },
+
     async closeOrder(order: Order, paymentData: {
         method: string;
         amountPaid: number;

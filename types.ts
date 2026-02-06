@@ -26,6 +26,7 @@ export interface MenuDish {
   category_name?: string;
   // Fix: Added missing category_id property to match database schema usage in MenuEditorModal
   category_id?: string;
+  branch_id?: string; // Optional: Links dish to specific branch
   image_url?: string;
   stock_quantity: number;
   is_available: boolean;
@@ -58,6 +59,7 @@ export interface Order {
   transaction_reference?: string;
   created_at: string;
   order_items?: OrderItem[];
+  payments?: OrderPayment[]; // Linked payments
   customer_notes?: string;
   accepted_at?: string;
   ready_at?: string;
@@ -186,6 +188,16 @@ export interface TipsLedger {
   created_at: string;
 }
 
+export interface OrderPayment {
+  id: string;
+  order_id: string;
+  amount: number;
+  payment_method: string;
+  reference?: string;
+  created_at: string;
+  created_by?: string;
+}
+
 // Added missing Waste related types
 export type WasteCategory = 'spoiled' | 'burnt' | 'dropped' | 'expired' | 'overproduction' | 'other';
 
@@ -295,6 +307,7 @@ export interface Category {
   id: string;
   name: string;
   description?: string;
+  branch_id?: string; // Optional: Links category to specific branch
 }
 
 // Added missing TableZone type

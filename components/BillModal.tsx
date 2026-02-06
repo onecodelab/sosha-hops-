@@ -72,7 +72,7 @@ export const BillModal: React.FC<BillModalProps> = ({
 }) => {
   const { user } = useAuth();
 
-  const [view, setView] = useState<'bill' | 'payment' | 'success'>('bill');
+  const [view, setView] = useState<'bill' | 'payment' | 'success' | 'split'>('bill');
   const [paymentMethod, setPaymentMethod] = useState<string>('cash');
   const [amountPaid, setAmountPaid] = useState<string>('');
   const [refNumber, setRefNumber] = useState('');
@@ -326,13 +326,19 @@ export const BillModal: React.FC<BillModalProps> = ({
                 <ShieldCheck className="w-full h-full text-black rotate-12" />
               </div>
             </div>
+
             <div className="grid grid-cols-2 gap-3 mt-6">
               <Button variant="outline" onClick={() => window.print()} className="h-12 bg-white/5 border-white/10 rounded-xl font-bold">
                 <Printer className="w-4 h-4 mr-2" /> Print
               </Button>
-              <Button onClick={handleGoToPayment} className="h-12 bg-primary text-black font-black uppercase rounded-xl">
-                Next <ChevronRight className="ml-2 w-4 h-4" />
-              </Button>
+              <div className="flex gap-2">
+                <Button onClick={() => setView('split')} className="flex-1 h-12 bg-white/10 text-white font-black uppercase rounded-xl border border-white/10 hover:bg-white/20">
+                  Split
+                </Button>
+                <Button onClick={handleGoToPayment} className="flex-[2] h-12 bg-primary text-black font-black uppercase rounded-xl">
+                  Pay All <ChevronRight className="ml-2 w-4 h-4" />
+                </Button>
+              </div>
             </div>
           </div>
         )}
@@ -437,28 +443,238 @@ export const BillModal: React.FC<BillModalProps> = ({
           </div>
         )}
 
-        {view === 'success' && (
-          <div className="flex-1 flex flex-col items-center justify-center pt-2 space-y-8 animate-in fade-in duration-500">
-            <AnimatedTicket
-              ticketId={order.order_number || order.id.slice(0, 8)}
-              amount={parseFloat(amountPaid) || order.total_amount}
-              date={new Date()}
-              staffName={order.waiter?.full_name || user?.user_metadata?.full_name || 'Staff'}
-              paymentMethod={paymentMethod}
-              reference={refNumber}
-              barcodeValue={order.id.slice(0, 8).toUpperCase()}
+        {
+          view === 'split' && (
+            <SplitPaymentView
+              order={order}
+              onBack={() => setView('bill')}
+              onSuccess={() => {
+                setView('success');
+                onSuccess();
+              }}
             />
+          )
+        }
 
-            <Button onClick={onClose} className="w-full bg-white/5 hover:bg-white/10 text-white font-black h-14 rounded-2xl text-[10px] uppercase tracking-[0.2em] border border-white/5 transition-all">
-              Return to Station
-            </Button>
-          </div>
-        )}
+        {
+          view === 'success' && (
+            <div className="flex-1 flex flex-col items-center justify-center pt-2 space-y-8 animate-in fade-in duration-500">
+              <AnimatedTicket
+                ticketId={order.order_number || order.id.slice(0, 8)}
+                amount={parseFloat(amountPaid) || order.total_amount}
+                date={new Date()}
+                staffName={order.waiter?.full_name || user?.user_metadata?.full_name || 'Staff'}
+                paymentMethod={paymentMethod}
+                reference={refNumber}
+                barcodeValue={order.id.slice(0, 8).toUpperCase()}
+              />
+
+              <Button onClick={onClose} className="w-full bg-white/5 hover:bg-white/10 text-white font-black h-14 rounded-2xl text-[10px] uppercase tracking-[0.2em] border border-white/5 transition-all">
+                Return to Station
+              </Button>
+            </div>
+          )
+        }
+      </div >
+
+      {
+        isQRScannerOpen && (
+          <QRScanner onScan={handleQRScan} onClose={() => setIsQRScannerOpen(false)} />
+        )
+      }
+    </Dialog >
+  );
+};
+
+function SplitPaymentView({ order, onBack, onSuccess }: {
+  order: Order;
+  onBack: () => void;
+  onSuccess: () => void;
+}) {
+  const [payments, setPayments] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [amountToPay, setAmountToPay] = useState<string>('');
+  const [method, setMethod] = useState<string>('cash');
+  const [reference, setReference] = useState('');
+  const [refInput, setRefInput] = useState('');
+
+  // Derived state
+  const totalPaid = payments.reduce((sum, p) => sum + Number(p.amount), 0);
+  const remaining = Math.max(0, order.total_amount - totalPaid);
+  const isFullyPaid = remaining <= 0;
+
+  // Fetch payments on mount
+  useEffect(() => {
+    fetchPayments();
+  }, [order.id]);
+
+  // Set default amount to remaining
+  useEffect(() => {
+    if (remaining > 0) {
+      setAmountToPay(remaining.toString());
+    }
+  }, [remaining]);
+
+  const fetchPayments = async () => {
+    const { data } = await supabase
+      .from('order_payments')
+      .select('*')
+      .eq('order_id', order.id)
+      .order('created_at', { ascending: true });
+
+    if (data) setPayments(data);
+  };
+
+  const handleAddPayment = async () => {
+    const amount = parseFloat(amountToPay);
+    if (!amount || amount <= 0) return showToast("Invalid Amount", "error");
+    if (method !== 'cash' && !refInput) return showToast("Reference required", "error");
+
+    setIsLoading(true);
+    try {
+      await orderService.addPayment(order, {
+        amount,
+        method,
+        reference: refInput
+      });
+
+      showToast("Payment Recorded", "success");
+      setRefInput('');
+      await fetchPayments();
+
+      // Check if done
+      const newTotal = totalPaid + amount; // optimistic
+      if (newTotal >= order.total_amount) {
+        onSuccess();
+      }
+
+    } catch (err: any) {
+      showToast(err.message, "error");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div className="space-y-4 animate-in slide-in-from-right duration-300">
+      <div className="flex items-center justify-between px-1">
+        <button onClick={onBack} className="flex items-center gap-1.5 text-zinc-500 hover:text-white text-[10px] font-black uppercase tracking-widest transition-colors">
+          <ArrowLeft className="w-3.5 h-3.5" /> Back
+        </button>
+        <div className="flex items-center gap-1.5 bg-purple-500/10 px-3 py-1 rounded-full border border-purple-500/20">
+          <div className="w-1.5 h-1.5 rounded-full bg-purple-500 animate-pulse" />
+          <span className="text-[9px] font-black text-purple-400 uppercase">Split Mode</span>
+        </div>
       </div>
 
-      {isQRScannerOpen && (
-        <QRScanner onScan={handleQRScan} onClose={() => setIsQRScannerOpen(false)} />
+      {/* Summary Card */}
+      <div className="bg-[#0A0A0A] p-5 rounded-2xl border border-white/5 relative overflow-hidden">
+        <div className="flex justify-between items-end mb-2">
+          <div>
+            <p className="text-[9px] font-black text-zinc-600 uppercase tracking-widest">Total Bill</p>
+            <div className="text-xl font-black text-zinc-400 font-mono">
+              ETB {order.total_amount.toLocaleString()}
+            </div>
+          </div>
+          <div className="text-right">
+            <p className="text-[9px] font-black text-zinc-600 uppercase tracking-widest">Remaining</p>
+            <div className={cn("text-3xl font-black font-mono tracking-tighter", remaining > 0 ? "text-white" : "text-green-500")}>
+              ETB {remaining.toLocaleString()}
+            </div>
+          </div>
+        </div>
+
+        {/* Progress Bar */}
+        <div className="h-1.5 w-full bg-zinc-800 rounded-full overflow-hidden">
+          <div
+            className="h-full bg-primary transition-all duration-500"
+            style={{ width: `${Math.min(100, (totalPaid / order.total_amount) * 100)}%` }}
+          />
+        </div>
+        <div className="flex justify-between mt-1 text-[8px] uppercase font-black text-zinc-600">
+          <span>Paid: {totalPaid.toLocaleString()}</span>
+          <span>{Math.round((totalPaid / order.total_amount) * 100)}%</span>
+        </div>
+      </div>
+
+      {/* Payment List */}
+      <div className="space-y-1.5 max-h-[120px] overflow-y-auto custom-scrollbar pr-1">
+        {payments.length === 0 && (
+          <div className="text-center py-4 border border-dashed border-white/5 rounded-xl">
+            <p className="text-[10px] text-zinc-600 uppercase font-bold">No payments yet</p>
+          </div>
+        )}
+        {payments.map(p => (
+          <div key={p.id} className="flex justify-between items-center p-3 bg-white/5 rounded-xl border border-white/5">
+            <div className="flex items-center gap-3">
+              <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center",
+                p.payment_method === 'cash' ? "bg-primary/10 text-primary" : "bg-blue-500/10 text-blue-400")}>
+                {p.payment_method === 'cash' ? <Banknote className="w-4 h-4" /> : <Smartphone className="w-4 h-4" />}
+              </div>
+              <div>
+                <p className="text-[10px] font-black text-white uppercase">{p.payment_method}</p>
+                <p className="text-[9px] font-mono text-zinc-500">{new Date(p.created_at).toLocaleTimeString()}</p>
+              </div>
+            </div>
+            <div className="text-right">
+              <p className="text-sm font-black text-white font-mono">ETB {p.amount.toLocaleString()}</p>
+              {p.reference && <p className="text-[8px] text-zinc-500 font-mono">{p.reference}</p>}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Input Section */}
+      {!isFullyPaid && (
+        <div className="space-y-3 bg-[#0A0A0A] p-4 rounded-2xl border border-white/5">
+          <div className="flex gap-2 mb-2">
+            {['cash', 'telebirr', 'cbe'].map(m => (
+              <button
+                key={m}
+                onClick={() => { setMethod(m); setRefInput(''); }}
+                className={cn(
+                  "flex-1 py-2 rounded-lg text-[9px] font-black uppercase transition-all border",
+                  method === m
+                    ? "bg-white text-black border-white"
+                    : "bg-black/40 text-zinc-500 border-white/5 hover:border-white/20"
+                )}
+              >
+                {m}
+              </button>
+            ))}
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <label className="text-[9px] font-black text-zinc-500 uppercase tracking-widest pl-1">Amount</label>
+              <Input
+                type="number"
+                value={amountToPay}
+                onChange={e => setAmountToPay(e.target.value)}
+                className="bg-black/40 border-white/10 font-mono font-black text-white h-10"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-[9px] font-black text-zinc-500 uppercase tracking-widest pl-1">Reference / ID</label>
+              <Input
+                value={refInput}
+                onChange={e => setRefInput(e.target.value)}
+                disabled={method === 'cash'}
+                placeholder={method === 'cash' ? "Not Required" : "Trans ID..."}
+                className="bg-black/40 border-white/10 font-mono text-xs h-10"
+              />
+            </div>
+          </div>
+
+          <Button
+            onClick={handleAddPayment}
+            isLoading={isLoading}
+            className="w-full h-12 bg-primary text-black font-black uppercase rounded-xl mt-2"
+          >
+            Pay ETB {parseFloat(amountToPay || "0").toLocaleString()}
+          </Button>
+        </div>
       )}
-    </Dialog>
+    </div>
   );
 };
