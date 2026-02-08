@@ -6,7 +6,7 @@ import { useAuth } from '../AuthContext';
 import { Clock, MessageSquare, PlusCircle, CheckCircle2, Loader2, Flag, Receipt, FileText, User } from 'lucide-react';
 
 import { orderService } from '../services/orderService';
-import { SoshaLeafyCard } from './ElectricCard';
+import { BaroLeafyCard } from './ElectricCard';
 
 interface OrderCardProps {
   order: Order;
@@ -218,7 +218,7 @@ export const OrderCard: React.FC<OrderCardProps> = ({
 
   if (order.status === 'ready' && isWaiter) {
     return (
-      <SoshaLeafyCard
+      <BaroLeafyCard
         color="#A3E635"
         badge="FRESH & READY"
         className="h-full"
@@ -226,7 +226,7 @@ export const OrderCard: React.FC<OrderCardProps> = ({
         <div className="h-full">
           {cardContent}
         </div>
-      </SoshaLeafyCard>
+      </BaroLeafyCard>
     );
   }
 

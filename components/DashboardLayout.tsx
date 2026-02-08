@@ -11,7 +11,7 @@ import { BackgroundMascots, MascotVariant } from './BackgroundMascots';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
 import { RoleGuard } from './RoleGuard';
-import SoshaMenubar from './SoshaMenubar';
+import BaroMenubar from './BaroMenubar';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -69,18 +69,18 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, titl
         handleLogout={handleLogout}
       />
 
-      {/* Mobile Header with refined Sosha style */}
+      {/* Mobile Header with refined Baro style */}
       <div className="md:hidden fixed top-0 left-0 right-0 h-16 bg-card/40 backdrop-blur-2xl border-b border-border z-[100] px-4 flex items-center justify-between overflow-hidden">
         {/* Subtle Header Glow */}
         <div className="absolute -top-10 left-10 w-32 h-32 bg-primary/20 blur-[100px] rounded-full pointer-events-none" />
 
         <span className="font-black text-xs uppercase tracking-widest text-foreground/90 drop-shadow-md">
-          Sosha <span className="text-primary italic">OS</span>
+          Baro <span className="text-primary italic">OS</span>
         </span>
 
         {/* New compact Mobile Menu Bar using Base UI */}
         <div className="transform scale-90 origin-right">
-          <SoshaMenubar />
+          <BaroMenubar />
         </div>
       </div>
 

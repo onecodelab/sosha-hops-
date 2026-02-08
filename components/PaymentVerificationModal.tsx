@@ -103,7 +103,7 @@ export const PaymentVerificationModal: React.FC<PaymentVerificationModalProps> =
 
             {paymentMethod === 'cbe' && (
               <div className="p-3 bg-blue-500/5 border border-blue-500/10 rounded-xl text-center">
-                <p className="text-[9px] text-blue-400 font-black uppercase">CBE Account: 1000356042704</p>
+                <p className="text-[9px] text-blue-400 font-black uppercase">CBE Account: 1000302293007</p>
               </div>
             )}
 

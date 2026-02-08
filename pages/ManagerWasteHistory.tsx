@@ -73,7 +73,7 @@ const ManagerWasteHistory: React.FC = () => {
     return (
         <DashboardLayout title="Waste Analytics" subtitle="Track Loss & Cost Impact">
             <div className="space-y-8 animate-in fade-in duration-500 pb-20">
-                {/* Top Stats - SOSHA STYLE */}
+                {/* Top Stats - BARO STYLE */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <div className="bg-[#1A1A1A] border border-gray-800 rounded-3xl p-6 relative overflow-hidden group hover:border-red-500/30 transition-all">
                         <div className="absolute inset-0 bg-gradient-to-br from-red-600/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
@@ -122,7 +122,7 @@ const ManagerWasteHistory: React.FC = () => {
                     </div>
                 </div>
 
-                {/* Filters & List - SOSHA STYLE */}
+                {/* Filters & List - BARO STYLE */}
                 <div className="bg-[#1A1A1A] border border-gray-800 rounded-[2.5rem] overflow-hidden shadow-2xl flex flex-col min-h-[500px]">
                     <div className="p-6 border-b border-gray-800 flex flex-col md:flex-row items-center justify-between gap-4 bg-white/[0.02]">
                         <div className="relative w-full md:w-96 group">

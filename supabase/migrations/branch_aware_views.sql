@@ -1,5 +1,5 @@
 
--- Sosha OS: Multi-Branch Aware Inventory Truth Views
+-- Baro OS: Multi-Branch Aware Inventory Truth Views
 -- These updates ensure that Menu availability and costs are calculated 
 -- per-branch using the branch_inventory table instead of global stock.
 

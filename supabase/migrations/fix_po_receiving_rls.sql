@@ -1,4 +1,4 @@
--- SOSHA PO RECEIVING: RLS HARDENING
+-- BARO PO RECEIVING: RLS HARDENING
 -- Allows Managers to update POs they created to 'verified' status upon receipt.
 
 -- 1. Update Purchase Orders Policies

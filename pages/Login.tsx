@@ -3,8 +3,8 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { supabase } from '../supabase';
 import { Button, Input, showToast, cn } from '../components/ui';
-import { SoshaLogo3D } from '../components/SoshaLogo3D';
-import { SoshaBackground } from '../components/SoshaBackground';
+import { BaroLogo3D } from '../components/BaroLogo3D';
+import { BaroBackground } from '../components/BaroBackground';
 import { useAuth } from '../AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { ArrowLeft, Loader2 } from 'lucide-react';
@@ -50,7 +50,7 @@ const Login: React.FC = () => {
       if (!authData.user) throw new Error("Authentication failed.");
 
       setSyncing(true);
-      
+
       // 2. Profile Verification Loop (Wait for DB Triggers)
       let currentProfile = null;
       for (let i = 0; i < 4; i++) {
@@ -59,14 +59,14 @@ const Login: React.FC = () => {
           .select('*')
           .eq('id', authData.user.id)
           .maybeSingle();
-        
+
         if (data) {
           currentProfile = data;
           break;
         }
-        
+
         if (fetchError && fetchError.code === '42P17') {
-           throw new Error("Database recursion error detected. Please run the SQL fix provided in the dashboard.");
+          throw new Error("Database recursion error detected. Please run the SQL fix provided in the dashboard.");
         }
 
         // Wait 1 second before retrying to allow DB triggers to finish
@@ -77,14 +77,14 @@ const Login: React.FC = () => {
       if (!currentProfile) {
         const targetRole = role ? role.toLowerCase() : 'waiter';
         const displayName = authData.user.user_metadata?.full_name || email.split('@')[0];
-        
+
         const { error: upsertError } = await supabase.from('profiles').upsert({
-            id: authData.user.id,
-            email: authData.user.email,
-            full_name: displayName,
-            name: displayName,
-            role: targetRole,
-            is_online: true
+          id: authData.user.id,
+          email: authData.user.email,
+          full_name: displayName,
+          name: displayName,
+          role: targetRole,
+          is_online: true
         }, { onConflict: 'id' });
 
         if (upsertError) {
@@ -99,7 +99,7 @@ const Login: React.FC = () => {
       // 4. Update local context and navigate
       await refreshProfile();
       showToast(t('login.welcomeBack'), "success");
-      
+
     } catch (err: any) {
       const errorMessage = err.message || JSON.stringify(err);
       console.error("Critical Login Error:", errorMessage);
@@ -113,11 +113,11 @@ const Login: React.FC = () => {
   const displayRole = role ? (t(`roles.${role.toLowerCase()}`) || role) : 'Staff';
 
   return (
-    <SoshaBackground variant="landing">
+    <BaroBackground variant="landing">
       <div className="flex-1 flex flex-col items-center justify-center p-4">
         <div className="w-full max-w-md bg-card/90 border border-border rounded-3xl shadow-[0_24px_80px_rgba(0,0,0,0.85)] p-8 space-y-6 backdrop-blur-md">
           <div className="flex flex-col items-center text-center space-y-4">
-            <SoshaLogo3D size="sm" />
+            <BaroLogo3D size="sm" />
             <div>
               <h1 className="text-2xl font-bold text-foreground tracking-tight capitalize">
                 {displayRole} {t('login.title')}
@@ -131,9 +131,9 @@ const Login: React.FC = () => {
           <form onSubmit={handleLogin} className="space-y-5">
             <div className="space-y-2">
               <label className="text-xs font-bold text-muted uppercase tracking-wider ml-1">{t('login.email')}</label>
-              <Input 
-                type="email" 
-                placeholder="name@example.com" 
+              <Input
+                type="email"
+                placeholder="name@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
@@ -143,8 +143,8 @@ const Login: React.FC = () => {
             </div>
             <div className="space-y-2">
               <label className="text-xs font-bold text-muted uppercase tracking-wider ml-1">{t('login.password')}</label>
-              <Input 
-                type="password" 
+              <Input
+                type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
@@ -152,32 +152,32 @@ const Login: React.FC = () => {
                 className="bg-black/20 border-border text-foreground rounded-xl h-12"
               />
             </div>
-            
-            <Button 
-              type="submit" 
-              className="w-full bg-primary hover:bg-primary/90 text-black font-bold rounded-xl h-12 shadow-[0_16px_40px_var(--primary-glow)] transition-all active:scale-95" 
-              isLoading={loading} 
+
+            <Button
+              type="submit"
+              className="w-full bg-primary hover:bg-primary/90 text-black font-bold rounded-xl h-12 shadow-[0_16px_40px_var(--primary-glow)] transition-all active:scale-95"
+              isLoading={loading}
               disabled={loading}
             >
               {syncing ? "Finalizing..." : (loading ? t('login.verifying') : t('login.signIn'))}
             </Button>
-            
+
             <div className="flex flex-col gap-3 pt-2 text-center">
-                <Link to="/signup" className="text-sm text-muted hover:text-foreground hover:underline transition-colors">
-                    {t('login.firstTime')}
-                </Link>
-                <button 
-                  type="button" 
-                  onClick={() => navigate('/')} 
-                  className="text-sm text-muted hover:text-foreground hover:underline flex items-center justify-center gap-2"
-                >
-                    <ArrowLeft className="w-3 h-3" /> {t('login.backToRoles')}
-                </button>
+              <Link to="/signup" className="text-sm text-muted hover:text-foreground hover:underline transition-colors">
+                {t('login.firstTime')}
+              </Link>
+              <button
+                type="button"
+                onClick={() => navigate('/')}
+                className="text-sm text-muted hover:text-foreground hover:underline flex items-center justify-center gap-2"
+              >
+                <ArrowLeft className="w-3 h-3" /> {t('login.backToRoles')}
+              </button>
             </div>
           </form>
         </div>
       </div>
-    </SoshaBackground>
+    </BaroBackground>
   );
 };
 

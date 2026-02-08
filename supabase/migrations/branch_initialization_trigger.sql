@@ -1,5 +1,5 @@
 
--- Sosha OS: Automated Branch Initialization
+-- Baro OS: Automated Branch Initialization
 -- This trigger ensures that every new branch created is immediately populated
 -- with inventory slots and default tables.
 

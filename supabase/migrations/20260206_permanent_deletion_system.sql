@@ -1,4 +1,4 @@
--- SOSHA OS: Permanent Menu Item Deletion System
+-- BARO OS: Permanent Menu Item Deletion System
 -- Handles cascading deletion across menu, recipes, and order history.
 
 CREATE OR REPLACE FUNCTION public.permanently_delete_menu_item(target_id UUID)

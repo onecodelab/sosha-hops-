@@ -1,4 +1,4 @@
--- SOSHA PO SYSTEM HARDENING: Schema & Workflow
+-- BARO PO SYSTEM HARDENING: Schema & Workflow
 -- 1. Redirect foreign keys from the non-existent 'users' table to public.profiles
 
 -- Drop constraints if they exist (to handle potential partial migrations)

@@ -1,4 +1,4 @@
--- SOSHA OS: Fix Menu Availability Logic
+-- BARO OS: Fix Menu Availability Logic
 -- Ensures 'menu' table handles availability status correctly and views respect manual overrides.
 
 -- 1. Ensure 'menu' table has the 'status' column

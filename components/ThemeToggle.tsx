@@ -8,7 +8,7 @@ const ThemeToggle = () => {
 
   useEffect(() => {
     // Check local storage
-    const savedTheme = localStorage.getItem('sosha-theme') as 'classic' | 'fresh' | null;
+    const savedTheme = localStorage.getItem('baro-theme') as 'classic' | 'fresh' | null;
     if (savedTheme === 'fresh') {
       setTheme('fresh');
       document.body.setAttribute('data-theme', 'fresh');
@@ -21,7 +21,7 @@ const ThemeToggle = () => {
   const toggleTheme = () => {
     const newTheme = theme === 'classic' ? 'fresh' : 'classic';
     setTheme(newTheme);
-    localStorage.setItem('sosha-theme', newTheme);
+    localStorage.setItem('baro-theme', newTheme);
 
     if (newTheme === 'fresh') {
       document.body.setAttribute('data-theme', 'fresh');

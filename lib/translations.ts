@@ -231,7 +231,7 @@ export const translations = {
       empty: "No pending deliveries found."
     },
     landing: {
-      title: "Sosha OS",
+      title: "Baro OS",
       subtitle: "Select your workspace",
       poweredBy: "powered by withramin.ai",
       roles: {
@@ -503,7 +503,7 @@ export const translations = {
       empty: "ምንም የሚጠበቅ ዕቃ የለም።"
     },
     landing: {
-      title: "Sosha OS",
+      title: "Baro OS",
       subtitle: "የሥራ ቦታዎን ይምረጡ",
       poweredBy: "በ withramin.ai የተዘጋጀ",
       roles: {

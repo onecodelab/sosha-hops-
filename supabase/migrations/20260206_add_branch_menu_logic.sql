@@ -1,4 +1,4 @@
--- SOSHA OS: Add Branch Relationship to Menu & Categories
+-- BARO OS: Add Branch Relationship to Menu & Categories
 -- Enables "Hybrid Menu" system: Global items (null branch_id) + Branch-Specific items.
 
 -- 1. Add branch_id to Categories

@@ -544,7 +544,7 @@ const ManagerPurchaseOrders: React.FC = () => {
             {showForm ? (
                <div className="space-y-6 pb-20">
                   {/* Form Section */}
-                  {/* Form Section - SOSHA STYLE */}
+                  {/* Form Section - BARO STYLE */}
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                      {/* LEFT: Order Details */}
                      <div className="md:col-span-1 space-y-6">

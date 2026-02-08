@@ -7,7 +7,7 @@ import {
     Trash2, Truck, PlusCircle, PackageCheck, FileText, Monitor, BookOpen, TrendingUp, Clock, ShoppingCart
 } from 'lucide-react';
 import { cn } from './ui';
-import { SoshaLogo } from './SoshaLogo';
+import { BaroLogo } from './BaroLogo';
 import { RoleGuard } from './RoleGuard';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useRoleAccess } from '../hooks/useRoleAccess';
@@ -57,17 +57,22 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, setIsCollapsed, h
                 isCollapsed ? "w-20" : "w-72"
             )}
         >
-            <div className="flex items-center justify-between p-6 h-24">
-                {!isCollapsed && (
-                    <div className="flex items-center gap-3 animate-in fade-in duration-500">
-                        <SoshaLogo className="w-10 h-10" />
-                        <div>
-                            <h1 className="text-xl font-bold tracking-tighter text-foreground leading-none">Sosha OS</h1>
-                            <span className="text-[9px] font-black uppercase text-primary tracking-[0.3em]">Master Unit</span>
+            <div className="flex flex-col p-6 h-32 border-b border-border/50">
+                {!isCollapsed ? (
+                    <div className="flex flex-col gap-4 animate-in fade-in duration-500">
+                        <div className="h-12 w-full max-w-[160px]">
+                            <BaroLogo />
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <div className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
+                            <span className="text-[10px] font-black uppercase text-muted-foreground tracking-[0.3em]">Master Unit</span>
                         </div>
                     </div>
+                ) : (
+                    <div className="h-10 w-full flex items-center justify-center">
+                        <BaroLogo className="w-8 h-8" />
+                    </div>
                 )}
-                {isCollapsed && <SoshaLogo className="w-10 h-10 mx-auto" />}
             </div>
 
             {/* Branch Selector Section */}

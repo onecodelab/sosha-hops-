@@ -48,7 +48,7 @@ const PageLoader = () => (
 const App: React.FC = () => {
   // Initialize Theme Globally
   useEffect(() => {
-    const savedTheme = localStorage.getItem('sosha-theme');
+    const savedTheme = localStorage.getItem('baro-theme');
     if (savedTheme === 'fresh') {
       document.body.setAttribute('data-theme', 'fresh');
     } else {

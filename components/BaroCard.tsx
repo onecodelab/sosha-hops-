@@ -1,12 +1,12 @@
 import React from 'react';
 import { cn } from './ui';
 
-interface SoshaCardProps extends React.HTMLAttributes<HTMLDivElement> {
+interface BaroCardProps extends React.HTMLAttributes<HTMLDivElement> {
   indicatorColor?: 'yellow' | 'purple' | 'orange' | 'red' | 'blue' | 'green' | 'default';
   isInteractive?: boolean;
 }
 
-export const SoshaCard: React.FC<SoshaCardProps> = ({
+export const BaroCard: React.FC<BaroCardProps> = ({
   className,
   children,
   indicatorColor,
@@ -48,7 +48,7 @@ export const SoshaCard: React.FC<SoshaCardProps> = ({
   );
 };
 
-export const SoshaCardTitle: React.FC<React.HTMLAttributes<HTMLHeadingElement>> = ({ className, children, ...props }) => {
+export const BaroCardTitle: React.FC<React.HTMLAttributes<HTMLHeadingElement>> = ({ className, children, ...props }) => {
   return (
     <h3 className={cn("text-lg font-black text-foreground tracking-tight uppercase flex items-center gap-2", className)} {...props}>
       {children}

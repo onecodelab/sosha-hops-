@@ -156,6 +156,16 @@ interface DialogProps {
 }
 
 export const Dialog: React.FC<DialogProps> = ({ isOpen, onClose, title, children, maxWidth = "max-w-lg", showTitle = true }) => {
+  React.useEffect(() => {
+    if (isOpen) {
+      const originalStyle = window.getComputedStyle(document.body).overflow;
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.body.style.overflow = originalStyle;
+      };
+    }
+  }, [isOpen]);
+
   if (!isOpen) return null;
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-300">

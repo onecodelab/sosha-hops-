@@ -20,7 +20,7 @@ interface BillModalProps {
 
 // Security Best Practice: Use environment variables
 // Fix: Property 'env' does not exist on type 'ImportMeta'. Using process.env to align with provided environment guidelines.
-const SOSHA_API_KEY = (process.env as any).VITE_SOSHA_API_KEY || "sosha_prod_key_8821";
+const BARO_API_KEY = (process.env as any).VITE_BARO_API_KEY || "baro_prod_key_8821";
 
 const BANK_CONFIG: Record<string, { receiver: string, label: string, placeholder: string, color: string, icon: any, endpoint: string }> = {
   telebirr: {
@@ -32,7 +32,7 @@ const BANK_CONFIG: Record<string, { receiver: string, label: string, placeholder
     endpoint: "telebirr"
   },
   cbe: {
-    receiver: "56042704",
+    receiver: "02293007",
     label: "CBE",
     placeholder: "FT Reference...",
     color: "text-blue-400 border-blue-500/30 bg-blue-500/5",
@@ -179,7 +179,7 @@ export const BillModal: React.FC<BillModalProps> = ({
       }
 
       // Use consolidated verify-payment endpoint with secondary validation
-      const VERIFIER_BASE_URL = (import.meta as any).env?.VITE_VERIFIER_URL || "http://76.13.138.74:3002";
+      const VERIFIER_BASE_URL = (import.meta as any).env?.VITE_VERIFIER_URL || "http://srv1320791.hstgr.cloud:3002";
       const functionUrl = `${VERIFIER_BASE_URL}/verify-payment`;
 
       const response = await fetch(functionUrl, {
@@ -275,7 +275,7 @@ export const BillModal: React.FC<BillModalProps> = ({
           <div className="animate-in fade-in zoom-in-95 duration-300">
             <div className="bg-white text-black p-6 rounded-2xl shadow-inner font-mono text-xs space-y-4 border-t-8 border-primary mx-1 relative overflow-hidden">
               <div className="text-center border-b border-dashed border-gray-300 pb-4">
-                <h3 className="font-black text-lg tracking-tighter uppercase leading-none">Sosha OS</h3>
+                <h3 className="font-black text-lg tracking-tighter uppercase leading-none">Baro OS</h3>
                 <p className="text-[9px] text-gray-400 mt-1">TIN: 0043819230</p>
                 <p className="text-[9px] text-gray-400">Production Receipt</p>
               </div>
@@ -327,16 +327,16 @@ export const BillModal: React.FC<BillModalProps> = ({
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3 mt-6">
-              <Button variant="outline" onClick={() => window.print()} className="h-12 bg-white/5 border-white/10 rounded-xl font-bold">
-                <Printer className="w-4 h-4 mr-2" /> Print
+            <div className="flex flex-col md:grid md:grid-cols-2 gap-3 mt-6">
+              <Button onClick={handleGoToPayment} className="w-full h-14 bg-primary text-black font-black uppercase rounded-xl order-1 md:order-2 md:col-start-2">
+                Pay All <ChevronRight className="ml-2 w-5 h-5" />
               </Button>
-              <div className="flex gap-2">
-                <Button onClick={() => setView('split')} className="flex-1 h-12 bg-white/10 text-white font-black uppercase rounded-xl border border-white/10 hover:bg-white/20">
-                  Split
+              <div className="grid grid-cols-2 gap-2 order-2 md:order-1 md:col-start-1">
+                <Button variant="outline" onClick={() => window.print()} className="h-12 bg-white/5 border-white/10 rounded-xl font-bold">
+                  <Printer className="w-4 h-4 mr-2" /> Print
                 </Button>
-                <Button onClick={handleGoToPayment} className="flex-[2] h-12 bg-primary text-black font-black uppercase rounded-xl">
-                  Pay All <ChevronRight className="ml-2 w-4 h-4" />
+                <Button onClick={() => setView('split')} className="h-12 bg-white/10 text-white font-black uppercase rounded-xl border border-white/10 hover:bg-white/20">
+                  Split
                 </Button>
               </div>
             </div>

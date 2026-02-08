@@ -3,7 +3,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '../supabase';
 import { DashboardLayout } from '../components/DashboardLayout';
-import { SoshaCard } from '../components/SoshaCard';
+import { BaroCard } from '../components/BaroCard';
 import { Badge, Button, cn, showToast, Dialog, Input } from '../components/ui';
 import {
    Armchair, Clock, CheckCircle2, User, RefreshCw,

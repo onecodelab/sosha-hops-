@@ -1,4 +1,4 @@
--- SOSHA Management Hardening: Profiles & Invites
+-- BARO Management Hardening: Profiles & Invites
 -- 1. Add missing invitation columns
 ALTER TABLE public.profiles 
 ADD COLUMN IF NOT EXISTS created_by UUID REFERENCES auth.users(id),

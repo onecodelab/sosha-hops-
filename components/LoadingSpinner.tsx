@@ -1,15 +1,14 @@
 import React, { useEffect, useState } from 'react';
-import { SoshaBackground } from './SoshaBackground';
-import { SoshaLogo3D } from './SoshaLogo3D';
+import { BaroLogo3D } from './BaroLogo3D';
 
 interface LoadingSpinnerProps {
   timeout?: number;
   onTimeout?: () => void;
 }
 
-export function LoadingSpinner({ 
-  timeout = 10000, 
-  onTimeout 
+export function LoadingSpinner({
+  timeout = 10000,
+  onTimeout
 }: LoadingSpinnerProps) {
   const [showWarning, setShowWarning] = useState(false);
 
@@ -29,53 +28,55 @@ export function LoadingSpinner({
   }, [timeout, onTimeout]);
 
   return (
-    <>
+    <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-background p-8">
       <style>{`
-        @keyframes sosha-pulse {
-          0%, 100% { transform: scale(1); filter: drop-shadow(0 0 20px rgba(255, 184, 0, 0.3)); }
-          50% { transform: scale(1.05); filter: drop-shadow(0 0 40px rgba(255, 184, 0, 0.6)); }
+        @keyframes baro-float {
+          0%, 100% { transform: translateY(0); }
+          50% { transform: translateY(-15px); }
         }
-        .animate-sosha-pulse {
-          animation: sosha-pulse 3s ease-in-out infinite;
+        .animate-baro-float {
+          animation: baro-float 4s ease-in-out infinite;
+        }
+        @keyframes loading {
+          0% { transform: translateX(-100%); }
+          100% { transform: translateX(200%); }
         }
       `}</style>
-      
-      <SoshaBackground variant="landing" showThemeToggle={false}>
-        <div className="flex-1 flex flex-col items-center justify-center p-4 min-h-screen">
-          
-          {/* Glowing Logo Tile */}
-          <div className="animate-sosha-pulse">
-             <SoshaLogo3D size="md" />
-          </div>
-          
-          {/* Loading Text */}
-          <div className="mt-12 flex flex-col items-center gap-3">
-            <div className="h-1 w-32 bg-gray-800 rounded-full overflow-hidden">
-               <div className="h-full bg-primary animate-[loading_1.5s_ease-in-out_infinite]" style={{ width: '50%' }} />
-            </div>
-            <p className="text-xs font-bold text-gray-500 tracking-[0.2em] uppercase">
-              Initializing Sosha OS...
-            </p>
-          </div>
 
-          {/* Warning Message */}
-          {showWarning && (
-            <div className="mt-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-              <p className="text-yellow-500/80 text-xs bg-yellow-500/10 px-4 py-2 rounded-full border border-yellow-500/20 backdrop-blur-md">
-                Connecting to database is taking longer than usual...
-              </p>
-            </div>
-          )}
+      {/* 
+          CENTRAL LOGO - BaroLogo3D 
+          - No absolute positioning for alignment
+          - No custom margins
+          - Uses standard Flex/Grid centering from parent
+      */}
+      <div className="w-full flex justify-center items-center">
+        <BaroLogo3D size="lg" animate />
+      </div>
+
+      {/* SYSTEM INITIALIZER TEXT */}
+      <div className="mt-16 flex flex-col items-center w-full max-w-[280px] gap-6">
+        <div className="h-[1px] w-full bg-border relative overflow-hidden">
+          <div className="absolute inset-0 bg-primary animate-[loading_2s_ease-in-out_infinite]" />
         </div>
-        
-        {/* Inline style for the progress bar animation */}
-        <style>{`
-          @keyframes loading {
-            0% { transform: translateX(-100%); }
-            100% { transform: translateX(200%); }
-          }
-        `}</style>
-      </SoshaBackground>
-    </>
+
+        <div className="flex flex-col items-center gap-2">
+          <span className="text-[10px] font-black text-muted-foreground tracking-[0.8em] uppercase ml-[0.8em]">
+            Initializing Platform
+          </span>
+          <span className="text-sm font-bold text-primary tracking-tight">
+            BARO OS <span className="text-foreground/40 font-medium">INTELLIGENCE</span>
+          </span>
+        </div>
+      </div>
+
+      {/* STATUS OVERRIDE */}
+      {showWarning && (
+        <div className="mt-12 animate-in fade-in slide-in-from-bottom-2 duration-700">
+          <p className="text-[10px] font-bold text-yellow-500/60 bg-yellow-500/5 px-4 py-1.5 rounded-full border border-yellow-500/10">
+            Stabilizing connection...
+          </p>
+        </div>
+      )}
+    </div>
   );
 }

@@ -34,25 +34,25 @@ serve(async (req) => {
     const body = await req.json();
     // Don't convert to uppercase - keep original case
     const reference = (body.reference || "").trim();
-    console.log(`[SOSHA] Processing ${path} for Ref: ${reference}`);
+    console.log(`[BARO] Processing ${path} for Ref: ${reference}`);
 
     if (!reference) throw new Error("Missing transaction reference");
 
     // 3. MASTER TEST BYPASS
-    if (reference.toUpperCase() === "SOSHA-TEST-99" || reference.toUpperCase() === "SOSHA_TEST_99") {
-      console.log("[SOSHA] Test Bypass Triggered");
+    if (reference.toUpperCase() === "BARO-TEST-99" || reference.toUpperCase() === "BARO_TEST_99") {
+      console.log("[BARO] Test Bypass Triggered");
       return new Response(JSON.stringify({
         success: true,
         message: "Verified (Development Mode)",
         amount: body.expectedAmount || 100,
         receiptNo: "TEST-SUCCESS-88",
-        customerName: "Sosha Test User"
+        customerName: "Baro Test User"
       }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
     }
 
     // 4. MANUAL OVERRIDE
     if (body.manualOverride === true) {
-      console.log("[SOSHA] Manual Override Triggered");
+      console.log("[BARO] Manual Override Triggered");
       return new Response(JSON.stringify({
         success: true,
         message: "Manual Approval Success",
@@ -88,7 +88,7 @@ serve(async (req) => {
     }
     else throw new Error("Invalid bank endpoint");
 
-    console.log(`[SOSHA] Calling Leul API:`, JSON.stringify({ bank: bankCode, ...payload }));
+    console.log(`[BARO] Calling Leul API:`, JSON.stringify({ bank: bankCode, ...payload }));
 
     // 7. CALL SELF-HOSTED SERVICE with timeout
     const controller = new AbortController();
@@ -98,7 +98,7 @@ serve(async (req) => {
     const serviceEndpoint = path.endsWith('/telebirr') ? '/verify-telebirr' :
       path.endsWith('/cbe') ? '/verify-cbe' : '/verify-other';
 
-    console.log(`[SOSHA] Calling Local Service: ${UPSTREAM_API_URL}${serviceEndpoint}`);
+    console.log(`[BARO] Calling Local Service: ${UPSTREAM_API_URL}${serviceEndpoint}`);
 
     const verifyResponse = await fetch(`${UPSTREAM_API_URL}${serviceEndpoint}`, {
       method: 'POST',
@@ -109,7 +109,7 @@ serve(async (req) => {
     clearTimeout(timeoutId);
 
     const resultData = await verifyResponse.json();
-    console.log(`[SOSHA] Leul Response:`, JSON.stringify(resultData));
+    console.log(`[BARO] Leul Response:`, JSON.stringify(resultData));
 
     // Check various success indicators
     const isVerified = resultData.success === true || resultData.verified === true || resultData.status === 'success';
@@ -123,7 +123,7 @@ serve(async (req) => {
     }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
 
   } catch (error: any) {
-    console.error("[SOSHA] Function Error:", error.message);
+    console.error("[BARO] Function Error:", error.message);
     return new Response(JSON.stringify({ success: false, message: error.message }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,

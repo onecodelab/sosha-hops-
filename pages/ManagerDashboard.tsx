@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../supabase';
 import { DashboardLayout } from '../components/DashboardLayout';
-import { SoshaCard, SoshaCardTitle } from '../components/SoshaCard';
+import { BaroCard, BaroCardTitle } from '../components/BaroCard';
 import { Badge, Button, cn, showToast } from '../components/ui';
 import {
    Users, AlertCircle, TrendingUp, Clock,
@@ -136,13 +136,13 @@ const ManagerDashboard: React.FC = () => {
                ))}
             </div>
 
-            <SoshaCard indicatorColor="blue" className="shadow-2xl">
+            <BaroCard indicatorColor="blue" className="shadow-2xl">
                <div className="flex items-center justify-between mb-8 pl-1">
                   <div className="flex items-center gap-4">
                      <div className="p-3 bg-blue-500/10 rounded-2xl">
                         <List className="w-6 h-6 text-blue-500" strokeWidth={3} />
                      </div>
-                     <SoshaCardTitle>Active Traffic Monitor</SoshaCardTitle>
+                     <BaroCardTitle>Active Traffic Monitor</BaroCardTitle>
                   </div>
                   <Badge className="bg-blue-500/10 text-blue-500 border-blue-500/20 px-4 py-1.5 font-mono text-xs font-black shadow-lg">
                      {liveActiveOrders.length} FLOWING
@@ -161,15 +161,15 @@ const ManagerDashboard: React.FC = () => {
                      ))}
                   </div>
                )}
-            </SoshaCard>
+            </BaroCard>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-               <SoshaCard className="lg:col-span-2 shadow-2xl">
+               <BaroCard className="lg:col-span-2 shadow-2xl">
                   <div className="flex items-center gap-4 mb-8">
                      <div className="p-3 bg-purple-500/10 rounded-2xl">
                         <Timer className="w-6 h-6 text-purple-500" strokeWidth={3} />
                      </div>
-                     <SoshaCardTitle>Service Velocity</SoshaCardTitle>
+                     <BaroCardTitle>Service Velocity</BaroCardTitle>
                   </div>
                   <div className="h-[250px] w-full">
                      <ResponsiveContainer width="100%" height="100%">
@@ -194,14 +194,14 @@ const ManagerDashboard: React.FC = () => {
                         </BarChart>
                      </ResponsiveContainer>
                   </div>
-               </SoshaCard>
+               </BaroCard>
 
-               <SoshaCard className="h-full shadow-2xl">
+               <BaroCard className="h-full shadow-2xl">
                   <div className="flex items-center gap-4 mb-8">
                      <div className="p-3 bg-emerald-500/10 rounded-2xl">
                         <Users className="w-6 h-6 text-emerald-500" strokeWidth={3} />
                      </div>
-                     <SoshaCardTitle>Active Team</SoshaCardTitle>
+                     <BaroCardTitle>Active Team</BaroCardTitle>
                   </div>
                   <div className="space-y-4 overflow-y-auto max-h-[300px] pr-2 custom-scrollbar">
                      {shiftStaff.map((staff, i) => (
@@ -219,7 +219,7 @@ const ManagerDashboard: React.FC = () => {
                         </div>
                      ))}
                   </div>
-               </SoshaCard>
+               </BaroCard>
             </div>
          </div>
          <PaymentVerificationModal isOpen={isPaymentOpen} onClose={() => setIsPaymentOpen(false)} orders={unpaidServedOrders} onPaymentSuccess={fetchDashboardData} />

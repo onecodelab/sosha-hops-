@@ -2,7 +2,7 @@
 import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { DashboardLayout } from '../components/DashboardLayout';
-import { SoshaCard, SoshaCardTitle } from '../components/SoshaCard';
+import { BaroCard, BaroCardTitle } from '../components/BaroCard';
 import {
    TrendingUp, Users, ShoppingBag, AlertTriangle,
    RefreshCw, DollarSign, Activity, ClipboardList, List, Eye, Filter, User, ShieldCheck, Search, Calendar, LayoutList

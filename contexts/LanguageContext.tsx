@@ -10,7 +10,7 @@ interface LanguageContextType {
 
 const LanguageContext = createContext<LanguageContextType>({
   language: 'en',
-  setLanguage: () => {},
+  setLanguage: () => { },
   t: (s) => s,
 });
 
@@ -20,7 +20,7 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [language, setLanguageState] = useState<Language>('en');
 
   useEffect(() => {
-    const saved = localStorage.getItem('sosha-lang') as Language;
+    const saved = localStorage.getItem('baro-lang') as Language;
     if (saved && ['en', 'am', 'om', 'ti'].includes(saved)) {
       setLanguageState(saved);
     }
@@ -28,21 +28,21 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const setLanguage = (lang: Language) => {
     setLanguageState(lang);
-    localStorage.setItem('sosha-lang', lang);
+    localStorage.setItem('baro-lang', lang);
     // Force a small delay on document direction or fonts if needed in future
   };
 
   const t = (path: string): string => {
     const keys = path.split('.');
     let current: any = translations[language];
-    
+
     for (const key of keys) {
       if (current[key] === undefined) {
         // Fallback to English if translation missing
         let fallback: any = translations['en'];
         for (const fbKey of keys) {
-           if (fallback[fbKey] === undefined) return path;
-           fallback = fallback[fbKey];
+          if (fallback[fbKey] === undefined) return path;
+          fallback = fallback[fbKey];
         }
         return fallback;
       }

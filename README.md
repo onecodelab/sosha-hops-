@@ -1,13 +1,13 @@
-# Sosha Restaurant OS 🌿
+# Baro Restaurant OS 🌿
 
-> **Elite Restaurant Management System with "Sosha Culture" Aesthetic**  
+> **Elite Restaurant Management System with "Baro Culture" Aesthetic**  
 > *Powering efficiency, transparency, and organic growth for modern hospitality.*
 
 ---
 
-## 📸 Aesthetic: "Sosha Culture"
+## 📸 Aesthetic: "Baro Culture"
 This project implements a unique, premium design system characterized by:
-- **High Contrast**: Bold `#FFCC00` (Sosha Yellow) against deep `#0A0A0A` backgrounds.
+- **High Contrast**: Bold `#FFCC00` (Baro Yellow) against deep `#0A0A0A` backgrounds.
 - **Dynamic Motion**: Extensive use of `framer-motion` for fluid, organic transitions.
 - **Organic Elements**: Leafy SVG decorations and "Cucumber Green" accents for fresh, eco-friendly vibes.
 - **Premium Typography**: Heavy black italics and monospaced data fields for a technical yet inviting feel.
@@ -53,7 +53,7 @@ This project implements a unique, premium design system characterized by:
 ## 📂 Project Structure
 
 ```bash
-├── components/         # Reusable UI components (Sosha styled)
+├── components/         # Reusable UI components (Baro styled)
 ├── contexts/           # Authentication and Localization contexts
 ├── hooks/              # Custom business logic (usePendingPO, useRoleAccess)
 ├── lib/                # Shared utilities and translations
@@ -71,7 +71,7 @@ This project implements a unique, premium design system characterized by:
 1. **Clone and Install**
    ```bash
    git clone <repository-url>
-   cd sosha-os
+   cd baro-os
    npm install
    ```
 
@@ -91,11 +91,11 @@ This project implements a unique, premium design system characterized by:
 ---
 
 ## 🤝 Contribution
-Every line of code in this project must adhere to the **Sosha Culture** guidelines:
+Every line of code in this project must adhere to the **Baro Culture** guidelines:
 1. Use **Vanilla CSS** for performance.
 2. Every action must have **Feedback** (Toasts/Animations).
 3. **RBAC** (Role-Based Access Control) is mandatory for all new pages.
 
 ---
 
-*Developed with ❤️ by the Sosha Ops Team.*
+*Developed with ❤️ by the Baro Ops Team.*

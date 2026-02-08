@@ -1,4 +1,4 @@
--- Sosha OS Multi-Branch Support Migration
+-- Baro OS Multi-Branch Support Migration
 
 -- 1. Create Branches Table
 CREATE TABLE IF NOT EXISTS public.branches (

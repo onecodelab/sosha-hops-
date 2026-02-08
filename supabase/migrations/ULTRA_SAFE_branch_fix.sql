@@ -1,4 +1,4 @@
--- Sosha OS - ULTRA-SAFE Branch Recovery
+-- Baro OS - ULTRA-SAFE Branch Recovery
 -- This script checks if tables exist before trying to update them.
 
 DO $$

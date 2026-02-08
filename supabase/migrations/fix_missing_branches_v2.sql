@@ -1,4 +1,4 @@
--- Sosha OS - Emergency Branch Recovery
+-- Baro OS - Emergency Branch Recovery
 -- RUN THESE ONE BY ONE IF THE ENTIRE BLOCK FAILS
 
 -- 1. CREATE THE TABLE FIRST (CRITICAL)

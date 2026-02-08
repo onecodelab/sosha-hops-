@@ -22,7 +22,7 @@ export const ChatWidget: React.FC = () => {
         {
             id: 'welcome',
             role: 'assistant',
-            content: "Welcome to Sosha OS. System ready. How can I assist you with your operations today?",
+            content: "Welcome to Baro OS. System ready. How can I assist you with your operations today?",
             timestamp: new Date()
         }
     ]);
@@ -87,7 +87,7 @@ export const ChatWidget: React.FC = () => {
             const errorMsg: Message = {
                 id: crypto.randomUUID(),
                 role: 'assistant',
-                content: "⚠️ Connection to Sosha AI lost. Please check if the Flowise server is running on port 3000.",
+                content: "⚠️ Connection to Baro AI lost. Please check if the Flowise server is running on port 3000.",
                 timestamp: new Date()
             };
             setMessages(prev => [...prev, errorMsg]);
@@ -136,7 +136,7 @@ export const ChatWidget: React.FC = () => {
                                 </div>
                                 <div>
                                     <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                                        Sosha AI
+                                        Baro AI
                                         <span className="flex h-2 w-2 rounded-full bg-green-500 animate-pulse"></span>
                                     </h3>
                                     <p className="text-[10px] text-gray-400 font-mono tracking-wider uppercase">Operating System</p>

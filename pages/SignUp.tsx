@@ -3,9 +3,9 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { supabase } from '../supabase';
 import { Button, Input, Card, CardContent, CardHeader, CardTitle, showToast } from '../components/ui';
-import { SoshaLogo } from '../components/SoshaLogo';
+import { BaroLogo } from '../components/BaroLogo';
 import { ArrowLeft } from 'lucide-react';
-import { SoshaBackground } from '../components/SoshaBackground';
+import { BaroBackground } from '../components/BaroBackground';
 
 const SignUp: React.FC = () => {
   const navigate = useNavigate();
@@ -56,15 +56,15 @@ const SignUp: React.FC = () => {
           .maybeSingle();
 
         if (!profile) {
-           const displayName = invitation.full_name || invitation.name || email.split('@')[0];
-           await supabase.from('profiles').upsert({
-              id: authData.user.id,
-              email: email,
-              full_name: displayName,
-              name: displayName,
-              role: invitation.role,
-              invitation_pending: false
-           });
+          const displayName = invitation.full_name || invitation.name || email.split('@')[0];
+          await supabase.from('profiles').upsert({
+            id: authData.user.id,
+            email: email,
+            full_name: displayName,
+            name: displayName,
+            role: invitation.role,
+            invitation_pending: false
+          });
         }
 
         showToast('Account created successfully!', 'success');
@@ -80,12 +80,12 @@ const SignUp: React.FC = () => {
   };
 
   return (
-    <SoshaBackground variant="landing">
+    <BaroBackground variant="landing">
       <div className="flex-1 flex items-center justify-center p-4">
         <Card className="w-full max-w-md bg-card/90 border-border backdrop-blur-md rounded-3xl">
           <CardHeader className="space-y-1 flex flex-col items-center">
             <div className="w-20 h-20 mb-4 flex items-center justify-center">
-                <SoshaLogo className="w-full h-full" />
+              <BaroLogo className="w-full h-full" />
             </div>
             <CardTitle className="text-2xl text-center text-foreground">
               Staff Sign Up
@@ -98,9 +98,9 @@ const SignUp: React.FC = () => {
             <form onSubmit={handleSignUp} className="space-y-4">
               <div className="space-y-2">
                 <label className="text-xs font-bold text-muted uppercase tracking-wider">Email Address</label>
-                <Input 
-                  type="email" 
-                  placeholder="name@example.com" 
+                <Input
+                  type="email"
+                  placeholder="name@example.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
@@ -109,8 +109,8 @@ const SignUp: React.FC = () => {
               </div>
               <div className="space-y-2">
                 <label className="text-xs font-bold text-muted uppercase tracking-wider">Create Password</label>
-                <Input 
-                  type="password" 
+                <Input
+                  type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
@@ -119,21 +119,21 @@ const SignUp: React.FC = () => {
                   className="bg-black/20 border-border text-foreground focus:border-primary rounded-xl"
                 />
               </div>
-              
+
               <Button type="submit" className="w-full font-bold text-black h-12 rounded-xl mt-2" isLoading={loading} disabled={loading}>
                 {loading ? 'Creating Account...' : 'Complete Sign Up'}
               </Button>
-              
+
               <div className="pt-4 border-t border-border text-center">
-                  <Link to="/" className="text-sm text-muted hover:text-foreground transition-colors flex items-center justify-center gap-2">
-                      <ArrowLeft className="w-4 h-4" /> Back to Home
-                  </Link>
+                <Link to="/" className="text-sm text-muted hover:text-foreground transition-colors flex items-center justify-center gap-2">
+                  <ArrowLeft className="w-4 h-4" /> Back to Home
+                </Link>
               </div>
             </form>
           </CardContent>
         </Card>
       </div>
-    </SoshaBackground>
+    </BaroBackground>
   );
 };
 

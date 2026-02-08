@@ -101,7 +101,7 @@ export const InviteStaffModal: React.FC<InviteStaffModalProps> = ({ isOpen, onCl
                      <label className="text-xs font-bold text-gray-500 uppercase">Email Address</label>
                      <div className="relative">
                         <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-500" />
-                        <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="staff@sosha.os" className="pl-9" required />
+                        <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="staff@baro.os" className="pl-9" required />
                      </div>
                   </div>
                </div>

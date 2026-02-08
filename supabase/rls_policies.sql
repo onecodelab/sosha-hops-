@@ -1,5 +1,5 @@
 -- ============================================
--- SOSHA RBAC: Row Level Security Policies
+-- BARO RBAC: Row Level Security Policies
 -- ============================================
 -- Roles: owner, admin, manager, waiter, kitchen
 -- 

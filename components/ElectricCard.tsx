@@ -1,8 +1,8 @@
 import React from "react";
 import { cn } from "./ui";
 
-export type SoshaLeafyCardProps = {
-    /** Accent / border color. Defaults to Sosha Lime. */
+export type BaroLeafyCardProps = {
+    /** Accent / border color. Defaults to Baro Lime. */
     color?: string;
     /** Badge text in the top pill. */
     badge?: string;
@@ -13,15 +13,15 @@ export type SoshaLeafyCardProps = {
 };
 
 /**
- * SoshaLeafyCard
+ * BaroLeafyCard
  * An organic, "vitality" card with foliage silhouettes and stable, crisp glass effects.
  */
-export const SoshaLeafyCard = ({
-    color = "#A3E635", // Sosha Lime
+export const BaroLeafyCard = ({
+    color = "#A3E635", // Baro Lime
     badge,
     className = "",
     children
-}: SoshaLeafyCardProps) => {
+}: BaroLeafyCardProps) => {
     return (
         <div className={cn("relative group transition-all duration-700 h-full", className)}>
             {/* Main Container */}

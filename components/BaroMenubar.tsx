@@ -7,7 +7,7 @@ import { useAuth } from '../AuthContext';
 import { useBranch } from '../contexts/BranchContext';
 import { RoleGuard } from './RoleGuard';
 
-export default function SoshaMenubar() {
+export default function BaroMenubar() {
     const navigate = useNavigate();
     const { signOut } = useAuth();
 

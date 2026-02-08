@@ -26,7 +26,7 @@ export const useBranch = () => useContext(BranchContext);
 export const BranchProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const { profile } = useAuth();
     const [activeBranchId, setActiveBranchId] = useState<string | null>(() => {
-        return localStorage.getItem('sosha-active-branch-id');
+        return localStorage.getItem('baro-active-branch-id');
     });
 
     // Fetch all branches (for HQ users or to resolve the active branch)
@@ -56,12 +56,12 @@ export const BranchProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             // Priority 2: Profile's home branch
             if (profile?.home_branch_id) {
                 setActiveBranchId(profile.home_branch_id);
-                localStorage.setItem('sosha-active-branch-id', profile.home_branch_id);
+                localStorage.setItem('baro-active-branch-id', profile.home_branch_id);
             }
             // Priority 3: First available branch
             else if (!activeBranchId) {
                 setActiveBranchId(branches[0].id);
-                localStorage.setItem('sosha-active-branch-id', branches[0].id);
+                localStorage.setItem('baro-active-branch-id', branches[0].id);
             }
         }
     }, [profile, branches, isLoading]);
@@ -71,7 +71,7 @@ export const BranchProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         const allowedRoles = ['owner', 'admin', 'manager'];
         if (profile?.role && allowedRoles.includes(profile.role)) {
             setActiveBranchId(branchId);
-            localStorage.setItem('sosha-active-branch-id', branchId);
+            localStorage.setItem('baro-active-branch-id', branchId);
         }
     };
 
