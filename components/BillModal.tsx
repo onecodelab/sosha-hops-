@@ -204,7 +204,7 @@ export const BillModal: React.FC<BillModalProps> = ({
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-api-key': 'sosha-admin-secret-2024'
+          'x-api-key': 'sosha_prod_123456789abc'
         },
         body: JSON.stringify(payload)
       });
