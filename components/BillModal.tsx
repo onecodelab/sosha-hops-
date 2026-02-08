@@ -8,6 +8,8 @@ import {
   ChevronRight, ArrowLeft, ShieldCheck, Landmark,
   Scan, Banknote, FileText, AlertCircle, Coins, QrCode
 } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { orderService } from '../services/orderService';
 import QRScanner from './QRScanner';
 import { AnimatedTicket } from './AnimatedTicket';
 
@@ -65,7 +67,6 @@ const BANK_CONFIG: Record<string, { receiver: string, label: string, placeholder
   }
 };
 
-import { orderService } from '../services/orderService';
 
 export const BillModal: React.FC<BillModalProps> = ({
   isOpen, onClose, order, onSuccess
@@ -150,6 +151,21 @@ export const BillModal: React.FC<BillModalProps> = ({
     }
   };
 
+  const { data: bankSettings = [] } = useQuery({
+    queryKey: ['bank_settings'],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('bank_settings').select('*');
+      if (error) throw error;
+      return data;
+    },
+    staleTime: 1000 * 60 * 5
+  });
+
+  const getDynamicReceiver = (bank: string) => {
+    const setting = bankSettings.find((s: any) => s.bank_key === bank);
+    return setting?.account_number || BANK_CONFIG[bank]?.receiver || "";
+  };
+
   const verifyTransaction = async (targetRef?: string, targetBank?: string) => {
     const ref = (targetRef || refNumber).trim();
     const bank = targetBank || paymentMethod;
@@ -170,12 +186,14 @@ export const BillModal: React.FC<BillModalProps> = ({
 
       // Add bank-specific parameters
       if (bank === 'cbe') {
-        payload.accountSuffix = config.receiver;
+        payload.accountSuffix = getDynamicReceiver('cbe');
+        payload.expected_receiver = getDynamicReceiver('cbe');
       } else if (bank === 'abyssinia') {
-        payload.suffix = config.receiver;
+        payload.suffix = getDynamicReceiver('abyssinia');
+        payload.expected_receiver = getDynamicReceiver('abyssinia');
       } else if (bank === 'cbebirr') {
         payload.receiptNumber = ref;
-        payload.phoneNumber = ''; // Can be extended if you add phone input
+        payload.phoneNumber = '';
       }
 
       // Use consolidated verify-payment endpoint with secondary validation
@@ -186,7 +204,7 @@ export const BillModal: React.FC<BillModalProps> = ({
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-api-key': 'test-key-123'
+          'x-api-key': 'sosha-admin-secret-2024'
         },
         body: JSON.stringify(payload)
       });

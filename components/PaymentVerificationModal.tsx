@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Dialog, Button, Input, showToast, cn } from './ui';
 import { supabase } from '../supabase';
 import { Order, PaymentMethod } from '../types';
@@ -26,6 +27,21 @@ export const PaymentVerificationModal: React.FC<PaymentVerificationModalProps> =
   const [amountPaid, setAmountPaid] = useState<string>('');
   const [refNumber, setRefNumber] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const { data: bankSettings = [] } = useQuery({
+    queryKey: ['bank_settings'],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('bank_settings').select('*');
+      if (error) throw error;
+      return data;
+    },
+    staleTime: 1000 * 60 * 5
+  });
+
+  const getDynamicReceiver = (bank: string) => {
+    const setting = bankSettings.find((s: any) => s.bank_key === bank);
+    return setting?.account_number || (bank === 'cbe' ? "1000302293007" : "");
+  };
 
   useEffect(() => {
     if (isOpen && orders.length > 0) {
@@ -103,7 +119,7 @@ export const PaymentVerificationModal: React.FC<PaymentVerificationModalProps> =
 
             {paymentMethod === 'cbe' && (
               <div className="p-3 bg-blue-500/5 border border-blue-500/10 rounded-xl text-center">
-                <p className="text-[9px] text-blue-400 font-black uppercase">CBE Account: 1000302293007</p>
+                <p className="text-[9px] text-blue-400 font-black uppercase">CBE Account: {getDynamicReceiver('cbe')}</p>
               </div>
             )}
 

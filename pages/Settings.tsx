@@ -231,40 +231,21 @@ const Settings: React.FC = () => {
                   </CardContent>
                </Card>
 
-               {/* System Health Card */}
+               {/* Bank Configuration Card */}
                <Card className="bg-[#1A1A1A] border-gray-800 rounded-[2.5rem] overflow-hidden">
-                  <div className="p-8 border-b border-gray-800 flex items-center justify-between">
+                  <div className="p-8 border-b border-gray-800">
                      <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-2xl bg-green-500/10 flex items-center justify-center border border-green-500/20">
-                           <ShieldCheck className="w-6 h-6 text-green-400" />
+                        <div className="w-12 h-12 rounded-2xl bg-blue-500/10 flex items-center justify-center border border-blue-500/20">
+                           <ShieldCheck className="w-6 h-6 text-blue-400" />
                         </div>
                         <div>
-                           <CardTitle className="text-white">Database Integrity</CardTitle>
-                           <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mt-0.5">Live Environment Status</p>
+                           <CardTitle className="text-white">Bank Configuration</CardTitle>
+                           <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mt-0.5">Verifier Suffix Management</p>
                         </div>
                      </div>
                   </div>
-                  <CardContent className="p-8 space-y-6">
-                     <div className="bg-primary/5 border border-primary/10 p-5 rounded-2xl flex gap-4">
-                        <Zap className="w-5 h-5 text-primary shrink-0 mt-0.5" />
-                        <div>
-                           <h4 className="text-sm font-bold text-white uppercase tracking-tighter">Real-time Stock Engine</h4>
-                           <p className="text-xs text-gray-400 leading-relaxed mt-1">
-                              The application is currently utilizing the <span className="text-white font-bold">branch_inventory</span> architecture. Automated stock isolation is active per location.
-                           </p>
-                        </div>
-                     </div>
-
-                     <div className="grid grid-cols-2 gap-4">
-                        <div className="p-4 bg-black/40 rounded-2xl border border-white/5">
-                           <p className="text-[10px] font-black text-gray-500 uppercase">Schema</p>
-                           <p className="text-sm font-bold text-white mt-1">V3.0 Multi-Branch</p>
-                        </div>
-                        <div className="p-4 bg-black/40 rounded-2xl border border-white/5">
-                           <p className="text-[10px] font-black text-gray-500 uppercase">Latency</p>
-                           <p className="text-sm font-bold text-green-500 mt-1">28ms (Optimal)</p>
-                        </div>
-                     </div>
+                  <CardContent className="p-8">
+                     <BankSettingsSection isEditable={isOwnerOrAdmin} />
                   </CardContent>
                </Card>
             </div>
@@ -282,6 +263,101 @@ const Settings: React.FC = () => {
 
          </div>
       </DashboardLayout>
+   );
+};
+
+const BankSettingsSection: React.FC<{ isEditable: boolean }> = ({ isEditable }) => {
+   const queryClient = useQueryClient();
+   const [editingBank, setEditingBank] = useState<string | null>(null);
+   const [newAccount, setNewAccount] = useState('');
+
+   const { data: bankSettings = [], isLoading } = useQuery({
+      queryKey: ['bank_settings'],
+      queryFn: async () => {
+         const { data, error } = await supabase.from('bank_settings').select('*').order('bank_key', { ascending: true });
+         if (error) throw error;
+         return data;
+      }
+   });
+
+   const updateBankMutation = useMutation({
+      mutationFn: async ({ bankKey, account }: { bankKey: string, account: string }) => {
+         const { error } = await supabase.from('bank_settings').update({ account_number: account }).eq('bank_key', bankKey);
+         if (error) throw error;
+      },
+      onSuccess: () => {
+         showToast("Bank setting updated!", "success");
+         setEditingBank(null);
+         queryClient.invalidateQueries({ queryKey: ['bank_settings'] });
+      },
+      onError: (err: any) => showToast(err.message, "error")
+   });
+
+   if (isLoading) return <div className="text-center py-4 text-zinc-600 animate-pulse text-[10px] font-black uppercase tracking-widest">Fetching profiles...</div>;
+
+   return (
+      <div className="space-y-4">
+         {bankSettings.map((bank: any) => (
+            <div key={bank.bank_key} className="p-4 bg-black/40 border border-white/5 rounded-2xl flex items-center justify-between group hover:border-primary/20 transition-all">
+               <div className="flex items-center gap-4 flex-1">
+                  <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center border transition-all",
+                     bank.bank_key === 'cbe' ? "bg-blue-500/10 border-blue-500/20 text-blue-400" :
+                        bank.bank_key === 'telebirr' ? "bg-purple-500/10 border-purple-500/20 text-purple-400" :
+                           "bg-white/5 border-white/10 text-zinc-400")}>
+                     <ShieldCheck className="w-5 h-5" />
+                  </div>
+                  <div className="flex-1">
+                     <p className="text-sm font-bold text-white uppercase tracking-tight">{bank.bank_key}</p>
+                     {editingBank === bank.bank_key ? (
+                        <input
+                           value={newAccount}
+                           onChange={e => setNewAccount(e.target.value)}
+                           className="bg-black/60 border border-white/10 rounded-lg px-3 py-1 text-xs text-primary font-mono mt-1 w-full focus:border-primary/50 outline-none"
+                           placeholder="Account/Suffix ID"
+                           autoFocus
+                        />
+                     ) : (
+                        <p className="text-[10px] text-zinc-500 font-mono uppercase tracking-widest mt-0.5">
+                           Value: <span className="text-zinc-300">{bank.account_number || 'NOT SET'}</span>
+                        </p>
+                     )}
+                  </div>
+               </div>
+
+               {isEditable && (
+                  <div className="ml-4">
+                     {editingBank === bank.bank_key ? (
+                        <div className="flex items-center gap-1">
+                           <button
+                              onClick={() => updateBankMutation.mutate({ bankKey: bank.bank_key, account: newAccount })}
+                              disabled={updateBankMutation.isPending}
+                              className="p-2 hover:bg-green-500/10 text-green-500 rounded-lg transition-colors"
+                           >
+                              <Check className="w-4 h-4" />
+                           </button>
+                           <button
+                              onClick={() => setEditingBank(null)}
+                              className="p-2 hover:bg-red-500/10 text-red-500 rounded-lg transition-colors"
+                           >
+                              <X className="w-4 h-4" />
+                           </button>
+                        </div>
+                     ) : (
+                        <button
+                           onClick={() => {
+                              setEditingBank(bank.bank_key);
+                              setNewAccount(bank.account_number);
+                           }}
+                           className="p-2 hover:bg-white/5 text-zinc-500 hover:text-white rounded-lg transition-colors opacity-0 group-hover:opacity-100"
+                        >
+                           <Edit2 className="w-3.5 h-3.5" />
+                        </button>
+                     )}
+                  </div>
+               )}
+            </div>
+         ))}
+      </div>
    );
 };
 
