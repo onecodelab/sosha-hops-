@@ -29,10 +29,10 @@ export const useOrders = (waiterId?: string) => {
 
         const channelName = waiterId ? `waiter_sync_${waiterId}` : `branch_sync_${activeBranchId}`;
 
-        // Construct filter: if waiterId exists, use it. Otherwise, filter by branch_id.
-        const orderFilter = waiterId
-            ? `waiter_id=eq.${waiterId}`
-            : `branch_id=eq.${activeBranchId}`;
+        // Subscription filter: Listen for either the waiter's orders OR any unassigned chatbot orders
+        // Note: Real-time filtering is simple. To be safe, we listen for everything in the branch
+        // and let fetchOrders() handle the specific filtering according to orderService rules.
+        const orderFilter = `branch_id=eq.${activeBranchId}`;
 
         const sub = supabase.channel(channelName)
             .on('postgres_changes', {
@@ -56,7 +56,10 @@ export const useOrders = (waiterId?: string) => {
     }, [fetchOrders, waiterId, activeBranchId]);
 
     const kitchenPipeline = useMemo(() =>
-        orders.filter(o => ['pending', 'accepted', 'preparing', 'ready'].includes(o.status)),
+        orders.filter(o =>
+            ['pending', 'accepted', 'preparing', 'ready'].includes(o.status) &&
+            !(o.source === 'chatbot' && !o.waiter_id) // Exclude unassigned chatbot orders (they go to verification queue)
+        ),
         [orders]
     );
 

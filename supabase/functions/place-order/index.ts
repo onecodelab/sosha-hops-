@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Redis } from "https://esm.sh/@upstash/redis";
@@ -16,41 +15,96 @@ serve(async (req) => {
 
     try {
         // 1. Initialize Clients
-        const sbUrl = Deno.env.get('SUPABASE_URL') ?? Deno.env.get('REACT_APP_SUPABASE_URL');
-        const sbKey = Deno.env.get('SUPABASE_ANON_KEY') ?? Deno.env.get('REACT_APP_SUPABASE_ANON_KEY');
+        const sbUrl = Deno.env.get('SUPABASE_URL');
+        // Use SERVICE_ROLE_KEY to bypass RLS for chatbot orders
+        const sbKey = Deno.env.get('SERVICE_ROLE_KEY') || Deno.env.get('SUPABASE_ANON_KEY');
         const redisUrl = Deno.env.get('UPSTASH_REDIS_REST_URL') ?? Deno.env.get('VITE_UPSTASH_REDIS_REST_URL');
         const redisToken = Deno.env.get('UPSTASH_REDIS_REST_TOKEN') ?? Deno.env.get('VITE_UPSTASH_REDIS_REST_TOKEN');
 
-        if (!sbUrl || !sbKey || !redisUrl || !redisToken) {
-            throw new Error('Missing environment configuration');
+        if (!sbUrl || !sbKey) {
+            throw new Error('Missing Supabase configuration');
         }
 
         const supabase = createClient(sbUrl, sbKey);
-        const redis = new Redis({ url: redisUrl, token: redisToken });
+        // Redis is optional - if not set, skip stock checking
+        const redis = (redisUrl && redisToken) ? new Redis({ url: redisUrl, token: redisToken }) : null;
 
         // 2. Parse Payload
-        const { branch_id, items, order_details, user_id } = await req.json();
+        const { branch_id, items, order_details, user_id, source, table_number } = await req.json();
 
         if (!branch_id || !items || items.length === 0) {
             return new Response(JSON.stringify({ error: "Missing required data" }), { status: 400, headers: corsHeaders });
         }
 
-        // 3. Resolve Dishes to Ingredients
-        // Fetch recipe requirements for all items in the cart
-        const { data: recipes, error: recipeErr } = await supabase
-            .from("recipe_ingredients")
-            .select(`
-                ingredient_id,
-                quantity_needed,
-                recipe:recipes!inner(menu_item_id)
-            `)
-            .in("recipe.menu_item_id", items.map((i: any) => i.menu_item_id));
+        // 2.1 Resolve Table and Session if table_number is provided
+        let tableId = null;
+        let sessionId = null;
+        if (table_number) {
+            const { data: tableData } = await supabase
+                .from('tables')
+                .select('id, table_number')
+                .eq('branch_id', branch_id)
+                .eq('table_number', table_number)
+                .maybeSingle();
 
-        if (recipeErr) throw recipeErr;
+            if (tableData) {
+                tableId = tableData.id;
+
+                // Find or create active session
+                const { data: existingSession } = await supabase
+                    .from('table_sessions')
+                    .select('id')
+                    .eq('table_id', tableId)
+                    .eq('is_active', true)
+                    .maybeSingle();
+
+                if (existingSession) {
+                    sessionId = existingSession.id;
+                } else {
+                    const { data: newSession } = await supabase
+                        .from('table_sessions')
+                        .insert({
+                            table_id: tableId,
+                            is_active: true,
+                            seated_at: new Date().toISOString()
+                        })
+                        .select()
+                        .single();
+                    if (newSession) sessionId = newSession.id;
+                }
+            }
+        }
+
+        // Normalize items: ensure menu_item_id is present (Flowise might just send 'id')
+        const normalizedItems = items.map((i: any) => ({
+            ...i,
+            menu_item_id: i.menu_item_id || i.id
+        }));
+
+        // 3. Resolve Dishes to Ingredients (Optional - for stock management)
+        // Fetch recipe requirements for all items in the cart
+        let recipes: any[] = [];
+        try {
+            const { data: recipesData, error: recipeErr } = await supabase
+                .from("recipe_ingredients")
+                .select(`
+                    ingredient_id,
+                    quantity_needed,
+                    recipe:recipes!inner(menu_item_id)
+                `)
+                .in("recipe.menu_item_id", normalizedItems.map((i: any) => i.menu_item_id));
+
+            if (!recipeErr && recipesData) {
+                recipes = recipesData;
+            }
+        } catch (e) {
+            // Recipe lookup failed - proceed without stock checking
+            console.log("Recipe lookup skipped:", e);
+        }
 
         // 4. Calculate Total Ingredient Impact
         const impactMap: Record<string, number> = {};
-        for (const item of items) {
+        for (const item of normalizedItems) {
             const itemRecipes = recipes.filter((r: any) => r.recipe.menu_item_id === item.menu_item_id);
             for (const rec of itemRecipes) {
                 const totalNeeded = rec.quantity_needed * item.quantity;
@@ -61,7 +115,8 @@ serve(async (req) => {
         const ingredientsToLock = Object.keys(impactMap);
 
         // If no ingredients (e.g., pure service items), verify stock isn't needed but proceed
-        if (ingredientsToLock.length > 0) {
+        // Redis is optional - skip stock checking if redis is not configured
+        if (ingredientsToLock.length > 0 && redis) {
             // 5. ATOMIC DECREMENT (The Guard)
             const pipeline = redis.pipeline();
             for (const ingId of ingredientsToLock) {
@@ -99,13 +154,15 @@ serve(async (req) => {
         }
 
         // 7. PERSIST TO SQL: Record Order
-        // Since stock is successfully locked in Redis, insert into Supabase
         const { data: order, error: orderErr } = await supabase
             .from('orders')
             .insert({
-                ...order_details,
+                ...(order_details || {}),
                 branch_id,
-                waiter_id: user_id,
+                table_id: tableId,
+                table_number: table_number || null,
+                waiter_id: user_id || null, // null for unassigned chatbot orders
+                source: source || 'dine_in',
                 status: 'pending'
             })
             .select()
@@ -113,7 +170,7 @@ serve(async (req) => {
 
         if (orderErr) {
             // Critical SQL Failure after Redis Success -> MUST Rollback Redis
-            if (ingredientsToLock.length > 0) {
+            if (ingredientsToLock.length > 0 && redis) {
                 const rollbackPipeline = redis.pipeline();
                 for (const ingId of ingredientsToLock) {
                     const key = `stock:${branch_id}:${ingId}`;
@@ -124,13 +181,23 @@ serve(async (req) => {
             throw orderErr;
         }
 
+        // 7.1 Update Table to Occupied if tableId is present
+        if (tableId) {
+            await supabase.from('tables').update({
+                status: 'occupied',
+                current_order_id: order.id,
+                current_session_id: sessionId,
+                last_updated: new Date().toISOString()
+            }).eq('id', tableId);
+        }
+
         // 8. Insert Order Items
-        const itemsPayload = items.map((i: any) => ({
+        const itemsPayload = normalizedItems.map((i: any) => ({
             order_id: order.id,
             menu_item_id: i.menu_item_id,
             quantity: i.quantity,
-            price: i.price,
-            special_instructions: i.notes
+            price: i.price || 0, // Fallback if missing
+            special_instructions: i.notes || ''
         }));
 
         const { error: itemsErr } = await supabase.from('order_items').insert(itemsPayload);

@@ -12,7 +12,8 @@ import {
   Lock,
   Receipt,
   PlusCircle,
-  Timer
+  Timer,
+  MessageSquare
 } from 'lucide-react';
 import { PaymentVerificationModal, FloatingPaymentButton } from '../components/PaymentVerificationModal';
 import { ReceiptVerificationModal } from '../components/ReceiptVerificationModal';
@@ -22,6 +23,7 @@ import { BillModal } from '../components/BillModal';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useOrders } from '../hooks/useOrders';
 import { orderService } from '../services/orderService';
+import { Dialog } from '../components/ui';
 
 const WaiterDashboard: React.FC = () => {
   const { profile, user } = useAuth();
@@ -33,10 +35,14 @@ const WaiterDashboard: React.FC = () => {
   const [isPaymentOpen, setIsPaymentOpen] = useState(false);
   const [isVerifyOpen, setIsVerifyOpen] = useState(false);
   const [isBillModalOpen, setIsBillModalOpen] = useState(false);
+  const [isClaimModalOpen, setIsClaimModalOpen] = useState(false);
 
   const [selectedTableData, setSelectedTableData] = useState<{ id: string, number: string } | null>(null);
   const [appendOrderId, setAppendOrderId] = useState<string | null>(null);
   const [activeBillOrder, setActiveBillOrder] = useState<Order | null>(null);
+  const [selectedChatOrder, setSelectedChatOrder] = useState<Order | null>(null);
+  const [selectedClaimTable, setSelectedClaimTable] = useState<string | null>(null);
+  const [claiming, setClaiming] = useState(false);
   const [isSyncingTables, setIsSyncingTables] = useState(false);
 
   const fetchTables = useCallback(async () => {
@@ -97,6 +103,24 @@ const WaiterDashboard: React.FC = () => {
       refreshAll();
     } else {
       refreshAll();
+    }
+  };
+
+  const handleClaimOrder = async () => {
+    if (!selectedChatOrder || !selectedClaimTable || claiming) return;
+
+    setClaiming(true);
+    try {
+      await orderService.claimChatbotOrder(selectedChatOrder.id, user!.id, selectedClaimTable);
+      showToast("Order claimed successfully", "success");
+      setIsClaimModalOpen(false);
+      setSelectedChatOrder(null);
+      setSelectedClaimTable(null);
+      refreshAll();
+    } catch (err: any) {
+      showToast("Claim failed: " + err.message, "error");
+    } finally {
+      setClaiming(false);
     }
   };
 
@@ -165,6 +189,61 @@ const WaiterDashboard: React.FC = () => {
 
         {/* Task View Only */}
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-10 px-2 pb-32">
+          {/* Unassigned Chat Orders */}
+          {orders.filter(o => o.source === 'chatbot' && !o.waiter_id).length > 0 && (
+            <div className="space-y-6 col-span-full">
+              <div className="flex items-center justify-between px-2">
+                <h3 className="text-sm font-black text-foreground uppercase tracking-widest flex items-center gap-3">
+                  <MessageSquare className="w-5 h-5 text-primary" /> Unassigned Chat Orders
+                </h3>
+                <Badge variant="glass" className="bg-primary/10 text-primary border-primary/20 font-mono">
+                  {orders.filter(o => o.source === 'chatbot' && !o.waiter_id).length} New
+                </Badge>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {orders.filter(o => o.source === 'chatbot' && !o.waiter_id).map(order => (
+                  <Card key={order.id} variant="elevated" className="p-6 border-primary/20 bg-primary/5 hover:bg-primary/10 transition-all flex flex-col gap-4">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <div className="text-[10px] font-black text-primary uppercase tracking-widest mb-1">Incoming Chat Order</div>
+                        <h4 className="text-lg font-black text-foreground tracking-tight">{order.order_number}</h4>
+                      </div>
+                      <Badge variant="outline" className="text-xs uppercase font-mono">Chatbot</Badge>
+                    </div>
+
+                    <div className="flex-1 space-y-2">
+                      {order.order_items?.map((item, idx) => (
+                        <div key={idx} className="flex justify-between text-xs font-medium border-b border-white/5 pb-1">
+                          <span className="text-zinc-400">
+                            <span className="text-primary mr-2">{item.quantity}x</span>
+                            {item.menu_item?.name}
+                          </span>
+                          <span className="text-zinc-500 font-mono">ETB {item.price * item.quantity}</span>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="flex flex-col gap-2 pt-2 border-t border-white/5">
+                      <div className="flex justify-between items-center px-1">
+                        <span className="text-[10px] font-black text-muted uppercase tracking-widest">Estimated Total</span>
+                        <span className="text-sm font-black text-primary font-mono">ETB {order.total_amount.toLocaleString()}</span>
+                      </div>
+                      <Button
+                        onClick={() => {
+                          setSelectedChatOrder(order);
+                          setIsClaimModalOpen(true);
+                        }}
+                        className="w-full bg-primary hover:bg-primary/90 text-black font-black uppercase text-[10px] h-10 rounded-xl mt-2 transition-transform hover:scale-[1.02] active:scale-[0.98]"
+                      >
+                        Claim & Assign Table
+                      </Button>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Kitchen Pipeline */}
           <div className="space-y-6">
             <div className="flex items-center justify-between px-2">
@@ -204,6 +283,50 @@ const WaiterDashboard: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Claim Modal */}
+      <Dialog
+        isOpen={isClaimModalOpen}
+        onClose={() => setIsClaimModalOpen(false)}
+        title="Claim Chat Order"
+        maxWidth="max-w-md"
+      >
+        <div className="p-6 space-y-6">
+          <div className="space-y-2">
+            <label className="text-[10px] font-black text-muted uppercase tracking-[0.2em] ml-1">Assign to Table</label>
+            <div className="grid grid-cols-4 gap-2 max-h-48 overflow-y-auto p-1 custom-scrollbar">
+              {tables.map(t => (
+                <button
+                  key={t.id}
+                  onClick={() => setSelectedClaimTable(t.id)}
+                  disabled={t.status !== 'available'}
+                  className={cn(
+                    "h-12 rounded-xl text-xs font-black uppercase transition-all border flex items-center justify-center shadow-sm",
+                    selectedClaimTable === t.id
+                      ? "bg-primary text-black border-primary shadow-primary/20"
+                      : t.status === 'available'
+                        ? "bg-white/5 text-foreground border-white/10 hover:border-primary/50 hover:bg-primary/10"
+                        : "bg-red-500/5 text-red-500/30 border-red-500/10 opacity-50 cursor-not-allowed"
+                  )}
+                >
+                  {t.table_number}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="pt-4 border-t border-white/5 flex gap-3">
+            <Button variant="outline" onClick={() => setIsClaimModalOpen(false)} className="flex-1 py-3 h-12 rounded-xl font-black uppercase text-[10px]">Cancel</Button>
+            <Button
+              onClick={handleClaimOrder}
+              disabled={!selectedClaimTable || claiming}
+              className="flex-1 py-3 h-12 rounded-xl bg-primary hover:bg-primary/90 text-black font-black uppercase text-[10px] shadow-lg shadow-primary/20"
+            >
+              {claiming ? 'Claiming...' : 'Verify & Claim'}
+            </Button>
+          </div>
+        </div>
+      </Dialog>
 
       <BillModal
         isOpen={isBillModalOpen}

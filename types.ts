@@ -75,6 +75,7 @@ export interface Order {
   vat_amount?: number;
   vat_rate?: number;
   qr_verification_code?: string;
+  waiter_assigned_at?: string;
 }
 
 export interface OrderItem {

@@ -22,13 +22,67 @@ export const orderService = {
             .in('status', ['pending', 'accepted', 'preparing', 'ready', 'served', 'paid'])
             .order('created_at', { ascending: true });
 
+        // If waiterId is provided, show their assigned orders OR any unassigned chatbot orders
         if (waiterId) {
-            query = query.or(`waiter_id.eq.${waiterId},source.eq.chatbot`);
+            query = query.or(`waiter_id.eq.${waiterId},and(source.eq.chatbot,waiter_id.is.null)`);
         }
 
         const { data, error } = await query;
         if (error) throw error;
         return data as Order[];
+    },
+
+    /**
+     * Claim an order initiated by the chatbot
+     */
+    async claimChatbotOrder(orderId: string, waiterId: string, tableId: string): Promise<void> {
+        const now = new Date().toISOString();
+
+        // 1. Get the table number first
+        const { data: tableData, error: tableErr } = await supabase
+            .from('tables')
+            .select('table_number')
+            .eq('id', tableId)
+            .single();
+
+        if (tableErr) throw tableErr;
+
+        // 2. Start a session for the table
+        const { data: sessionData, error: sessionErr } = await supabase
+            .from('table_sessions')
+            .insert({
+                table_id: tableId,
+                waiter_id: waiterId,
+                is_active: true,
+                seated_at: now
+            })
+            .select()
+            .single();
+
+        if (sessionErr) throw sessionErr;
+
+        // 3. Update the order with waiter, table, and status 'accepted'
+        const { error: orderErr } = await supabase
+            .from('orders')
+            .update({
+                waiter_id: waiterId,
+                table_id: tableId,
+                table_number: tableData.table_number,
+                status: 'accepted',
+                accepted_at: now,
+                waiter_assigned_at: now,
+                last_updated: now
+            })
+            .eq('id', orderId);
+
+        if (orderErr) throw orderErr;
+
+        // 4. Link the table to the session/order
+        await supabase.from('tables').update({
+            current_session_id: sessionData.id,
+            status: 'occupied',
+            last_updated: now
+        }).eq('id', tableId);
     },
 
     /**

@@ -77,7 +77,9 @@ const KitchenDashboard: React.FC = () => {
    };
 
    // Column Logic
-   const incomingOrders = useMemo(() => orders.filter(o => o.status === 'pending'), [orders]);
+   const incomingOrders = useMemo(() =>
+      orders.filter(o => o.status === 'pending' && !(o.source === 'chatbot' && !o.waiter_id)),
+      [orders]);
    const acceptedOrders = useMemo(() => orders.filter(o => ['accepted', 'preparing'].includes(o.status)), [orders]);
    const preparedOrders = useMemo(() => orders.filter(o => o.status === 'ready'), [orders]);
 
