@@ -44,17 +44,16 @@ export const orderService = {
 
         if (tableErr) throw tableErr;
 
-        // 2. Resolve Session: Check if an active session already exists (e.g. created by edge function)
+        // 2. Resolve Session: Check if an active session already exists
         let sessionId: string;
-        const { data: existingSession } = await supabase
+        const { data: existingSessions } = await supabase
             .from('table_sessions')
             .select('id')
             .eq('table_id', tableId)
-            .eq('is_active', true)
-            .maybeSingle();
+            .eq('is_active', true);
 
-        if (existingSession) {
-            sessionId = existingSession.id;
+        if (existingSessions && existingSessions.length > 0) {
+            sessionId = existingSessions[0].id;
             // Optionally update the session to mark this waiter as the primary one
             await supabase.from('table_sessions').update({ waiter_id: waiterId }).eq('id', sessionId);
         } else {

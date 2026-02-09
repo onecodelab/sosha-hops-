@@ -51,15 +51,14 @@ serve(async (req) => {
                 tableId = tableData.id;
 
                 // Find or create active session
-                const { data: existingSession } = await supabase
+                const { data: existingSessions } = await supabase
                     .from('table_sessions')
                     .select('id')
                     .eq('table_id', tableId)
-                    .eq('is_active', true)
-                    .maybeSingle();
+                    .eq('is_active', true);
 
-                if (existingSession) {
-                    sessionId = existingSession.id;
+                if (existingSessions && existingSessions.length > 0) {
+                    sessionId = existingSessions[0].id;
                 } else {
                     const { data: newSession } = await supabase
                         .from('table_sessions')
