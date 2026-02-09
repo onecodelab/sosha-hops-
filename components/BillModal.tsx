@@ -238,7 +238,7 @@ export const BillModal: React.FC<BillModalProps> = ({
         const overpayment = finalAmount - order.total_amount;
 
         if (overpayment > order.total_amount * 0.05) { // If more than 5% extra, ask to confirm
-          showToast("Overpayment detected. Please confirm tip.", "info");
+          showToast("Overpayment detected. Please confirm tip.", "warning");
           setView('payment'); // Go to summary view to confirm
         } else {
           // Auto-Trigger Logic: Process payment immediately if exact or small diff
@@ -323,7 +323,7 @@ export const BillModal: React.FC<BillModalProps> = ({
 
               <div className="flex justify-between text-[9px] text-gray-500 mb-2">
                 <span>Waiter: {order.waiter?.full_name || user?.user_metadata?.full_name || 'Staff'}</span>
-                <span>{new Date().toLocaleTimeString()}</span>
+                <span>{order.created_at ? new Date(order.created_at).toLocaleTimeString() : new Date().toLocaleTimeString()}</span>
               </div>
 
               <div className="space-y-1 py-2 max-h-40 overflow-y-auto custom-scrollbar border-b border-gray-100">

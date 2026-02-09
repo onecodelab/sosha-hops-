@@ -80,7 +80,28 @@ serve(async (req) => {
             menu_item_id: i.menu_item_id || i.id
         }));
 
-        // 3. Resolve Dishes to Ingredients (Optional - for stock management)
+        // 3. Resolve Menu Prices and Ingredients
+        const { data: menuItems, error: menuErr } = await supabase
+            .from('menu')
+            .select('id, price')
+            .in('id', normalizedItems.map((i: any) => i.menu_item_id));
+
+        if (menuErr) throw menuErr;
+
+        // Calculate Totals
+        let orderTotal = 0;
+        normalizedItems.forEach((item: any) => {
+            const menuItem = menuItems?.find(m => m.id === item.menu_item_id);
+            const price = menuItem?.price || 0;
+            item.price = price; // Attach current price to item
+            orderTotal += price * item.quantity;
+        });
+
+        const vatRate = 0.15; // 15% VAT
+        const subtotal = orderTotal / (1 + vatRate);
+        const vatAmount = orderTotal - subtotal;
+
+        // 3.1 Resolve Dishes to Ingredients (Optional - for stock management)
         // Fetch recipe requirements for all items in the cart
         let recipes: any[] = [];
         try {
@@ -161,8 +182,12 @@ serve(async (req) => {
                 table_id: tableId,
                 table_number: table_number || null,
                 waiter_id: user_id || null, // null for unassigned chatbot orders
-                source: source || 'dine_in',
-                status: 'pending'
+                source: source || 'chatbot',
+                status: 'pending',
+                total_amount: orderTotal,
+                subtotal_amount: subtotal,
+                vat_amount: vatAmount,
+                vat_rate: 15 // Standard 15%
             })
             .select()
             .single();
