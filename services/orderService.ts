@@ -32,9 +32,6 @@ export const orderService = {
         return data as Order[];
     },
 
-    /**
-     * Claim an order initiated by the chatbot
-     */
     async claimChatbotOrder(orderId: string, waiterId: string, tableId: string): Promise<void> {
         const now = new Date().toISOString();
 
@@ -47,19 +44,34 @@ export const orderService = {
 
         if (tableErr) throw tableErr;
 
-        // 2. Start a session for the table
-        const { data: sessionData, error: sessionErr } = await supabase
+        // 2. Resolve Session: Check if an active session already exists (e.g. created by edge function)
+        let sessionId: string;
+        const { data: existingSession } = await supabase
             .from('table_sessions')
-            .insert({
-                table_id: tableId,
-                waiter_id: waiterId,
-                is_active: true,
-                seated_at: now
-            })
-            .select()
-            .single();
+            .select('id')
+            .eq('table_id', tableId)
+            .eq('is_active', true)
+            .maybeSingle();
 
-        if (sessionErr) throw sessionErr;
+        if (existingSession) {
+            sessionId = existingSession.id;
+            // Optionally update the session to mark this waiter as the primary one
+            await supabase.from('table_sessions').update({ waiter_id: waiterId }).eq('id', sessionId);
+        } else {
+            const { data: newSession, error: sessionErr } = await supabase
+                .from('table_sessions')
+                .insert({
+                    table_id: tableId,
+                    waiter_id: waiterId,
+                    is_active: true,
+                    seated_at: now
+                })
+                .select()
+                .single();
+
+            if (sessionErr) throw sessionErr;
+            sessionId = newSession.id;
+        }
 
         // 3. Update the order with waiter, table, and status 'accepted'
         const { error: orderErr } = await supabase
@@ -70,7 +82,7 @@ export const orderService = {
                 table_number: tableData.table_number,
                 status: 'accepted',
                 accepted_at: now,
-                waiter_assigned_at: now,
+                // Removed non-existent waiter_assigned_at column
                 last_updated: now
             })
             .eq('id', orderId);
@@ -79,7 +91,7 @@ export const orderService = {
 
         // 4. Link the table to the session/order
         await supabase.from('tables').update({
-            current_session_id: sessionData.id,
+            current_session_id: sessionId,
             status: 'occupied',
             last_updated: now
         }).eq('id', tableId);

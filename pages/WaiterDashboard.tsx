@@ -231,6 +231,7 @@ const WaiterDashboard: React.FC = () => {
                       <Button
                         onClick={() => {
                           setSelectedChatOrder(order);
+                          if (order.table_id) setSelectedClaimTable(order.table_id);
                           setIsClaimModalOpen(true);
                         }}
                         className="w-full bg-primary hover:bg-primary/90 text-black font-black uppercase text-[10px] h-10 rounded-xl mt-2 transition-transform hover:scale-[1.02] active:scale-[0.98]"
@@ -299,12 +300,12 @@ const WaiterDashboard: React.FC = () => {
                 <button
                   key={t.id}
                   onClick={() => setSelectedClaimTable(t.id)}
-                  disabled={t.status !== 'available'}
+                  disabled={t.status !== 'available' && t.id !== selectedChatOrder?.table_id}
                   className={cn(
                     "h-12 rounded-xl text-xs font-black uppercase transition-all border flex items-center justify-center shadow-sm",
                     selectedClaimTable === t.id
                       ? "bg-primary text-black border-primary shadow-primary/20"
-                      : t.status === 'available'
+                      : (t.status === 'available' || t.id === selectedChatOrder?.table_id)
                         ? "bg-white/5 text-foreground border-white/10 hover:border-primary/50 hover:bg-primary/10"
                         : "bg-red-500/5 text-red-500/30 border-red-500/10 opacity-50 cursor-not-allowed"
                   )}
