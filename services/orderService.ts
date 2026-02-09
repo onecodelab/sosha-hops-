@@ -176,6 +176,24 @@ export const orderService = {
         if (updateErr) throw updateErr;
     },
 
+    async logPaymentAudit(data: {
+        orderId: string;
+        reference: string;
+        method: string;
+        amount?: number;
+        status: 'success' | 'failed' | 'fraud';
+        details?: any;
+    }): Promise<void> {
+        await supabase.from('payment_audit').insert({
+            order_id: data.orderId,
+            reference: data.reference,
+            payment_method: data.method,
+            amount: data.amount,
+            status: data.status,
+            details: data.details
+        });
+    },
+
     async closeOrder(order: Order, paymentData: {
         method: string;
         amountPaid: number;
@@ -185,16 +203,23 @@ export const orderService = {
         const now = new Date().toISOString();
         const todayStr = now.split('T')[0];
 
-        // 0. Fraud Prevention: Check for duplicate reference
+        // 0. Fraud Prevention & Audit
         if (paymentData.reference && paymentData.method !== 'cash') {
-            const { data: existingRef } = await supabase
-                .from('orders')
-                .select('id')
-                .eq('transaction_reference', paymentData.reference)
-                .neq('id', order.id)
+            // Check order_payments for actual usage
+            const { data: existingPay } = await supabase
+                .from('order_payments')
+                .select('order_id')
+                .eq('reference', paymentData.reference)
                 .maybeSingle();
 
-            if (existingRef) {
+            if (existingPay) {
+                await this.logPaymentAudit({
+                    orderId: order.id,
+                    reference: paymentData.reference,
+                    method: paymentData.method,
+                    status: 'fraud',
+                    details: { attempted_order_id: order.id, existing_order_id: existingPay.order_id }
+                });
                 throw new Error("Fraud Alert: This transaction reference has already been used!");
             }
         }

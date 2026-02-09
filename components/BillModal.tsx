@@ -6,7 +6,7 @@ import { useAuth } from '../AuthContext';
 import {
   CheckCircle2, Printer, Smartphone, Loader2, X,
   ChevronRight, ArrowLeft, ShieldCheck, Landmark,
-  Scan, Banknote, FileText, AlertCircle, Coins, QrCode
+  Scan, Banknote, FileText, AlertCircle, Coins, QrCode, Heart
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { orderService } from '../services/orderService';
@@ -211,6 +211,18 @@ export const BillModal: React.FC<BillModalProps> = ({
 
       const data = await response.json();
 
+      // Always log the audit
+      if (data.success) {
+        await orderService.logPaymentAudit({
+          orderId: order.id,
+          reference: data.receipt_reference || ref,
+          method: bank,
+          amount: data.amount,
+          status: data.validated ? 'success' : 'failed',
+          details: data.validation
+        });
+      }
+
       // Check both success (scrape worked) AND validated (secondary checks passed)
       if (response.ok && data.success && data.validated) {
         setIsVerified(true);
@@ -222,20 +234,26 @@ export const BillModal: React.FC<BillModalProps> = ({
 
         showToast("Payment verified ✓", "success");
 
-        // Auto-Trigger Logic: Process payment immediately without manual confirmation
-        showToast("Processing automated checkout...", "warning");
+        // Tip Logic: Overpayments require confirmation
+        const overpayment = finalAmount - order.total_amount;
 
-        const tipAmount = Math.max(0, finalAmount - order.total_amount);
+        if (overpayment > order.total_amount * 0.05) { // If more than 5% extra, ask to confirm
+          showToast("Overpayment detected. Please confirm tip.", "info");
+          setView('payment'); // Go to summary view to confirm
+        } else {
+          // Auto-Trigger Logic: Process payment immediately if exact or small diff
+          showToast("Processing automated checkout...", "warning");
 
-        await orderService.closeOrder(order, {
-          method: bank,
-          amountPaid: finalAmount,
-          tipAmount: tipAmount,
-          reference: finalReceiptNo
-        });
+          await orderService.closeOrder(order, {
+            method: bank,
+            amountPaid: finalAmount,
+            tipAmount: Math.max(0, overpayment),
+            reference: finalReceiptNo
+          });
 
-        setView('success');
-        onSuccess();
+          setView('success');
+          onSuccess();
+        }
       } else {
         // Handle validation failure - display most critical reason
         let errorMessage = "Verification failed";
@@ -442,6 +460,31 @@ export const BillModal: React.FC<BillModalProps> = ({
                   )}
                 />
               </div>
+
+              {/* Tip Confirmation Card */}
+              {isVerified && (parseFloat(amountPaid) > order.total_amount) && (
+                <div className="bg-green-500/10 border border-green-500/30 rounded-2xl p-4 animate-in zoom-in-95 duration-300">
+                  <div className="flex justify-between items-center mb-3">
+                    <span className="text-[10px] font-black text-green-400 uppercase tracking-widest">Tip Analysis</span>
+                    <Heart className="w-3.5 h-3.5 text-green-400 fill-green-400/20" />
+                  </div>
+                  <div className="space-y-1.5 grayscale-[0.5]">
+                    <div className="flex justify-between text-xs">
+                      <span className="text-zinc-500 font-bold">Total Bill:</span>
+                      <span className="text-white font-mono">ETB {order.total_amount}</span>
+                    </div>
+                    <div className="flex justify-between text-xs">
+                      <span className="text-zinc-500 font-bold">Paid via Bank:</span>
+                      <span className="text-green-400 font-mono">ETB {amountPaid}</span>
+                    </div>
+                    <div className="h-px bg-white/5 my-1" />
+                    <div className="flex justify-between text-sm">
+                      <span className="text-white font-black uppercase tracking-tighter">Tip for Staff:</span>
+                      <span className="text-green-400 font-black font-mono">ETB {(parseFloat(amountPaid) - order.total_amount).toFixed(2)}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             <Button
