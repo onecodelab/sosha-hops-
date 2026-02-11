@@ -30,7 +30,7 @@ serve(async (req) => {
             .select('id, name, price, category, image_url, is_available')
             .eq('is_available', true);
 
-        if (branch_id) {
+        if (branch_id && branch_id !== '00000000-0000-0000-0000-000000000000') {
             dbQuery = dbQuery.eq('branch_id', branch_id);
         }
 

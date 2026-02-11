@@ -1,6 +1,13 @@
 
 export type Role = 'owner' | 'admin' | 'manager' | 'waiter' | 'kitchen';
 
+export interface Organization {
+  id: string;
+  name: string;
+  plan?: string;
+  is_active?: boolean;
+}
+
 export interface UserProfile {
   id: string;
   full_name?: string;
@@ -8,6 +15,7 @@ export interface UserProfile {
   role: Role;
   phone?: string;
   home_branch_id?: string;
+  organization_id: string;
   created_at: string;
   is_online?: boolean;
   avatar_url?: string;

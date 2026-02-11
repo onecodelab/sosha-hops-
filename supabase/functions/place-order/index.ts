@@ -30,10 +30,24 @@ serve(async (req) => {
         const redis = (redisUrl && redisToken) ? new Redis({ url: redisUrl, token: redisToken }) : null;
 
         // 2. Parse Payload
-        const { branch_id, items, order_details, user_id, source, table_number } = await req.json();
+        let { branch_id, items, order_details, user_id, source, table_number } = await req.json();
 
-        if (!branch_id || !items || items.length === 0) {
+        if (!branch_id || !items) {
             return new Response(JSON.stringify({ error: "Missing required data" }), { status: 400, headers: corsHeaders });
+        }
+
+        // Robustness: If items comes as a JSON string from Flowise, parse it
+        if (typeof items === 'string') {
+            try {
+                items = JSON.parse(items);
+            } catch (e) {
+                console.error("Failed to parse items string:", e);
+                return new Response(JSON.stringify({ error: "Invalid items format" }), { status: 400, headers: corsHeaders });
+            }
+        }
+
+        if (!Array.isArray(items) || items.length === 0) {
+            return new Response(JSON.stringify({ error: "Items must be a non-empty array" }), { status: 400, headers: corsHeaders });
         }
 
         // 2.1 Resolve Table and Session if table_number is provided
@@ -42,13 +56,17 @@ serve(async (req) => {
         if (table_number) {
             const { data: tableData } = await supabase
                 .from('tables')
-                .select('id, table_number')
+                .select('id, table_number, organization_id')
                 .eq('branch_id', branch_id)
                 .eq('table_number', table_number)
                 .maybeSingle();
 
             if (tableData) {
                 tableId = tableData.id;
+                // If table is found, we can trust its org ID (optimization)
+                if (tableData.organization_id) {
+                    // We will use this below
+                }
 
                 // Find or create active session
                 const { data: existingSessions } = await supabase
@@ -81,45 +99,97 @@ serve(async (req) => {
         }));
 
         // 3. Resolve Menu Prices and Ingredients
-        const { data: menuItems, error: menuErr } = await supabase
-            .from('menu')
-            .select('id, price')
-            .in('id', normalizedItems.map((i: any) => i.menu_item_id));
+        const itemIdentifiers = normalizedItems.map((i: any) => i.menu_item_id);
+        console.log(`Resolving items: ${JSON.stringify(itemIdentifiers)}`);
 
-        if (menuErr) throw menuErr;
+        // Fetch all possible menu items for this branch once (Small list, safe and robust)
+        let menuQuery = supabase.from('menu').select('id, name, price');
+        if (branch_id && branch_id !== '00000000-0000-0000-0000-000000000000') {
+            menuQuery = menuQuery.eq('branch_id', branch_id);
+        }
 
-        // Calculate Totals
+        const { data: menuItems, error: menuErr } = await menuQuery;
+
+        if (menuErr) {
+            console.error("Menu fetch error:", menuErr);
+        }
+
+        // 2.2 Resolve Organization ID (CRITICAL for Multi-Tenancy)
+        // We need the organization_id to insert into orders/order_items.
+        // We can get it from the branch.
+        const { data: branchData, error: branchErr } = await supabase
+            .from('branches')
+            .select('organization_id')
+            .eq('id', branch_id)
+            .single();
+
+        if (branchErr || !branchData) {
+            return new Response(JSON.stringify({ error: "Invalid Branch ID or Branch not found" }), { status: 400, headers: corsHeaders });
+        }
+        const organizationId = branchData.organization_id;
+
+        // Helper to slugify names for flexible matching
+        const slugify = (text: string) => text?.toLowerCase().replace(/[^a-z0-9]/g, '');
+
+        // Calculate Totals & Map to UUIDs
         let orderTotal = 0;
-        normalizedItems.forEach((item: any) => {
-            const menuItem = menuItems?.find(m => m.id === item.menu_item_id);
-            const price = menuItem?.price || 0;
-            item.price = price; // Attach current price to item
-            orderTotal += price * item.quantity;
-        });
+        const unresolvable: string[] = [];
+
+        for (const item of normalizedItems) {
+            const inputId = item.menu_item_id?.toString();
+            const inputSlug = slugify(inputId);
+
+            // Flexible match levels: 1. UUID, 2. Name, 3. Slug Name
+            const menuItem = menuItems?.find(m =>
+                m.id === inputId ||
+                m.name?.toLowerCase() === inputId?.toLowerCase() ||
+                slugify(m.name) === inputSlug ||
+                (inputSlug?.length > 3 && slugify(m.name)?.includes(inputSlug)) ||
+                (slugify(m.name)?.length > 3 && inputSlug?.includes(slugify(m.name)))
+            );
+
+            if (menuItem) {
+                item.price = menuItem.price || 0;
+                item.menu_item_id = menuItem.id; // Map back to real UUID
+                console.log(`Resolved: ${inputId} -> ${menuItem.name} (${menuItem.id}) at ${item.price}`);
+            } else {
+                console.warn(`Could not resolve item: ${inputId}`);
+                unresolvable.push(inputId);
+            }
+            orderTotal += (item.price || 0) * (item.quantity || 1);
+        }
+
+        if (unresolvable.length > 0) {
+            return new Response(JSON.stringify({
+                error: "Items not found",
+                detail: `I couldn't find ${unresolvable.join(', ')} in the menu. fr. Please use the exact names or IDs from search_menu_items.`
+            }), { status: 400, headers: corsHeaders });
+        }
 
         const vatRate = 0.15; // 15% VAT
         const subtotal = orderTotal / (1 + vatRate);
         const vatAmount = orderTotal - subtotal;
 
-        // 3.1 Resolve Dishes to Ingredients (Optional - for stock management)
-        // Fetch recipe requirements for all items in the cart
+        // 3.1 Resolve Dishes to Ingredients
         let recipes: any[] = [];
         try {
-            const { data: recipesData, error: recipeErr } = await supabase
-                .from("recipe_ingredients")
-                .select(`
-                    ingredient_id,
-                    quantity_needed,
-                    recipe:recipes!inner(menu_item_id)
-                `)
-                .in("recipe.menu_item_id", normalizedItems.map((i: any) => i.menu_item_id));
+            const resolvedItemIds = normalizedItems.map((i: any) => i.menu_item_id).filter((id: string) => id && id.includes('-'));
+            if (resolvedItemIds.length > 0) {
+                const { data: recipesData, error: recipeErr } = await supabase
+                    .from("recipe_ingredients")
+                    .select(`
+                        ingredient_id,
+                        quantity_needed,
+                        recipe:recipes!inner(menu_item_id)
+                    `)
+                    .in("recipe.menu_item_id", resolvedItemIds);
 
-            if (!recipeErr && recipesData) {
-                recipes = recipesData;
+                if (!recipeErr && recipesData) {
+                    recipes = recipesData;
+                }
             }
-        } catch (e) {
-            // Recipe lookup failed - proceed without stock checking
-            console.log("Recipe lookup skipped:", e);
+        } catch (e: any) {
+            console.log("Recipe lookup skipped:", e.message);
         }
 
         // 4. Calculate Total Ingredient Impact
@@ -179,6 +249,7 @@ serve(async (req) => {
             .insert({
                 ...(order_details || {}),
                 branch_id,
+                organization_id: organizationId, // Added Organization Context
                 table_id: tableId,
                 table_number: table_number || null,
                 waiter_id: user_id || null, // null for unassigned chatbot orders
@@ -218,6 +289,7 @@ serve(async (req) => {
         // 8. Insert Order Items
         const itemsPayload = normalizedItems.map((i: any) => ({
             order_id: order.id,
+            organization_id: organizationId, // Added Organization Context
             menu_item_id: i.menu_item_id,
             quantity: i.quantity,
             price: i.price || 0, // Fallback if missing

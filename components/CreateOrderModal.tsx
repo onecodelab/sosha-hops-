@@ -49,76 +49,6 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
   const allIngredientIds = useMemo(() => Array.from(new Set(Object.values(inventoryMapping).flat())), [inventoryMapping]);
   const { stockMap } = useRedisStock(allIngredientIds);
 
-  const performSqlFallback = async (activeTableId: string, payload: any) => {
-    const now = new Date().toISOString();
-    let finalOrderId = appendOrderId;
-
-    if (!finalOrderId) {
-      // 1. Start NEW session
-      const { data: sessionData, error: sessionErr } = await supabase
-        .from('table_sessions')
-        .insert({
-          table_id: activeTableId,
-          waiter_id: user?.id,
-          is_active: true,
-          seated_at: now
-        })
-        .select()
-        .single();
-
-      if (sessionErr) throw sessionErr;
-
-      // 2. Create NEW order
-      const { data: order, error: orderErr } = await supabase
-        .from('orders')
-        .insert({
-          order_number: payload.order_details.order_number,
-          table_id: activeTableId,
-          table_number: payload.order_details.table_number,
-          waiter_id: user?.id,
-          status: 'pending',
-          payment_status: 'unpaid',
-          total_amount: payload.order_details.total_amount,
-          source: 'dine_in',
-          customer_notes: payload.order_details.customer_notes,
-          created_at: now,
-          created_by_id: user?.id,
-          created_by_name: payload.order_details.created_by_name,
-          branch_id: payload.branch_id
-        })
-        .select()
-        .single();
-
-      if (orderErr) throw orderErr;
-      finalOrderId = order.id;
-
-      // 3. Link Table
-      await supabase.from('tables').update({
-        current_session_id: sessionData.id
-      }).eq('id', activeTableId);
-    } else {
-      // Update existing order for Append
-      const { data: existingOrder } = await supabase.from('orders').select('total_amount').eq('id', finalOrderId).single();
-      if (existingOrder) {
-        await supabase.from('orders').update({
-          total_amount: (existingOrder.total_amount || 0) + payload.order_details.total_amount,
-          status: 'pending'
-        }).eq('id', finalOrderId);
-      }
-    }
-
-    // 4. Record Items
-    const itemsPayload = payload.items.map((i: any) => ({
-      order_id: finalOrderId,
-      menu_item_id: i.menu_item_id,
-      quantity: i.quantity,
-      price: i.price,
-      special_instructions: i.notes
-    }));
-
-    const { error: itemsErr } = await supabase.from('order_items').insert(itemsPayload);
-    if (itemsErr) throw itemsErr;
-  };
 
   // 1. Initial Load
   useEffect(() => {
@@ -282,17 +212,11 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
         });
 
         if (rpcErr || (result && result.error)) {
-          // If Edge Function is explicitly rejecting (Out of Stock), throw it to the user
-          if (rpcErr?.message?.includes('Out of Stock') || result?.error?.includes('Out of Stock')) {
-            throw new Error(rpcErr?.message || result?.error);
-          }
-          // For other errors (Not Found/Deployment), we fallback to SQL
-          console.warn("Edge Function unavailable, falling back to direct SQL...", rpcErr || result?.error);
-          await performSqlFallback(activeTableId, payload);
+          throw new Error(rpcErr?.message || result?.error || "Order placement failed");
         }
-      } catch (invokeErr) {
-        console.warn("Edge Function call failed, performing SQL fallback:", invokeErr);
-        await performSqlFallback(activeTableId, payload);
+      } catch (invokeErr: any) {
+        console.error("Edge Function call failed:", invokeErr);
+        throw new Error(invokeErr.message || "Failed to place order. Please try again.");
       }
 
       showToast(internalAppendId ? `Appended to Table ${tableNumber}` : `New Order for Table ${tableNumber}`, "success");

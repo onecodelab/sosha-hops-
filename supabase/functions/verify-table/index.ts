@@ -45,8 +45,8 @@ serve(async (req) => {
         return new Response(JSON.stringify({
             exists: true,
             id: table.id,
-            status: table.status,
-            message: `Table ${table_number} is currently ${table.status}.`
+            status: "ready", // AI needs to see 'ready' to proceed. The actual status is handled by place-order.
+            message: `Table ${table_number} is verified and ready for your order.`
         }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             status: 200,

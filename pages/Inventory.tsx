@@ -167,25 +167,53 @@ const Inventory: React.FC = () => {
 
       if (globalErr) throw globalErr;
 
-      // 2. Update Branch-Specific Reality (UPSERT into branch_inventory)
+      // 2. Update Branch-Specific Reality via BFF (SQL + Redis + Audit)
       if (formData.par_max < formData.par_min && formData.par_max > 0) {
         throw new Error("Par Max cannot be less than Par Min");
       }
 
-      const branchUpdate = {
-        branch_id: activeBranchId,
-        ingredient_id: selectedItem.id,
-        current_stock: Number(formData.current_stock),
-        par_min: Number(formData.par_min),
-        par_max: Number(formData.par_max),
-        last_updated: new Date().toISOString()
-      };
+      // Edge Function Call
+      const { data: bffResult, error: bffErr } = await supabase.functions.invoke('manage-inventory', {
+        body: {
+          action: 'update', // or 'audit'
+          branch_id: activeBranchId,
+          user_id: (await supabase.auth.getUser()).data.user?.id,
+          reason: 'Manual Adjustment via Dashboard',
+          items: [{
+            ingredient_id: selectedItem.id,
+            quantity: Number(formData.current_stock),
+            current_stock: selectedItem.current_stock // Pass old stock for delta calculation
+          }]
+        }
+      });
 
-      const { error: branchErr } = await supabase
+      if (bffErr || (bffResult && bffResult.error)) {
+        throw new Error(bffErr?.message || bffResult?.error || "Inventory update failed");
+      }
+
+      // 3. Update Par Levels locally (or we can move this to BFF too, but Par levels are purely SQL metadata usually)
+      // Since manage-inventory only handles 'current_stock' in my initial implementation, I should probably 
+      // let it handle everything or keep par levels separate. 
+      // For now, let's keep Par Levels here via direct update OR update BFF to handle them.
+      // Refactoring BFF to handle par levels is better.
+      // But my BFF implementation currently only updates 'current_stock'. 
+      // Let's do a quick separate update for Par levels to ensure they are saved, 
+      // or assume BFF *should* handle them. 
+      // CHECK: My BFF upsert payload: { branch_id, ingredient_id, current_stock, last_updated }
+      // It DOES NOT upsert par_min/par_max! 
+      // I must add par_min/par_max to BFF or do it here.
+      // DOING IT HERE for safety until BFF is expanded.
+
+      const { error: parErr } = await supabase
         .from('branch_inventory')
-        .upsert(branchUpdate, { onConflict: 'branch_id,ingredient_id' });
+        .update({
+          par_min: Number(formData.par_min),
+          par_max: Number(formData.par_max),
+        })
+        .eq('branch_id', activeBranchId)
+        .eq('ingredient_id', selectedItem.id);
 
-      if (branchErr) throw branchErr;
+      if (parErr) throw parErr;
 
       await fetchInventory();
       showToast(`Inventory for ${selectedItem.name} updated in this branch!`, "success");

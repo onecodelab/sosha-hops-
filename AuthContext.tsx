@@ -12,6 +12,7 @@ import { useNavigate } from 'react-router-dom';
 interface AuthContextType {
   user: User | null;
   profile: UserProfile | null;
+  organizationId: string | null;
   loading: boolean;
   isProfileStale: boolean;
   signOut: () => Promise<void>;
@@ -22,11 +23,12 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType>({
   user: null,
   profile: null,
+  organizationId: null,
   loading: true,
   isProfileStale: false,
-  signOut: async () => {},
-  refreshProfile: async () => {},
-  markDatabaseAsMissing: () => {},
+  signOut: async () => { },
+  refreshProfile: async () => { },
+  markDatabaseAsMissing: () => { },
 });
 
 export const useAuth = () => useContext(AuthContext);
@@ -36,12 +38,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [needsSetup, setNeedsSetup] = useState(false);
   const navigate = useNavigate();
 
-  const { 
-    data: profile, 
-    isLoading, 
-    isError, 
-    error, 
-    refetch 
+  const {
+    data: profile,
+    isLoading,
+    isError,
+    error,
+    refetch
   } = useProfile();
 
   useEffect(() => {
@@ -76,28 +78,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     if (error) {
-        const msg = (error as any).message || '';
-        if (msg.includes('relation "public.profiles" does not exist')) {
-            setNeedsSetup(true);
-        }
+      const msg = (error as any).message || '';
+      if (msg.includes('relation "public.profiles" does not exist')) {
+        setNeedsSetup(true);
+      }
     }
   }, [error]);
 
   if (needsSetup) return <SetupGuide />;
 
   const isAuthMissing = error instanceof Error && (
-      error.message === 'Not authenticated' || 
-      error.message.includes('Auth session missing')
+    error.message === 'Not authenticated' ||
+    error.message.includes('Auth session missing')
   );
 
   // If loading and we have no cached data, show spinner
   if (isLoading && !profile && !isAuthMissing) {
     return (
-      <LoadingSpinner 
-        timeout={8000} 
+      <LoadingSpinner
+        timeout={8000}
         onTimeout={() => {
           if (user) navigate('/login?error=timeout');
-        }} 
+        }}
       />
     );
   }
@@ -105,8 +107,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Match the screenshot text and behavior
   if (isError && !isAuthMissing && !profile) {
     return (
-      <ErrorScreen 
-        message="Failed to load your profile" 
+      <ErrorScreen
+        message="Failed to load your profile"
         error={error as Error}
         onRetry={() => refetch()}
       />
@@ -114,14 +116,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }
 
   return (
-    <AuthContext.Provider value={{ 
-        user, 
-        profile: profile || null, 
-        loading: false, 
-        isProfileStale: isError, 
-        signOut, 
-        refreshProfile, 
-        markDatabaseAsMissing 
+    <AuthContext.Provider value={{
+      user,
+      profile: profile || null,
+      organizationId: profile?.organization_id || null,
+      loading: false,
+      isProfileStale: isError,
+      signOut,
+      refreshProfile,
+      markDatabaseAsMissing
     }}>
       {children}
     </AuthContext.Provider>

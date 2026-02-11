@@ -154,20 +154,33 @@ export const MenuEditorModal: React.FC<MenuEditorModalProps> = ({
         category: categoryName, // Backward compatibility for NOT NULL constraint
         price: parseFloat(price.toString()),
         image_url: imageUrl.trim() || null,
-        status: isAvailable ? 'available' : 'unavailable'
+        status: isAvailable ? 'available' : 'unavailable',
+        // Pass ID if editing, otherwise omit
+        ...(internalItem?.id ? { id: internalItem.id } : {})
       };
 
+      // Call BFF Edge Function
+      const { data: bffResult, error: bffErr } = await supabase.functions.invoke('manage-menu', {
+        body: {
+          action: 'upsert',
+          item: payload,
+          user_id: (await supabase.auth.getUser()).data.user?.id
+        }
+      });
+
+      if (bffErr || (bffResult && bffResult.error)) {
+        throw new Error(bffErr?.message || bffResult?.error || "Menu update failed");
+      }
+
+      const returnedItem = bffResult.data || bffResult; // Adjust based on strict return shape
+
       if (internalItem) {
-        const { error } = await supabase.from('menu').update(payload).eq('id', internalItem.id);
-        if (error) throw error;
         showToast("Dish updated", "success");
       } else {
-        const { data, error } = await supabase.from('menu').insert(payload).select().single();
-        if (error) throw error;
-
         // Critical: Set internalItem to the newly created dish so the Recipe tab works
-        const newItem = data as MenuItem;
-        setInternalItem(newItem);
+        if (returnedItem) {
+          setInternalItem(returnedItem as MenuItem);
+        }
         showToast("Dish created! You can now map recipes.", "success");
         setActiveTab('recipe');
       }

@@ -11,7 +11,10 @@ import {
 import { useQuery } from '@tanstack/react-query';
 import { orderService } from '../services/orderService';
 import QRScanner from './QRScanner';
+import { orderService } from '../services/orderService';
+import QRScanner from './QRScanner';
 import { AnimatedTicket } from './AnimatedTicket';
+import { usePaymentVerification } from '../hooks/usePaymentVerification';
 
 interface BillModalProps {
   isOpen: boolean;
@@ -78,7 +81,9 @@ export const BillModal: React.FC<BillModalProps> = ({
   const [amountPaid, setAmountPaid] = useState<string>('');
   const [refNumber, setRefNumber] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isVerifying, setIsVerifying] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  // Replaced local verifying state with hook state
+  const { startVerification, job, isVerifying, error: jobError, reset: resetJob } = usePaymentVerification();
   const [isVerified, setIsVerified] = useState(false);
   const [isQRScannerOpen, setIsQRScannerOpen] = useState(false);
 
@@ -88,7 +93,9 @@ export const BillModal: React.FC<BillModalProps> = ({
       setRefNumber('');
       setAmountPaid('');
       setPaymentMethod('cash');
+      setPaymentMethod('cash');
       setIsVerified(false);
+      resetJob();
     }
   }, [isOpen]);
 
@@ -171,112 +178,90 @@ export const BillModal: React.FC<BillModalProps> = ({
     const bank = targetBank || paymentMethod;
     if (!ref || bank === 'cash' || !order) return;
 
-    setIsVerifying(true);
-    try {
-      const config = BANK_CONFIG[bank];
+    // Reset previous job state
+    resetJob();
 
-      // Build payload for consolidated /verify-payment endpoint
-      const payload: any = {
-        payment_method: bank,
-        reference: ref,
-        expected_amount: order.total_amount,  // For secondary validation
-        orderId: order.id,
-        branchId: 'main-01'
-      };
+    const config = BANK_CONFIG[bank];
+    const additional_data: any = {};
 
-      // Add bank-specific parameters
-      if (bank === 'cbe') {
-        payload.accountSuffix = getDynamicReceiver('cbe');
-        payload.expected_receiver = getDynamicReceiver('cbe');
-      } else if (bank === 'abyssinia') {
-        payload.suffix = getDynamicReceiver('abyssinia');
-        payload.expected_receiver = getDynamicReceiver('abyssinia');
-      } else if (bank === 'cbebirr') {
-        payload.receiptNumber = ref;
-        payload.phoneNumber = '';
-      }
+    // Add bank-specific parameters
+    if (bank === 'cbe') {
+      additional_data.accountSuffix = getDynamicReceiver('cbe');
+      additional_data.expected_receiver = getDynamicReceiver('cbe');
+    } else if (bank === 'abyssinia') {
+      additional_data.suffix = getDynamicReceiver('abyssinia');
+      additional_data.expected_receiver = getDynamicReceiver('abyssinia');
+    } else if (bank === 'cbebirr') {
+      additional_data.receiptNumber = ref;
+      additional_data.phoneNumber = ''; // Would need input for this if required
+    }
 
-      // Use consolidated verify-payment endpoint with secondary validation
-      const VERIFIER_BASE_URL = (import.meta as any).env?.VITE_VERIFIER_URL || "http://srv1320791.hstgr.cloud:3002";
-      const functionUrl = `${VERIFIER_BASE_URL}/verify-payment`;
+    startVerification({
+      payment_method: bank,
+      reference: ref,
+      expected_amount: order.total_amount,
+      amount: undefined, // Will be filled by verifier if successful
+      additional_data
+    });
+  };
 
-      const response = await fetch(functionUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': 'sosha_prod_123456789abc'
-        },
-        body: JSON.stringify(payload)
-      });
+  // Effect to handle Job Updates
+  useEffect(() => {
+    if (!job) return;
 
-      const data = await response.json();
+    if (job.status === 'completed' && job.result_data) {
+      const data = job.result_data;
 
-      // Always log the audit
+      // Audit is handled by backend or we can do it here if needed, 
+      // but for now let's keep frontend audit log for redundancy
       if (data.success) {
-        await orderService.logPaymentAudit({
-          orderId: order.id,
-          reference: data.receipt_reference || ref,
-          method: bank,
+        orderService.logPaymentAudit({
+          orderId: order!.id,
+          reference: data.receipt_reference || refNumber,
+          method: paymentMethod,
           amount: data.amount,
           status: data.validated ? 'success' : 'failed',
           details: data.validation
         });
       }
 
-      // Check both success (scrape worked) AND validated (secondary checks passed)
-      if (response.ok && data.success && data.validated) {
+      if (data.success && data.validated) {
         setIsVerified(true);
-        const finalAmount = data.amount ? parseFloat(data.amount.toString()) : order.total_amount;
-        const finalReceiptNo = data.receipt_reference || ref;
+        const finalAmount = data.amount ? parseFloat(data.amount) : order!.total_amount;
 
         if (data.amount) setAmountPaid(data.amount.toString());
         if (data.receipt_reference) setRefNumber(data.receipt_reference);
 
         showToast("Payment verified ✓", "success");
 
-        // Tip Logic: Overpayments require confirmation
-        const overpayment = finalAmount - order.total_amount;
-
-        if (overpayment > order.total_amount * 0.05) { // If more than 5% extra, ask to confirm
+        // Tip Logic
+        const overpayment = finalAmount - order!.total_amount;
+        if (overpayment > order!.total_amount * 0.05) {
           showToast("Overpayment detected. Please confirm tip.", "warning");
-          setView('payment'); // Go to summary view to confirm
+          setView('payment');
         } else {
-          // Auto-Trigger Logic: Process payment immediately if exact or small diff
           showToast("Processing automated checkout...", "warning");
-
-          await orderService.closeOrder(order, {
-            method: bank,
+          // Auto close
+          orderService.closeOrder(order!, {
+            method: paymentMethod,
             amountPaid: finalAmount,
             tipAmount: Math.max(0, overpayment),
-            reference: finalReceiptNo
+            reference: data.receipt_reference || refNumber
+          }).then(() => {
+            setView('success');
+            onSuccess();
           });
-
-          setView('success');
-          onSuccess();
         }
       } else {
-        // Handle validation failure - display most critical reason
-        let errorMessage = "Verification failed";
-
-        if (data.validation?.failed_reasons?.length > 0) {
-          // Show only the first (usually most important) mismatch to keep UI clean
-          errorMessage = data.validation.failed_reasons[0];
-        } else if (data.error) {
-          errorMessage = data.error;
-        } else if (data.message) {
-          errorMessage = data.message;
-        }
-
-        throw new Error(errorMessage);
+        // Validation Failed
+        showToast(data.error || "Validation Failed", "error");
+        setIsVerified(false);
       }
-    } catch (err: any) {
-      console.error("Verification Fail:", err);
-      showToast(err.message || "Verifier Offline", "error");
+    } else if (job.status === 'failed') {
+      showToast(job.last_error || "Verification Service Failed", "error");
       setIsVerified(false);
-    } finally {
-      setIsVerifying(false);
     }
-  };
+  }, [job]);
 
   const handleProcessPayment = async () => {
     if (!order || !user) return;

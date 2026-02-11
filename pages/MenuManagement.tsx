@@ -130,9 +130,23 @@ const MenuManagement: React.FC = () => {
                       <Edit3 className="w-3.5 h-3.5" />
                     </button>
                     <button
-                      onClick={() => {
+                      onClick={async () => {
                         if (confirm(`PERMANENT DELETE: Are you sure you want to wipe "${item.name}" and ALL its history? This action cannot be undone.`)) {
-                          supabase.rpc('permanently_delete_menu_item', { target_id: item.id }).then(() => refreshMenu());
+                          try {
+                            const { error, data: result } = await supabase.functions.invoke('manage-menu', {
+                              body: {
+                                action: 'delete',
+                                target_id: item.id,
+                                user_id: user?.id
+                              }
+                            });
+                            if (error || (result && result.error)) throw new Error(error?.message || result?.error);
+
+                            refreshMenu();
+                            showToast("Menu Item Deleted", "success");
+                          } catch (err: any) {
+                            showToast(err.message, "error");
+                          }
                         }
                       }}
                       className="p-2 bg-red-500/20 hover:bg-red-500/40 text-red-500 rounded-lg border border-red-500/20 backdrop-blur-md transition-all active:scale-95"
