@@ -11,8 +11,6 @@ import {
 import { useQuery } from '@tanstack/react-query';
 import { orderService } from '../services/orderService';
 import QRScanner from './QRScanner';
-import { orderService } from '../services/orderService';
-import QRScanner from './QRScanner';
 import { AnimatedTicket } from './AnimatedTicket';
 import { usePaymentVerification } from '../hooks/usePaymentVerification';
 
@@ -81,7 +79,6 @@ export const BillModal: React.FC<BillModalProps> = ({
   const [amountPaid, setAmountPaid] = useState<string>('');
   const [refNumber, setRefNumber] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   // Replaced local verifying state with hook state
   const { startVerification, job, isVerifying, error: jobError, reset: resetJob } = usePaymentVerification();
   const [isVerified, setIsVerified] = useState(false);
@@ -92,7 +89,6 @@ export const BillModal: React.FC<BillModalProps> = ({
       setView('bill');
       setRefNumber('');
       setAmountPaid('');
-      setPaymentMethod('cash');
       setPaymentMethod('cash');
       setIsVerified(false);
       resetJob();
