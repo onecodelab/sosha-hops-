@@ -139,7 +139,6 @@ const MenuManagement: React.FC = () => {
                                 body: {
                                   action: 'delete',
                                   target_id: item.id,
-                                  user_id: user?.id
                                 }
                               });
                               if (!error && !(result && result.error)) {

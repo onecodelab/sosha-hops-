@@ -188,7 +188,6 @@ const Inventory: React.FC = () => {
           body: {
             action: 'update',
             branch_id: activeBranchId,
-            user_id: (await supabase.auth.getUser()).data.user?.id,
             reason: 'Manual Adjustment via Dashboard',
             items: [{
               ingredient_id: selectedItem.id,

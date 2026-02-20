@@ -3,7 +3,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
-    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Origin': Deno.env.get('ALLOWED_ORIGIN') ?? '*',
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
@@ -13,24 +13,32 @@ serve(async (req) => {
     }
 
     try {
-        const supabase = createClient(
-            Deno.env.get('SUPABASE_URL') ?? '',
-            Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-        );
+        const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
+        const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+        const anonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? '';
+        const authHeader = req.headers.get('Authorization');
+
+        if (!authHeader) {
+            return new Response(JSON.stringify({ error: 'Missing authorization header' }), { status: 401, headers: corsHeaders });
+        }
+
+        const supabase = createClient(supabaseUrl, serviceRoleKey);
+        const authClient = createClient(supabaseUrl, anonKey, { global: { headers: { Authorization: authHeader } } });
+
+        const { data: { user }, error: userErr } = await authClient.auth.getUser();
+        if (userErr || !user) {
+            return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: corsHeaders });
+        }
 
         const body = await req.json();
-        const { action, item, target_id, user_id } = body;
+        const { action, item, target_id } = body;
         // item: { id?, name, price, category, ... }
-
-        if (!user_id) {
-            return new Response(JSON.stringify({ error: "Missing user_id" }), { status: 400, headers: corsHeaders });
-        }
 
         // 1. Resolve Organization ID from User Profile
         const { data: profile, error: profileErr } = await supabase
             .from('profiles')
             .select('organization_id, role')
-            .eq('id', user_id)
+            .eq('id', user.id)
             .single();
 
         if (profileErr || !profile || !profile.organization_id) {
@@ -46,6 +54,20 @@ serve(async (req) => {
 
         // 2. Handle Actions
         if (action === 'upsert') {
+            if (!item) throw new Error('Missing item payload');
+
+            if (item.id) {
+                const { data: existingItem } = await supabase
+                    .from('menu')
+                    .select('organization_id')
+                    .eq('id', item.id)
+                    .maybeSingle();
+
+                if (existingItem && existingItem.organization_id !== organizationId) {
+                    return new Response(JSON.stringify({ error: 'Item not found or unauthorized' }), { status: 404, headers: corsHeaders });
+                }
+            }
+
             const payload = {
                 ...item,
                 organization_id: organizationId,
