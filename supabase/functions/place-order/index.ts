@@ -13,6 +13,8 @@ serve(async (req) => {
         return new Response('ok', { headers: corsHeaders });
     }
 
+    const startTime = Date.now();
+
     try {
         // 1. Initialize Clients
         const sbUrl = Deno.env.get('SUPABASE_URL');
@@ -30,11 +32,34 @@ serve(async (req) => {
         const redis = (redisUrl && redisToken) ? new Redis({ url: redisUrl, token: redisToken }) : null;
 
         // 2. Parse Payload
-        let { branch_id, items, order_details, user_id, source, table_number } = await req.json();
+        let { branch_id, items, order_details, user_id, source, table_number, organization_id: input_org_id } = await req.json();
 
+        // 2.1 RESOLVE & VALIDATE ORGANIZATION (CRITICAL for Multi-Tenancy)
         if (!branch_id || !items) {
             return new Response(JSON.stringify({ error: "Missing required data" }), { status: 400, headers: corsHeaders });
         }
+
+        const { data: branchData, error: branchErr } = await supabase
+            .from('branches')
+            .select('organization_id, name')
+            .eq('id', branch_id)
+            .single();
+
+        if (branchErr || !branchData) {
+            console.error(`[AUDIT] Unauthorized access attempt or invalid branch: ${branch_id}`);
+            return new Response(JSON.stringify({ error: "Invalid Branch ID or Branch not found" }), { status: 400, headers: corsHeaders });
+        }
+
+        const organizationId = branchData.organization_id;
+
+        // SACRED RULE: Isolation must be structural. 
+        if (input_org_id && input_org_id !== organizationId) {
+            console.error(`[SECURITY ALERT] Tenant Mismatch! Input Org: ${input_org_id}, Expected Org: ${organizationId}`);
+            return new Response(JSON.stringify({ error: "Tenant isolation violation" }), { status: 403, headers: corsHeaders });
+        }
+
+        // OBSERVABILITY: Log Tool Call Execution
+        console.log(`[TOOL_CALL] place-order | Branch: ${branchData.name} (${branch_id}) | Org: ${organizationId} | User: ${user_id || 'chatbot'}`);
 
         // Robustness: If items comes as a JSON string from Flowise, parse it
         if (typeof items === 'string') {
@@ -50,7 +75,7 @@ serve(async (req) => {
             return new Response(JSON.stringify({ error: "Items must be a non-empty array" }), { status: 400, headers: corsHeaders });
         }
 
-        // 2.1 Resolve Table and Session if table_number is provided
+        // 2.2 Resolve Table and Session if table_number is provided
         let tableId = null;
         let sessionId = null;
         if (table_number) {
@@ -63,11 +88,6 @@ serve(async (req) => {
 
             if (tableData) {
                 tableId = tableData.id;
-                // If table is found, we can trust its org ID (optimization)
-                if (tableData.organization_id) {
-                    // We will use this below
-                }
-
                 // Find or create active session
                 const { data: existingSessions } = await supabase
                     .from('table_sessions')
@@ -92,7 +112,7 @@ serve(async (req) => {
             }
         }
 
-        // Normalize items: ensure menu_item_id is present (Flowise might just send 'id')
+        // Normalize items: ensure menu_item_id is present
         const normalizedItems = items.map((i: any) => ({
             ...i,
             menu_item_id: i.menu_item_id || i.id
@@ -100,9 +120,7 @@ serve(async (req) => {
 
         // 3. Resolve Menu Prices and Ingredients
         const itemIdentifiers = normalizedItems.map((i: any) => i.menu_item_id);
-        console.log(`Resolving items: ${JSON.stringify(itemIdentifiers)}`);
 
-        // Fetch all possible menu items for this branch once (Small list, safe and robust)
         let menuQuery = supabase.from('menu').select('id, name, price');
         if (branch_id && branch_id !== '00000000-0000-0000-0000-000000000000') {
             menuQuery = menuQuery.eq('branch_id', branch_id);
@@ -114,26 +132,10 @@ serve(async (req) => {
             console.error("Menu fetch error:", menuErr);
         }
 
-        // 2.2 Resolve Organization ID (CRITICAL for Multi-Tenancy)
-        // We need the organization_id to insert into orders/order_items.
-        // We can get it from the branch.
-        const { data: branchData, error: branchErr } = await supabase
-            .from('branches')
-            .select('organization_id')
-            .eq('id', branch_id)
-            .single();
-
-        if (branchErr || !branchData) {
-            return new Response(JSON.stringify({ error: "Invalid Branch ID or Branch not found" }), { status: 400, headers: corsHeaders });
-        }
-        const organizationId = branchData.organization_id;
-
-        // Helper to slugify names for flexible matching
-        const slugify = (text: string) => text?.toLowerCase().replace(/[^a-z0-9]/g, '');
-
         // Calculate Totals & Map to UUIDs
         let orderTotal = 0;
         const unresolvable: string[] = [];
+        const slugify = (text: string) => text?.toLowerCase().replace(/[^a-z0-9]/g, '');
 
         for (const item of normalizedItems) {
             const inputId = item.menu_item_id?.toString();
@@ -151,7 +153,6 @@ serve(async (req) => {
             if (menuItem) {
                 item.price = menuItem.price || 0;
                 item.menu_item_id = menuItem.id; // Map back to real UUID
-                console.log(`Resolved: ${inputId} -> ${menuItem.name} (${menuItem.id}) at ${item.price}`);
             } else {
                 console.warn(`Could not resolve item: ${inputId}`);
                 unresolvable.push(inputId);
@@ -162,7 +163,7 @@ serve(async (req) => {
         if (unresolvable.length > 0) {
             return new Response(JSON.stringify({
                 error: "Items not found",
-                detail: `I couldn't find ${unresolvable.join(', ')} in the menu. fr. Please use the exact names or IDs from search_menu_items.`
+                detail: `I couldn't find ${unresolvable.join(', ')} in the menu. Please use the exact names or IDs.`
             }), { status: 400, headers: corsHeaders });
         }
 
@@ -204,20 +205,15 @@ serve(async (req) => {
 
         const ingredientsToLock = Object.keys(impactMap);
 
-        // If no ingredients (e.g., pure service items), verify stock isn't needed but proceed
-        // Redis is optional - skip stock checking if redis is not configured
+        // Redis Stock Check (Optional)
         if (ingredientsToLock.length > 0 && redis) {
-            // 5. ATOMIC DECREMENT (The Guard)
             const pipeline = redis.pipeline();
             for (const ingId of ingredientsToLock) {
                 const key = `stock:${branch_id}:${ingId}`;
                 pipeline.decrby(key, impactMap[ingId]);
             }
 
-            // Execute decrements
             const stockLevels = await pipeline.exec();
-
-            // 6. Check for Negative Stock (Failure)
             const failedIndices: number[] = [];
             stockLevels.forEach((level, index) => {
                 if (typeof level === 'number' && level < 0) {
@@ -226,9 +222,8 @@ serve(async (req) => {
             });
 
             if (failedIndices.length > 0) {
-                // ROLLBACK: Re-increment logic
+                // ROLLBACK Redis
                 const rollbackPipeline = redis.pipeline();
-                // Rollback ALL decrements to ensure consistency (even valid ones, since the ORDER failed)
                 for (let i = 0; i < ingredientsToLock.length; i++) {
                     const ingId = ingredientsToLock[i];
                     const key = `stock:${branch_id}:${ingId}`;
@@ -249,22 +244,22 @@ serve(async (req) => {
             .insert({
                 ...(order_details || {}),
                 branch_id,
-                organization_id: organizationId, // Added Organization Context
+                organization_id: organizationId,
                 table_id: tableId,
                 table_number: table_number || null,
-                waiter_id: user_id || null, // null for unassigned chatbot orders
+                waiter_id: user_id || null,
                 source: source || 'chatbot',
                 status: 'pending',
                 total_amount: orderTotal,
                 subtotal_amount: subtotal,
                 vat_amount: vatAmount,
-                vat_rate: 15 // Standard 15%
+                vat_rate: 15
             })
             .select()
             .single();
 
         if (orderErr) {
-            // Critical SQL Failure after Redis Success -> MUST Rollback Redis
+            // Rollback Redis on SQL failure
             if (ingredientsToLock.length > 0 && redis) {
                 const rollbackPipeline = redis.pipeline();
                 for (const ingId of ingredientsToLock) {
@@ -276,7 +271,7 @@ serve(async (req) => {
             throw orderErr;
         }
 
-        // 7.1 Update Table to Occupied if tableId is present
+        // 7.1 Update Table Status
         if (tableId) {
             await supabase.from('tables').update({
                 status: 'occupied',
@@ -289,25 +284,33 @@ serve(async (req) => {
         // 8. Insert Order Items
         const itemsPayload = normalizedItems.map((i: any) => ({
             order_id: order.id,
-            organization_id: organizationId, // Added Organization Context
+            organization_id: organizationId,
             menu_item_id: i.menu_item_id,
             quantity: i.quantity,
-            price: i.price || 0, // Fallback if missing
+            price: i.price || 0,
             special_instructions: i.notes || ''
         }));
 
         const { error: itemsErr } = await supabase.from('order_items').insert(itemsPayload);
+        if (itemsErr) throw itemsErr;
 
-        if (itemsErr) {
-            // Note: Partial failure here is complex (Zombie order). 
-            // In strict systems we'd delete the order or have a background cleanup.
-            // For now, we throw to alert the user.
-            throw itemsErr;
-        }
+        const duration = Date.now() - startTime;
+        console.log(`[TOOL_SUCCESS] place-order | Order: ${order.id} | Duration: ${duration}ms`);
 
-        return new Response(JSON.stringify({ success: true, order_id: order.id }), { headers: corsHeaders });
+        return new Response(JSON.stringify({
+            success: true,
+            order_id: order.id,
+            metrics: {
+                duration_ms: duration
+            }
+        }), { headers: corsHeaders });
 
     } catch (err: any) {
-        return new Response(JSON.stringify({ error: err.message }), { status: 500, headers: corsHeaders });
+        const duration = Date.now() - startTime;
+        console.error(`[TOOL_ERROR] place-order | Error: ${err.message} | Duration: ${duration}ms`);
+        return new Response(JSON.stringify({
+            error: err.message,
+            metrics: { duration_ms: duration }
+        }), { status: 500, headers: corsHeaders });
     }
 });

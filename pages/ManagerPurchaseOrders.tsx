@@ -30,7 +30,7 @@ interface ReceiveItem {
    unit_price: number;
    received_quantity: number;
    previously_received: number;
-   ingredient?: { name: string; unit_type: string };
+   ingredient?: { name: string; unit_type: string; unit_id: string; units?: { abbreviation: string } };
 }
 
 const ManagerPurchaseOrders: React.FC = () => {
@@ -88,9 +88,10 @@ const ManagerPurchaseOrders: React.FC = () => {
          const { data, error } = await supabase
             .from('ingredients')
             .select(`
-               *,
-               branch_inventory!left(current_stock, par_min, par_max)
-            `)
+                *,
+                units(id, abbreviation),
+                branch_inventory!left(current_stock, par_min, par_max)
+             `)
             .eq('is_active', true)
             .eq('branch_inventory.branch_id', activeBranchId)
             .order('name');
@@ -122,7 +123,7 @@ const ManagerPurchaseOrders: React.FC = () => {
           *,
            supplier:suppliers(name),
            creator:profiles!created_by(full_name),
-           items:purchase_order_items(*, ingredient:ingredients(name, unit_type, current_stock, par_min)),
+           items:purchase_order_items(*, ingredient:ingredients(name, unit_type, unit_id, units(abbreviation), current_stock, par_min)),
            activity_log:po_activity_log(*, performer:profiles(full_name)),
             grns:goods_received_notes(*, items:grn_items(*))
         `)
@@ -168,64 +169,29 @@ const ManagerPurchaseOrders: React.FC = () => {
    // Create/Update Mutation
    const { mutate: createPO, isPending: isSaving } = useMutation({
       mutationFn: async ({ isDraft, notes }: { isDraft: boolean, notes?: string }) => {
-         if (!user || !supplierId) throw new Error("Missing supplier or user");
-
+         if (!user || !activeBranchId) throw new Error("Missing auth/branch");
          const validItems = items.filter(i => i.ingredientId && i.qty > 0);
-         if (validItems.length === 0) throw new Error("Please add at least one valid item");
-
-         let poId = editingPOData?.id;
-
-         if (poId) {
-            const { error: updateError } = await supabase
-               .from('purchase_orders')
-               .update({
-                  supplier_id: supplierId,
-                  expected_delivery: deliveryDate,
-                  total_amount: items.reduce((sum, item) => sum + (item.qty * item.price), 0),
-                  status: isDraft ? 'draft' : (isOwnerOrAdmin ? 'sent' : 'pending_approval')
-               })
-               .eq('id', poId);
-
-            if (updateError) throw updateError;
-            await supabase.from('purchase_order_items').delete().eq('po_id', poId);
-         } else {
-            const seq = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
-            const po_number = `PO-${new Date().getFullYear()}-${seq}`;
-
-            const { data: po, error: poError } = await supabase
-               .from('purchase_orders')
-               .insert({
-                  po_number,
-                  supplier_id: supplierId,
-                  branch_id: activeBranchId,
-                  expected_delivery: deliveryDate,
-                  total_amount: items.reduce((sum, item) => sum + (item.qty * item.price), 0),
-                  status: isDraft ? 'draft' : (isOwnerOrAdmin ? 'sent' : 'pending'),
-                  created_by: user.id
-               })
-               .select()
-               .single();
-
-            if (poError) throw poError;
-            poId = po.id;
+         if (!isDraft && (validItems.length === 0 || !supplierId)) {
+            throw new Error("Missing items or supplier");
          }
 
          const poItems = validItems.map(row => ({
-            po_id: poId,
             ingredient_id: row.ingredientId,
-            ordered_quantity: row.qty,
+            quantity: row.qty,
             unit_price: row.price
          }));
 
-         const { error: itemsError } = await supabase.from('purchase_order_items').insert(poItems);
-         if (itemsError) throw itemsError;
-
-         await supabase.from('po_activity_log').insert({
-            po_id: poId,
-            action_type: isDraft ? 'created' : (isOwnerOrAdmin ? 'sent' : 'submitted'),
-            performed_by: user.id,
-            notes: notes || (isDraft ? 'Draft saved' : (isOwnerOrAdmin ? 'PO sent to supplier' : 'Submitted for Owner approval'))
+         const { data: result, error: rpcError } = await supabase.rpc('submit_purchase_order', {
+            p_supplier_id: supplierId,
+            p_branch_id: activeBranchId,
+            p_items: poItems,
+            p_expected_delivery: deliveryDate,
+            p_is_draft: isDraft,
+            p_po_id: editingPOData?.id || null
          });
+
+         if (rpcError) throw rpcError;
+         if (!result?.success) throw new Error(result?.error || "PO Submission failed");
       },
       onSuccess: () => {
          showToast(t('po.success'), 'success');
@@ -258,70 +224,20 @@ const ManagerPurchaseOrders: React.FC = () => {
          if (!user || !selectedPOForReceive) throw new Error("Missing data");
          if (!invoiceNumber) throw new Error("Invoice number is required");
 
-         const allComplete = receiveItems.every(i => (i.received_quantity + i.previously_received) >= i.ordered_quantity);
-
-         // 1. Create GRN
-         const seq = Math.floor(Math.random() * 10000);
-         const grnNumber = `GRN-${new Date().getFullYear()}-${String(seq).padStart(4, '0')}`;
-
-         const { data: grn, error: grnError } = await supabase
-            .from('goods_received_notes')
-            .insert({
-               po_id: selectedPOForReceive.id,
-               grn_number: grnNumber,
-               received_date: receivedDate,
-               invoice_number: invoiceNumber,
-               received_by: user.id,
-               status: allComplete ? 'complete' : 'partial'
-            })
-            .select()
-            .single();
-
-         if (grnError) throw grnError;
-
-         // 2. Insert GRN Items
-         const grnItemsPayload = receiveItems.map(item => ({
-            grn_id: grn.id,
+         const itemsToReceive = receiveItems.map(item => ({
             ingredient_id: item.ingredient_id,
-            ordered_quantity: item.ordered_quantity,
             received_quantity: item.received_quantity
          }));
 
-         const { error: itemsError } = await supabase.from('grn_items').insert(grnItemsPayload);
-         if (itemsError) throw itemsError;
+         const { data: result, error: rpcError } = await supabase.rpc('receive_purchase_order', {
+            p_po_id: selectedPOForReceive.id,
+            p_invoice_number: invoiceNumber,
+            p_received_date: receivedDate,
+            p_items: itemsToReceive
+         });
 
-         // 3. Update Inventory (Transactions)
-         const transactions = receiveItems.map(item => ({
-            branch_id: activeBranchId,
-            ingredient_id: item.ingredient_id,
-            transaction_type: 'purchase',
-            quantity: item.received_quantity,
-            reference_type: 'grn',
-            reference_id: grn.id,
-            performed_by: user.id
-         }));
-
-         const { error: transError } = await supabase.from('inventory_transactions').insert(transactions);
-         if (transError) {
-            console.warn("Transaction log failed, updating stock directly", transError);
-            for (const item of receiveItems) {
-               await supabase.rpc('increment_stock', {
-                  row_id: item.ingredient_id,
-                  quantity: item.received_quantity
-               });
-            }
-         }
-
-         // 4. Update PO Status
-         const { error: poError } = await supabase
-            .from('purchase_orders')
-            .update({
-               status: allComplete ? 'verified' : 'partial_received',
-               received_date: receivedDate
-            })
-            .eq('id', selectedPOForReceive.id);
-
-         if (poError) throw poError;
+         if (rpcError) throw rpcError;
+         if (!result?.success) throw new Error(result?.error || "Receipt recording failed");
       },
       onSuccess: () => {
          showToast(t('grn.success'), 'success');
@@ -353,7 +269,7 @@ const ManagerPurchaseOrders: React.FC = () => {
             if (field === 'ingredientId') {
                const ing = ingredients?.find(i => i.id === value);
                if (ing) {
-                  updated.unit = ing.unit_type;
+                  updated.unit = ing.units?.abbreviation || ing.unit_type;
                   updated.price = ing.cost_per_unit || 0;
                }
             }
@@ -371,7 +287,7 @@ const ManagerPurchaseOrders: React.FC = () => {
          id: crypto.randomUUID(),
          ingredientId: i.ingredient_id,
          qty: i.ordered_quantity,
-         unit: i.ingredient?.unit_type || '-',
+         unit: i.ingredient?.units?.abbreviation || i.ingredient?.unit_type || '-',
          price: i.unit_price || 0
       })));
       setShowForm(true);
@@ -1083,7 +999,7 @@ const ManagerPurchaseOrders: React.FC = () => {
                                     >
                                        <td className="px-8 py-5">
                                           <p className="font-black text-foreground uppercase italic tracking-tight group-hover:text-primary transition-colors">{item.ingredient?.name}</p>
-                                          <p className="text-[9px] text-muted font-black uppercase tracking-widest mt-1 opacity-60">{item.ingredient?.unit_type}</p>
+                                          <p className="text-[9px] text-muted font-black uppercase tracking-widest mt-1 opacity-60">{item.ingredient?.units?.abbreviation || item.ingredient?.unit_type}</p>
                                        </td>
                                        <td className="px-5 py-5 text-center text-foreground font-mono font-black text-base opacity-40">
                                           {item.ordered_quantity}
@@ -1264,7 +1180,7 @@ const ManagerPurchaseOrders: React.FC = () => {
                                        <tr key={item.id} className="hover:bg-muted/5 transition-colors group">
                                           <td className="px-8 py-5">
                                              <p className="font-black text-foreground uppercase italic tracking-tight group-hover:text-primary transition-colors">{item.ingredient?.name}</p>
-                                             <p className="text-[9px] text-muted font-black uppercase tracking-widest mt-1 opacity-60">{item.ingredient?.unit_type}</p>
+                                             <p className="text-[9px] text-muted font-black uppercase tracking-widest mt-1 opacity-60">{item.ingredient?.units?.abbreviation || item.ingredient?.unit_type}</p>
                                           </td>
                                           <td className="px-5 py-5 text-center text-foreground font-mono font-black text-base opacity-40">
                                              {item.ordered_quantity}

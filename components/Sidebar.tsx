@@ -4,7 +4,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import {
     LogOut, LayoutDashboard, ShoppingBag, Users,
     ClipboardList, Utensils, ChevronLeft, ChevronRight,
-    Trash2, Truck, PlusCircle, PackageCheck, FileText, Monitor, BookOpen, TrendingUp, Clock, ShoppingCart
+    Trash2, Truck, PlusCircle, PackageCheck, FileText, Monitor, BookOpen, TrendingUp, Clock, ShoppingCart, Zap
 } from 'lucide-react';
 import { cn } from './ui';
 import { BaroLogo } from './BaroLogo';
@@ -132,31 +132,37 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, setIsCollapsed, h
                 <NavItem
                     icon={LayoutDashboard}
                     label="ADMIN HOME"
-                    path="/admin"
+                    path="/app/admin"
                     allowedRoles={['owner', 'admin']}
+                />
+                <NavItem
+                    icon={Zap}
+                    label="OWNER COMMAND"
+                    path="/app/owner"
+                    allowedRoles={['owner']}
                 />
                 <NavItem
                     icon={LayoutDashboard}
                     label={t('nav.opsDashboard')}
-                    path="/manager"
+                    path="/app/manager"
                     allowedRoles={['manager']}
                 />
                 <NavItem
                     icon={LayoutDashboard}
                     label={t('nav.myStation')}
-                    path="/waiter"
+                    path="/app/waiter"
                     allowedRoles={['waiter']}
                 />
                 <NavItem
                     icon={ShoppingCart}
                     label="My Order Transaction"
-                    path="/waiter/orders"
+                    path="/app/waiter/orders"
                     allowedRoles={['waiter']}
                 />
                 <NavItem
                     icon={LayoutDashboard}
                     label={t('nav.kds')}
-                    path="/kitchen"
+                    path="/app/kitchen"
                     allowedRoles={['kitchen']}
                 />
 
@@ -164,7 +170,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, setIsCollapsed, h
                 <NavItem
                     icon={Monitor}
                     label="Kitchen Board"
-                    path="/kitchen"
+                    path="/app/kitchen"
                     allowedRoles={['manager']}
                 />
 
@@ -172,7 +178,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, setIsCollapsed, h
                 <NavItem
                     icon={Monitor}
                     label="Floor Live Map"
-                    path="/tables"
+                    path="/app/tables"
                     allowedRoles={['owner', 'admin', 'waiter', 'manager']}
                 />
 
@@ -180,13 +186,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, setIsCollapsed, h
                 <NavItem
                     icon={BookOpen}
                     label={t('nav.menuManagement')}
-                    path="/admin/menu"
+                    path="/app/admin/menu"
                     allowedRoles={['owner', 'admin', 'manager']}
                 />
                 <NavItem
                     icon={Utensils}
                     label={t('nav.menuAnalytics')}
-                    path="/menu-analytics"
+                    path="/app/menu-analytics"
                     allowedRoles={['owner', 'admin']}
                 />
 
@@ -194,33 +200,33 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, setIsCollapsed, h
                 <NavItem
                     icon={ShoppingBag}
                     label={t('nav.inventory')}
-                    path="/inventory"
+                    path="/app/inventory"
                     allowedRoles={['manager', 'admin', 'owner']}
                 />
                 <NavItem
                     icon={Trash2}
                     label="Waste Analytics"
-                    path="/admin/waste"
+                    path="/app/admin/waste"
                     allowedRoles={['manager', 'admin', 'owner']}
                 />
 
                 <NavItem
                     icon={Trash2}
                     label={t('nav.waste')}
-                    path="/kitchen/waste"
+                    path="/app/kitchen/waste"
                     allowedRoles={['kitchen']}
                 />
                 <NavItem
                     icon={Truck}
                     label={t('nav.restock')}
-                    path="/kitchen/restock"
+                    path="/app/kitchen/restock"
                     allowedRoles={['kitchen']}
                 />
 
                 <NavItem
                     icon={ShoppingCart}
                     label={t('nav.purchaseOrders')}
-                    path="/po/list"
+                    path="/app/po/list"
                     allowedRoles={['owner', 'admin', 'manager']}
                 />
 
@@ -228,7 +234,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, setIsCollapsed, h
                 <NavItem
                     icon={ClipboardList}
                     label={t('nav.orders')}
-                    path="/orders-tables"
+                    path="/app/orders-tables"
                     allowedRoles={['owner', 'admin']}
                 />
 
@@ -236,7 +242,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, setIsCollapsed, h
                 <NavItem
                     icon={Users}
                     label={t('nav.staffPerf')}
-                    path="/admin/staff-performance"
+                    path="/app/admin/staff-performance"
                     allowedRoles={['owner', 'admin']}
                 />
 
@@ -244,7 +250,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, setIsCollapsed, h
                 <NavItem
                     icon={ClipboardList}
                     label={t('nav.settings')}
-                    path="/settings"
+                    path="/app/settings"
                     allowedRoles={['admin', 'owner']}
                 />
             </nav>

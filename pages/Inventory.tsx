@@ -6,7 +6,7 @@ import {
   AlertTriangle, Package, ArrowUpDown, Info, Tag, Calendar, DollarSign, Loader2, Lock, Eye
 } from 'lucide-react';
 import { supabase } from '../supabase';
-import { Ingredient } from '../types';
+import { Ingredient, Unit } from '../types';
 import { useRoleAccess } from '../hooks/useRoleAccess';
 import { RoleGuard } from '../components/RoleGuard';
 import { useBranch } from '../contexts/BranchContext';
@@ -20,7 +20,7 @@ interface FormData {
   par_max: number;
   cost_per_unit: number;
   expiry_days: number;
-  unit_type: string;
+  unit_id: string;
   weight_per_unit: number;
 }
 
@@ -32,6 +32,7 @@ const Inventory: React.FC = () => {
 
   const [searchTerm, setSearchTerm] = useState('');
   const [inventory, setInventory] = useState<Ingredient[]>([]);
+  const [units, setUnits] = useState<Unit[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<Ingredient | null>(null);
@@ -44,7 +45,7 @@ const Inventory: React.FC = () => {
     par_max: 0,
     cost_per_unit: 0,
     expiry_days: 0,
-    unit_type: 'g',
+    unit_id: '',
     weight_per_unit: 1
   });
 
@@ -54,6 +55,7 @@ const Inventory: React.FC = () => {
   useEffect(() => {
     if (!activeBranchId) return;
     fetchInventory();
+    fetchUnits();
 
     // Subscribe to both ingredients (for global info) and branch_inventory (for stock)
     const ingredientsSub = supabase.channel('ingredients_sync_v2')
@@ -75,6 +77,11 @@ const Inventory: React.FC = () => {
     };
   }, [activeBranchId]);
 
+  const fetchUnits = async () => {
+    const { data } = await supabase.from('units').select('*').order('name');
+    if (data) setUnits(data);
+  };
+
   const fetchInventory = async () => {
     if (!activeBranchId) return;
     setLoading(true);
@@ -86,6 +93,7 @@ const Inventory: React.FC = () => {
         .from('ingredients')
         .select(`
           *,
+          units(id, abbreviation, name),
           branch_inventory!left(current_stock, par_min, par_max, last_updated)
         `)
         .eq('is_active', true)
@@ -124,7 +132,7 @@ const Inventory: React.FC = () => {
       par_max: Number(ingredient.par_max) || 0,
       cost_per_unit: Number(ingredient.cost_per_unit) || 0,
       expiry_days: Number(ingredient.expiry_days) || 0,
-      unit_type: ingredient.unit_type || 'g',
+      unit_id: ingredient.unit_id || (units.find(u => u.abbreviation === ingredient.unit_type)?.id || ''),
       weight_per_unit: Number(ingredient.weight_per_unit) || 1
     });
 
@@ -155,7 +163,8 @@ const Inventory: React.FC = () => {
       const globalUpdate = {
         cost_per_unit: Number(formData.cost_per_unit),
         expiry_days: Math.floor(Number(formData.expiry_days)),
-        unit_type: formData.unit_type,
+        unit_id: formData.unit_id,
+        // derived unit_type for legacy compatibility (optional, better to let DB trigger handle or ignore)
         weight_per_unit: Number(formData.weight_per_unit),
         updated_at: new Date().toISOString()
       };
@@ -173,37 +182,60 @@ const Inventory: React.FC = () => {
       }
 
       // Edge Function Call
-      const { data: bffResult, error: bffErr } = await supabase.functions.invoke('manage-inventory', {
-        body: {
-          action: 'update', // or 'audit'
-          branch_id: activeBranchId,
-          user_id: (await supabase.auth.getUser()).data.user?.id,
-          reason: 'Manual Adjustment via Dashboard',
-          items: [{
-            ingredient_id: selectedItem.id,
-            quantity: Number(formData.current_stock),
-            current_stock: selectedItem.current_stock // Pass old stock for delta calculation
-          }]
-        }
-      });
+      let edgeSuccess = false;
+      try {
+        const { data: bffResult, error: bffErr } = await supabase.functions.invoke('manage-inventory', {
+          body: {
+            action: 'update',
+            branch_id: activeBranchId,
+            user_id: (await supabase.auth.getUser()).data.user?.id,
+            reason: 'Manual Adjustment via Dashboard',
+            items: [{
+              ingredient_id: selectedItem.id,
+              quantity: Number(formData.current_stock),
+              current_stock: selectedItem.current_stock
+            }]
+          }
+        });
 
-      if (bffErr || (bffResult && bffResult.error)) {
-        throw new Error(bffErr?.message || bffResult?.error || "Inventory update failed");
+        if (bffErr || (bffResult && bffResult.error)) {
+          console.warn("Edge Function failed, falling back to direct SQL:", bffErr || bffResult?.error);
+        } else {
+          edgeSuccess = true;
+        }
+      } catch (e) {
+        console.warn("Edge Function unreachable, falling back to direct SQL:", e);
       }
 
-      // 3. Update Par Levels locally (or we can move this to BFF too, but Par levels are purely SQL metadata usually)
-      // Since manage-inventory only handles 'current_stock' in my initial implementation, I should probably 
-      // let it handle everything or keep par levels separate. 
-      // For now, let's keep Par Levels here via direct update OR update BFF to handle them.
-      // Refactoring BFF to handle par levels is better.
-      // But my BFF implementation currently only updates 'current_stock'. 
-      // Let's do a quick separate update for Par levels to ensure they are saved, 
-      // or assume BFF *should* handle them. 
-      // CHECK: My BFF upsert payload: { branch_id, ingredient_id, current_stock, last_updated }
-      // It DOES NOT upsert par_min/par_max! 
-      // I must add par_min/par_max to BFF or do it here.
-      // DOING IT HERE for safety until BFF is expanded.
+      // 3. Fallback / Main Logic: Direct Database Updates
+      // If edge function failed or was unreachable, we do the manual work here.
+      if (!edgeSuccess) {
+        // Update stock
+        const { error: stockErr } = await supabase
+          .from('branch_inventory')
+          .upsert({
+            branch_id: activeBranchId,
+            ingredient_id: selectedItem.id,
+            current_stock: Number(formData.current_stock),
+            last_updated: new Date().toISOString()
+          }, { onConflict: 'branch_id,ingredient_id' });
 
+        if (stockErr) throw stockErr;
+
+        // Log transaction manually
+        await supabase.from('inventory_transactions').insert({
+          branch_id: activeBranchId,
+          organization_id: (await supabase.from('branches').select('organization_id').eq('id', activeBranchId).single()).data?.organization_id,
+          ingredient_id: selectedItem.id,
+          transaction_type: 'audit',
+          quantity: Number(formData.current_stock) - (selectedItem.current_stock || 0),
+          performed_by: (await supabase.auth.getUser()).data.user?.id,
+          reason: 'Manual Adjustment (Edge Fallback)',
+          created_at: new Date().toISOString()
+        });
+      }
+
+      // Update Par Levels (Always direct for now)
       const { error: parErr } = await supabase
         .from('branch_inventory')
         .update({
@@ -378,7 +410,7 @@ const Inventory: React.FC = () => {
                           <span className="font-black text-foreground text-base tracking-tight">{item.name || 'Unnamed'}</span>
                           <div className="flex items-center gap-3 mt-1.5">
                             <span className="text-[10px] text-muted font-black bg-muted/10 px-2 py-0.5 rounded-lg uppercase tracking-widest shadow-inner">{item.sku || '---'}</span>
-                            <span className="text-[10px] text-muted font-black uppercase tracking-widest opacity-60">per {item.unit_type || 'unit'}</span>
+                            <span className="text-[10px] text-muted font-black uppercase tracking-widest opacity-60">per {item.units?.abbreviation || item.unit_type || 'unit'}</span>
                           </div>
                         </div>
                       </td>
@@ -399,7 +431,7 @@ const Inventory: React.FC = () => {
                               <span className="text-[10px] font-black text-muted uppercase tracking-widest opacity-40">Days</span>
                             </div>
                             <span className="text-[10px] font-black text-muted uppercase tracking-widest opacity-60">
-                              {stockVal.toLocaleString()} {item.unit_type}
+                              {stockVal.toLocaleString()} {item.units?.abbreviation || item.unit_type}
                             </span>
                           </div>
                         </td>
@@ -488,17 +520,14 @@ const Inventory: React.FC = () => {
             <div className="space-y-1.5 relative z-10">
               <p className="text-[9px] font-black text-muted uppercase tracking-[0.2em]">Master Metric Unit</p>
               <select
-                value={formData.unit_type}
-                onChange={e => setFormData({ ...formData, unit_type: e.target.value })}
+                value={formData.unit_id}
+                onChange={e => setFormData({ ...formData, unit_id: e.target.value })}
                 className="bg-card border border-border rounded-xl px-3 py-1.5 text-xs text-foreground font-black outline-none focus:border-primary/50 w-full transition-all shadow-sm"
               >
-                <option value="g">g (Grams)</option>
-                <option value="kg">kg (Kilograms)</option>
-                <option value="ml">ml (Milliliters)</option>
-                <option value="l">l (Liters)</option>
-                <option value="pcs">pcs (Pieces)</option>
-                <option value="slice">slice (Slices)</option>
-                <option value="unit">unit (General)</option>
+                <option value="" disabled>Select Unit</option>
+                {units.map(u => (
+                  <option key={u.id} value={u.id}>{u.abbreviation} ({u.name})</option>
+                ))}
               </select>
             </div>
             <div className="space-y-1.5 relative z-10">
@@ -608,7 +637,7 @@ const Inventory: React.FC = () => {
                   </div>
                   <div className="pt-2 md:pt-6 w-full md:w-auto">
                     <div className="bg-primary/10 border border-primary/30 rounded-2xl h-14 px-6 flex items-center justify-center gap-3 shadow-lg">
-                      <span className="text-[10px] font-black text-primary uppercase">1 {formData.unit_type}</span>
+                      <span className="text-[10px] font-black text-primary uppercase">1 {units.find(u => u.id === formData.unit_id)?.abbreviation || 'Unit'}</span>
                       <div className="w-3 h-[1px] bg-primary/30" />
                       <span className="text-xl font-black text-primary tracking-tighter">{formData.weight_per_unit}g/ml</span>
                     </div>

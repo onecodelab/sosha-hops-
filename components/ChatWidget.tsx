@@ -1,10 +1,22 @@
 import React, { useEffect } from 'react';
+import { useAuth } from '../AuthContext';
+import { useBranch } from '../contexts/BranchContext';
 
 export const ChatWidget: React.FC = () => {
+    const { organizationId: contextOrgId } = useAuth();
+    const { activeBranchId } = useBranch();
+
     useEffect(() => {
-        // Extract table from URL (e.g., ?table=T1)
+        // Extract params from URL (e.g., ?table=T1&branch=...&org=...)
+        // This is for guest customers scanning QR codes
         const urlParams = new URLSearchParams(window.location.search);
         const tableFromUrl = urlParams.get('table');
+        const branchFromUrl = urlParams.get('branch');
+        const orgFromUrl = urlParams.get('org');
+
+        // Resolve IDs: Context takes priority for staff, URL for guests
+        const organizationId = contextOrgId || orgFromUrl || '';
+        const branchId = activeBranchId || branchFromUrl || '';
 
         // Load Flowise Embed Script
         const script = document.createElement('script');
@@ -15,7 +27,9 @@ export const ChatWidget: React.FC = () => {
                 chatflowid: "771f0508-35a2-4317-a82d-a2b662cf52a8",
                 apiHost: "https://srv1320791.hstgr.cloud",
                 overrideConfig: {
-                    table_number: "${tableFromUrl || ''}"
+                    table_number: "${tableFromUrl || ''}",
+                    organization_id: "${organizationId}",
+                    branch_id: "${branchId}"
                 },
                 theme: {
                     button: {
@@ -53,15 +67,13 @@ export const ChatWidget: React.FC = () => {
         document.body.appendChild(script);
 
         return () => {
-            // Cleanup: Flowise doesn't have an official destroy method via script tag easily 
-            // but we can remove the script. The chatbot element itself is usually appended to body.
             const chatbotElement = document.querySelector('flowise-chatbot');
             if (chatbotElement) {
                 chatbotElement.remove();
             }
             document.body.removeChild(script);
         };
-    }, []);
+    }, [contextOrgId, activeBranchId]);
 
-    return null; // The chatbot is rendered globally by the script
+    return null;
 };

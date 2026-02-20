@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../supabase';
-import { MenuDish, Ingredient } from '../types';
+import { MenuDish, Ingredient, Unit } from '../types';
 import { getConversionFactor, calculateMargins, RecipeIngredient, calculateIngredientCost } from '../lib/menuEconomics';
 import { Input, Button, showToast, cn, Badge } from './ui';
 import { Search, Plus, Trash2, Save, Loader2, ChefHat, Info, BookOpen, X, AlertTriangle } from 'lucide-react';
@@ -15,8 +15,9 @@ interface LocalMapping {
   ingredient_id: string;
   name: string;
   quantity_needed: number;
-  unit_type: string;        // Recipe Unit
-  inventory_unit: string;   // Original Inventory Unit
+  unit_id: string;          // Recipe Unit ID
+  inventory_unit_id: string; // Original Inventory Unit ID
+  inventory_unit_name: string; // For display
   cost_per_unit: number;    // Cost per Inventory Unit
   weight_per_unit: number;  // Grams/ML per piece
   out_of_stock_impact: 'kills_dish' | 'disable_variant' | 'optional';
@@ -25,6 +26,7 @@ interface LocalMapping {
 export const RecipeEditor: React.FC<RecipeEditorProps> = ({ dish, onSaved }) => {
   const [recipeId, setRecipeId] = useState<string | null>(null);
   const [allIngredients, setAllIngredients] = useState<Ingredient[]>([]);
+  const [units, setUnits] = useState<Unit[]>([]);
   const [selectedMappings, setSelectedMappings] = useState<LocalMapping[]>([]);
 
   const [searchTerm, setSearchTerm] = useState('');
@@ -41,9 +43,16 @@ export const RecipeEditor: React.FC<RecipeEditorProps> = ({ dish, onSaved }) => 
         // 1. Fetch master ingredient names, units, and COSTS
         const { data: ingData, error: ingError } = await supabase
           .from('ingredients')
-          .select('id, name, unit_type, cost_per_unit, weight_per_unit')
+          .select(`
+            id, name, cost_per_unit, weight_per_unit,
+            unit_id, units(id, abbreviation, name)
+          `)
           .eq('is_active', true)
           .order('name');
+
+        // 1b. Fetch Units
+        const { data: unitData } = await supabase.from('units').select('*').order('name');
+        if (unitData) setUnits(unitData);
 
         if (ingError) throw new Error(`Ingredients Table Error: ${ingError.message}`);
         if (ingData) setAllIngredients(ingData as any[]);
@@ -60,12 +69,23 @@ export const RecipeEditor: React.FC<RecipeEditorProps> = ({ dish, onSaved }) => 
         let currentId = existingRecipe?.id;
 
         if (!currentId) {
+          // Fetch Organization ID for initialization
+          const { data: { user: authUser } } = await supabase.auth.getUser();
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('organization_id')
+            .eq('id', authUser?.id)
+            .single();
+
+          if (!profile?.organization_id) throw new Error("Organization context missing. Please re-login.");
+
           const { data: newRecipe, error: createError } = await supabase
             .from('recipes')
             .insert({
               menu_item_id: dish.id,
               name: dish.name,
-              status: 'published'
+              status: 'published',
+              organization_id: profile.organization_id // Hardened requirement
             })
             .select()
             .single();
@@ -95,9 +115,9 @@ export const RecipeEditor: React.FC<RecipeEditorProps> = ({ dish, onSaved }) => 
           .select(`
             ingredient_id,
             quantity_needed,
-            unit_type,
+            unit_id,
             out_of_stock_impact,
-            ingredient:ingredients(name, unit_type, cost_per_unit, weight_per_unit)
+            ingredient:ingredients(name, unit_id, cost_per_unit, weight_per_unit, units(*))
           `)
           .eq('recipe_id', currentId);
 
@@ -108,8 +128,9 @@ export const RecipeEditor: React.FC<RecipeEditorProps> = ({ dish, onSaved }) => 
             ingredient_id: m.ingredient_id,
             name: m.ingredient?.name || 'Unknown',
             quantity_needed: m.quantity_needed || 0,
-            unit_type: m.unit_type || m.ingredient?.unit_type || 'g',
-            inventory_unit: m.ingredient?.unit_type || 'g',
+            unit_id: m.unit_id || m.ingredient?.unit_id || '',
+            inventory_unit_id: m.ingredient?.unit_id || '',
+            inventory_unit_name: m.ingredient?.units?.abbreviation || 'unit',
             cost_per_unit: m.ingredient?.cost_per_unit || 0,
             weight_per_unit: m.ingredient?.weight_per_unit || 1,
             out_of_stock_impact: m.out_of_stock_impact || 'kills_dish'
@@ -138,8 +159,9 @@ export const RecipeEditor: React.FC<RecipeEditorProps> = ({ dish, onSaved }) => 
       ingredient_id: item.id,
       name: item.name,
       quantity_needed: 1,
-      unit_type: item.unit_type || 'g',
-      inventory_unit: item.unit_type || 'g',
+      unit_id: item.unit_id || '', // Default to inventory unit
+      inventory_unit_id: item.unit_id || '',
+      inventory_unit_name: item.units?.abbreviation || 'unit',
       cost_per_unit: item.cost_per_unit || 0,
       weight_per_unit: item.weight_per_unit || 1,
       out_of_stock_impact: 'kills_dish'
@@ -158,9 +180,9 @@ export const RecipeEditor: React.FC<RecipeEditorProps> = ({ dish, onSaved }) => 
     ));
   };
 
-  const updateUnit = (id: string, unit: string) => {
+  const updateUnit = (id: string, unitId: string) => {
     setSelectedMappings(prev => prev.map(m =>
-      m.ingredient_id === id ? { ...m, unit_type: unit } : m
+      m.ingredient_id === id ? { ...m, unit_id: unitId } : m
     ));
   };
 
@@ -174,6 +196,19 @@ export const RecipeEditor: React.FC<RecipeEditorProps> = ({ dish, onSaved }) => 
     if (!recipeId) return;
     setSaving(true);
     try {
+      // Fetch organization_id to satisfy Kernel hardening constraints
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Authentication required");
+
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('organization_id')
+        .eq('id', user.id)
+        .single();
+
+      const orgId = profile?.organization_id;
+      if (!orgId) throw new Error("Organization context missing. Please re-login.");
+
       const { error: deleteError } = await supabase
         .from('recipe_ingredients')
         .delete()
@@ -186,8 +221,9 @@ export const RecipeEditor: React.FC<RecipeEditorProps> = ({ dish, onSaved }) => 
           recipe_id: recipeId,
           ingredient_id: m.ingredient_id,
           quantity_needed: m.quantity_needed,
-          unit_type: m.unit_type || 'g',
-          out_of_stock_impact: m.out_of_stock_impact
+          unit_id: m.unit_id,
+          out_of_stock_impact: m.out_of_stock_impact,
+          organization_id: orgId // Hardened multi-tenancy requirement
         }));
 
         const { error: insertError } = await supabase
@@ -208,10 +244,10 @@ export const RecipeEditor: React.FC<RecipeEditorProps> = ({ dish, onSaved }) => 
 
   const totalCost = useMemo(() => {
     return selectedMappings.reduce((sum, m) => {
-      // Use centralized cost calculation
-      return sum + calculateIngredientCost(m as unknown as RecipeIngredient);
+      // Pass the unit registry so UUIDs can be resolved correctly
+      return sum + calculateIngredientCost(m as unknown as RecipeIngredient, units);
     }, 0);
-  }, [selectedMappings]);
+  }, [selectedMappings, units]);
 
   const { marginPercent } = useMemo(() => {
     return calculateMargins(dish.price, totalCost);
@@ -279,7 +315,7 @@ export const RecipeEditor: React.FC<RecipeEditorProps> = ({ dish, onSaved }) => 
                 >
                   <div className="flex flex-col">
                     <span className="text-sm font-bold text-white block group-hover:text-primary">{item.name}</span>
-                    <span className="text-[10px] text-gray-500 font-mono uppercase tracking-widest opacity-40">{item.unit_type} Spec</span>
+                    <span className="text-[10px] text-gray-500 font-mono uppercase tracking-widest opacity-40">{item.units?.abbreviation || 'UNIT'} Spec</span>
                   </div>
                   <Plus className="w-4 h-4 text-primary opacity-40 group-hover:opacity-100" />
                 </button>
@@ -313,7 +349,7 @@ export const RecipeEditor: React.FC<RecipeEditorProps> = ({ dish, onSaved }) => 
                         <span className="font-bold text-white whitespace-nowrap">{m.name}</span>
                         <div className="flex items-center gap-1 mt-1">
                           <span className="text-[8px] text-gray-600 uppercase font-black tracking-tighter">Inv Unit:</span>
-                          <Badge variant="outline" className="text-[7px] px-1 h-3 border-gray-800 text-gray-500 uppercase">{m.inventory_unit}</Badge>
+                          <Badge variant="outline" className="text-[7px] px-1 h-3 border-gray-800 text-gray-500 uppercase">{m.inventory_unit_name}</Badge>
                         </div>
                       </div>
                     </td>
@@ -326,16 +362,13 @@ export const RecipeEditor: React.FC<RecipeEditorProps> = ({ dish, onSaved }) => 
                           className="h-10 w-16 bg-black/40 border-white/10 text-center font-mono text-primary font-bold rounded-lg"
                         />
                         <select
-                          value={m.unit_type}
+                          value={m.unit_id}
                           onChange={e => updateUnit(m.ingredient_id, e.target.value)}
                           className="bg-black/60 border border-white/10 rounded-lg px-2 py-0.5 text-[9px] text-gray-400 outline-none focus:border-primary/50"
                         >
-                          <option value="g">g</option>
-                          <option value="kg">kg</option>
-                          <option value="ml">ml</option>
-                          <option value="l">l</option>
-                          <option value="pcs">pcs</option>
-                          <option value="slice">slice</option>
+                          {units.map(u => (
+                            <option key={u.id} value={u.id}>{u.abbreviation}</option>
+                          ))}
                         </select>
                       </div>
                     </td>
@@ -351,7 +384,7 @@ export const RecipeEditor: React.FC<RecipeEditorProps> = ({ dish, onSaved }) => 
                       </select>
                     </td>
                     <td className="px-4 py-4 text-right font-mono text-white text-xs">
-                      {calculateIngredientCost(m as unknown as RecipeIngredient).toFixed(2)}
+                      {calculateIngredientCost(m as unknown as RecipeIngredient, units).toFixed(2)}
                     </td>
                     <td className="px-4 py-4 text-right">
                       <button onClick={() => removeIngredient(m.ingredient_id)} className="text-gray-700 hover:text-red-500 transition-colors p-2">

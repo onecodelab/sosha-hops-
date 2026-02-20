@@ -32,6 +32,7 @@ const KitchenLogWaste: React.FC = () => {
             .from('ingredients')
             .select(`
           *,
+          units(id, abbreviation),
           branch_inventory!inner(current_stock)
         `)
             .eq('is_active', true)
@@ -53,7 +54,7 @@ const KitchenLogWaste: React.FC = () => {
             .from('waste_logs')
             .select(`
           *,
-          ingredient:ingredients(name, unit_type)
+          ingredient:ingredients(name, unit_id, units(abbreviation))
         `)
             .eq('branch_id', activeBranchId)
             .order('created_at', { ascending: false })
@@ -178,7 +179,7 @@ const KitchenLogWaste: React.FC = () => {
                                        <p className="font-bold text-sm text-white group-hover:text-primary">{ing.name}</p>
                                        <p className="text-xs text-gray-500 font-mono">{ing.sku}</p>
                                     </div>
-                                    <span className="text-xs text-gray-400 bg-black/40 px-2 py-1 rounded">{(ing.current_stock || 0).toLocaleString()} {ing.unit_type}</span>
+                                    <span className="text-xs text-gray-400 bg-black/40 px-2 py-1 rounded">{(ing.current_stock || 0).toLocaleString()} {ing.units?.abbreviation || ing.unit_type}</span>
                                  </button>
                               ))}
                            </div>
@@ -200,7 +201,7 @@ const KitchenLogWaste: React.FC = () => {
                         <div className="space-y-2">
                            <label className="text-xs font-bold text-gray-500 uppercase">{t('stock.unit')}</label>
                            <div className="h-11 flex items-center px-3 bg-black/10 border border-gray-800 rounded-lg text-gray-400 text-sm">
-                              {selectedIngredient?.unit_type || '-'}
+                              {selectedIngredient?.units?.abbreviation || selectedIngredient?.unit_type || '-'}
                            </div>
                         </div>
                      </div>
@@ -289,18 +290,18 @@ const KitchenLogWaste: React.FC = () => {
                                     {log.ingredient?.name || 'Unknown'}
                                  </td>
                                  <td className="px-6 py-4 text-gray-300">
-                                    <span className="text-red-400 font-bold">-{log.quantity}</span> <span className="text-xs text-gray-500">{log.ingredient?.unit_type}</span>
+                                    <span className="text-red-400 font-bold">-{log.quantity}</span> <span className="text-xs text-gray-500">{log.ingredient?.units?.abbreviation || log.unit_type}</span>
                                  </td>
                                  <td className="px-6 py-4">
                                     <span className="bg-red-500/10 text-red-400 border border-red-500/20 px-2 py-1 rounded text-xs capitalize">
-                                       {t(`waste.categories.${log.waste_category}` as any)}
+                                       {t(`waste.categories.${log.waste_reason}` as any)}
                                     </span>
                                  </td>
-                                 <td className="px-6 py-4 text-gray-400 text-xs max-w-[200px] truncate" title={log.reason}>
-                                    {log.reason}
+                                 <td className="px-6 py-4 text-gray-400 text-xs max-w-[200px] truncate" title={log.notes || log.reason}>
+                                    {log.notes || log.reason}
                                  </td>
                                  <td className="px-6 py-4 text-right font-mono text-gray-300">
-                                    ETB {(log.cost || 0).toLocaleString()}
+                                    ETB {(log.cost_snapshot || log.cost || 0).toLocaleString()}
                                  </td>
                               </tr>
                            ))}

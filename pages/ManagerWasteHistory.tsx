@@ -25,7 +25,7 @@ const ManagerWasteHistory: React.FC = () => {
                 .from('waste_logs')
                 .select(`
           *,
-          ingredients (name, sku),
+          ingredient:ingredients (name, sku, unit_id, units(abbreviation)),
           profiles:reported_by (full_name, email)
         `)
                 .eq('branch_id', activeBranchId)
@@ -158,8 +158,8 @@ const ManagerWasteHistory: React.FC = () => {
                             <tbody className="divide-y divide-white/5">
                                 {logs
                                     .filter(l =>
-                                        l.ingredients?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                                        l.profiles?.full_name.toLowerCase().includes(searchTerm.toLowerCase())
+                                        l.ingredient?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                                        l.profiles?.full_name?.toLowerCase().includes(searchTerm.toLowerCase())
                                     )
                                     .map((log) => (
                                         <tr key={log.id} className="hover:bg-white/[0.02] transition-colors">
@@ -174,13 +174,13 @@ const ManagerWasteHistory: React.FC = () => {
                                             </td>
                                             <td className="px-6 py-4">
                                                 <div className="flex flex-col">
-                                                    <span className="text-white font-bold">{log.ingredients?.name}</span>
-                                                    <span className="text-[10px] text-gray-600 font-mono tracking-wider">{log.ingredients?.sku}</span>
+                                                    <span className="text-white font-bold">{log.ingredient?.name}</span>
+                                                    <span className="text-[10px] text-gray-600 font-mono tracking-wider">{log.ingredient?.sku}</span>
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4">
                                                 <span className="text-red-400 font-bold font-mono">
-                                                    -{Number(log.quantity)} {log.unit_type}
+                                                    -{Number(log.quantity)} {log.ingredient?.units?.abbreviation || log.unit_type}
                                                 </span>
                                             </td>
                                             <td className="px-6 py-4">

@@ -125,13 +125,15 @@ export interface Table {
 export type PaymentMethod = 'cash' | 'cbe' | 'telebirr' | 'chapa' | 'abyssinia';
 
 // Added missing Ingredient type
+// Added missing Ingredient type
 export interface Ingredient {
   id: string;
   sku: string;
   name: string;
   category: string;
   current_stock: number;
-  unit_type: string;
+  unit_type: string; // Deprecated: Display only (from Joined Unit)
+  unit_id?: string; // The specific Unit ID
   unittype?: string; // Support for variations in field naming across components
   par_min: number;
   par_max: number;
@@ -143,6 +145,15 @@ export interface Ingredient {
   supplier?: { name: string };
   created_at: string;
   updated_at: string;
+  units?: Unit; // Joined relation
+}
+
+export interface Unit {
+  id: string;
+  name: string;
+  abbreviation: string;
+  type: 'mass' | 'volume' | 'count';
+  base_factor: number;
 }
 
 // Added missing StaffShift type
@@ -214,12 +225,21 @@ export interface WasteLog {
   id: string;
   ingredient_id: string;
   quantity: number;
+  unit_id?: string;
+  unit_type?: string; // Legacy/Snapshot
   waste_reason: WasteCategory;
+  reason?: string; // Alias for waste_reason or notes
   notes: string;
   cost_snapshot: number;
+  cost?: number; // Alias for cost_snapshot
   reported_by: string;
   created_at: string;
-  ingredient?: { name: string; unit_type: string };
+  ingredient?: {
+    name: string;
+    unit_id?: string;
+    unit_type?: string;
+    units?: Unit;
+  };
 }
 
 // Added missing Restock related types
@@ -235,7 +255,12 @@ export interface RestockRequest {
   status: 'pending' | 'approved' | 'rejected' | 'ordered';
   created_at: string;
   reviewed_by?: string;
-  ingredient?: { name: string; unit_type: string };
+  ingredient?: {
+    name: string;
+    unit_id?: string;
+    unit_type?: string;
+    units?: Unit;
+  };
   reviewer?: { full_name: string; email: string };
 }
 
@@ -252,7 +277,12 @@ export interface PurchaseRequest {
   created_at: string;
   approved_by?: string;
   approved_at?: string;
-  ingredient?: { name: string; unittype: string };
+  ingredient?: {
+    name: string;
+    unit_id?: string;
+    unit_type?: string;
+    units?: Unit;
+  };
 }
 
 // Added missing Supplier type
@@ -289,7 +319,7 @@ export interface PurchaseOrder {
   status: POStatus;
   expected_delivery: string;
   received_date?: string;
-  created_by: string;
+  created_by?: string; // Optional: System/Agent generated POs may not have a user initially
   created_at: string;
   approval_notes?: string;
   approved_by?: string;
@@ -308,7 +338,14 @@ export interface PurchaseOrderItem {
   ingredient_id: string;
   ordered_quantity: number;
   unit_price: number;
-  ingredient?: { name: string; unit_type: string };
+  unit_id?: string;
+  unit_type?: string;
+  ingredient?: {
+    name: string;
+    unit_id?: string;
+    unit_type?: string;
+    units?: Unit;
+  };
 }
 
 // Added missing Category type
@@ -339,4 +376,88 @@ export interface BranchInventory {
   par_max: number;
   last_updated: string;
   ingredient?: Ingredient;
+}
+// Phase 3: The Proposal Engine
+export type ProposalActorType = 'agent' | 'staff' | 'system';
+export type ProposalType = 'procurement' | 'waste' | 'schedule' | 'policy_change' | 'pricing';
+export type ProposalStatus = 'pending' | 'approved' | 'rejected' | 'applied' | 'withdrawn';
+
+export interface Proposal {
+  id: string;
+  organization_id: string;
+  branch_id?: string;
+  actor_type: ProposalActorType;
+  actor_id: string;
+  proposal_type: ProposalType;
+  data: any;
+  confidence: number;
+  impact_score: number;
+
+  // Risk Decomposition
+  risk_financial: number;
+  risk_fraud: number;
+  risk_operational: number;
+  risk_reputational: number;
+  risk_explanation: any[];
+
+  // Optimization Objectives
+  opt_profit: number;
+  opt_staff_fatigue: number;
+  opt_customer_satisfaction: number;
+  opt_resilience: number;
+
+  reasoning: string;
+  status: ProposalStatus;
+  decided_by?: string;
+  decided_at?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface GovernancePolicy {
+  id: string;
+  organization_id: string;
+  action_type: string;
+  auto_approve_threshold_usd: number;
+  max_risk_allowed: number;
+  min_confidence_required: number;
+  max_daily_usd_exposure: number;
+  max_weekly_usd_exposure: number;
+  current_daily_usage_usd: number;
+  consecutive_negative_variance_limit: number;
+  current_consecutive_negative_variance: number;
+  circuit_breaker_triggered: boolean;
+  circuit_breaker_reason?: string;
+  is_active: boolean;
+  version_id: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface EconomicImpactLog {
+  id: string;
+  organization_id: string;
+  proposal_id: string;
+  expected_impact_usd: number;
+  actual_impact_usd?: number;
+  variance_usd?: number;
+  agent_confidence_at_execution: number;
+  confidence_error?: number;
+  measured_at?: string;
+  created_at: string;
+}
+
+export interface BusinessAuditLog {
+  id: string;
+  organization_id: string;
+  branch_id?: string;
+  event_type: string;
+  actor_id?: string;
+  actor_name?: string;
+  entity_type: string;
+  entity_id: string;
+  old_state?: any;
+  new_state?: any;
+  metadata?: any;
+  created_at: string;
 }

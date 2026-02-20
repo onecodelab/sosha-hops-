@@ -27,12 +27,7 @@ const Login: React.FC = () => {
   }, [user, profile]);
 
   const redirectUser = (userRole: string) => {
-    const r = userRole.toLowerCase();
-    if (r === 'owner' || r === 'admin') navigate('/admin');
-    else if (r === 'manager') navigate('/manager');
-    else if (r === 'waiter') navigate('/waiter');
-    else if (r === 'kitchen') navigate('/kitchen');
-    else navigate('/');
+    navigate('/app');
   };
 
   const handleLogin = async (e: React.FormEvent) => {

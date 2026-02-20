@@ -1,101 +1,102 @@
-
 import React from 'react';
-import { ShieldCheck, ClipboardList, Coffee, Flame } from 'lucide-react';
-import { BaroLogo3D } from '../components/BaroLogo3D';
-import { BaroBackground } from '../components/BaroBackground';
-import { useLanguage } from '../contexts/LanguageContext';
-import { LanguageSwitcher } from '../components/LanguageSwitcher';
-import { RoleStackSelector, RoleCard } from '../components/RoleStackSelector';
+import { useNavigate } from 'react-router-dom';
+import { Button } from '../components/ui';
+import { MarketingLayout } from '../components/MarketingLayout';
+import { ArrowRight, ChefHat, BarChart3, ShieldCheck } from 'lucide-react';
 
 const Landing: React.FC = () => {
-  const { t } = useLanguage();
-
-  const roles: RoleCard[] = [
-    {
-      id: 'owner',
-      name: t('landing.roles.owner.label'),
-      subtitle: t('landing.roles.owner.sub'),
-      tagline: t('landing.roles.owner.tag'),
-      icon: ShieldCheck,
-      color: 'yellow'
-    },
-    {
-      id: 'manager',
-      name: t('landing.roles.manager.label'),
-      subtitle: t('landing.roles.manager.sub'),
-      tagline: t('landing.roles.manager.tag'),
-      icon: ClipboardList,
-      color: 'purple'
-    },
-    {
-      id: 'waiter',
-      name: t('landing.roles.waiter.label'),
-      subtitle: t('landing.roles.waiter.sub'),
-      tagline: t('landing.roles.waiter.tag'),
-      icon: Coffee,
-      color: 'orange'
-    },
-    {
-      id: 'kitchen',
-      name: t('landing.roles.kitchen.label'),
-      subtitle: t('landing.roles.kitchen.sub'),
-      tagline: t('landing.roles.kitchen.tag'),
-      icon: Flame,
-      color: 'red'
-    },
-  ];
+  const navigate = useNavigate();
 
   return (
-    <>
-      <style>{`
-        .fade-in-up {
-          animation: fadeInUp 1s cubic-bezier(0.22, 1, 0.36, 1) forwards;
-        }
-        @keyframes fadeInUp {
-          from { opacity: 0; transform: translateY(20px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-      `}</style>
+    <MarketingLayout>
+      {/* Hero Section */}
+      <section className="relative pt-20 pb-32 overflow-hidden">
+        {/* Glow Effects */}
+        <div className="absolute -top-24 -left-24 w-96 h-96 bg-primary/20 blur-[150px] rounded-full" />
+        <div className="absolute top-1/2 -right-24 w-64 h-64 bg-primary/10 blur-[120px] rounded-full" />
 
-      <BaroBackground variant="landing">
+        <div className="max-w-7xl mx-auto px-4 relative z-10 text-center">
+          <div className="inline-flex items-center gap-3 px-6 py-2 rounded-full border border-primary/20 bg-primary/5 mb-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+            <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">Now in Open Beta</span>
+          </div>
 
-        {/* Language Toggle */}
-        <div className="fixed top-0 left-0 right-0 p-6 z-50 flex justify-end pointer-events-none">
-          <div className="pointer-events-auto">
-            <LanguageSwitcher />
+          <h1 className="text-6xl md:text-8xl lg:text-9xl font-black uppercase tracking-tighter leading-[0.8] mb-12 animate-in fade-in slide-in-from-bottom-8 duration-1000 delay-200">
+            Automate <br />
+            <span className="text-primary italic">Hospitality</span>
+          </h1>
+
+          <p className="text-sm md:text-lg text-muted-foreground font-bold uppercase tracking-widest max-w-2xl mx-auto mb-12 leading-relaxed animate-in fade-in slide-in-from-bottom-12 duration-1000 delay-500">
+            The all-in-one operating system for restaurants, bars, and cafes. <br className="hidden md:block" />
+            Inventory, POS, and Analytics synced in real-time.
+          </p>
+
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-6 animate-in fade-in slide-in-from-bottom-16 duration-1000 delay-700">
+            <Button
+              size="lg"
+              onClick={() => navigate('/signup')}
+              className="px-12 h-16 bg-primary hover:bg-primary/80 text-black font-black uppercase tracking-widest text-xs rounded-2xl shadow-2xl shadow-primary/20 flex items-center gap-3 group"
+            >
+              Start Free Trial <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+            </Button>
+            <Button
+              variant="outline"
+              size="lg"
+              onClick={() => navigate('/features')}
+              className="px-12 h-16 border-border hover:bg-muted font-black uppercase tracking-widest text-xs rounded-2xl"
+            >
+              View Features
+            </Button>
           </div>
         </div>
+      </section>
 
-        {/* Main Layout Container - Tightened spacing */}
-        <div className="relative z-0 flex h-screen flex-col items-center justify-center p-4 md:p-8 animate-in fade-in duration-1000 overflow-hidden">
-
-          {/* Header Title - Centralized for Baro focus */}
-          <div className="text-center space-y-4 z-10 flex-none fade-in-up" style={{ animationDelay: '100ms' }}>
-            <div className="scale-75 md:scale-100 origin-center">
-              <BaroLogo3D animate size="md" />
-            </div>
-            <div className="space-y-2 mt-4">
-              <h1 className="text-4xl md:text-6xl font-black text-foreground tracking-tighter leading-none italic uppercase">
-                {t('landing.title')}
-              </h1>
-              <p className="text-primary font-bold tracking-[0.6em] text-[10px] uppercase opacity-60">
-                {t('landing.subtitle')}
-              </p>
-            </div>
-          </div>
-
-          {/* Stack Selector - No flex-1, margin-top controlled */}
-          <div className="relative z-0 flex items-start justify-center w-full mt-2 md:mt-4 fade-in-up" style={{ animationDelay: '300ms' }}>
-            <RoleStackSelector roles={roles} />
-          </div>
-
-          {/* Fixed Footer */}
-          <div className="fixed bottom-8 left-0 right-0 text-center text-muted text-[9px] font-mono uppercase tracking-[0.4em] opacity-30 pointer-events-none">
-            {t('landing.poweredBy')}
+      {/* Social Proof Placeholder */}
+      <section className="py-20 border-y border-border bg-muted/5">
+        <div className="max-w-7xl mx-auto px-4 flex flex-col items-center">
+          <p className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground mb-12">Powering businesses worldwide</p>
+          <div className="flex flex-wrap justify-center gap-16 grayscale opacity-30">
+            {/* Logo placeholders */}
+            {['LUXE', 'KRAFT', 'URBAN', 'BISTRO', 'NOMAD'].map(name => (
+              <span key={name} className="text-2xl font-black italic tracking-tighter">{name}</span>
+            ))}
           </div>
         </div>
-      </BaroBackground>
-    </>
+      </section>
+
+      {/* Value Props */}
+      <section className="py-32">
+        <div className="max-w-7xl mx-auto px-4 grid md:grid-cols-3 gap-12">
+          <div className="space-y-6">
+            <div className="w-14 h-14 bg-primary/10 rounded-2xl flex items-center justify-center">
+              <BarChart3 className="w-7 h-7 text-primary" />
+            </div>
+            <h3 className="text-2xl font-black uppercase tracking-tighter">Real-time Intel</h3>
+            <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest leading-relaxed">
+              Every order deductions from stock instantly. No more end-of-day math.
+            </p>
+          </div>
+          <div className="space-y-6">
+            <div className="w-14 h-14 bg-primary/10 rounded-2xl flex items-center justify-center">
+              <ChefHat className="w-7 h-7 text-primary" />
+            </div>
+            <h3 className="text-2xl font-black uppercase tracking-tighter">Kitchen Sync</h3>
+            <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest leading-relaxed">
+              Direct line from waiter to chef. KDS screens remove paper errors.
+            </p>
+          </div>
+          <div className="space-y-6">
+            <div className="w-14 h-14 bg-primary/10 rounded-2xl flex items-center justify-center">
+              <ShieldCheck className="w-7 h-7 text-primary" />
+            </div>
+            <h3 className="text-2xl font-black uppercase tracking-tighter">Secure SaaS</h3>
+            <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest leading-relaxed">
+              Multi-tenant isolation ensured by Supabase RLS and Edge Functions.
+            </p>
+          </div>
+        </div>
+      </section>
+    </MarketingLayout>
   );
 };
 

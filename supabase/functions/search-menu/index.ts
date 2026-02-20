@@ -15,9 +15,17 @@ serve(async (req) => {
 
     try {
         const url = new URL(req.url);
-        const query = url.searchParams.get('query') || '';
-        const category = url.searchParams.get('category') || '';
-        const branch_id = url.searchParams.get('branch_id') || '';
+        let query = url.searchParams.get('query') || '';
+        let category = url.searchParams.get('category') || '';
+        let branch_id = url.searchParams.get('branch_id') || '';
+
+        // Added: Support for POST body (for Flowise compatibility)
+        if (req.method === 'POST') {
+            const body = await req.json();
+            query = body.query || query;
+            category = body.category || category;
+            branch_id = body.branch_id || branch_id;
+        }
 
         // 1. Initialize Supabase Client
         const sbUrl = Deno.env.get('SUPABASE_URL');

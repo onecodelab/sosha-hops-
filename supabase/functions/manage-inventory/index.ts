@@ -54,40 +54,33 @@ serve(async (req) => {
         const pipeline = redis.pipeline();
 
         for (const item of items) {
-            const { ingredient_id, quantity, current_stock } = item;
+            const { ingredient_id, quantity, current_stock, par_min, par_max } = item;
 
             // 1. Update SQL
-            // We assume 'quantity' is the NEW Absolute Value (since Inventory.tsx usually sets strict values)
-            // If action is 'delta', we would add.
-
-            let newStock = Number(quantity);
-
-            if (action === 'delta') {
-                // Not implemented yet, Inventory.tsx sends absolute values usually
-            }
-
             const { error: sqlErr } = await supabase
                 .from('branch_inventory')
                 .upsert({
                     branch_id,
                     ingredient_id,
-                    current_stock: newStock,
+                    current_stock: Number(quantity),
+                    par_min: par_min !== undefined ? Number(par_min) : undefined,
+                    par_max: par_max !== undefined ? Number(par_max) : undefined,
                     last_updated: new Date().toISOString()
                 }, { onConflict: 'branch_id,ingredient_id' });
 
             if (sqlErr) throw sqlErr;
 
-            // 2. Update Redis
+            // 2. Update Redis (We only cache current_stock for high-speed checks)
             const key = `stock:${branch_id}:${ingredient_id}`;
-            pipeline.set(key, newStock);
+            pipeline.set(key, Number(quantity));
 
             // 3. Prepare Audit Log
             transactionLog.push({
                 branch_id,
                 organization_id: organizationId,
                 ingredient_id,
-                transaction_type: 'audit', // or 'adjustment'
-                quantity: newStock - (current_stock || 0), // Delta
+                transaction_type: 'audit',
+                quantity: Number(quantity) - (current_stock || 0),
                 performed_by: user_id,
                 reason: reason || 'Manual Adjustment',
                 created_at: new Date().toISOString()

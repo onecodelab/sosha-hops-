@@ -1,0 +1,137 @@
+
+# 1. Place Order Tool (Menu Agent)
+Name: place_order
+Description: Place a new order for items. IMPORTANT: Ask the user for their Table Number first.
+Schema:
+{
+    "type": "object",
+    "properties": {
+        "items": { "type": "array", "items": { "type": "object", "properties": { "menu_item_id": { "type": "string" }, "quantity": { "type": "number" }, "notes": { "type": "string" } } } },
+        "table_number": { "type": "string" }
+    },
+    "required": ["items", "table_number"]
+}
+
+# 2. Search Menu Tool (Menu Agent)
+Name: search_menu
+Description: Search for menu items by name or category to get their IDs and Prices.
+Schema:
+{
+    "type": "object",
+    "properties": {
+        "query": { "type": "string", "description": "Name of the dish (e.g., 'Burger', 'Pizza')" },
+        "category": { "type": "string", "description": "Category (e.g., 'Drinks', 'Main')" }
+    }
+}
+
+# 3. Get Order Status Tool (Menu Agent)
+Name: get_order_status
+Description: Check the status of an existing order or table.
+Schema:
+{
+    "type": "object",
+    "properties": {
+        "order_id": { "type": "string", "description": "The UUID of the order" },
+        "table_number": { "type": "string", "description": "The Table Number (e.g. 'T5')" }
+    }
+}
+
+# 4. Verify Payment Tool (Menu Agent)
+Name: verify_payment
+Description: Verify a bank transaction and mark the order as paid.
+Schema:
+{
+    "type": "object",
+    "properties": {
+        "transaction_id": { "type": "string", "description": "Transaction Reference Number" },
+        "bank": { "type": "string", "enum": ["telebirr", "cbe", "dashen", "abyssinia"], "description": "Bank Name" },
+        "order_id": { "type": "string", "description": "The Order UUID to update (Optional but recommended)" }
+    },
+    "required": ["transaction_id", "bank"]
+}
+
+# 5. Verify Table Tool (Menu Agent)
+Name: verify_table
+Description: Verify if a table exists and is ready for service.
+Schema:
+{
+    "type": "object",
+    "properties": {
+        "table_number": { "type": "string", "description": "The Table Number (e.g. 'T5')" },
+        "branch_id": { "type": "string", "description": "Optional branch ID if known, otherwise inferred from context" }
+    },
+    "required": ["table_number"]
+}
+
+# 6. Manage Menu Tool (Master Agent)
+Name: manage_menu
+Description: Add, Update, or Delete Menu Items. Restricted to Managers.
+Schema:
+{
+    "type": "object",
+    "properties": {
+        "action": { "type": "string", "enum": ["update", "delete"], "description": "Action to perform (use 'update' for adding new items or changing existing ones)" },
+        "item": { "type": "object", "description": "Item details (name, price, category) for updates" },
+        "target_id": { "type": "string", "description": "UUID of item to delete" },
+        "user_id": { "type": "string", "description": "User ID of the manager performing the action" }
+    },
+    "required": ["action", "user_id"]
+}
+
+# 7. Manage Inventory Tool (Master Agent)
+Name: manage_inventory
+Description: Update stock levels for ingredients. Restricted to Managers.
+Schema:
+{
+    "type": "object",
+    "properties": {
+        "items": { "type": "array", "items": { "type": "object", "properties": { "ingredient_id": { "type": "string" }, "quantity": { "type": "number" } } } },
+        "branch_id": { "type": "string", "description": "Branch UUID" },
+        "user_id": { "type": "string", "description": "User ID of the manager" }
+    },
+    "required": ["items", "branch_id", "user_id"]
+}
+
+# 8. Manage Staff Tool (Master Agent)
+Name: manage_staff
+Description: Manage staff members (List, Create, Delete, Performance). Restricted to Managers.
+Schema:
+{
+    "type": "object",
+    "properties": {
+        "action": { "type": "string", "enum": ["list", "create", "delete", "performance"], "description": "Action to perform" },
+        "staff_data": { "type": "object", "description": "Data for creating staff" },
+        "target_id": { "type": "string", "description": "UUID of staff to delete or check performance" },
+        "user_id": { "type": "string", "description": "User ID of the manager" }
+    },
+    "required": ["action", "user_id"]
+}
+
+# 9. Manage PO Tool (Master Agent)
+Name: manage_po
+Description: Manage Purchase Orders (List Pending, Approve, Reject).
+Schema:
+{
+    "type": "object",
+    "properties": {
+        "action": { "type": "string", "enum": ["list_pending", "approve", "reject"], "description": "Action to perform" },
+        "po_id": { "type": "string", "description": "UUID of the Purchase Order" },
+        "reason": { "type": "string", "description": "Reason for rejection" },
+        "user_id": { "type": "string", "description": "User ID of the manager" }
+    },
+    "required": ["action", "user_id"]
+}
+
+# 10. Manage Floor Tool (Master Agent)
+Name: manage_floor
+Description: View Floor Map and manage tables.
+Schema:
+{
+    "type": "object",
+    "properties": {
+        "action": { "type": "string", "enum": ["view_map", "clear_table", "list_branches"], "description": "Action to perform" },
+        "table_id": { "type": "string", "description": "UUID of table to clear" },
+        "user_id": { "type": "string", "description": "User ID of the manager" }
+    },
+    "required": ["action", "user_id"]
+}

@@ -10,6 +10,8 @@ interface SearchResult {
     id: string;
     name: string;
     unit_type: string;
+    unit_id: string;
+    units?: { abbreviation: string };
     current_stock: number;
 }
 
@@ -50,7 +52,8 @@ const KitchenWaste: React.FC = () => {
                 const { data, error } = await supabase
                     .from('ingredients')
                     .select(`
-            id, name, unit_type,
+            id, name, unit_type, unit_id,
+            units(abbreviation),
             branch_inventory!inner(branch_id, current_stock)
           `)
                     .eq('branch_inventory.branch_id', activeBranchId)
@@ -64,6 +67,8 @@ const KitchenWaste: React.FC = () => {
                     id: item.id,
                     name: item.name,
                     unit_type: item.unit_type,
+                    unit_id: item.unit_id,
+                    units: item.units,
                     current_stock: item.branch_inventory[0]?.current_stock || 0
                 }));
 
@@ -90,7 +95,7 @@ const KitchenWaste: React.FC = () => {
         }
 
         if (qtyNum > selectedItem.current_stock) {
-            showToast(`Cannot waste more than current stock (${selectedItem.current_stock} ${selectedItem.unit_type})`, "error");
+            showToast(`Cannot waste more than current stock (${selectedItem.current_stock} ${selectedItem.units?.abbreviation || selectedItem.unit_type})`, "error");
             return;
         }
 
@@ -178,7 +183,7 @@ const KitchenWaste: React.FC = () => {
                                                     "text-xs font-black uppercase px-2 py-1 rounded",
                                                     item.current_stock > 0 ? "bg-green-500/20 text-green-400" : "bg-red-500/20 text-red-400"
                                                 )}>
-                                                    {item.current_stock} {item.unit_type} avail
+                                                    {item.current_stock} {item.units?.abbreviation || item.unit_type} avail
                                                 </span>
                                             </button>
                                         ))}
@@ -199,7 +204,7 @@ const KitchenWaste: React.FC = () => {
                                         <div className="flex items-center gap-2 mt-1">
                                             <Info className="w-4 h-4 text-gray-500" />
                                             <span className="text-sm text-gray-500 font-mono">
-                                                Current Stock: {selectedItem.current_stock} {selectedItem.unit_type}
+                                                Current Stock: {selectedItem.current_stock} {selectedItem.units?.abbreviation || selectedItem.unit_type}
                                             </span>
                                         </div>
                                     </div>
@@ -211,7 +216,7 @@ const KitchenWaste: React.FC = () => {
                                 <div className="space-y-8">
                                     {/* Quantity Input */}
                                     <div className="space-y-3">
-                                        <label className="text-xs font-black text-gray-500 uppercase tracking-widest pl-1">Quantity Wasted ({selectedItem.unit_type})</label>
+                                        <label className="text-xs font-black text-gray-500 uppercase tracking-widest pl-1">Quantity Wasted ({selectedItem.units?.abbreviation || selectedItem.unit_type})</label>
                                         <div className="flex items-center gap-4">
                                             <Input
                                                 type="number"

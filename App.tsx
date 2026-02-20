@@ -1,5 +1,5 @@
 import React, { useEffect, Suspense, lazy } from 'react';
-import { HashRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './AuthContext';
 import { LanguageProvider } from './contexts/LanguageContext';
 import { BranchProvider } from './contexts/BranchContext';
@@ -8,10 +8,19 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { queryClient } from './lib/queryClient';
 
-// Lazy Loaded Pages
+// Marketing Pages
 const Landing = lazy(() => import('./pages/Landing'));
+const Pricing = lazy(() => import('./pages/Pricing'));
+const Features = lazy(() => import('./pages/Features'));
+
+// Auth Pages
 const Login = lazy(() => import('./pages/Login'));
 const SignUp = lazy(() => import('./pages/SignUp'));
+
+// App Dispatcher
+const AppDispatcher = lazy(() => import('./pages/AppDispatcher'));
+
+// Protected App Pages
 const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
 const MenuAnalytics = lazy(() => import('./pages/MenuAnalytics'));
 const MenuManagement = lazy(() => import('./pages/MenuManagement'));
@@ -26,14 +35,14 @@ const ManagerDashboard = lazy(() => import('./pages/ManagerDashboard'));
 const WaiterDashboard = lazy(() => import('./pages/WaiterDashboard'));
 const WaiterOrders = lazy(() => import('./pages/WaiterOrders'));
 const KitchenDashboard = lazy(() => import('./pages/KitchenDashboard'));
-const KitchenWaste = lazy(() => import('./pages/KitchenWaste'));
+const KitchenLogWaste = lazy(() => import('./pages/KitchenLogWaste'));
 const ManagerWasteHistory = lazy(() => import('./pages/ManagerWasteHistory'));
 const KitchenStockView = lazy(() => import('./pages/KitchenStockView'));
-const KitchenLogWaste = lazy(() => import('./pages/KitchenLogWaste'));
 const KitchenRestockRequests = lazy(() => import('./pages/KitchenRestockRequests'));
 const ManagerPendingRequests = lazy(() => import('./pages/ManagerPendingRequests'));
 const ManagerPurchaseOrders = lazy(() => import('./pages/ManagerPurchaseOrders'));
 const Settings = lazy(() => import('./pages/Settings'));
+const OwnerCommandCenter = lazy(() => import('./pages/OwnerCommandCenter'));
 
 import { ChatWidget } from './components/ChatWidget';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -46,7 +55,6 @@ const PageLoader = () => (
 );
 
 const App: React.FC = () => {
-  // Initialize Theme Globally
   useEffect(() => {
     const savedTheme = localStorage.getItem('baro-theme');
     if (savedTheme === 'fresh') {
@@ -59,139 +67,154 @@ const App: React.FC = () => {
   return (
     <QueryClientProvider client={queryClient}>
       <LanguageProvider>
-        <HashRouter>
+        <BrowserRouter>
           <AuthProvider>
             <BranchProvider>
               <Suspense fallback={<PageLoader />}>
                 <Routes>
+                  {/* Public Marketing Layer */}
                   <Route path="/" element={<Landing />} />
+                  <Route path="/pricing" element={<Pricing />} />
+                  <Route path="/features" element={<Features />} />
+
+                  {/* Auth Layer */}
                   <Route path="/login/:role" element={<Login />} />
                   <Route path="/signup" element={<SignUp />} />
 
-                  <Route path="/admin" element={
+                  {/* Protected App Layer */}
+                  <Route path="/app" element={<ProtectedRoute><AppDispatcher /></ProtectedRoute>} />
+
+                  <Route path="/app/admin" element={
                     <ProtectedRoute allowedRoles={['owner', 'admin' as any, 'manager']}>
                       <AdminDashboard />
                     </ProtectedRoute>
                   } />
 
-                  <Route path="/admin/menu" element={
+                  <Route path="/app/admin/menu" element={
                     <ProtectedRoute allowedRoles={['owner', 'admin' as any, 'manager']}>
                       <MenuManagement />
                     </ProtectedRoute>
                   } />
 
-                  <Route path="/tables" element={
+                  <Route path="/app/tables" element={
                     <ProtectedRoute allowedRoles={['owner', 'admin' as any, 'manager', 'waiter']}>
                       <TableStatus />
                     </ProtectedRoute>
                   } />
 
-                  <Route path="/menu-analytics" element={
+                  <Route path="/app/menu-analytics" element={
                     <ProtectedRoute allowedRoles={['owner', 'admin' as any]}>
                       <MenuAnalytics />
                     </ProtectedRoute>
                   } />
 
-                  <Route path="/inventory" element={
+                  <Route path="/app/inventory" element={
                     <ProtectedRoute allowedRoles={['owner', 'manager', 'admin' as any]}>
                       <Inventory />
                     </ProtectedRoute>
                   } />
 
-                  <Route path="/admin/staff-performance" element={<ProtectedRoute allowedRoles={['owner', 'admin']}><AdminStaffPerformance /></ProtectedRoute>} />
-                  <Route path="/admin/waste" element={<ProtectedRoute allowedRoles={['owner', 'admin', 'manager']}><ManagerWasteHistory /></ProtectedRoute>} />
-                  <Route path="/admin/table-map" element={
+                  <Route path="/app/admin/staff-performance" element={<ProtectedRoute allowedRoles={['owner', 'admin']}><AdminStaffPerformance /></ProtectedRoute>} />
+                  <Route path="/app/admin/waste" element={<ProtectedRoute allowedRoles={['owner', 'admin', 'manager']}><ManagerWasteHistory /></ProtectedRoute>} />
+                  <Route path="/app/admin/table-map" element={
                     <ProtectedRoute allowedRoles={['owner', 'admin' as any]}>
                       <AdminTableMap />
                     </ProtectedRoute>
                   } />
 
-                  <Route path="/staff-performance" element={
+                  <Route path="/app/staff-performance" element={
                     <ProtectedRoute allowedRoles={['owner', 'manager', 'admin' as any]}>
                       <StaffPerformance />
                     </ProtectedRoute>
                   } />
 
-                  <Route path="/orders-tables" element={
+                  <Route path="/app/orders-tables" element={
                     <ProtectedRoute allowedRoles={['owner', 'manager', 'admin' as any]}>
                       <OrdersTables />
                     </ProtectedRoute>
                   } />
 
-                  <Route path="/manager" element={
+                  <Route path="/app/manager" element={
                     <ProtectedRoute allowedRoles={['manager', 'owner']}>
                       <ManagerDashboard />
                     </ProtectedRoute>
                   } />
 
-                  <Route path="/manager/pending-requests" element={
+                  <Route path="/app/manager/pending-requests" element={
                     <ProtectedRoute allowedRoles={['manager', 'owner']}>
                       <ManagerPendingRequests />
                     </ProtectedRoute>
                   } />
 
-                  <Route path="/po/list" element={
+                  <Route path="/app/po/list" element={
                     <ProtectedRoute allowedRoles={['manager', 'owner']}>
                       <ManagerPurchaseOrders />
                     </ProtectedRoute>
                   } />
 
-
-                  <Route path="/waiter" element={
+                  <Route path="/app/waiter" element={
                     <ProtectedRoute allowedRoles={['waiter']}>
                       <WaiterDashboard />
                     </ProtectedRoute>
                   } />
 
-                  <Route path="/waiter/orders" element={
+                  <Route path="/app/waiter/orders" element={
                     <ProtectedRoute allowedRoles={['waiter']}>
                       <WaiterOrders />
                     </ProtectedRoute>
                   } />
 
-                  <Route path="/kitchen" element={
+                  <Route path="/app/kitchen" element={
                     <ProtectedRoute allowedRoles={['kitchen', 'manager', 'owner']}>
                       <KitchenDashboard />
                     </ProtectedRoute>
                   } />
 
-                  <Route path="/kitchen/stock" element={
+                  <Route path="/app/kitchen/stock" element={
                     <ProtectedRoute allowedRoles={['kitchen', 'manager', 'owner']}>
                       <KitchenStockView />
                     </ProtectedRoute>
                   } />
 
-                  <Route path="/kitchen/waste" element={
+                  <Route path="/app/kitchen/waste" element={
                     <ProtectedRoute allowedRoles={['kitchen', 'manager', 'owner']}>
                       <KitchenLogWaste />
                     </ProtectedRoute>
                   } />
 
-                  <Route path="/kitchen/restock" element={
+                  <Route path="/app/kitchen/restock" element={
                     <ProtectedRoute allowedRoles={['kitchen', 'manager', 'owner']}>
                       <KitchenRestockRequests />
                     </ProtectedRoute>
                   } />
 
-                  <Route path="/admin/analytics" element={
+                  <Route path="/app/admin/analytics" element={
                     <ProtectedRoute allowedRoles={['owner', 'admin' as any]}>
                       <AdminFloorAnalytics />
                     </ProtectedRoute>
                   } />
 
-                  <Route path="/settings" element={
+                  <Route path="/app/settings" element={
                     <ProtectedRoute allowedRoles={['owner', 'admin' as any]}>
                       <Settings />
                     </ProtectedRoute>
                   } />
+
+                  <Route path="/app/owner" element={
+                    <ProtectedRoute allowedRoles={['owner']}>
+                      <OwnerCommandCenter />
+                    </ProtectedRoute>
+                  } />
+
+                  {/* Fallback */}
+                  <Route path="*" element={<Navigate to="/" replace />} />
                 </Routes>
               </Suspense>
               <ToastContainer />
             </BranchProvider>
           </AuthProvider>
-        </HashRouter>
+        </BrowserRouter>
       </LanguageProvider>
-      <ChatWidget />
       <ReactQueryDevtools initialIsOpen={false} />
     </QueryClientProvider>
   );

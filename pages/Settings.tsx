@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle, Button, showToast, cn } from '../components/ui';
-import { Database, RefreshCw, AlertTriangle, Package, CheckCircle2, FlaskConical, ShieldCheck, Zap, Plus, MapPin, Building2, Trash2, Edit2, X, Check } from 'lucide-react';
+import { Database, RefreshCw, AlertTriangle, Package, CheckCircle2, FlaskConical, ShieldCheck, Zap, Plus, MapPin, Building2, Trash2, Edit2, X, Check, CreditCard, Sparkles } from 'lucide-react';
 import { supabase } from '../supabase';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../AuthContext';
@@ -17,6 +17,22 @@ const Settings: React.FC = () => {
    const [editName, setEditName] = useState('');
    const [editLocation, setEditLocation] = useState('');
    const [isSubmitting, setIsSubmitting] = useState(false);
+
+   // Fetch Organization Data
+   const { data: org, isLoading: orgLoading } = useQuery({
+      queryKey: ['organization', profile?.organization_id],
+      queryFn: async () => {
+         if (!profile?.organization_id) return null;
+         const { data, error } = await supabase
+            .from('organizations')
+            .select('*')
+            .eq('id', profile.organization_id)
+            .single();
+         if (error) throw error;
+         return data;
+      },
+      enabled: !!profile?.organization_id
+   });
 
    // Fetch Branches
    const { data: branches = [], isLoading: branchesLoading } = useQuery({
@@ -249,6 +265,84 @@ const Settings: React.FC = () => {
                   </CardContent>
                </Card>
             </div>
+
+            {/* Organization & Subscription Section */}
+            {isOwnerOrAdmin && (
+               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                  <Card className="bg-[#1A1A1A] border-gray-800 rounded-[2.5rem] overflow-hidden">
+                     <div className="p-8 border-b border-gray-800">
+                        <div className="flex items-center gap-4">
+                           <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center border border-primary/20">
+                              <Building2 className="w-6 h-6 text-primary" />
+                           </div>
+                           <div>
+                              <CardTitle className="text-white">Organization Profile</CardTitle>
+                              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-0.5">Your Business Identity</p>
+                           </div>
+                        </div>
+                     </div>
+                     <CardContent className="p-8 space-y-4">
+                        <div className="space-y-1">
+                           <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">Business Name</label>
+                           <div className="p-4 bg-black/40 border border-white/5 rounded-2xl text-white font-bold uppercase tracking-tight">
+                              {orgLoading ? '...' : org?.name}
+                           </div>
+                        </div>
+                        <div className="space-y-1">
+                           <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">Organization ID</label>
+                           <div className="p-4 bg-black/20 border border-white/5 rounded-2xl text-gray-500 font-mono text-[10px] break-all">
+                              {profile?.organization_id}
+                           </div>
+                        </div>
+                     </CardContent>
+                  </Card>
+
+                  <Card className="bg-[#1A1A1A] border-gray-800 rounded-[2.5rem] overflow-hidden relative">
+                     <div className="absolute top-4 right-4 animate-pulse">
+                        <div className="px-2 py-1 rounded-full bg-primary/20 border border-primary/30 text-[8px] font-black text-primary uppercase tracking-widest">Live</div>
+                     </div>
+                     <div className="p-8 border-b border-gray-800">
+                        <div className="flex items-center gap-4">
+                           <div className="w-12 h-12 rounded-2xl bg-purple-500/10 flex items-center justify-center border border-purple-500/20">
+                              <Zap className="w-6 h-6 text-purple-400" />
+                           </div>
+                           <div>
+                              <CardTitle className="text-white">Subscription Plan</CardTitle>
+                              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-0.5">Manage your capabilities</p>
+                           </div>
+                        </div>
+                     </div>
+                     <CardContent className="p-8 space-y-6">
+                        <div className="flex items-center justify-between p-6 bg-gradient-to-br from-purple-500/10 to-primary/5 border border-purple-500/20 rounded-3xl">
+                           <div>
+                              <p className="text-[10px] font-black text-purple-400 uppercase tracking-widest mb-1">Current Plan</p>
+                              <h4 className="text-3xl font-black text-white uppercase tracking-tighter italic">
+                                 {orgLoading ? '...' : (org?.plan || 'Free Tier')}
+                              </h4>
+                           </div>
+                           <Sparkles className="w-10 h-10 text-primary opacity-20" />
+                        </div>
+
+                        <div className="space-y-3">
+                           <div className="flex items-center gap-3 text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                              <CheckCircle2 className="w-4 h-4 text-primary" /> Multi-branch operations enabled
+                           </div>
+                           <div className="flex items-center gap-3 text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                              <CheckCircle2 className="w-4 h-4 text-primary" /> Real-time verification queue active
+                           </div>
+                        </div>
+
+                        <Button
+                           variant="outline"
+                           onClick={() => showToast("Stripe Portal integration coming soon!", "warning")}
+                           className="w-full h-14 border-white/10 hover:bg-white/5 font-black uppercase tracking-widest text-[11px] rounded-2xl flex items-center gap-3"
+                        >
+                           <CreditCard className="w-5 h-5 text-gray-500" /> Manage Billing & Invoices
+                        </Button>
+                     </CardContent>
+                  </Card>
+               </div>
+            )}
 
             {/* Info Card */}
             <Card className="bg-[#1A1A1A] border-gray-800 rounded-[2.5rem] overflow-hidden">

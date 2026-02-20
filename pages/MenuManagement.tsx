@@ -133,17 +133,34 @@ const MenuManagement: React.FC = () => {
                       onClick={async () => {
                         if (confirm(`PERMANENT DELETE: Are you sure you want to wipe "${item.name}" and ALL its history? This action cannot be undone.`)) {
                           try {
-                            const { error, data: result } = await supabase.functions.invoke('manage-menu', {
-                              body: {
-                                action: 'delete',
-                                target_id: item.id,
-                                user_id: user?.id
+                            let edgeSuccess = false;
+                            try {
+                              const { error, data: result } = await supabase.functions.invoke('manage-menu', {
+                                body: {
+                                  action: 'delete',
+                                  target_id: item.id,
+                                  user_id: user?.id
+                                }
+                              });
+                              if (!error && !(result && result.error)) {
+                                edgeSuccess = true;
+                              } else {
+                                console.warn("Edge Function failed, falling back to direct RPC:", error || result?.error);
                               }
-                            });
-                            if (error || (result && result.error)) throw new Error(error?.message || result?.error);
+                            } catch (e) {
+                              console.warn("Edge Function unreachable, falling back to direct RPC:", e);
+                            }
+
+                            // Fallback: Direct RPC call to the Deep Wipe Protocol
+                            if (!edgeSuccess) {
+                              const { error: rpcErr } = await supabase.rpc('permanently_delete_menu_item', {
+                                target_id: item.id
+                              });
+                              if (rpcErr) throw rpcErr;
+                            }
 
                             refreshMenu();
-                            showToast("Menu Item Deleted", "success");
+                            showToast("Menu Item Purged from Project", "success");
                           } catch (err: any) {
                             showToast(err.message, "error");
                           }
