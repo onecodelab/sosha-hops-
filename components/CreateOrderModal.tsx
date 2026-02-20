@@ -188,7 +188,6 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
       // 2. Prep Payload for Edge Function (The Guard)
       const payload = {
         branch_id: activeBranchId,
-        user_id: user?.id,
         items: cart.map(item => ({
           menu_item_id: item.dish.id,
           quantity: item.quantity,

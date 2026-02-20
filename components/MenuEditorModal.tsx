@@ -164,7 +164,6 @@ export const MenuEditorModal: React.FC<MenuEditorModalProps> = ({
         body: {
           action: 'upsert',
           item: payload,
-          user_id: (await supabase.auth.getUser()).data.user?.id
         }
       });
 

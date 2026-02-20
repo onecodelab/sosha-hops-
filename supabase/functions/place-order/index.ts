@@ -3,7 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Redis } from "https://esm.sh/@upstash/redis";
 
 const corsHeaders = {
-    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Origin': Deno.env.get('ALLOWED_ORIGIN') ?? '*',
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
@@ -28,11 +28,24 @@ serve(async (req) => {
         }
 
         const supabase = createClient(sbUrl, sbKey);
+
+        const authHeader = req.headers.get('Authorization');
+        if (!authHeader) {
+            return new Response(JSON.stringify({ error: 'Missing authorization header' }), { status: 401, headers: corsHeaders });
+        }
+
+        const anonKey = Deno.env.get('SUPABASE_ANON_KEY') || '';
+        const authClient = createClient(sbUrl, anonKey, { global: { headers: { Authorization: authHeader } } });
+        const { data: { user }, error: userErr } = await authClient.auth.getUser();
+        if (userErr || !user) {
+            return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: corsHeaders });
+        }
+
         // Redis is optional - if not set, skip stock checking
         const redis = (redisUrl && redisToken) ? new Redis({ url: redisUrl, token: redisToken }) : null;
 
         // 2. Parse Payload
-        let { branch_id, items, order_details, user_id, source, table_number, organization_id: input_org_id } = await req.json();
+        let { branch_id, items, order_details, source, table_number, organization_id: input_org_id } = await req.json();
 
         // 2.1 RESOLVE & VALIDATE ORGANIZATION (CRITICAL for Multi-Tenancy)
         if (!branch_id || !items) {
@@ -52,6 +65,20 @@ serve(async (req) => {
 
         const organizationId = branchData.organization_id;
 
+        const { data: profile, error: profileErr } = await supabase
+            .from('profiles')
+            .select('organization_id, role')
+            .eq('id', user.id)
+            .single();
+
+        if (profileErr || !profile || profile.organization_id !== organizationId) {
+            return new Response(JSON.stringify({ error: 'Unauthorized for this branch' }), { status: 403, headers: corsHeaders });
+        }
+
+        if (!['waiter', 'manager', 'owner', 'admin'].includes(profile.role)) {
+            return new Response(JSON.stringify({ error: 'Insufficient permissions' }), { status: 403, headers: corsHeaders });
+        }
+
         // SACRED RULE: Isolation must be structural. 
         if (input_org_id && input_org_id !== organizationId) {
             console.error(`[SECURITY ALERT] Tenant Mismatch! Input Org: ${input_org_id}, Expected Org: ${organizationId}`);
@@ -59,7 +86,7 @@ serve(async (req) => {
         }
 
         // OBSERVABILITY: Log Tool Call Execution
-        console.log(`[TOOL_CALL] place-order | Branch: ${branchData.name} (${branch_id}) | Org: ${organizationId} | User: ${user_id || 'chatbot'}`);
+        console.log(`[TOOL_CALL] place-order | Branch: ${branchData.name} (${branch_id}) | Org: ${organizationId} | User: ${user.id}`);
 
         // Robustness: If items comes as a JSON string from Flowise, parse it
         if (typeof items === 'string') {
@@ -247,7 +274,7 @@ serve(async (req) => {
                 organization_id: organizationId,
                 table_id: tableId,
                 table_number: table_number || null,
-                waiter_id: user_id || null,
+                waiter_id: user.id,
                 source: source || 'chatbot',
                 status: 'pending',
                 total_amount: orderTotal,

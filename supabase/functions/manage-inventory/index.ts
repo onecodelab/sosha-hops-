@@ -4,7 +4,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Redis } from "https://esm.sh/@upstash/redis";
 
 const corsHeaders = {
-    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Origin': Deno.env.get('ALLOWED_ORIGIN') ?? '*',
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
@@ -19,17 +19,31 @@ serve(async (req) => {
             Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
         );
 
+
+        const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
+        const anonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? '';
+        const authHeader = req.headers.get('Authorization');
+        if (!authHeader) {
+            return new Response(JSON.stringify({ error: 'Missing authorization header' }), { status: 401, headers: corsHeaders });
+        }
+
+        const authClient = createClient(supabaseUrl, anonKey, { global: { headers: { Authorization: authHeader } } });
+        const { data: { user }, error: userErr } = await authClient.auth.getUser();
+        if (userErr || !user) {
+            return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: corsHeaders });
+        }
+
         const redis = new Redis({
             url: Deno.env.get('UPSTASH_REDIS_REST_URL')!,
             token: Deno.env.get('UPSTASH_REDIS_REST_TOKEN')!,
         });
 
         const body = await req.json();
-        const { action, branch_id, items, user_id, reason } = body;
+        const { action, branch_id, items, reason } = body;
         // items: [{ ingredient_id, quantity, old_quantity }] 
         // quantity is the NEW TARGET VALUE for 'update' action
 
-        if (!branch_id || !items || !user_id) {
+        if (!branch_id || !items) {
             return new Response(JSON.stringify({ error: "Missing required fields" }), { status: 400, headers: corsHeaders });
         }
 
@@ -44,6 +58,20 @@ serve(async (req) => {
             return new Response(JSON.stringify({ error: "Invalid Branch ID" }), { status: 400, headers: corsHeaders });
         }
         const organizationId = branchData.organization_id;
+
+        const { data: profile, error: profileErr } = await supabase
+            .from('profiles')
+            .select('organization_id, role')
+            .eq('id', user.id)
+            .single();
+
+        if (profileErr || !profile || profile.organization_id !== organizationId) {
+            return new Response(JSON.stringify({ error: 'Unauthorized for this branch' }), { status: 403, headers: corsHeaders });
+        }
+
+        if (!['owner', 'admin', 'manager'].includes(profile.role)) {
+            return new Response(JSON.stringify({ error: 'Insufficient permissions' }), { status: 403, headers: corsHeaders });
+        }
 
         // Auth Check (Optional if relying on RLS, but proactive is better)
         // Here we trust the caller (authenticated client), ensuring we use Service Role to bypass strict RLS if needed,
@@ -81,7 +109,7 @@ serve(async (req) => {
                 ingredient_id,
                 transaction_type: 'audit',
                 quantity: Number(quantity) - (current_stock || 0),
-                performed_by: user_id,
+                performed_by: user.id,
                 reason: reason || 'Manual Adjustment',
                 created_at: new Date().toISOString()
             });

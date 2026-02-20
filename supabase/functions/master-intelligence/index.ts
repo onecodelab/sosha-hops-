@@ -2,7 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.7'
 
 const corsHeaders = {
-    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Origin': Deno.env.get('ALLOWED_ORIGIN') ?? '*',
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
@@ -19,7 +19,58 @@ serve(async (req) => {
         const supabaseServiceKey = Deno.env.get('SERVICE_ROLE_KEY') ?? '';
         const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+
+        const authHeader = req.headers.get('Authorization');
+        const anonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? '';
+
+        if (!authHeader) {
+            return new Response(JSON.stringify({ error: 'Missing authorization header' }), {
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                status: 401,
+            });
+        }
+
+        const authClient = createClient(supabaseUrl, anonKey, { global: { headers: { Authorization: authHeader } } });
+        const { data: { user }, error: userErr } = await authClient.auth.getUser();
+        if (userErr || !user) {
+            return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                status: 401,
+            });
+        }
+
         const { action, payload, organization_id, branch_id } = await req.json();
+
+        const { data: profile, error: profileErr } = await supabase
+            .from('profiles')
+            .select('organization_id, role')
+            .eq('id', user.id)
+            .single();
+
+        if (profileErr || !profile) {
+            throw new Error('Unauthorized');
+        }
+
+        if (organization_id && organization_id !== profile.organization_id) {
+            throw new Error('Tenant isolation violation');
+        }
+
+        if (!['owner', 'admin', 'manager'].includes(profile.role)) {
+            throw new Error('Insufficient permissions');
+        }
+
+        const resolvedOrganizationId = profile.organization_id;
+
+        if (branch_id) {
+            const { data: branchData } = await supabase
+                .from('branches')
+                .select('id')
+                .eq('id', branch_id)
+                .eq('organization_id', resolvedOrganizationId)
+                .maybeSingle();
+
+            if (!branchData) throw new Error('Unauthorized branch access');
+        }
 
         // ------------------------------------------------------------------
         // CONTEXT RETRIEVAL (The "Truth Backbone")
@@ -41,7 +92,7 @@ serve(async (req) => {
                     // 3. Recent Intelligence Events - Filter by Org
                     supabase.from('intelligence_events')
                         .select('*')
-                        .eq('organization_id', organization_id) // <--- STRICT ISOLATION
+                        .eq('organization_id', resolvedOrganizationId) // <--- STRICT ISOLATION
                         .order('created_at', { ascending: false })
                         .limit(3)
                 ]);
@@ -93,7 +144,7 @@ serve(async (req) => {
                 body: JSON.stringify({
                     question: `User Question: "${question}". \n\nLIVE BUSINESS TRUTH:\nInventory Risks: ${JSON.stringify(context.risks)}\nLow Margins: ${JSON.stringify(context.low_margin_items)}\nRecent Events: ${JSON.stringify(context.recent_events)}\n\nAnswer based on this truth.`,
                     overrideConfig: {
-                        organization_id,
+                        organization_id: resolvedOrganizationId,
                         branch_id
                     }
                 })

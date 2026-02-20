@@ -2,7 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
-    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Origin': Deno.env.get('ALLOWED_ORIGIN') ?? '*',
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
@@ -17,18 +17,31 @@ serve(async (req) => {
             Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
         );
 
-        const { action, po_id, reason, user_id, notes } = await req.json();
+        const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
+        const anonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? '';
+        const authHeader = req.headers.get('Authorization');
+        if (!authHeader) {
+            return new Response(JSON.stringify({ error: 'Missing authorization header' }), { status: 401, headers: corsHeaders });
+        }
+
+        const authClient = createClient(supabaseUrl, anonKey, { global: { headers: { Authorization: authHeader } } });
+        const { data: { user }, error: userErr } = await authClient.auth.getUser();
+        if (userErr || !user) {
+            return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: corsHeaders });
+        }
+
+        const { action, po_id, reason, notes } = await req.json();
         // action: 'list_pending', 'approve', 'reject', 'analyze_risk'
 
-        if (!user_id || !action) {
-            return new Response(JSON.stringify({ error: "Missing required fields (user_id, action)" }), { status: 400, headers: corsHeaders });
+        if (!action) {
+            return new Response(JSON.stringify({ error: "Missing required field: action" }), { status: 400, headers: corsHeaders });
         }
 
         // 1. Authorization Check (Must be Owner/Manager)
         const { data: profile } = await supabase
             .from('profiles')
             .select('organization_id, role, full_name')
-            .eq('id', user_id)
+            .eq('id', user.id)
             .single();
 
         if (!['owner', 'admin'].includes(profile?.role)) {
@@ -65,7 +78,7 @@ serve(async (req) => {
                 .from('purchase_orders')
                 .update({
                     status: 'approved',
-                    approved_by: user_id,
+                    approved_by: user.id,
                     approved_at: new Date().toISOString(),
                     approval_notes: notes || "Approved by AI Master Agent"
                 })
