@@ -23,7 +23,7 @@ interface BillModalProps {
 
 // Security Best Practice: Use environment variables
 // Fix: Property 'env' does not exist on type 'ImportMeta'. Using process.env to align with provided environment guidelines.
-const BARO_API_KEY = (process.env as any).VITE_BARO_API_KEY || "baro_prod_key_8821";
+const BARO_API_KEY = import.meta.env.VITE_BARO_API_KEY || "baro_prod_key_8821";
 
 const BANK_CONFIG: Record<string, { receiver: string, label: string, placeholder: string, color: string, icon: any, endpoint: string }> = {
   telebirr: {

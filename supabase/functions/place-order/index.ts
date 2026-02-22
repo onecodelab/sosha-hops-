@@ -218,10 +218,13 @@ serve(async (req) => {
         return new Response(JSON.stringify({ success: true, order_id: order.id }), { headers: corsHeaders });
 
     } catch (err: any) {
+        console.error(`[ERROR] place-order failure at step: ${currentStep}`);
+        console.error(err);
         return new Response(JSON.stringify({
             error: err.message,
             step: currentStep,
-            type: 'TOOL_ERROR'
+            type: 'TOOL_ERROR',
+            detail: err.stack
         }), { status: 500, headers: corsHeaders });
     }
 });
