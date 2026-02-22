@@ -16,6 +16,8 @@ export const useRedisStock = (ingredientIds: string[]) => {
         if (!activeBranchId || ingredientIds.length === 0) return;
 
         try {
+            if (!redis) return;
+
             // Create pipeline for efficiency
             const pipeline = redis.pipeline();
             for (const id of ingredientIds) {

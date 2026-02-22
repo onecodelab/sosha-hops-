@@ -5,10 +5,17 @@ import { Redis } from '@upstash/redis';
  * Global Redis client for real-time inventory checks.
  * Uses HTTP-based stateless client from @upstash/redis.
  */
-export const redis = new Redis({
-    url: import.meta.env.VITE_UPSTASH_REDIS_REST_URL,
-    token: import.meta.env.VITE_UPSTASH_REDIS_REST_TOKEN || import.meta.env.TOKEN, // Handling both names
-});
+// Safe environment variable retrieval
+const REDIS_URL = import.meta.env.VITE_UPSTASH_REDIS_REST_URL || import.meta.env.UPSTASH_REDIS_REST_URL;
+const REDIS_TOKEN = import.meta.env.VITE_UPSTASH_REDIS_REST_TOKEN || import.meta.env.UPSTASH_REDIS_REST_TOKEN || import.meta.env.TOKEN;
+
+/**
+ * Global Redis client for real-time inventory checks.
+ * Uses HTTP-based stateless client from @upstash/redis.
+ */
+export const redis = (REDIS_URL && REDIS_TOKEN)
+    ? new Redis({ url: REDIS_URL, token: REDIS_TOKEN })
+    : null;
 
 /**
  * Helper to generate consistent Redis keys.
