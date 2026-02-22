@@ -11,18 +11,25 @@ module.exports = {
             fontFamily: {
                 sans: ['Inter', 'sans-serif'],
                 mono: ['JetBrains Mono', 'monospace'],
+                serif: ['Cormorant Garamond', 'serif'],
             },
             colors: {
                 primary: {
-                    DEFAULT: '#FFC800', // Sharper Gold
-                    hover: '#FDB600',
+                    DEFAULT: '#FFB800', // Sosha Yellow (Energy)
+                    hover: '#E5A600',
                     foreground: '#000000',
                     glow: 'var(--primary-glow)'
                 },
                 secondary: {
-                    DEFAULT: '#A3E635', // Vibrant Lime
-                    hover: '#84CC16',
-                    foreground: '#000000'
+                    DEFAULT: '#72BF44', // Cucumber Green (Life)
+                    hover: '#5DA333',
+                    foreground: '#ffffff'
+                },
+                brand: {
+                    yellow: '#FFB800',
+                    green: '#72BF44',
+                    blue: '#0A192F', // Deep Water Blue (Baro River Depth)
+                    black: '#0A0A0A',
                 },
                 background: 'var(--background)',
                 card: 'var(--card)',

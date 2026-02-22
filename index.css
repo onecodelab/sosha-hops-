@@ -1,47 +1,129 @@
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@1,300;1,700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
-    :root {
-        --background: #020202;
-        --card: #0A0A0A;
-        --border: #222222;
-        --foreground: #FAFAFA;
-        --muted: #71717A;
-        --primary-glow: rgba(255, 200, 0, 0.15);
-        --glass-bg: rgba(20, 20, 20, 0.4);
-        --glass-border: rgba(255, 255, 255, 0.08);
-        --glass-highlight: rgba(255, 255, 255, 0.03);
-        --input-bg: rgba(255, 255, 255, 0.03);
-        --shadow-color: rgba(0, 0, 0, 0.8);
-        --bubble-1: rgba(16, 185, 129, 0.05);
-        --bubble-2: rgba(132, 204, 22, 0.05);
+    .serif-ital {
+        font-family: 'Cormorant Garamond', serif;
+        font-style: italic;
     }
 
-    body[data-theme="fresh"] {
-        --background: #F0F2F5;
-        --card: #FFFFFF;
-        --border: #CBD5E1;
-        --foreground: #0F172A;
-        --muted: #475569;
-        --primary-glow: rgba(255, 200, 0, 0.15);
-        --glass-bg: rgba(255, 255, 255, 0.6);
-        --glass-border: rgba(0, 0, 0, 0.1);
-        --glass-highlight: rgba(255, 255, 255, 0.4);
-        --input-bg: #E2E8F0;
-        --shadow-color: rgba(15, 23, 42, 0.1);
-        --bubble-1: rgba(52, 211, 153, 0.1);
-        --bubble-2: rgba(163, 230, 53, 0.1);
+    .mono-os {
+        font-family: 'JetBrains Mono', monospace;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+    }
+}
+
+:root {
+    --background: #020202;
+    --card: #0A0A0A;
+    --border: rgba(255, 184, 0, 0.25);
+    --foreground: #FAFAFA;
+    --muted: #71717A;
+    --primary-glow: rgba(255, 200, 0, 0.15);
+    --glass-bg: rgba(20, 20, 20, 0.4);
+    --glass-border: rgba(255, 255, 255, 0.08);
+    --glass-highlight: rgba(255, 255, 255, 0.03);
+    --input-bg: rgba(255, 255, 255, 0.03);
+    --shadow-color: rgba(0, 0, 0, 0.8);
+    --bubble-1: rgba(16, 185, 129, 0.05);
+    --bubble-2: rgba(132, 204, 22, 0.05);
+}
+
+body[data-theme="fresh"] {
+    --background: #F8FAFC;
+    --card: #FFFFFF;
+    --border: rgba(255, 184, 0, 0.15);
+    --foreground: #020617;
+    --muted: #64748B;
+    --primary-glow: rgba(255, 184, 0, 0.1);
+    --glass-bg: rgba(255, 255, 255, 0.7);
+    --glass-border: rgba(0, 0, 0, 0.05);
+    --glass-highlight: rgba(255, 255, 255, 0.5);
+    --input-bg: #F1F5F9;
+    --shadow-color: rgba(0, 0, 0, 0.05);
+    --bubble-1: rgba(114, 191, 68, 0.08);
+    /* Cucumber Green */
+    --bubble-2: rgba(255, 184, 0, 0.08);
+    /* Sosha Yellow */
+}
+
+body {
+    background-color: var(--background);
+    color: var(--foreground);
+    transition: background-color 0.4s cubic-bezier(0.2, 0.8, 0.2, 1), color 0.4s ease;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overflow-x: hidden;
+}
+
+@keyframes liquid-core {
+    0% {
+        background-position: 0% 50%;
+        opacity: 0.8;
     }
 
-    body {
-        background-color: var(--background);
-        color: var(--foreground);
-        transition: background-color 0.4s cubic-bezier(0.2, 0.8, 0.2, 1), color 0.4s ease;
-        -webkit-font-smoothing: antialiased;
-        -moz-osx-font-smoothing: grayscale;
+    50% {
+        background-position: 100% 50%;
+        opacity: 1;
     }
+
+    100% {
+        background-position: 0% 50%;
+        opacity: 0.8;
+    }
+}
+
+@keyframes river-shimmer {
+    0% {
+        filter: brightness(1) contrast(1);
+    }
+
+    50% {
+        filter: brightness(1.2) contrast(1.1);
+    }
+
+    100% {
+        filter: brightness(1) contrast(1);
+    }
+}
+
+.liquid-bg {
+    background: linear-gradient(-45deg, #020617, #0A192F, #72BF4411, #FFB80011);
+    background-size: 400% 400%;
+    animation: liquid-core 20s ease infinite;
+}
+
+.river-shimmer {
+    animation: river-shimmer 8s ease-in-out infinite;
+}
+
+@keyframes river-flow {
+    0% {
+        background-position: 0% 50%;
+    }
+
+    50% {
+        background-position: 100% 50%;
+    }
+
+    100% {
+        background-position: 0% 50%;
+    }
+}
+
+.river-gradient {
+    background: linear-gradient(-45deg, #020617, #0f172a, #72BF4422, #FFB80011);
+    background-size: 400% 400%;
+    animation: river-flow 15s ease infinite;
+}
+
+body[data-theme="fresh"] .river-gradient {
+    background: linear-gradient(-45deg, #F8FAFC, #F1F5F9, #72BF4411, #FFB80008);
+    background-size: 400% 400%;
 }
 
 @layer components {
@@ -53,6 +135,92 @@
         -webkit-backdrop-filter: blur(12px);
     }
 
+    /* 🏺 UCHOK PATTERN: Sacred Necklace Signature */
+    .uchok-pattern {
+        background-image: radial-gradient(circle at 2px 2px, var(--glass-border) 1px, transparent 0);
+        background-size: 16px 16px;
+    }
+
+    .uchok-border {
+        position: relative;
+    }
+
+    .uchok-border::before {
+        content: '';
+        position: absolute;
+        inset: -1px;
+        padding: 1px;
+        background: linear-gradient(90deg,
+                transparent 0%,
+                rgba(114, 191, 68, 0.5) 20%,
+                transparent 40%,
+                rgba(255, 184, 0, 0.5) 60%,
+                transparent 80%,
+                rgba(114, 191, 68, 0.5) 100%);
+        -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+        mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+        -webkit-mask-composite: xor;
+        mask-composite: exclude;
+        background-size: 200% 100%;
+        animation: river-flow 10s linear infinite;
+        border-radius: inherit;
+        pointer-events: none;
+    }
+
+    /* 🌊 RIPPLE INTERACTION */
+    .ripple-link {
+        position: relative;
+        overflow: hidden;
+    }
+
+    .ripple-link::after {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 150%;
+        height: 150%;
+        background: radial-gradient(circle, rgba(255, 184, 0, 1) 0%, transparent 70%);
+        transform: translate(-50%, -50%) scale(0);
+        opacity: 0;
+        transition: transform 0.6s ease-out, opacity 0.6s ease-out;
+        pointer-events: none;
+        z-index: 0;
+    }
+
+    .ripple-link:hover::after {
+        transform: translate(-50%, -50%) scale(1.2);
+        opacity: 0.15;
+    }
+
+    /* ATMOSPHERIC LOGO CORE */
+    .liquid-core-logo {
+        position: relative;
+        overflow: visible;
+    }
+
+    .liquid-core-logo::after {
+        content: '';
+        position: absolute;
+        inset: -50%;
+        background: radial-gradient(circle at center, rgba(10, 25, 47, 0.4) 0%, transparent 70%);
+        animation: liquid-pulse 8s ease-in-out infinite alternate;
+        filter: blur(30px);
+        z-index: -1;
+    }
+
+    @keyframes liquid-pulse {
+        from {
+            transform: scale(0.8) translate(-10%, -10%);
+            opacity: 0.3;
+        }
+
+        to {
+            transform: scale(1.2) translate(10%, 10%);
+            opacity: 0.6;
+        }
+    }
+
     /* Optimize blur for mobile */
     @media (max-width: 768px) {
         .glass-panel {
@@ -61,8 +229,72 @@
         }
     }
 
-    /* Custom Scrollbar */
-    ::-webkit-scrollbar {
+    @keyframes flow-river {
+        0% {
+            stroke-dashoffset: 1000;
+        }
+
+        100% {
+            stroke-dashoffset: 0;
+        }
+    }
+
+    @keyframes river-flow {
+        0% {
+            transform: translateX(-20%) scale(1);
+        }
+
+        50% {
+            transform: translateX(0%) scale(1.05);
+        }
+
+        100% {
+            transform: translateX(-20%) scale(1);
+        }
+    }
+
+    @keyframes progress {
+        0% {
+            transform: translateX(-100%);
+        }
+
+        100% {
+            transform: translateX(200%);
+        }
+    }
+
+    @keyframes system-flush {
+        0% {
+            opacity: 0;
+            filter: blur(10px) brightness(2);
+        }
+
+        50% {
+            opacity: 0.3;
+            filter: blur(0px) brightness(1.5);
+        }
+
+        100% {
+            opacity: 0;
+            filter: blur(5px) brightness(1);
+        }
+    }
+
+    .system-flush-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        pointer-events: none;
+        background: white;
+        mix-blend-mode: overlay;
+        animation: system-flush 0.8s ease-out forwards;
+    }
+
+    body {
+        transition: background-color 1s ease, color 0.5s ease;
+    }
+
+    .custom-scrollbar::-webkit-scrollbar {
         width: 5px;
         height: 5px;
     }
@@ -82,5 +314,29 @@
 
     ::-webkit-scrollbar-thumb:hover {
         background: var(--muted);
+    }
+
+    .no-scrollbar::-webkit-scrollbar {
+        display: none;
+    }
+
+    .no-scrollbar {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+    }
+
+    /* Compressed Scrollbar */
+    .compressed-scrollbar::-webkit-scrollbar {
+        width: 3px;
+        height: 3px;
+    }
+
+    .compressed-scrollbar::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 10px;
+    }
+
+    .compressed-scrollbar::-webkit-scrollbar-thumb:hover {
+        background: rgba(255, 255, 255, 0.2);
     }
 }

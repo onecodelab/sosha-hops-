@@ -210,7 +210,8 @@ const TableStatus: React.FC = () => {
             pos_x: newTableData.pos_x,
             pos_y: newTableData.pos_y,
             status: 'available',
-            branch_id: activeBranchId
+            branch_id: activeBranchId,
+            organization_id: profile?.organization_id
          });
          if (error) throw error;
          showToast(`Table ${newTableData.table_number} created successfully!`, 'success');
@@ -237,7 +238,8 @@ const TableStatus: React.FC = () => {
                pos_x: newTableData.pos_x,
                pos_y: newTableData.pos_y
             })
-            .eq('id', editingTableId);
+            .eq('id', editingTableId)
+            .eq('organization_id', profile?.organization_id);
 
          if (error) throw error;
          showToast('Table updated successfully', 'success');
@@ -256,7 +258,7 @@ const TableStatus: React.FC = () => {
 
       setIsAddingTable(true);
       try {
-         const { error } = await supabase.from('tables').delete().eq('id', editingTableId);
+         const { error } = await supabase.from('tables').delete().eq('id', editingTableId).eq('organization_id', profile?.organization_id);
          if (error) throw error;
 
          showToast('Table deleted successfully', 'success');
@@ -305,15 +307,15 @@ const TableStatus: React.FC = () => {
       <DashboardLayout title="Floor Status" subtitle={isAnalyticsMode ? "Performance Heatmap (Today)" : "Real-time occupancy visualization"}>
          <div className="space-y-6 animate-in fade-in duration-500 pb-20">
 
-            <div className="flex flex-col md:flex-row justify-between items-center gap-6 bg-card/60 backdrop-blur-xl p-6 rounded-[2.5rem] border border-border shadow-2xl">
+            <div className="flex flex-col md:flex-row justify-between items-center gap-6 bg-card/60 backdrop-blur-xl p-6 rounded-[2.5rem] border border-primary/20 shadow-2xl">
                {/* Zone Filter */}
-               <div className="flex bg-muted/10 p-1.5 rounded-2xl border border-border overflow-x-auto w-full md:w-auto no-scrollbar snap-x">
+               <div className="flex items-center bg-muted/10 p-1 rounded-[1.25rem] border border-primary/20 overflow-x-auto w-full md:w-auto no-scrollbar snap-x shadow-inner">
                   {['all', 'indoor', 'outdoor', 'vip', 'bar'].map(z => (
                      <button
                         key={z}
                         onClick={() => setZoneFilter(z as any)}
                         className={cn(
-                           "px-6 py-2.5 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all whitespace-nowrap snap-start",
+                           "px-6 py-2 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all whitespace-nowrap snap-start",
                            zoneFilter === z ? "bg-primary text-black shadow-lg" : "text-muted hover:text-foreground hover:bg-muted/10 font-bold"
                         )}
                      >
@@ -342,7 +344,7 @@ const TableStatus: React.FC = () => {
                               ))}
                            </div>
                         )}
-                        <div className="flex bg-muted/10 p-1 rounded-xl border border-border shadow-inner">
+                        <div className="flex bg-muted/10 p-1 rounded-xl border border-primary/20 shadow-inner">
                            <button
                               onClick={() => { setIsAnalyticsMode(false); setIsMapView(false); }}
                               className={cn("px-4 py-2 text-[10px] uppercase font-black tracking-widest rounded-lg transition-all flex items-center gap-2", !isAnalyticsMode && !isMapView ? "bg-primary text-black shadow-md" : "text-muted hover:text-foreground")}
@@ -385,7 +387,7 @@ const TableStatus: React.FC = () => {
                      </div>
                   </RoleGuard>
 
-                  <Button variant="ghost" onClick={() => refetch()} size="sm" className="h-10 w-10 p-0 rounded-xl bg-muted/5 border border-border text-muted hover:text-foreground transition-all">
+                  <Button variant="ghost" onClick={() => refetch()} size="sm" className="h-10 w-10 p-0 rounded-xl bg-muted/5 border border-primary/20 text-muted hover:text-foreground transition-all">
                      <RefreshCw className={cn("w-4 h-4", isLoading && "animate-spin")} />
                   </Button>
                </div>
@@ -425,7 +427,7 @@ const TableStatus: React.FC = () => {
                         else if (score >= 50) scoreColor = "text-orange-500 bg-orange-500/10 border-orange-500/20";
 
                         return (
-                           <div key={table.id} className="bg-card/60 backdrop-blur-xl border border-border rounded-3xl p-5 flex items-center justify-between shadow-xl">
+                           <div key={table.id} className="bg-card/60 backdrop-blur-xl border border-primary/20 rounded-3xl p-5 flex items-center justify-between shadow-xl">
                               <div className="flex items-center gap-5">
                                  <div className={cn("w-14 h-14 rounded-2xl flex flex-col items-center justify-center border font-black shadow-inner", scoreColor)}>
                                     <span className="text-lg leading-none">{table.table_number}</span>
@@ -463,7 +465,7 @@ const TableStatus: React.FC = () => {
                                        handleQuickOrder(table);
                                     }
                                  }}
-                                 className="h-12 w-12 rounded-2xl bg-muted/5 border border-border group hover:bg-primary/10 transition-all"
+                                 className="h-12 w-12 rounded-2xl bg-muted/5 border border-primary/20 group hover:bg-primary/10 transition-all"
                               >
                                  <ChevronRight className="w-6 h-6 text-muted group-hover:text-primary transition-colors" strokeWidth={3} />
                               </Button>
@@ -503,7 +505,7 @@ const TableStatus: React.FC = () => {
             className="max-w-4xl"
          >
             <div className="space-y-6">
-               <div className="flex bg-black/40 p-1.5 rounded-xl border border-white/5 backdrop-blur-md self-start w-fit">
+               <div className="flex bg-black/40 p-1.5 rounded-xl border border-primary/10 backdrop-blur-md self-start w-fit">
                   {(['daily', 'weekly', 'monthly'] as const).map(v => (
                      <button
                         key={v}
@@ -533,7 +535,7 @@ const TableStatus: React.FC = () => {
                   )}
                </div>
 
-               <div className="pt-6 border-t border-white/5">
+               <div className="pt-6 border-t border-primary/10">
                   <button
                      onClick={() => setSelectedTableHistory(null)}
                      className="w-full bg-white text-black font-black rounded-xl h-12 uppercase tracking-widest text-xs shadow-xl transition-transform active:scale-95"
@@ -780,7 +782,7 @@ const TableStatus: React.FC = () => {
 
 const StatPill = ({ label, value, icon: Icon, color }: any) => {
    const colors: any = {
-      default: 'text-muted border-border bg-muted/5',
+      default: 'text-muted border-primary/20 bg-muted/5',
       green: 'text-emerald-500 border-emerald-500/20 bg-emerald-500/10',
       red: 'text-red-500 border-red-500/20 bg-red-500/10',
       yellow: 'text-yellow-500 border-yellow-500/20 bg-yellow-500/10',

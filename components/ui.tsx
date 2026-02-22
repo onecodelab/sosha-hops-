@@ -29,7 +29,7 @@ export const Button: React.FC<ButtonProps> = ({
 
   const variants = {
     // Primary: Brand Gold, high prominence
-    primary: "bg-primary text-black shadow-[0_4px_20px_-5px_var(--primary-glow)] hover:shadow-[0_8px_30px_-5px_var(--primary-glow)] hover:-translate-y-0.5 border border-white/10",
+    primary: "bg-primary text-black shadow-[0_4px_20px_-5px_var(--primary-glow)] hover:shadow-[0_8px_30px_-5px_var(--primary-glow)] hover:-translate-y-0.5 border border-primary/20",
 
     // Secondary: Brand Lime, for alternative success actions
     secondary: "bg-secondary text-black shadow-[0_4px_15px_-3px_var(--bubble-2)] hover:shadow-[0_8px_25px_-3px_var(--bubble-2)] hover:-translate-y-0.5",
@@ -38,13 +38,13 @@ export const Button: React.FC<ButtonProps> = ({
     destructive: "bg-red-500/5 text-red-500 border border-red-500/20 hover:bg-red-500/10",
 
     // Outline: Professional, low weight
-    outline: "border border-white/10 bg-white/5 hover:bg-white/10 text-foreground backdrop-blur-sm",
+    outline: "border border-primary/20 bg-white/5 hover:bg-white/10 text-foreground backdrop-blur-sm",
 
     // Ghost: Contextual, blends into background
     ghost: "hover:bg-white/5 text-muted-foreground hover:text-foreground",
 
     // Glass: Specialized elevated surface
-    glass: "bg-white/5 backdrop-blur-md border border-white/10 text-foreground hover:bg-white/10 shadow-lg"
+    glass: "bg-white/5 backdrop-blur-md border border-primary/20 text-foreground hover:bg-white/10 shadow-lg"
   };
 
   const sizes = {
@@ -73,7 +73,7 @@ export const Input: React.FC<InputProps> = ({ className, ...props }) => {
   return (
     <input
       className={cn(
-        "flex h-11 w-full rounded-xl border border-white/10 bg-[var(--input-bg)] px-3 py-2 text-sm text-foreground shadow-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 disabled:cursor-not-allowed disabled:opacity-50 transition-all duration-300 hover:border-white/20",
+        "flex h-11 w-full rounded-xl border border-primary/20 bg-[var(--input-bg)] px-3 py-2 text-sm text-foreground shadow-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 disabled:cursor-not-allowed disabled:opacity-50 transition-all duration-300 hover:border-primary/40",
         className
       )}
       {...props}
@@ -89,13 +89,13 @@ interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
 export const Card: React.FC<CardProps> = ({ className, variant = 'default', children, ...props }) => {
   const variants = {
     // Default surface: Highly opaque for depth
-    default: "bg-[#1A1A1A] border-gray-800 shadow-xl",
+    default: "bg-[#1A1A1A] border-primary/20 shadow-xl",
     // Elevated: Near-solid for maximum contrast
-    elevated: "bg-[#1A1A1A] border-gray-700 shadow-2xl",
+    elevated: "bg-[#1A1A1A] border-primary/30 shadow-2xl",
     // Interactive: Clear feedback
-    interactive: "bg-[#1A1A1A] border-gray-800 hover:border-primary/40 hover:bg-[#252525] cursor-pointer shadow-md hover:shadow-xl",
+    interactive: "bg-[#1A1A1A] border-primary/20 hover:border-primary/40 hover:bg-[#252525] cursor-pointer shadow-md hover:shadow-xl",
     // Outline: Minimal weight
-    outline: "bg-transparent border-gray-800"
+    outline: "bg-transparent border-primary/20"
   };
 
   return (
@@ -137,7 +137,7 @@ export const Badge: React.FC<BadgeProps> = ({ className, variant = 'default', ..
     destructive: "bg-red-500/15 text-red-500 border border-red-500/20",
     outline: "text-muted-foreground border border-border",
     secondary: "bg-white/5 text-muted-foreground",
-    glass: "bg-white/5 backdrop-blur-md border border-white/10 text-foreground"
+    glass: "bg-white/5 backdrop-blur-md border border-primary/20 text-foreground"
   };
 
   return (
@@ -169,10 +169,10 @@ export const Dialog: React.FC<DialogProps> = ({ isOpen, onClose, title, children
   if (!isOpen) return null;
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-300">
-      <div className={cn("w-full max-h-[95vh] rounded-[2.5rem] bg-card border border-white/10 shadow-[0_0_50px_-12px_rgba(0,0,0,0.5)] animate-in zoom-in-95 duration-300 overflow-hidden flex flex-col relative", maxWidth)}>
+      <div className={cn("w-full max-h-[95vh] rounded-[2.5rem] bg-card border border-primary/20 shadow-[0_0_50px_-12px_rgba(0,0,0,0.5)] animate-in zoom-in-95 duration-300 overflow-hidden flex flex-col relative", maxWidth)}>
         {/* Solid Header */}
         {showTitle && (
-          <div className="flex items-center justify-between px-8 py-6 border-b border-white/5 bg-black/40">
+          <div className="flex items-center justify-between px-8 py-6 border-b border-primary/10 bg-black/40">
             <h2 className="text-lg font-black text-foreground tracking-tight uppercase">{title}</h2>
             <button onClick={onClose} className="p-2 rounded-full hover:bg-white/10 text-muted hover:text-foreground transition-all duration-300 hover:rotate-90">
               <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
@@ -200,7 +200,7 @@ export const showToast = (message: string, type: 'success' | 'error' | 'warning'
   if (type === 'error') bgClass = 'bg-red-600';
   if (type === 'warning') bgClass = 'bg-yellow-600';
 
-  toast.className = `pointer-events-auto flex items-center w-full max-w-xs p-4 rounded-xl shadow-2xl text-white ${bgClass} animate-in slide-in-from-right fade-in duration-300 mb-2 border border-white/10 backdrop-blur-md`;
+  toast.className = `pointer-events-auto flex items-center w-full max-w-xs p-4 rounded-xl shadow-2xl text-white ${bgClass} animate-in slide-in-from-right fade-in duration-300 mb-2 border border-primary/20 backdrop-blur-md`;
 
   toast.innerHTML = `
     <div class="text-sm font-bold tracking-wide">${message}</div>

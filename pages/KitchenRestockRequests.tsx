@@ -11,7 +11,7 @@ import { Ingredient, RestockRequest, Urgency } from '../types';
 
 const KitchenRestockRequests: React.FC = () => {
    const { t } = useLanguage();
-   const { user } = useAuth();
+   const { user, organizationId } = useAuth();
    const queryClient = useQueryClient();
 
    // Form State
@@ -85,7 +85,8 @@ const KitchenRestockRequests: React.FC = () => {
                reason: reason,
                urgency: urgency,
                requested_by: user.id,
-               status: 'pending'
+               status: 'pending',
+               organization_id: organizationId
             });
 
          if (error) throw error;

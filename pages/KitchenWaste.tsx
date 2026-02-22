@@ -152,7 +152,7 @@ const KitchenWaste: React.FC = () => {
                     <>
                         {/* Step 1: Search Item */}
                         {!selectedItem && (
-                            <Card className="p-6 bg-card/60 backdrop-blur-xl border-white/5 rounded-3xl min-h-[400px]">
+                            <Card className="p-6 bg-card/60 backdrop-blur-xl border border-primary/20 rounded-3xl min-h-[400px]">
                                 <div className="space-y-4">
                                     <div className="text-center mb-8">
                                         <Trash2 className="w-12 h-12 text-red-500 mx-auto mb-3 opacity-80" />
@@ -164,7 +164,7 @@ const KitchenWaste: React.FC = () => {
                                         <Search className="absolute left-4 top-4 w-5 h-5 text-gray-500" />
                                         <Input
                                             placeholder="Search ingredient (e.g. Avocado)..."
-                                            className="pl-12 h-14 text-lg bg-black/40 border-white/10 rounded-2xl"
+                                            className="pl-12 h-14 text-lg bg-primary/5 border border-primary/20 rounded-2xl"
                                             value={searchTerm}
                                             onChange={e => setSearchTerm(e.target.value)}
                                             autoFocus
@@ -176,7 +176,7 @@ const KitchenWaste: React.FC = () => {
                                             <button
                                                 key={item.id}
                                                 onClick={() => setSelectedItem(item)}
-                                                className="w-full flex items-center justify-between p-4 bg-white/5 hover:bg-white/10 border border-white/5 rounded-2xl transition-all group"
+                                                className="w-full flex items-center justify-between p-4 bg-primary/5 hover:bg-primary/10 border border-primary/20 rounded-2xl transition-all group"
                                             >
                                                 <span className="font-bold text-white text-lg">{item.name}</span>
                                                 <span className={cn(
@@ -197,8 +197,8 @@ const KitchenWaste: React.FC = () => {
 
                         {/* Step 2: Details & Reason */}
                         {selectedItem && (
-                            <Card className="p-6 bg-card/60 backdrop-blur-xl border-white/5 rounded-3xl border-t-4 border-t-red-500 shadow-2xl">
-                                <div className="flex justify-between items-start mb-6 border-b border-white/5 pb-4">
+                            <Card className="p-6 bg-card/60 backdrop-blur-xl border border-primary/20 rounded-3xl border-t-4 border-t-red-500 shadow-2xl">
+                                <div className="flex justify-between items-start mb-6 border-b border-primary/20 pb-4">
                                     <div>
                                         <h2 className="text-2xl font-black text-white">{selectedItem.name}</h2>
                                         <div className="flex items-center gap-2 mt-1">
@@ -220,7 +220,7 @@ const KitchenWaste: React.FC = () => {
                                         <div className="flex items-center gap-4">
                                             <Input
                                                 type="number"
-                                                className="h-16 text-3xl font-black text-center bg-black/40 border-white/10 rounded-2xl text-red-500 focus:border-red-500/50"
+                                                className="h-16 text-3xl font-black text-center bg-primary/5 border border-primary/20 rounded-2xl text-red-500 focus:border-red-500/50"
                                                 placeholder="0.0"
                                                 value={quantity}
                                                 onChange={e => setQuantity(e.target.value)}
@@ -241,7 +241,7 @@ const KitchenWaste: React.FC = () => {
                                                         "flex flex-col items-center justify-center p-4 rounded-2xl border transition-all duration-200 gap-2",
                                                         reason === r.id
                                                             ? "bg-red-500 text-white border-red-500 shadow-[0_0_20px_rgba(239,68,68,0.4)] scale-105"
-                                                            : "bg-white/5 text-gray-400 border-white/5 hover:bg-white/10 hover:border-white/10"
+                                                            : "bg-primary/5 text-gray-400 border-primary/10 hover:bg-primary/10 hover:border-primary/20"
                                                     )}
                                                 >
                                                     <span className="text-2xl">{r.icon}</span>
@@ -257,7 +257,7 @@ const KitchenWaste: React.FC = () => {
                                             placeholder="Please explain..."
                                             value={notes}
                                             onChange={e => setNotes(e.target.value)}
-                                            className="bg-black/40 border-white/10"
+                                            className="bg-primary/5 border border-primary/20"
                                         />
                                     )}
 

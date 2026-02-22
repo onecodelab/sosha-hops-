@@ -143,7 +143,7 @@ const StaffPerformance: React.FC = () => {
 
             {/* Top Stats Bar */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-               <div className="flex bg-black/40 p-1.5 rounded-xl border border-white/5 backdrop-blur-md">
+               <div className="flex bg-primary/5 p-1.5 rounded-xl border border-primary/20 backdrop-blur-md">
                   {(['today', '7d', '30d'] as const).map(range => (
                      <button
                         key={range}
@@ -169,8 +169,8 @@ const StaffPerformance: React.FC = () => {
             </div>
 
             {/* Main Intelligence Board */}
-            <Card className="bg-[#09090b] border-white/10 overflow-hidden">
-               <CardHeader className="border-b border-white/10 pb-0 bg-white/[0.02]">
+            <Card className="bg-[#09090b] border-primary/20 overflow-hidden">
+               <CardHeader className="border-b border-primary/20 pb-0 bg-primary/[0.02]">
                   <div className="flex items-center gap-8">
                      {(['waiter', 'kitchen', 'manager'] as const).map(role => (
                         <button
@@ -201,7 +201,7 @@ const StaffPerformance: React.FC = () => {
                               <th className="px-6 py-5 text-right">Action</th>
                            </tr>
                         </thead>
-                        <tbody className="divide-y divide-white/5">
+                        <tbody className="divide-y divide-primary/10">
                            {loading ? (
                               <tr>
                                  <td colSpan={6} className="px-6 py-20 text-center">
@@ -281,7 +281,7 @@ const StaffPerformance: React.FC = () => {
             className="max-w-4xl"
          >
             <div className="space-y-6">
-               <div className="flex bg-black/40 p-1.5 rounded-xl border border-white/5 backdrop-blur-md self-start w-fit">
+               <div className="flex bg-primary/5 p-1.5 rounded-xl border border-primary/10 backdrop-blur-md self-start w-fit">
                   {(['daily', 'weekly', 'monthly'] as const).map(v => (
                      <button
                         key={v}
@@ -311,7 +311,7 @@ const StaffPerformance: React.FC = () => {
                   )}
                </div>
 
-               <div className="pt-6 border-t border-white/5">
+               <div className="pt-6 border-t border-primary/10">
                   <Button
                      onClick={() => setSelectedStaffHistory(null)}
                      className="w-full bg-white text-black font-black rounded-xl h-12 uppercase tracking-widest text-xs shadow-xl transition-transform active:scale-95"

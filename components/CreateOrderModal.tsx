@@ -199,7 +199,6 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
           table_number: tableNumber,
           total_amount: totalAmount,
           customer_notes: customerNotes,
-          created_by_name: profile?.full_name || 'Staff',
           order_number: generateOrderNumber()
         }
       };
@@ -210,12 +209,28 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
           body: payload
         });
 
-        if (rpcErr || (result && result.error)) {
-          throw new Error(rpcErr?.message || result?.error || "Order placement failed");
+        if (rpcErr) {
+          // Try to parse the error context/message for better feedback
+          console.error("RPC Error:", rpcErr);
+          const errorDetail = rpcErr.message || "Connection failed";
+          throw new Error(`Edge Function: ${errorDetail}`);
+        }
+
+        if (result && result.error) {
+          console.error("Function returned logical error:", result);
+          const msg = result.error || "Execution failed";
+          const stepMsg = result.step ? ` (at ${result.step})` : "";
+          throw new Error(`${msg}${stepMsg}`);
+        }
+
+        if (!result || (!result.success && !result.order_id)) {
+          throw new Error("Unexpected response from server.");
         }
       } catch (invokeErr: any) {
-        console.error("Edge Function call failed:", invokeErr);
-        throw new Error(invokeErr.message || "Failed to place order. Please try again.");
+        console.error("Order Submission Failure:", invokeErr);
+        // Extract inner error if it's a Supabase error wrapper
+        const message = invokeErr.message || "Failed to place order.";
+        throw new Error(message);
       }
 
       showToast(internalAppendId ? `Appended to Table ${tableNumber}` : `New Order for Table ${tableNumber}`, "success");

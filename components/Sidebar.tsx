@@ -53,11 +53,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, setIsCollapsed, h
     return (
         <aside
             className={cn(
-                "hidden md:flex flex-col relative z-20 bg-card/60 backdrop-blur-3xl border-r border-border transition-all duration-500",
+                "hidden md:flex flex-col relative z-20 bg-card/60 backdrop-blur-3xl border-r border-primary/20 transition-all duration-500",
                 isCollapsed ? "w-20" : "w-72"
             )}
         >
-            <div className="flex flex-col p-6 h-32 border-b border-border/50">
+            <div className="flex flex-col p-6 h-32 border-b border-primary/20">
                 {!isCollapsed ? (
                     <div className="flex flex-col gap-4 animate-in fade-in duration-500">
                         <div className="h-12 w-full max-w-[160px]">
@@ -255,7 +255,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, setIsCollapsed, h
                 />
             </nav>
 
-            <div className="p-4 border-t border-border">
+            <div className="p-4 border-t border-primary/20">
                 <button
                     onClick={handleLogout}
                     className="w-full flex items-center gap-4 px-4 py-3 rounded-2xl text-red-400 hover:bg-red-500/10 transition-all duration-300 group"
@@ -267,7 +267,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, setIsCollapsed, h
 
             <button
                 onClick={() => setIsCollapsed(!isCollapsed)}
-                className="absolute -right-3 top-24 w-6 h-6 bg-card border border-border rounded-full flex items-center justify-center text-muted hover:text-primary transition-colors shadow-lg z-30"
+                className="absolute -right-3 top-24 w-6 h-6 bg-card border border-primary/30 rounded-full flex items-center justify-center text-muted hover:text-primary transition-colors shadow-lg z-30"
             >
                 {isCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
             </button>

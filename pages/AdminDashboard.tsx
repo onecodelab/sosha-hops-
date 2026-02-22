@@ -256,7 +256,7 @@ const AdminDashboard: React.FC = () => {
 
             {/* Top Compact Metrics Bar */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 shrink-0">
-               <Card className="bg-card/60 backdrop-blur-xl border border-border rounded-[2rem] shadow-xl overflow-hidden group">
+               <Card className="bg-card/60 backdrop-blur-xl border border-primary/20 rounded-[2rem] shadow-xl overflow-hidden group">
                   <div className="p-6 relative">
                      <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/5 rounded-full -mr-16 -mt-16 blur-3xl" />
                      <div className="relative z-10 flex flex-col">
@@ -273,7 +273,7 @@ const AdminDashboard: React.FC = () => {
                </Card>
 
                <Card
-                  className="bg-card/60 backdrop-blur-xl border border-border rounded-[2rem] shadow-xl overflow-hidden group cursor-pointer hover:border-primary/50 transition-all"
+                  className="bg-card/60 backdrop-blur-xl border border-primary/20 rounded-[2rem] shadow-xl overflow-hidden group cursor-pointer hover:border-primary/50 transition-all"
                   onClick={() => setIsModalOpen(true)}
                >
                   <div className="p-6 relative">
@@ -298,24 +298,31 @@ const AdminDashboard: React.FC = () => {
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-auto md:h-full md:min-h-0 md:flex-1 pb-20 md:pb-0">
                {/* Left Col: Live Production Board (Takes 4 cols) */}
                <div className="lg:col-span-4 flex flex-col md:min-h-0 space-y-4 h-[500px] md:h-auto shrink-0">
-                  <div className="bg-card/60 backdrop-blur-xl border border-border rounded-[2.5rem] p-8 flex flex-col h-full shadow-2xl">
+                  <div className="bg-card/60 backdrop-blur-xl border border-primary/20 rounded-[2.5rem] p-8 flex flex-col h-full shadow-2xl">
                      <div className="flex items-center justify-between mb-8">
                         <h3 className="text-[10px] font-black text-muted uppercase tracking-[0.2em] flex items-center gap-3 opacity-60">
                            <LayoutList className="w-4 h-4 text-primary" strokeWidth={3} /> Live System Production
                         </h3>
 
                         <div className="flex items-center gap-3">
-                           <select
-                              value={selectedStaffId}
-                              onChange={(e) => setSelectedStaffId(e.target.value)}
-                              className="bg-muted/10 border border-border rounded-xl px-4 py-2 text-[10px] font-black text-foreground hover:border-primary/30 transition-all outline-none uppercase tracking-widest"
-                           >
-                              <option value="all">ALL_NODES</option>
-                              {staffList.map(s => (
-                                 <option key={s.id} value={s.id}>{s.full_name.toUpperCase()}</option>
-                              ))}
-                           </select>
-                           <Button variant="outline" size="icon" onClick={fetchDashboardData} className="h-10 w-10 rounded-xl border-border bg-muted/5">
+                           <div className="relative group">
+                              <select
+                                 value={selectedStaffId}
+                                 onChange={(e) => setSelectedStaffId(e.target.value)}
+                                 className="appearance-none bg-white/5 border border-primary/30 rounded-xl px-4 py-2 pr-10 text-[10px] font-black text-foreground hover:border-primary/60 focus:border-primary/60 transition-all outline-none uppercase tracking-widest cursor-pointer backdrop-blur-md shadow-inner"
+                              >
+                                 <option value="all" className="bg-[#0A0A0A] text-foreground">ALL_NODES</option>
+                                 {staffList.map(s => (
+                                    <option key={s.id} value={s.id} className="bg-[#0A0A0A] text-foreground">
+                                       {s.full_name.toUpperCase()}
+                                    </option>
+                                 ))}
+                              </select>
+                              <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                                 <Filter className="w-3 h-3 text-primary group-hover:text-primary transition-colors" />
+                              </div>
+                           </div>
+                           <Button variant="outline" size="icon" onClick={fetchDashboardData} className="h-10 w-10 rounded-xl border-primary/20 bg-primary/5 shadow-inner hover:bg-primary/10">
                               <RefreshCw className={cn("w-4 h-4 text-primary", loading && "animate-spin")} strokeWidth={3} />
                            </Button>
                         </div>
@@ -342,8 +349,8 @@ const AdminDashboard: React.FC = () => {
 
                {/* Right Col: Transaction Audit (Takes 8 cols) */}
                <div className="lg:col-span-8 flex flex-col md:min-h-0 h-[600px] md:h-auto shrink-0">
-                  <Card className="bg-card/60 backdrop-blur-xl border border-border rounded-[2.5rem] flex-1 flex flex-col min-h-0 p-0 overflow-hidden shadow-2xl">
-                     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-8 gap-6 shrink-0 border-b border-border bg-muted/5">
+                  <Card className="bg-card/60 backdrop-blur-xl border border-primary/20 rounded-[2.5rem] flex-1 flex flex-col min-h-0 p-0 overflow-hidden shadow-2xl">
+                     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-8 gap-6 shrink-0 border-b border-primary/20 bg-muted/5">
                         <h3 className="flex items-center gap-3 text-[10px] font-black text-muted uppercase tracking-[0.2em] opacity-60">
                            <ClipboardList className="w-4 h-4 text-primary" strokeWidth={3} /> Finalized_Node_Audit
                         </h3>
@@ -351,24 +358,24 @@ const AdminDashboard: React.FC = () => {
                         <div className="flex flex-wrap items-center gap-4">
                            {/* Search Bar */}
                            <div className="relative group">
-                              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted group-focus-within:text-primary transition-colors" strokeWidth={3} />
+                              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-primary group-hover:text-primary transition-colors" strokeWidth={3} />
                               <input
                                  type="text"
                                  placeholder="AUDIT_QUERY..."
                                  value={searchQuery}
                                  onChange={(e) => setSearchQuery(e.target.value)}
-                                 className="bg-muted/10 border border-border rounded-[1.2rem] pl-11 pr-5 py-2.5 text-[10px] text-foreground font-black focus:outline-none focus:border-primary/50 transition-all w-48 uppercase tracking-widest placeholder:opacity-30"
+                                 className="bg-white/5 border border-primary/30 rounded-xl pl-11 pr-5 h-10 text-[10px] text-foreground font-black focus:outline-none focus:border-primary/60 hover:border-primary/60 transition-all w-48 uppercase tracking-widest placeholder:text-primary/20 backdrop-blur-md shadow-inner"
                               />
                            </div>
 
                            {/* Date Filter */}
-                           <div className="flex bg-muted/10 rounded-[1.2rem] p-1.5 border border-border backdrop-blur-md">
+                           <div className="flex bg-primary/5 rounded-xl p-1 border border-primary/20 backdrop-blur-md">
                               {(['today', 'yesterday', 'week', 'all'] as const).map((d) => (
                                  <button
                                     key={d}
                                     onClick={() => setDateFilter(d)}
                                     className={cn(
-                                       "px-4 py-2 text-[9px] font-black uppercase tracking-widest rounded-xl transition-all",
+                                       "px-4 py-2 text-[9px] font-black uppercase tracking-widest rounded-lg transition-all",
                                        dateFilter === d ? "bg-primary text-black shadow-lg shadow-primary/20" : "text-muted hover:text-foreground opacity-60"
                                     )}
                                  >
@@ -377,13 +384,13 @@ const AdminDashboard: React.FC = () => {
                               ))}
                            </div>
 
-                           <div className="flex gap-2 pl-4 border-l border-border">
+                           <div className="flex gap-2 pl-4 border-l border-primary/20 h-10 items-center">
                               {(['all', 'cash', 'digital'] as const).map((filter) => (
                                  <button
                                     key={filter}
                                     onClick={() => setTransactionFilter(filter)}
                                     className={cn(
-                                       "px-4 py-2 text-[9px] font-black uppercase tracking-widest rounded-xl transition-all border",
+                                       "px-4 py-2 text-[9px] font-black uppercase tracking-widest rounded-lg transition-all border h-full flex items-center justify-center",
                                        transactionFilter === filter
                                           ? "bg-primary/10 border-primary/20 text-primary"
                                           : "bg-transparent border-transparent text-muted opacity-60 hover:opacity-100"
@@ -398,7 +405,7 @@ const AdminDashboard: React.FC = () => {
 
                      <div className="flex-1 overflow-y-auto custom-scrollbar">
                         <table className="w-full text-left border-collapse">
-                           <thead className="sticky top-0 bg-muted/5 border-b border-border text-[9px] font-black uppercase text-muted tracking-widest z-10 backdrop-blur-xl">
+                           <thead className="sticky top-0 bg-muted/5 border-b border-primary/20 text-[9px] font-black uppercase text-muted tracking-widest z-10 backdrop-blur-xl">
                               <tr>
                                  <th className="px-6 py-4">IDENT_VECTOR</th>
                                  <th className="px-6 py-4">SPATIAL_NODE</th>
@@ -407,7 +414,7 @@ const AdminDashboard: React.FC = () => {
                                  <th className="px-6 py-4 text-right">STATUS</th>
                               </tr>
                            </thead>
-                           <tbody className="divide-y divide-border">
+                           <tbody className="divide-y divide-primary/20">
                               {filteredAuditLog.map(order => (
                                  <tr
                                     key={order.id}
@@ -443,11 +450,11 @@ const AdminDashboard: React.FC = () => {
                                     <td className="px-6 py-5 text-right">
                                        <div className="flex items-center justify-end gap-3">
                                           {order.payment_method && (
-                                             <span className="text-[9px] font-black uppercase text-muted bg-muted/10 px-3 py-1 rounded-full border border-border">{order.payment_method}</span>
+                                             <span className="text-[9px] font-black uppercase text-muted bg-muted/10 px-3 py-1 rounded-full border border-primary/20">{order.payment_method}</span>
                                           )}
                                           <span className={cn("text-[9px] uppercase font-black px-3 py-1 rounded-full border tracking-[0.1em]",
                                              order.status === 'paid' ? "text-emerald-500 bg-emerald-500/10 border-emerald-500/20" :
-                                                order.status === 'served' ? "text-purple-500 bg-purple-500/10 border-purple-500/20" : "text-muted bg-muted/5 border-border"
+                                                order.status === 'served' ? "text-purple-500 bg-purple-500/10 border-purple-500/20" : "text-muted bg-muted/5 border-primary/20"
                                           )}>
                                              {order.status}
                                           </span>

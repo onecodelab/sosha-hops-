@@ -235,7 +235,7 @@ const AdminStaffPerformance: React.FC = () => {
          subtitle="Performance metrics and roster management"
          actions={
             <div className="flex items-center gap-2">
-               <div className="flex bg-white/5 p-1 rounded-lg border border-white/10">
+               <div className="flex bg-primary/5 p-1 rounded-lg border border-primary/20">
                   {(['today', '7d', '30d'] as const).map(range => (
                      <button
                         key={range}
@@ -272,15 +272,15 @@ const AdminStaffPerformance: React.FC = () => {
                   </div>
                ))}
                {activeShifts.length === 0 && (
-                  <div className="col-span-full bg-white/5 border border-white/10 p-3 rounded-xl flex items-center justify-center gap-2 text-gray-500 text-xs uppercase font-bold tracking-widest">
+                  <div className="col-span-full bg-primary/5 border border-primary/20 p-3 rounded-xl flex items-center justify-center gap-2 text-gray-500 text-xs uppercase font-bold tracking-widest">
                      <Clock className="w-4 h-4" /> No Active Shifts
                   </div>
                )}
             </div>
 
             {/* Performance Board */}
-            <Card className="bg-[#09090b] border-white/10">
-               <CardHeader className="border-b border-white/10 pb-0">
+            <Card className="bg-[#09090b] border-primary/20">
+               <CardHeader className="border-b border-primary/20 pb-0">
                   <div className="flex items-center gap-6">
                      {(['waiter', 'kitchen', 'manager'] as const).map(role => (
                         <button
@@ -311,7 +311,7 @@ const AdminStaffPerformance: React.FC = () => {
                               <th className="px-6 py-4 text-right">Action</th>
                            </tr>
                         </thead>
-                        <tbody className="divide-y divide-white/5">
+                        <tbody className="divide-y divide-primary/10">
                            {rankedList.length === 0 ? (
                               <tr>
                                  <td colSpan={6} className="px-6 py-12 text-center text-gray-500 uppercase font-bold tracking-widest text-xs">
@@ -414,15 +414,15 @@ const AdminStaffPerformance: React.FC = () => {
                      if (!m) return null;
                      return (
                         <div className="grid grid-cols-3 gap-3">
-                           <div className="bg-white/5 border border-white/5 p-3 rounded-2xl">
+                           <div className="bg-primary/5 border border-primary/10 p-3 rounded-2xl">
                               <p className="text-[10px] font-black text-gray-500 uppercase">30D Orders</p>
                               <p className="text-xl font-black text-white font-mono mt-1">{m.total_orders}</p>
                            </div>
-                           <div className="bg-white/5 border border-white/5 p-3 rounded-2xl">
+                           <div className="bg-primary/5 border border-primary/10 p-3 rounded-2xl">
                               <p className="text-[10px] font-black text-gray-500 uppercase">30D Sales</p>
                               <p className="text-xl font-black text-primary font-mono mt-1">{Math.round(m.total_sales / 1000)}k</p>
                            </div>
-                           <div className="bg-white/5 border border-white/5 p-3 rounded-2xl">
+                           <div className="bg-primary/5 border border-primary/10 p-3 rounded-2xl">
                               <p className="text-[10px] font-black text-gray-500 uppercase">AOV</p>
                               <p className="text-xl font-black text-white font-mono mt-1">{Math.round(m.avg_order_value)}</p>
                            </div>
@@ -482,7 +482,7 @@ const AdminStaffPerformance: React.FC = () => {
                      </div>
                   </div>
 
-                  <div className="flex items-center justify-between p-4 bg-black/20 rounded-2xl border border-white/5">
+                  <div className="flex items-center justify-between p-4 bg-black/20 rounded-2xl border border-primary/10">
                      <div>
                         <p className="text-sm font-bold text-white">Salary Approval</p>
                         <p className="text-[10px] text-gray-500 uppercase font-black tracking-widest mt-0.5">Required for payroll issuance</p>
@@ -500,7 +500,7 @@ const AdminStaffPerformance: React.FC = () => {
                      </button>
                   </div>
 
-                  <div className="flex gap-3 justify-end pt-4 border-t border-white/5">
+                  <div className="flex gap-3 justify-end pt-4 border-t border-primary/10">
                      <Button variant="ghost" onClick={() => setEditingStaff(null)} className="rounded-xl text-xs font-bold uppercase tracking-widest">Discard</Button>
                      <Button onClick={handleSaveEdit} className="bg-primary text-black font-black rounded-xl text-xs tracking-widest uppercase shadow-xl hover:scale-[1.02] active:scale-95 transition-all">Update Master Record</Button>
                   </div>
@@ -516,7 +516,7 @@ const AdminStaffPerformance: React.FC = () => {
             >
                <div className="space-y-6">
                   {/* View Filters */}
-                  <div className="flex bg-black/40 p-1.5 rounded-xl border border-white/5 backdrop-blur-md self-start w-fit">
+                  <div className="flex bg-black/40 p-1.5 rounded-xl border border-primary/10 backdrop-blur-md self-start w-fit">
                      {(['daily', 'weekly', 'monthly'] as const).map(v => (
                         <button
                            key={v}

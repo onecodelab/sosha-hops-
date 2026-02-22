@@ -41,8 +41,8 @@ const MenuManagement: React.FC = () => {
       <div className="space-y-6 animate-in fade-in duration-500 pb-20">
 
         {/* Navigation & Controls */}
-        <div className="flex flex-col md:flex-row justify-between gap-6 items-center bg-card p-3 rounded-[1.5rem] border border-border shadow-xl">
-          <div className="flex bg-muted/10 p-1 rounded-xl border border-border w-full md:w-auto overflow-x-auto no-scrollbar">
+        <div className="flex flex-col md:flex-row justify-between gap-6 items-center bg-card p-3 rounded-[1.5rem] border border-primary/20 shadow-xl">
+          <div className="flex bg-muted/10 p-1 rounded-xl border border-primary/20 w-full md:w-auto overflow-x-auto no-scrollbar">
             <button
               onClick={() => setSelectedCategory('all')}
               className={cn(
@@ -73,7 +73,7 @@ const MenuManagement: React.FC = () => {
                 placeholder="Search catalog..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-12 bg-muted/5 border-border h-12 rounded-2xl"
+                className="pl-12 bg-muted/5 border-primary/20 h-12 rounded-2xl"
               />
             </div>
             {isPrivileged && (
@@ -95,7 +95,7 @@ const MenuManagement: React.FC = () => {
               <p className="font-bold uppercase tracking-widest text-[10px]">Syncing Catalog Data...</p>
             </div>
           ) : filteredItems.map(item => (
-            <Card key={item.id} className="bg-card border-border hover:border-primary/50 transition-all group overflow-hidden flex flex-col h-full rounded-[2rem] shadow-lg hover:shadow-2xl hover:shadow-primary/5">
+            <Card key={item.id} className="bg-card border-primary/20 hover:border-primary/50 transition-all group overflow-hidden flex flex-col h-full rounded-[2rem] shadow-lg hover:shadow-2xl hover:shadow-primary/5">
               <div className="h-44 overflow-hidden relative">
                 <img
                   src={item.image_url || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=300&q=80'}
@@ -202,7 +202,7 @@ const MenuManagement: React.FC = () => {
                 {isPrivileged && (
                   <Button
                     variant="secondary"
-                    className="w-full mt-6 bg-muted/10 border-border hover:bg-muted/20 hover:text-foreground rounded-xl h-12 font-bold text-xs uppercase tracking-widest group"
+                    className="w-full mt-6 bg-muted/10 border-primary/20 hover:bg-muted/20 hover:text-foreground rounded-xl h-12 font-bold text-xs uppercase tracking-widest group"
                     onClick={() => setSelectedDish(item)}
                   >
                     <ChefHat className="w-4 h-4 mr-2 group-hover:rotate-12 transition-transform" /> Recipe Architect

@@ -10,7 +10,7 @@ import { queryClient } from './lib/queryClient';
 
 // Marketing Pages
 const Landing = lazy(() => import('./pages/Landing'));
-const Pricing = lazy(() => import('./pages/Pricing'));
+const BookDemo = lazy(() => import('./pages/Pricing'));
 const Features = lazy(() => import('./pages/Features'));
 
 // Auth Pages
@@ -46,13 +46,11 @@ const OwnerCommandCenter = lazy(() => import('./pages/OwnerCommandCenter'));
 
 import { ChatWidget } from './components/ChatWidget';
 import ProtectedRoute from './components/ProtectedRoute';
+import { BrandLoader } from './components/BrandLoader';
+import ScrollToTop from './components/ScrollToTop';
 
 // Loading Placeholder
-const PageLoader = () => (
-  <div className="h-screen w-full flex items-center justify-center bg-background">
-    <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-  </div>
-);
+const PageLoader = () => <BrandLoader />;
 
 const App: React.FC = () => {
   useEffect(() => {
@@ -68,16 +66,19 @@ const App: React.FC = () => {
     <QueryClientProvider client={queryClient}>
       <LanguageProvider>
         <BrowserRouter>
+          <ScrollToTop />
           <AuthProvider>
             <BranchProvider>
               <Suspense fallback={<PageLoader />}>
                 <Routes>
                   {/* Public Marketing Layer */}
                   <Route path="/" element={<Landing />} />
-                  <Route path="/pricing" element={<Pricing />} />
+                  <Route path="/book-demo" element={<BookDemo />} />
+                  <Route path="/pricing" element={<Navigate to="/book-demo" replace />} />
                   <Route path="/features" element={<Features />} />
 
                   {/* Auth Layer */}
+                  <Route path="/login" element={<Login />} />
                   <Route path="/login/:role" element={<Login />} />
                   <Route path="/signup" element={<SignUp />} />
 

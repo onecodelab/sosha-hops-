@@ -10,6 +10,7 @@ import { Ingredient, Unit } from '../types';
 import { useRoleAccess } from '../hooks/useRoleAccess';
 import { RoleGuard } from '../components/RoleGuard';
 import { useBranch } from '../contexts/BranchContext';
+import { useAuth } from '../AuthContext';
 
 type SortField = 'name' | 'current_stock' | 'total_value';
 type SortOrder = 'asc' | 'desc';
@@ -27,6 +28,7 @@ interface FormData {
 const Inventory: React.FC = () => {
   const { hasPermission, isOwnerOrAdmin } = useRoleAccess();
   const { activeBranchId } = useBranch();
+  const { organizationId } = useAuth();
   const canViewCost = hasPermission('canViewInventoryCost');
   const canViewStock = hasPermission('canViewInventoryStock');
 
@@ -224,7 +226,7 @@ const Inventory: React.FC = () => {
         // Log transaction manually
         await supabase.from('inventory_transactions').insert({
           branch_id: activeBranchId,
-          organization_id: (await supabase.from('branches').select('organization_id').eq('id', activeBranchId).single()).data?.organization_id,
+          organization_id: organizationId,
           ingredient_id: selectedItem.id,
           transaction_type: 'audit',
           quantity: Number(formData.current_stock) - (selectedItem.current_stock || 0),

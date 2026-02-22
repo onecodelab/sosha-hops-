@@ -6,7 +6,7 @@ const corsHeaders = {
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-const FLOWISE_API_HOST = "https://srv1320791.hstgr.cloud";
+const FLOWISE_API_HOST = "http://localhost:3000";
 const MASTER_CHATFLOW_ID = "ff71ca72-f8ed-4247-9d1b-38fe83fa19d9"; // Real ID from Baro Master Agent
 
 serve(async (req) => {

@@ -1,13 +1,12 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { supabase } from '../supabase';
-import { Button, Input, showToast, cn } from '../components/ui';
+import { Button, Input, Card, CardContent, showToast, cn } from '../components/ui';
 import { BaroLogo3D } from '../components/BaroLogo3D';
 import { BaroBackground } from '../components/BaroBackground';
 import { useAuth } from '../AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
-import { ArrowLeft, Loader2 } from 'lucide-react';
+import { ArrowLeft, Loader2, ShieldCheck, KeyRound, Mail } from 'lucide-react';
 
 const Login: React.FC = () => {
   const { role } = useParams<{ role: string }>();
@@ -22,20 +21,15 @@ const Login: React.FC = () => {
   // Auto-redirect if already logged in with a valid profile
   useEffect(() => {
     if (user && profile) {
-      redirectUser(profile.role);
+      navigate('/app');
     }
-  }, [user, profile]);
-
-  const redirectUser = (userRole: string) => {
-    navigate('/app');
-  };
+  }, [user, profile, navigate]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     try {
-      // 1. Authenticate with Supabase Auth
       const { data: authData, error: signInError } = await supabase.auth.signInWithPassword({
         email: email.trim(),
         password: password.trim(),
@@ -46,7 +40,6 @@ const Login: React.FC = () => {
 
       setSyncing(true);
 
-      // 2. Profile Verification Loop (Wait for DB Triggers)
       let currentProfile = null;
       for (let i = 0; i < 4; i++) {
         const { data, error: fetchError } = await supabase
@@ -61,14 +54,12 @@ const Login: React.FC = () => {
         }
 
         if (fetchError && fetchError.code === '42P17') {
-          throw new Error("Database recursion error detected. Please run the SQL fix provided in the dashboard.");
+          throw new Error("Database recursion error detected.");
         }
 
-        // Wait 1 second before retrying to allow DB triggers to finish
         await new Promise(r => setTimeout(r, 1000));
       }
 
-      // 3. Manual Sync (Only if trigger failed and record is missing)
       if (!currentProfile) {
         const targetRole = role ? role.toLowerCase() : 'waiter';
         const displayName = authData.user.user_metadata?.full_name || email.split('@')[0];
@@ -82,94 +73,119 @@ const Login: React.FC = () => {
           is_online: true
         }, { onConflict: 'id' });
 
-        if (upsertError) {
-          console.error("Sync object error:", JSON.stringify(upsertError, null, 2));
-          throw new Error(`Profile sync failed: ${upsertError.message || 'Unknown RLS error'}`);
-        }
+        if (upsertError) throw new Error(`Profile sync failed: ${upsertError.message}`);
       } else {
-        // Just mark as online if already exists
         await supabase.from('profiles').update({ is_online: true }).eq('id', authData.user.id);
       }
 
-      // 4. Update local context and navigate
       await refreshProfile();
       showToast(t('login.welcomeBack'), "success");
 
     } catch (err: any) {
-      const errorMessage = err.message || JSON.stringify(err);
-      console.error("Critical Login Error:", errorMessage);
-      showToast(errorMessage || t('login.error'), 'error');
+      showToast(err.message || t('login.error'), 'error');
     } finally {
       setLoading(false);
       setSyncing(false);
     }
   };
 
-  const displayRole = role ? (t(`roles.${role.toLowerCase()}`) || role) : 'Staff';
+  const displayRole = role ? (t(`roles.${role.toLowerCase()}`) || role) : 'Secure Staff';
 
   return (
     <BaroBackground variant="landing">
-      <div className="flex-1 flex flex-col items-center justify-center p-4">
-        <div className="w-full max-w-md bg-card/90 border border-border rounded-3xl shadow-[0_24px_80px_rgba(0,0,0,0.85)] p-8 space-y-6 backdrop-blur-md">
-          <div className="flex flex-col items-center text-center space-y-4">
-            <BaroLogo3D size="sm" />
-            <div>
-              <h1 className="text-2xl font-bold text-foreground tracking-tight capitalize">
-                {displayRole} {t('login.title')}
-              </h1>
-              <p className="text-muted text-sm font-medium mt-1">
-                {syncing ? "Verifying secure database link..." : t('login.subtitle')}
-              </p>
+      <div className="flex-1 flex flex-col items-center justify-center p-6 sm:p-12 relative overflow-hidden liquid-bg">
+        {/* Atmospheric Glow Overlay */}
+        <div className="absolute inset-0 bg-black/40 pointer-events-none" />
+
+        <div className="w-full max-w-md relative z-10">
+          {/* Header */}
+          <div className="text-center mb-10">
+            <div className="flex justify-center mb-8">
+              <BaroLogo3D size="sm" animate />
+            </div>
+            <h1 className="text-5xl sm:text-6xl font-black uppercase tracking-tighter italic mb-4 text-white">
+              Access <span className="serif-ital text-brand-green lowercase">Terminal</span>
+            </h1>
+            <div className="inline-flex items-center gap-3 bg-white/[0.03] backdrop-blur-xl py-2.5 px-6 rounded-full border border-white/10 shadow-2xl">
+              <ShieldCheck className="w-4 h-4 text-brand-green" />
+              <span className="mono-os text-[9px] font-black uppercase tracking-[0.4em] text-white/60">
+                {displayRole} Verification
+              </span>
             </div>
           </div>
 
-          <form onSubmit={handleLogin} className="space-y-5">
-            <div className="space-y-2">
-              <label className="text-xs font-bold text-muted uppercase tracking-wider ml-1">{t('login.email')}</label>
-              <Input
-                type="email"
-                placeholder="name@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                disabled={loading}
-                className="bg-black/20 border-border text-foreground rounded-xl h-12"
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-xs font-bold text-muted uppercase tracking-wider ml-1">{t('login.password')}</label>
-              <Input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                disabled={loading}
-                className="bg-black/20 border-border text-foreground rounded-xl h-12"
-              />
-            </div>
+          <Card className="bg-black/60 border border-white/10 backdrop-blur-3xl rounded-[3rem] shadow-[0_50px_100px_rgba(0,0,0,0.8)] overflow-hidden">
+            <CardContent className="p-10 sm:p-12">
+              <form onSubmit={handleLogin} className="space-y-8">
+                <div className="space-y-3">
+                  <label className="text-[10px] font-black text-brand-yellow uppercase tracking-[0.3em] ml-1 flex items-center gap-2">
+                    <Mail className="w-3.5 h-3.5" /> User Identifier
+                  </label>
+                  <Input
+                    type="email"
+                    placeholder="name@example.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                    disabled={loading}
+                    className="bg-white/5 border-white/10 text-white rounded-2xl h-16 px-8 focus:ring-brand-yellow/20 transition-all font-bold placeholder:opacity-10"
+                  />
+                </div>
 
-            <Button
-              type="submit"
-              className="w-full bg-primary hover:bg-primary/90 text-black font-bold rounded-xl h-12 shadow-[0_16px_40px_var(--primary-glow)] transition-all active:scale-95"
-              isLoading={loading}
-              disabled={loading}
-            >
-              {syncing ? "Finalizing..." : (loading ? t('login.verifying') : t('login.signIn'))}
-            </Button>
+                <div className="space-y-3">
+                  <label className="text-[10px] font-black text-brand-yellow uppercase tracking-[0.3em] ml-1 flex items-center gap-2">
+                    <KeyRound className="w-3.5 h-3.5" /> Secret Key
+                  </label>
+                  <Input
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    disabled={loading}
+                    placeholder="••••••••"
+                    className="bg-white/5 border-white/10 text-white rounded-2xl h-16 px-8 focus:ring-brand-yellow/20 transition-all font-bold placeholder:opacity-10"
+                  />
+                </div>
 
-            <div className="flex flex-col gap-3 pt-2 text-center">
-              <Link to="/signup" className="text-sm text-muted hover:text-foreground hover:underline transition-colors">
-                {t('login.firstTime')}
-              </Link>
-              <button
-                type="button"
-                onClick={() => navigate('/')}
-                className="text-sm text-muted hover:text-foreground hover:underline flex items-center justify-center gap-2"
-              >
-                <ArrowLeft className="w-3 h-3" /> {t('login.backToRoles')}
-              </button>
-            </div>
-          </form>
+                <Button
+                  type="submit"
+                  className="w-full bg-brand-yellow hover:bg-white text-black font-black uppercase tracking-widest text-xs h-18 rounded-2xl mt-4 shadow-2xl shadow-brand-yellow/20 transition-all active:scale-[0.98] flex items-center justify-center gap-4 ripple-link"
+                  isLoading={loading}
+                  disabled={loading}
+                >
+                  {syncing ? (
+                    <>
+                      <Loader2 className="w-5 h-5 animate-spin" /> Finalizing...
+                    </>
+                  ) : (
+                    <>
+                      Authorize Entry
+                    </>
+                  )}
+                </Button>
+
+                <div className="flex flex-col gap-5 pt-8 text-center border-t border-white/5 mt-8">
+                  <Link to="/signup" className="text-[10px] font-black uppercase tracking-widest text-white/40 hover:text-brand-yellow transition-colors">
+                    First time? <span className="text-brand-yellow underline underline-offset-4 decoration-brand-yellow/30">Initialize Organization</span>
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={() => navigate('/')}
+                    className="text-[10px] font-black uppercase tracking-widest text-white/30 hover:text-white flex items-center justify-center gap-2 transition-colors group"
+                  >
+                    <ArrowLeft className="w-3 h-3 group-hover:-translate-x-1 transition-transform" /> Exit to Public Terminal
+                  </button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
+
+          {/* Security Banner */}
+          <div className="mt-12 text-center px-8 opacity-20 group-hover:opacity-40 transition-opacity">
+            <p className="text-[9px] font-black uppercase tracking-[0.3em] text-white leading-relaxed">
+              Proprietary System. Unauthorized access is prohibited. All activity is logged in the <span className="text-brand-green">Black Box</span> auditing stream.
+            </p>
+          </div>
         </div>
       </div>
     </BaroBackground>

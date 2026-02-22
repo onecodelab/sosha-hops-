@@ -25,7 +25,7 @@ export const ChatWidget: React.FC = () => {
             import Chatbot from "https://cdn.jsdelivr.net/npm/flowise-embed/dist/web.js"
             Chatbot.init({
                 chatflowid: "771f0508-35a2-4317-a82d-a2b662cf52a8",
-                apiHost: "https://srv1320791.hstgr.cloud",
+                apiHost: "http://localhost:3000",
                 overrideConfig: {
                     table_number: "${tableFromUrl || ''}",
                     organization_id: "${organizationId}",

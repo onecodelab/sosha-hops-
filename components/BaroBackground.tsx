@@ -30,12 +30,15 @@ export const BaroBackground: React.FC<BaroBackgroundProps> = ({
       <LeafBubbleBackground />
 
       {/* Background Layer */}
-      <div className="fixed inset-0 z-0 bg-gradient-to-b from-background via-background to-transparent transition-colors duration-500 pointer-events-none">
+      <div className="fixed inset-0 z-0 river-gradient transition-colors duration-500 pointer-events-none">
         <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.03]" />
 
-        {/* Classic Glows (Only visible in Dark Mode effectively due to blend modes or variable override) */}
-        <div className="hidden dark:block absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-primary/5 rounded-full blur-[120px]" />
-        <div className="hidden dark:block absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] bg-purple-900/10 rounded-full blur-[120px]" />
+        {/* River Atmospheric Glows */}
+        <div className="absolute top-[-10%] left-[-10%] w-[60%] h-[60%] bg-brand-green/5 rounded-full blur-[140px] animate-float-slow" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-brand-yellow/5 rounded-full blur-[140px] animate-float-medium" />
+
+        {/* Dynamic Water Horizon */}
+        <div className="absolute top-1/2 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-brand-green/10 to-transparent blur-[1px]" />
 
         <BackgroundMascots variant={variant} />
       </div>

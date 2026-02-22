@@ -51,7 +51,8 @@ const Settings: React.FC = () => {
          const { error } = await supabase.from('branches').insert({
             name: newBranchName,
             location: newBranchLocation,
-            is_active: true
+            is_active: true,
+            organization_id: profile?.organization_id
          });
          if (error) throw error;
       },
@@ -70,7 +71,7 @@ const Settings: React.FC = () => {
          const { error } = await supabase.from('branches').update({
             name: branch.name,
             location: branch.location
-         }).eq('id', branch.id);
+         }).eq('id', branch.id).eq('organization_id', profile?.organization_id);
          if (error) throw error;
       },
       onSuccess: () => {
@@ -87,7 +88,7 @@ const Settings: React.FC = () => {
          if (id === '00000000-0000-0000-0000-000000000000') {
             throw new Error("Cannot delete the Primary HQ branch.");
          }
-         const { error } = await supabase.from('branches').delete().eq('id', id);
+         const { error } = await supabase.from('branches').delete().eq('id', id).eq('organization_id', profile?.organization_id);
          if (error) throw error;
       },
       onSuccess: () => {

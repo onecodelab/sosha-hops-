@@ -21,7 +21,7 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   useEffect(() => {
     const saved = localStorage.getItem('baro-lang') as Language;
-    if (saved && ['en', 'am', 'om', 'ti'].includes(saved)) {
+    if (saved && ['en', 'am', 'om', 'ti', 'af'].includes(saved)) {
       setLanguageState(saved);
     }
   }, []);
@@ -29,26 +29,21 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const setLanguage = (lang: Language) => {
     setLanguageState(lang);
     localStorage.setItem('baro-lang', lang);
-    // Force a small delay on document direction or fonts if needed in future
+  };
+
+  const lookup = (langCode: Language, keys: string[]): string | undefined => {
+    let current: any = translations[langCode];
+    for (const key of keys) {
+      if (!current || typeof current !== 'object') return undefined;
+      current = current[key];
+    }
+    return typeof current === 'string' ? current : undefined;
   };
 
   const t = (path: string): string => {
     const keys = path.split('.');
-    let current: any = translations[language];
-
-    for (const key of keys) {
-      if (current[key] === undefined) {
-        // Fallback to English if translation missing
-        let fallback: any = translations['en'];
-        for (const fbKey of keys) {
-          if (fallback[fbKey] === undefined) return path;
-          fallback = fallback[fbKey];
-        }
-        return fallback;
-      }
-      current = current[key];
-    }
-    return current;
+    // Try current language first, fallback to English, then return path
+    return lookup(language, keys) ?? lookup('en', keys) ?? path;
   };
 
   return (

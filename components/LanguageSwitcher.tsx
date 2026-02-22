@@ -15,6 +15,7 @@ export const LanguageSwitcher: React.FC = () => {
     { code: 'am', label: 'Amharic', native: 'አማርኛ' },
     { code: 'om', label: 'Afaan Oromo', native: 'Afaan Oromo' },
     { code: 'ti', label: 'Tigrinya', native: 'ትግርኛ' },
+    { code: 'af', label: 'Afar', native: 'Qafar' },
   ];
 
   useEffect(() => {
@@ -31,7 +32,7 @@ export const LanguageSwitcher: React.FC = () => {
 
   return (
     <div className="relative" ref={dropdownRef}>
-      <button 
+      <button
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 transition-colors text-sm text-gray-300"
       >
@@ -49,14 +50,14 @@ export const LanguageSwitcher: React.FC = () => {
                 onClick={() => { setLanguage(lang.code); setIsOpen(false); }}
                 className={cn(
                   "w-full text-left px-3 py-2 text-sm rounded-lg flex items-center justify-between transition-colors",
-                  language === lang.code 
-                    ? "bg-primary/10 text-primary font-bold" 
+                  language === lang.code
+                    ? "bg-primary/10 text-primary font-bold"
                     : "text-gray-400 hover:bg-white/5 hover:text-white"
                 )}
               >
                 <div className="flex flex-col">
-                   <span>{lang.native}</span>
-                   <span className="text-[10px] text-gray-600 font-normal">{lang.label}</span>
+                  <span>{lang.native}</span>
+                  <span className="text-[10px] text-gray-600 font-normal">{lang.label}</span>
                 </div>
                 {language === lang.code && <Check className="w-3 h-3" />}
               </button>

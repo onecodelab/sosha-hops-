@@ -70,7 +70,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, titl
       />
 
       {/* Mobile Header with refined Baro style */}
-      <div className="md:hidden fixed top-0 left-0 right-0 h-16 bg-card/40 backdrop-blur-2xl border-b border-border z-[100] px-4 flex items-center justify-between overflow-hidden">
+      <div className="md:hidden fixed top-0 left-0 right-0 h-16 bg-card/40 backdrop-blur-2xl border-b border-primary/30 z-[100] px-4 flex items-center justify-between overflow-hidden">
         {/* Subtle Header Glow */}
         <div className="absolute -top-10 left-10 w-32 h-32 bg-primary/20 blur-[100px] rounded-full pointer-events-none" />
 
@@ -97,7 +97,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, titl
           handleLogout={handleLogout}
         />
         {actions && (
-          <div className="flex-none px-8 py-4 bg-muted/10 border-b border-border">
+          <div className="flex-none px-8 py-4 bg-muted/10 border-b border-primary/30">
             {actions}
           </div>
         )}
@@ -110,8 +110,8 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, titl
       <style>{`
         .custom-scrollbar::-webkit-scrollbar { width: 4px; height: 4px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: var(--primary); opacity: 0.3; border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: var(--primary); opacity: 0.5; }
       `}</style>
     </div>
   );

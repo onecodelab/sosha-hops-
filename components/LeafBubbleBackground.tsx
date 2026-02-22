@@ -3,7 +3,7 @@ import React from 'react';
 
 export const LeafBubbleBackground: React.FC = () => {
   return (
-    <div className="leaf-bubbles fixed inset-0 z-0 pointer-events-none overflow-hidden select-none">
+    <div className="leaf-bubbles fixed inset-0 z-0 pointer-events-none overflow-hidden select-none river-gradient">
       {/* Top Left Organic Blob */}
       <div
         className="absolute -top-[10%] -left-[10%] w-[50vw] h-[50vw] rounded-full blur-[120px] animate-float-slow"

@@ -1,15 +1,13 @@
-
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { supabase } from '../supabase';
-import { Button, Input, Card, CardContent, CardHeader, CardTitle, showToast } from '../components/ui';
+import { Button, Input, Card, CardContent, showToast } from '../components/ui';
 import { BaroLogo3D } from '../components/BaroLogo3D';
-import { ArrowLeft, Building2, UserCircle2 } from 'lucide-react';
+import { ArrowLeft, Sparkles, CheckCircle2 } from 'lucide-react';
 import { BaroBackground } from '../components/BaroBackground';
 
 const SignUp: React.FC = () => {
   const navigate = useNavigate();
-  const [mode, setMode] = useState<'business' | 'staff'>('business');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
@@ -21,52 +19,19 @@ const SignUp: React.FC = () => {
     setLoading(true);
 
     try {
-      if (mode === 'staff') {
-        // --- Staff Signup Logic (Existing) ---
-        const { data: invitation, error: inviteError } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('email', email)
-          .eq('invitation_pending', true)
-          .maybeSingle();
-
-        if (inviteError || !invitation) {
-          throw new Error('No pending invitation found for this email. Please contact your manager.');
-        }
-
-        const { data: authData, error: signUpError } = await supabase.auth.signUp({
+      const { data, error } = await supabase.functions.invoke('create-organization', {
+        body: {
           email,
           password,
-          options: {
-            data: {
-              full_name: invitation.full_name || invitation.name,
-              role: invitation.role
-            }
-          }
-        });
+          organizationName: orgName,
+          fullName
+        }
+      });
 
-        if (signUpError) throw signUpError;
-        showToast('Staff account created! Please log in.', 'success');
-        navigate(`/login/${invitation.role}`);
-      } else {
-        // --- New Business Signup Logic (Edge Function) ---
-        const { data, error } = await supabase.functions.invoke('create-organization', {
-          body: {
-            email,
-            password,
-            organizationName: orgName,
-            fullName
-          }
-        });
+      if (error || data.error) throw new Error(error?.message || data.error);
 
-        if (error || data.error) throw new Error(error?.message || data.error);
-
-        showToast('Business setup complete! Please log in.', 'success');
-
-        // After Edge Function creation, we sign them in automatically or redirect to login.
-        // For security/cleanliness, redirect to login.
-        navigate('/login/owner');
-      }
+      showToast('Business setup complete! Welcome to the OS.', 'success');
+      navigate('/login/owner');
 
     } catch (error: any) {
       console.error("Signup error:", error);
@@ -78,109 +43,115 @@ const SignUp: React.FC = () => {
 
   return (
     <BaroBackground variant="landing">
-      <div className="flex-1 flex items-center justify-center p-4">
-        <Card className="w-full max-w-md bg-card/90 border-border backdrop-blur-xl rounded-3xl shadow-2xl">
-          <CardHeader className="space-y-1 flex flex-col items-center pb-2">
-            <div className="scale-75 mb-2">
-              <BaroLogo3D size="sm" />
+      <div className="flex-1 flex flex-col items-center justify-center p-6 sm:p-12 relative overflow-hidden liquid-bg">
+        {/* Atmospheric Glow Overlay */}
+        <div className="absolute inset-0 bg-black/40 pointer-events-none" />
+
+        <div className="w-full max-w-xl relative z-10">
+          {/* Header */}
+          <div className="text-center mb-8">
+            <div className="flex justify-center mb-6">
+              <BaroLogo3D size="sm" animate />
             </div>
-            <CardTitle className="text-2xl text-center font-black uppercase tracking-tighter italic">
-              {mode === 'business' ? 'Start Your Business' : 'Staff Sign Up'}
-            </CardTitle>
-            <p className="text-center text-muted text-[10px] font-bold uppercase tracking-widest">
-              {mode === 'business' ? 'Set up your restaurant OS in seconds' : 'Claim your invitation to join a team'}
+            <h1 className="text-4xl sm:text-5xl font-black uppercase tracking-tighter leading-none mb-3 text-white">
+              Launch your <br />
+              <span className="serif-ital text-brand-green lowercase">operation</span>
+            </h1>
+            <p className="mono-os text-[10px] font-black uppercase tracking-[0.4em] text-white/40">
+              Protocol 01: The Source Initialization
             </p>
-          </CardHeader>
+          </div>
 
-          <CardContent className="space-y-6">
-            {/* Mode Selector */}
-            <div className="flex p-1 bg-muted/50 rounded-xl border border-border">
-              <button
-                onClick={() => setMode('business')}
-                className={`flex-1 flex items-center justify-center gap-2 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${mode === 'business' ? 'bg-primary text-black' : 'text-muted hover:text-foreground'}`}
-              >
-                <Building2 className="w-4 h-4" /> Business
-              </button>
-              <button
-                onClick={() => setMode('staff')}
-                className={`flex-1 flex items-center justify-center gap-2 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${mode === 'staff' ? 'bg-primary text-black' : 'text-muted hover:text-foreground'}`}
-              >
-                <UserCircle2 className="w-4 h-4" /> Staff
-              </button>
-            </div>
-
-            <form onSubmit={handleSignUp} className="space-y-4">
-              {mode === 'business' && (
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-muted uppercase tracking-widest ml-1">Company Name</label>
+          <Card className="bg-black/60 border border-white/10 backdrop-blur-3xl rounded-[3rem] shadow-2xl shadow-black overflow-hidden">
+            <CardContent className="p-10 sm:p-14">
+              <form onSubmit={handleSignUp} className="space-y-8">
+                <div className="space-y-3">
+                  <label className="text-[10px] font-black text-brand-yellow uppercase tracking-[0.3em] ml-1">
+                    Establishment Name
+                  </label>
                   <Input
                     type="text"
                     placeholder="e.g. Blue Nile Bistro"
                     value={orgName}
                     onChange={(e) => setOrgName(e.target.value)}
                     required
-                    className="bg-black/20 border-border text-foreground rounded-xl h-11"
+                    className="bg-white/5 border-white/10 text-white rounded-2xl h-14 px-6 focus:ring-brand-yellow/20 transition-all font-bold placeholder:font-normal placeholder:opacity-20"
                   />
                 </div>
-              )}
 
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-muted uppercase tracking-widest ml-1">Full Name</label>
-                <Input
-                  type="text"
-                  placeholder="John Doe"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  required
-                  className="bg-black/20 border-border text-foreground rounded-xl h-11"
-                />
-              </div>
+                <div className="grid sm:grid-cols-2 gap-8">
+                  <div className="space-y-3">
+                    <label className="text-[10px] font-black text-brand-yellow uppercase tracking-[0.3em] ml-1">Full Name</label>
+                    <Input
+                      type="text"
+                      placeholder="John Doe"
+                      value={fullName}
+                      onChange={(e) => setFullName(e.target.value)}
+                      required
+                      className="bg-white/5 border-white/10 text-white rounded-2xl h-14 px-6 focus:ring-brand-yellow/20 transition-all font-bold placeholder:font-normal placeholder:opacity-20"
+                    />
+                  </div>
 
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-muted uppercase tracking-widest ml-1">Email Address</label>
-                <Input
-                  type="email"
-                  placeholder="name@example.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  className="bg-black/20 border-border text-foreground rounded-xl h-11"
-                />
-              </div>
+                  <div className="space-y-3">
+                    <label className="text-[10px] font-black text-brand-yellow uppercase tracking-[0.3em] ml-1">Email Address</label>
+                    <Input
+                      type="email"
+                      placeholder="name@example.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      required
+                      className="bg-white/5 border-white/10 text-white rounded-2xl h-14 px-6 focus:ring-brand-yellow/20 transition-all font-bold placeholder:font-normal placeholder:opacity-20"
+                    />
+                  </div>
+                </div>
 
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-muted uppercase tracking-widest ml-1">Password</label>
-                <Input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  minLength={6}
-                  placeholder="Min 6 characters"
-                  className="bg-black/20 border-border text-foreground rounded-xl h-11"
-                />
-              </div>
+                <div className="space-y-3">
+                  <label className="text-[10px] font-black text-brand-yellow uppercase tracking-[0.3em] ml-1">Secret Key (Password)</label>
+                  <Input
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    minLength={6}
+                    placeholder="••••••••"
+                    className="bg-white/5 border-white/10 text-white rounded-2xl h-14 px-6 focus:ring-brand-yellow/20 transition-all font-bold placeholder:font-normal placeholder:opacity-20"
+                  />
+                </div>
 
-              <Button
-                type="submit"
-                className="w-full bg-primary hover:bg-primary/90 text-black font-black uppercase tracking-widest text-[11px] h-12 rounded-xl mt-4 shadow-xl shadow-primary/10"
-                isLoading={loading}
-                disabled={loading}
-              >
-                {loading ? 'Creating Account...' : (mode === 'business' ? 'Start Free Trial' : 'Complete Sign Up')}
-              </Button>
+                <Button
+                  type="submit"
+                  className="w-full bg-brand-yellow hover:bg-white text-black font-black uppercase tracking-widest text-xs h-16 rounded-2xl mt-4 shadow-2xl shadow-brand-yellow/20 transition-all active:scale-[0.98] flex items-center justify-center gap-3 ripple-link"
+                  isLoading={loading}
+                  disabled={loading}
+                >
+                  {loading ? 'Securing Access...' : (
+                    <>
+                      Start Free Trial
+                      <Sparkles className="w-4 h-4" />
+                    </>
+                  )}
+                </Button>
 
-              <div className="pt-4 border-t border-border flex items-center justify-between">
-                <Link to="/" className="text-[10px] font-black uppercase tracking-widest text-muted hover:text-foreground transition-colors flex items-center gap-2">
-                  <ArrowLeft className="w-3 h-3" /> Home
-                </Link>
-                <Link to="/login/owner" className="text-[10px] font-black uppercase tracking-widest text-primary hover:underline">
-                  Sign In instead
-                </Link>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
+                <div className="pt-10 border-t border-white/5 flex flex-col sm:flex-row items-center justify-between gap-6">
+                  <Link to="/" className="text-[10px] font-black uppercase tracking-widest text-white/40 hover:text-white transition-colors flex items-center gap-2 group">
+                    <ArrowLeft className="w-3 h-3 group-hover:-translate-x-1 transition-transform" /> Back to Terminal
+                  </Link>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-white/40">
+                    Already operational? <Link to="/login/owner" className="text-brand-yellow hover:underline ml-1">Sign In</Link>
+                  </p>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
+
+          {/* Bottom badge */}
+          <div className="mt-12 flex items-center justify-center gap-2 opacity-30">
+            <CheckCircle2 className="w-3 h-3 text-brand-green" />
+            <span className="text-[9px] font-black uppercase tracking-widest text-white/60">
+              End-to-end encryption active
+            </span>
+          </div>
+        </div>
       </div>
     </BaroBackground>
   );

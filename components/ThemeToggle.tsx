@@ -23,6 +23,12 @@ const ThemeToggle = () => {
     setTheme(newTheme);
     localStorage.setItem('baro-theme', newTheme);
 
+    // Trigger impressive visual feedback
+    const overlay = document.createElement('div');
+    overlay.className = 'system-flush-overlay';
+    document.body.appendChild(overlay);
+    setTimeout(() => overlay.remove(), 1000);
+
     if (newTheme === 'fresh') {
       document.body.setAttribute('data-theme', 'fresh');
     } else {
