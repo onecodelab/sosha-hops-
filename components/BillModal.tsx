@@ -290,57 +290,100 @@ export const BillModal: React.FC<BillModalProps> = ({
       <div className="flex flex-col p-1 min-h-[500px]">
         {view === 'bill' && (
           <div className="animate-in fade-in zoom-in-95 duration-300">
-            <div className="bg-white text-black p-6 rounded-2xl shadow-inner font-mono text-xs space-y-4 border-t-8 border-primary mx-1 relative overflow-hidden">
-              <div className="text-center border-b border-dashed border-gray-300 pb-4">
-                <h3 className="font-black text-lg tracking-tighter uppercase leading-none">Baro OS</h3>
-                <p className="text-[9px] text-gray-400 mt-1">TIN: 0043819230</p>
-                <p className="text-[9px] text-gray-400">Production Receipt</p>
+            <div className="bg-white text-black p-5 rounded-lg shadow-inner mx-1 w-full max-w-[320px] mx-auto" style={{ fontFamily: "'Courier New', Courier, monospace" }}>
+              {/* TIN */}
+              <div className="text-center mb-1">
+                <p className="text-[10px] tracking-wider font-mono">TIN: 0043819230</p>
+              </div>
+              <p className="text-center text-[9px] text-gray-400 mb-1 font-mono">- - - - - - - - - - - - - - - - - - - -</p>
+
+              {/* Business Name */}
+              <div className="text-center mb-1">
+                <h3 className="font-black text-sm uppercase tracking-tight leading-tight font-mono">BARO RESTAURANT</h3>
+                <p className="text-[9px] text-gray-600 leading-tight font-mono">A.A. SUBCITY-KOLFE KERANYO</p>
+                <p className="text-[9px] text-gray-600 leading-tight font-mono">TEL-0962071522</p>
               </div>
 
-              <div className="flex justify-between font-black border-b border-gray-100 pb-2">
-                <span>Table: T-{order.table_number}</span>
-                <span>#{order.order_number?.slice(-4)}</span>
+              {/* FS No & Date */}
+              <div className="flex justify-between text-[9px] text-gray-600 mt-1 font-mono">
+                <span>FS No.{order.order_number || order.id.slice(0, 7)}</span>
+                <span>{new Date(order.created_at).toLocaleDateString('en-GB')}</span>
+                <span>{new Date(order.created_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</span>
               </div>
 
-              <div className="flex justify-between text-[9px] text-gray-500 mb-2">
-                <span>Waiter: {order.waiter?.full_name || user?.user_metadata?.full_name || 'Staff'}</span>
-                <span>{order.created_at ? new Date(order.created_at).toLocaleTimeString() : new Date().toLocaleTimeString()}</span>
+              <p className="text-center text-[9px] text-gray-400 my-1 font-mono">- - - - - - - - - - - - - - - - - - - -</p>
+
+              {/* Invoice Type */}
+              <div className="text-center mb-2">
+                <p className="font-black text-xs uppercase tracking-widest font-mono">CASH INVOICE</p>
               </div>
 
-              <div className="space-y-1 py-2 max-h-40 overflow-y-auto custom-scrollbar border-b border-gray-100">
-                {order.order_items?.map((item: any, i) => (
-                  <div key={i} className="flex justify-between">
-                    <span className="flex-1 truncate mr-2"><span className="font-bold">{item.quantity}x</span> {item.menu_item?.name}</span>
-                    <span className="font-bold">{(item.price * item.quantity).toLocaleString()}</span>
+              {/* Customer / Invoice / Operator */}
+              <div className="space-y-0.5 text-[10px] mb-2 font-mono">
+                <p>Customer: <span className="font-bold uppercase">Walk-in</span></p>
+                <p>Invoice: <span className="font-bold">ORD-{order.order_number || order.id.slice(0, 8)}</span></p>
+                <p>Operator: <span className="font-bold uppercase">{order.waiter?.full_name || user?.user_metadata?.full_name || 'Staff'}</span></p>
+              </div>
+
+              <p className="text-center text-[9px] text-gray-400 my-1 font-mono">- - - - - - - - - - - - - - - - - - - -</p>
+
+              {/* Items Header */}
+              <div className="flex text-[9px] font-black uppercase tracking-wider text-gray-500 mb-1 font-mono">
+                <span className="flex-1">Description</span>
+                <span className="w-8 text-center">Qty</span>
+                <span className="w-16 text-right">Price</span>
+                <span className="w-20 text-right">Amount</span>
+              </div>
+
+              {/* Items */}
+              <div className="space-y-1 mb-2 max-h-40 overflow-y-auto custom-scrollbar font-mono">
+                {order.order_items?.map((item: any, i: number) => (
+                  <div key={i} className="flex text-[10px]">
+                    <span className="flex-1 truncate pr-1 uppercase">{item.menu_item?.name || 'Item'}</span>
+                    <span className="w-8 text-center">{item.quantity}</span>
+                    <span className="w-16 text-right">{(item.price || 0).toLocaleString()}</span>
+                    <span className="w-20 text-right font-bold">{((item.price || 0) * (item.quantity || 1)).toLocaleString()}</span>
                   </div>
                 ))}
               </div>
 
-              <div className="space-y-1.5 pt-2">
-                <div className="flex justify-between text-[10px] text-gray-600">
-                  <span>Subtotal (Excl. VAT)</span>
-                  <span>ETB {(order.total_amount / 1.15).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+              <p className="text-center text-[9px] text-gray-400 my-1 font-mono">- - - - - - - - - - - - - - - - - - - -</p>
+
+              {/* Tax Breakdown */}
+              <div className="space-y-1 text-[10px] font-mono">
+                <div className="flex justify-between">
+                  <span>TXBL 1</span>
+                  <span className="font-bold">*{(order.total_amount / 1.15).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                 </div>
-                <div className="flex justify-between text-[10px] text-gray-600">
-                  <span>VAT (15%)</span>
-                  <span>ETB {(order.total_amount - (order.total_amount / 1.15)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                </div>
-                <div className="flex justify-between text-base font-black pt-2 border-t-2 border-dashed border-gray-300">
-                  <span>TOTAL</span>
-                  <span>ETB {order.total_amount.toLocaleString()}</span>
+                <div className="flex justify-between">
+                  <span>TAX1 15%</span>
+                  <span className="font-bold">*{(order.total_amount - order.total_amount / 1.15).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                 </div>
               </div>
 
-              {/* QR Verification Section */}
-              <div className="flex flex-col items-center pt-6 opacity-80">
-                <div className="w-20 h-20 bg-gray-50 border border-gray-200 rounded flex items-center justify-center mb-1">
-                  <QrCode className="w-12 h-12 text-gray-300" />
-                </div>
-                <p className="text-[7px] text-gray-400 uppercase tracking-widest text-center">Scan to verify receipt<br />ORD-{order.id.slice(0, 8)}</p>
+              <p className="text-center text-[9px] text-gray-400 my-2 font-mono">- - - - - - - - - - - - - - - - - - - -</p>
+
+              {/* TOTAL */}
+              <div className="flex justify-between text-sm font-black font-mono">
+                <span>TOTAL</span>
+                <span>*{order.total_amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
               </div>
 
-              <div className="absolute top-0 right-0 w-16 h-16 pointer-events-none opacity-[0.03]">
-                <ShieldCheck className="w-full h-full text-black rotate-12" />
+              <p className="text-center text-[9px] text-gray-400 my-2 font-mono">- - - - - - - - - - - - - - - - - - - -</p>
+
+              {/* Item Count */}
+              <div className="flex justify-between text-[10px] text-gray-500 font-mono">
+                <span>ITEM#</span>
+                <span className="font-bold">{order.order_items?.reduce((sum: number, item: any) => sum + (item.quantity || 1), 0) || 0}</span>
+              </div>
+
+              <p className="text-center text-[9px] text-gray-400 my-2 font-mono">- - - - - - - - - - - - - - - - - - - -</p>
+
+              {/* ERCA Footer */}
+              <div className="text-center space-y-1 mt-2 font-mono">
+                <span className="font-black text-[11px] tracking-wide">ERCA</span>
+                <p className="text-[9px] text-gray-500">FG{order.id.slice(0, 8).toUpperCase()}</p>
+                <p className="text-[9px] text-gray-400 mt-2 tracking-wider">Powered by Baro OS</p>
               </div>
             </div>
 
