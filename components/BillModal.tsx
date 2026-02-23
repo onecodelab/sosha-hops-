@@ -535,27 +535,53 @@ function SplitPaymentView({ order, onBack, onSuccess }: {
 }) {
   const [payments, setPayments] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [amountToPay, setAmountToPay] = useState<string>('');
+  const [step, setStep] = useState<'setup' | 'paying'>('setup');
+  const [numCustomers, setNumCustomers] = useState<number>(2);
+
+  // Per-person payment state
+  const [activePersonIndex, setActivePersonIndex] = useState<number>(0);
   const [method, setMethod] = useState<string>('cash');
-  const [reference, setReference] = useState('');
   const [refInput, setRefInput] = useState('');
+  const [amountToPay, setAmountToPay] = useState<string>('');
+
+  // Fetch bank settings
+  const { data: bankSettings = [] } = useQuery({
+    queryKey: ['bank_settings'],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('bank_settings').select('*');
+      if (error) throw error;
+      return data;
+    },
+    staleTime: 1000 * 60 * 5
+  });
+
+  const activeBanks = bankSettings.filter((b: any) => b.is_active);
 
   // Derived state
   const totalPaid = payments.reduce((sum, p) => sum + Number(p.amount), 0);
   const remaining = Math.max(0, order.total_amount - totalPaid);
   const isFullyPaid = remaining <= 0;
+  const perPersonShare = Math.ceil(order.total_amount / numCustomers);
 
-  // Fetch payments on mount
-  useEffect(() => {
-    fetchPayments();
-  }, [order.id]);
+  // Track which "persons" have been paid
+  const personPayments = Array.from({ length: numCustomers }, (_, i) => {
+    return payments.filter(p => p.person_index === i);
+  });
+  const personPaidAmounts = personPayments.map(pp => pp.reduce((s, p) => s + Number(p.amount), 0));
 
-  // Set default amount to remaining
+  useEffect(() => { fetchPayments(); }, [order.id]);
+
   useEffect(() => {
-    if (remaining > 0) {
-      setAmountToPay(remaining.toString());
+    if (step === 'paying') {
+      // Find first unpaid person
+      const firstUnpaid = personPaidAmounts.findIndex(amt => amt < perPersonShare);
+      if (firstUnpaid >= 0) {
+        setActivePersonIndex(firstUnpaid);
+        const personRemaining = Math.max(0, perPersonShare - personPaidAmounts[firstUnpaid]);
+        setAmountToPay(personRemaining.toString());
+      }
     }
-  }, [remaining]);
+  }, [step, payments.length]);
 
   const fetchPayments = async () => {
     const { data } = await supabase
@@ -563,13 +589,18 @@ function SplitPaymentView({ order, onBack, onSuccess }: {
       .select('*')
       .eq('order_id', order.id)
       .order('created_at', { ascending: true });
-
     if (data) setPayments(data);
+  };
+
+  const handleStartSplit = () => {
+    if (numCustomers < 2) return showToast("Min 2 customers", "error");
+    setStep('paying');
+    setAmountToPay(perPersonShare.toString());
   };
 
   const handleAddPayment = async () => {
     const amount = parseFloat(amountToPay);
-    if (!amount || amount <= 0) return showToast("Invalid Amount", "error");
+    if (!amount || amount <= 0) return showToast("Invalid amount", "error");
     if (method !== 'cash' && !refInput) return showToast("Reference required", "error");
 
     setIsLoading(true);
@@ -577,19 +608,19 @@ function SplitPaymentView({ order, onBack, onSuccess }: {
       await orderService.addPayment(order, {
         amount,
         method,
-        reference: refInput
+        reference: refInput || undefined
       });
 
-      showToast("Payment Recorded", "success");
+      showToast(`Person ${activePersonIndex + 1} payment recorded`, "success");
       setRefInput('');
+      setMethod('cash');
       await fetchPayments();
 
-      // Check if done
-      const newTotal = totalPaid + amount; // optimistic
+      // Check if fully paid
+      const newTotal = totalPaid + amount;
       if (newTotal >= order.total_amount) {
         onSuccess();
       }
-
     } catch (err: any) {
       showToast(err.message, "error");
     } finally {
@@ -597,10 +628,83 @@ function SplitPaymentView({ order, onBack, onSuccess }: {
     }
   };
 
+  const getBankLabel = (key: string) => {
+    const map: Record<string, string> = {
+      cbe: 'CBE', telebirr: 'Telebirr', abyssinia: 'Abyssinia',
+      dashen: 'Dashen', cbebirr: 'CBE Birr'
+    };
+    return map[key] || key;
+  };
+
+  const getBankColor = (key: string) => {
+    const map: Record<string, string> = {
+      cbe: 'text-blue-400 border-blue-500/30 bg-blue-500/10',
+      telebirr: 'text-purple-400 border-purple-500/30 bg-purple-500/10',
+      abyssinia: 'text-zinc-300 border-zinc-500/30 bg-zinc-500/10',
+      dashen: 'text-emerald-400 border-emerald-500/30 bg-emerald-500/10',
+      cbebirr: 'text-orange-400 border-orange-500/30 bg-orange-500/10'
+    };
+    return map[key] || 'text-gray-400 border-gray-500/30 bg-gray-500/10';
+  };
+
+  // --- STEP 1: Setup ---
+  if (step === 'setup') {
+    return (
+      <div className="space-y-5 animate-in fade-in duration-300">
+        <div className="flex items-center justify-between px-1">
+          <button onClick={onBack} className="flex items-center gap-1.5 text-zinc-500 hover:text-white text-[10px] font-black uppercase tracking-widest transition-colors">
+            <ArrowLeft className="w-3.5 h-3.5" /> Back
+          </button>
+          <div className="flex items-center gap-1.5 bg-purple-500/10 px-3 py-1 rounded-full border border-purple-500/20">
+            <div className="w-1.5 h-1.5 rounded-full bg-purple-500 animate-pulse" />
+            <span className="text-[9px] font-black text-purple-400 uppercase">Split Mode</span>
+          </div>
+        </div>
+
+        <div className="bg-[#0A0A0A] p-6 rounded-2xl border border-white/5 text-center">
+          <p className="text-[9px] font-black text-zinc-600 uppercase tracking-widest mb-1">Total Bill</p>
+          <h3 className="text-3xl font-black text-white font-mono tracking-tighter">
+            ETB {order.total_amount.toLocaleString()}
+          </h3>
+        </div>
+
+        <div className="bg-[#0A0A0A] p-5 rounded-2xl border border-white/5 space-y-4">
+          <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">How many people?</label>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setNumCustomers(Math.max(2, numCustomers - 1))}
+              className="w-12 h-12 rounded-xl bg-white/5 border border-white/10 text-white font-black text-xl hover:bg-white/10 transition-all"
+            >-</button>
+            <div className="flex-1 text-center">
+              <span className="text-4xl font-black text-primary font-mono">{numCustomers}</span>
+              <p className="text-[9px] text-zinc-600 font-bold uppercase mt-1">Customers</p>
+            </div>
+            <button
+              onClick={() => setNumCustomers(Math.min(10, numCustomers + 1))}
+              className="w-12 h-12 rounded-xl bg-white/5 border border-white/10 text-white font-black text-xl hover:bg-white/10 transition-all"
+            >+</button>
+          </div>
+
+          <div className="bg-primary/5 border border-primary/20 rounded-xl p-3 text-center">
+            <p className="text-[9px] text-zinc-500 font-bold uppercase">Each person pays</p>
+            <p className="text-xl font-black text-primary font-mono mt-1">
+              ETB {perPersonShare.toLocaleString()}
+            </p>
+          </div>
+        </div>
+
+        <Button onClick={handleStartSplit} className="w-full h-14 bg-primary text-black font-black uppercase rounded-xl tracking-widest">
+          Start Collecting <ChevronRight className="ml-2 w-5 h-5" />
+        </Button>
+      </div>
+    );
+  }
+
+  // --- STEP 2: Per-Person Payment ---
   return (
     <div className="space-y-4 animate-in slide-in-from-right duration-300">
       <div className="flex items-center justify-between px-1">
-        <button onClick={onBack} className="flex items-center gap-1.5 text-zinc-500 hover:text-white text-[10px] font-black uppercase tracking-widest transition-colors">
+        <button onClick={() => setStep('setup')} className="flex items-center gap-1.5 text-zinc-500 hover:text-white text-[10px] font-black uppercase tracking-widest transition-colors">
           <ArrowLeft className="w-3.5 h-3.5" /> Back
         </button>
         <div className="flex items-center gap-1.5 bg-purple-500/10 px-3 py-1 rounded-full border border-purple-500/20">
@@ -609,29 +713,22 @@ function SplitPaymentView({ order, onBack, onSuccess }: {
         </div>
       </div>
 
-      {/* Summary Card */}
-      <div className="bg-[#0A0A0A] p-5 rounded-2xl border border-white/5 relative overflow-hidden">
+      {/* Progress */}
+      <div className="bg-[#0A0A0A] p-4 rounded-2xl border border-white/5">
         <div className="flex justify-between items-end mb-2">
           <div>
             <p className="text-[9px] font-black text-zinc-600 uppercase tracking-widest">Total Bill</p>
-            <div className="text-xl font-black text-zinc-400 font-mono">
-              ETB {order.total_amount.toLocaleString()}
-            </div>
+            <div className="text-lg font-black text-zinc-400 font-mono">ETB {order.total_amount.toLocaleString()}</div>
           </div>
           <div className="text-right">
             <p className="text-[9px] font-black text-zinc-600 uppercase tracking-widest">Remaining</p>
-            <div className={cn("text-3xl font-black font-mono tracking-tighter", remaining > 0 ? "text-white" : "text-green-500")}>
+            <div className={cn("text-2xl font-black font-mono tracking-tighter", remaining > 0 ? "text-white" : "text-green-500")}>
               ETB {remaining.toLocaleString()}
             </div>
           </div>
         </div>
-
-        {/* Progress Bar */}
         <div className="h-1.5 w-full bg-zinc-800 rounded-full overflow-hidden">
-          <div
-            className="h-full bg-primary transition-all duration-500"
-            style={{ width: `${Math.min(100, (totalPaid / order.total_amount) * 100)}%` }}
-          />
+          <div className="h-full bg-primary transition-all duration-500" style={{ width: `${Math.min(100, (totalPaid / order.total_amount) * 100)}%` }} />
         </div>
         <div className="flex justify-between mt-1 text-[8px] uppercase font-black text-zinc-600">
           <span>Paid: {totalPaid.toLocaleString()}</span>
@@ -639,50 +736,70 @@ function SplitPaymentView({ order, onBack, onSuccess }: {
         </div>
       </div>
 
-      {/* Payment List */}
-      <div className="space-y-1.5 max-h-[120px] overflow-y-auto custom-scrollbar pr-1">
-        {payments.length === 0 && (
-          <div className="text-center py-4 border border-dashed border-white/5 rounded-xl">
-            <p className="text-[10px] text-zinc-600 uppercase font-bold">No payments yet</p>
-          </div>
-        )}
-        {payments.map(p => (
-          <div key={p.id} className="flex justify-between items-center p-3 bg-white/5 rounded-xl border border-white/5">
-            <div className="flex items-center gap-3">
-              <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center",
-                p.payment_method === 'cash' ? "bg-primary/10 text-primary" : "bg-blue-500/10 text-blue-400")}>
-                {p.payment_method === 'cash' ? <Banknote className="w-4 h-4" /> : <Smartphone className="w-4 h-4" />}
-              </div>
-              <div>
-                <p className="text-[10px] font-black text-white uppercase">{p.payment_method}</p>
-                <p className="text-[9px] font-mono text-zinc-500">{new Date(p.created_at).toLocaleTimeString()}</p>
-              </div>
-            </div>
-            <div className="text-right">
-              <p className="text-sm font-black text-white font-mono">ETB {p.amount.toLocaleString()}</p>
-              {p.reference && <p className="text-[8px] text-zinc-500 font-mono">{p.reference}</p>}
-            </div>
-          </div>
-        ))}
+      {/* Person Tabs */}
+      <div className="flex gap-1.5 overflow-x-auto pb-1 custom-scrollbar">
+        {Array.from({ length: numCustomers }, (_, i) => {
+          const paid = personPaidAmounts[i] || 0;
+          const isPaid = paid >= perPersonShare;
+          return (
+            <button
+              key={i}
+              onClick={() => {
+                if (!isPaid) {
+                  setActivePersonIndex(i);
+                  setAmountToPay(Math.max(0, perPersonShare - paid).toString());
+                  setMethod('cash');
+                  setRefInput('');
+                }
+              }}
+              className={cn(
+                "flex-shrink-0 px-3 py-2 rounded-xl border text-[9px] font-black uppercase tracking-wider transition-all",
+                isPaid
+                  ? "bg-green-500/10 border-green-500/30 text-green-400"
+                  : activePersonIndex === i
+                    ? "bg-primary/10 border-primary text-primary"
+                    : "bg-black/40 border-white/5 text-zinc-500 hover:border-white/20"
+              )}
+            >
+              {isPaid ? <CheckCircle2 className="w-3 h-3 inline mr-1" /> : null}
+              Person {i + 1}
+            </button>
+          );
+        })}
       </div>
 
-      {/* Input Section */}
+      {/* Active Person Payment Form */}
       {!isFullyPaid && (
         <div className="space-y-3 bg-[#0A0A0A] p-4 rounded-2xl border border-white/5">
-          <div className="flex gap-2 mb-2">
-            {['cash', 'telebirr', 'cbe'].map(m => (
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-black text-primary uppercase tracking-widest">
+              Person {activePersonIndex + 1}  ETB {perPersonShare.toLocaleString()}
+            </span>
+            {personPaidAmounts[activePersonIndex] > 0 && (
+              <span className="text-[9px] font-mono text-zinc-500">
+                Paid: {personPaidAmounts[activePersonIndex].toLocaleString()}
+              </span>
+            )}
+          </div>
+
+          {/* Bank Options - Dynamic from bank_settings */}
+          <div className="grid grid-cols-3 gap-1.5">
+            <button
+              onClick={() => { setMethod('cash'); setRefInput(''); }}
+              className={cn(
+                "py-2 rounded-lg text-[8px] font-black uppercase transition-all border",
+                method === 'cash' ? "bg-primary/10 border-primary text-primary" : "bg-black/40 text-zinc-500 border-white/5 hover:border-white/20"
+              )}
+            >Cash</button>
+            {activeBanks.map((bank: any) => (
               <button
-                key={m}
-                onClick={() => { setMethod(m); setRefInput(''); }}
+                key={bank.bank_key}
+                onClick={() => { setMethod(bank.bank_key); setRefInput(''); }}
                 className={cn(
-                  "flex-1 py-2 rounded-lg text-[9px] font-black uppercase transition-all border",
-                  method === m
-                    ? "bg-white text-black border-white"
-                    : "bg-black/40 text-zinc-500 border-white/5 hover:border-white/20"
+                  "py-2 rounded-lg text-[8px] font-black uppercase transition-all border",
+                  method === bank.bank_key ? getBankColor(bank.bank_key) : "bg-black/40 text-zinc-500 border-white/5 hover:border-white/20"
                 )}
-              >
-                {m}
-              </button>
+              >{getBankLabel(bank.bank_key)}</button>
             ))}
           </div>
 
@@ -702,7 +819,7 @@ function SplitPaymentView({ order, onBack, onSuccess }: {
                 value={refInput}
                 onChange={e => setRefInput(e.target.value)}
                 disabled={method === 'cash'}
-                placeholder={method === 'cash' ? "Not Required" : "Trans ID..."}
+                placeholder={method === 'cash' ? 'Not Required' : 'Trans ID...'}
                 className="bg-black/40 border-white/10 font-mono text-xs h-10"
               />
             </div>
@@ -711,12 +828,50 @@ function SplitPaymentView({ order, onBack, onSuccess }: {
           <Button
             onClick={handleAddPayment}
             isLoading={isLoading}
-            className="w-full h-12 bg-primary text-black font-black uppercase rounded-xl mt-2"
+            className="w-full h-12 bg-primary text-black font-black uppercase rounded-xl mt-1"
           >
             Pay ETB {parseFloat(amountToPay || "0").toLocaleString()}
           </Button>
         </div>
       )}
+
+      {/* Payment History */}
+      {payments.length > 0 && (
+        <div className="space-y-1.5 max-h-[120px] overflow-y-auto custom-scrollbar pr-1">
+          {payments.map(p => (
+            <div key={p.id} className="flex justify-between items-center p-2.5 bg-white/5 rounded-xl border border-white/5">
+              <div className="flex items-center gap-2.5">
+                <div className={cn("w-7 h-7 rounded-lg flex items-center justify-center",
+                  p.payment_method === 'cash' ? "bg-primary/10 text-primary" : "bg-blue-500/10 text-blue-400")}>
+                  {p.payment_method === 'cash' ? <Banknote className="w-3.5 h-3.5" /> : <Smartphone className="w-3.5 h-3.5" />}
+                </div>
+                <div>
+                  <p className="text-[9px] font-black text-white uppercase">{getBankLabel(p.payment_method)}</p>
+                  <p className="text-[8px] font-mono text-zinc-500">{new Date(p.created_at).toLocaleTimeString()}</p>
+                </div>
+              </div>
+              <div className="text-right">
+                <p className="text-xs font-black text-white font-mono">ETB {Number(p.amount).toLocaleString()}</p>
+                {p.reference && <p className="text-[7px] text-zinc-500 font-mono">{p.reference}</p>}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Fully Paid Success */}
+      {isFullyPaid && (
+        <div className="bg-green-500/10 border border-green-500/30 rounded-2xl p-5 text-center animate-in zoom-in-95 duration-300">
+          <CheckCircle2 className="w-10 h-10 text-green-500 mx-auto mb-2" />
+          <p className="text-sm font-black text-green-400 uppercase tracking-widest">Fully Paid</p>
+          {totalPaid > order.total_amount && (
+            <div className="mt-3 pt-3 border-t border-green-500/20">
+              <p className="text-[9px] text-zinc-500 uppercase font-bold">Tip for Staff</p>
+              <p className="text-lg font-black text-green-400 font-mono">ETB {(totalPaid - order.total_amount).toLocaleString()}</p>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
-};
+}

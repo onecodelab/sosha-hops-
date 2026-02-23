@@ -151,6 +151,7 @@ export const orderService = {
                 amount: payment.amount,
                 payment_method: payment.method,
                 reference: payment.reference,
+                organization_id: (order as any).organization_id || '00000000-0000-0000-0000-000000000000',
                 created_at: now
             });
 
