@@ -33,10 +33,12 @@ serve(async (req) => {
             return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: corsHeaders });
         }
 
-        const redis = new Redis({
-            url: Deno.env.get('UPSTASH_REDIS_REST_URL')!,
-            token: Deno.env.get('UPSTASH_REDIS_REST_TOKEN')!,
-        });
+        const redisUrl = Deno.env.get('UPSTASH_REDIS_REST_URL');
+        const redisToken = Deno.env.get('UPSTASH_REDIS_REST_TOKEN');
+
+        const redis = (redisUrl && redisToken)
+            ? new Redis({ url: redisUrl, token: redisToken })
+            : null;
 
         const body = await req.json();
         const { action, branch_id, items, reason } = body;
@@ -115,8 +117,15 @@ serve(async (req) => {
             });
         }
 
-        // Execute Redis Pipeline
-        await pipeline.exec();
+        // Execute Redis Pipeline (Non-blocking)
+        if (redis) {
+            try {
+                await redis.pipeline().exec();
+            } catch (redisErr) {
+                console.error("[REDIS ERROR] Pipeline failed:", redisErr.message);
+                // We proceed since SQL is primary
+            }
+        }
 
         // Execute Audit Log Insert
         if (transactionLog.length > 0) {

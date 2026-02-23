@@ -35,10 +35,9 @@ const supabase = createClient(supabaseUrl, supabaseKey, {
     }
 });
 
-const redis = new Redis({
-    url: redisUrl,
-    token: redisToken,
-});
+const redis = (redisUrl && redisToken)
+    ? new Redis({ url: redisUrl, token: redisToken })
+    : null;
 
 /**
  * Syncs SQL Stock levels to Redis
@@ -59,18 +58,21 @@ async function syncInventory(branchId?: string) {
             return;
         }
 
-        console.log(`📦 Found ${data.length} items. Syncing to Redis...`);
+        if (redis) {
+            console.log(`📦 Found ${data.length} items. Syncing to Redis...`);
+            const pipeline = redis.pipeline();
 
-        const pipeline = redis.pipeline();
+            for (const item of data) {
+                const key = `stock:${item.branch_id}:${item.ingredient_id}`;
+                const stockValue = item.current_stock ?? 0;
+                pipeline.set(key, stockValue);
+            }
 
-        for (const item of data) {
-            const key = `stock:${item.branch_id}:${item.ingredient_id}`;
-            const stockValue = item.current_stock ?? 0;
-            pipeline.set(key, stockValue);
+            const results = await pipeline.exec();
+            console.log(`✅ Successfully synced ${results.length} items to Redis.`);
+        } else {
+            console.warn('⚠️ Redis credentials missing. Skipping Redis sync, only Supabase data fetched.');
         }
-
-        const results = await pipeline.exec();
-        console.log(`✅ Successfully synced ${results.length} items to Redis.`);
 
     } catch (err: any) {
         console.error('❌ Sync Failed:', err.message);
