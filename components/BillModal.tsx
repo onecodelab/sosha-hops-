@@ -164,6 +164,21 @@ export const BillModal: React.FC<BillModalProps> = ({
     staleTime: 1000 * 60 * 5
   });
 
+  // Fetch the organization name for the receipt header
+  const { data: orgData } = useQuery({
+    queryKey: ['organization_info'],
+    queryFn: async () => {
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (!authUser) return null;
+      const { data: prof } = await supabase.from('profiles').select('organization_id').eq('id', authUser.id).maybeSingle();
+      if (!prof?.organization_id) return null;
+      const { data: org } = await supabase.from('organizations').select('name').eq('id', prof.organization_id).maybeSingle();
+      return org;
+    },
+    staleTime: 1000 * 60 * 30
+  });
+  const restaurantName = orgData?.name || 'My Restaurant';
+
   const getDynamicReceiver = (bank: string) => {
     const setting = bankSettings.find((s: any) => s.bank_key === bank);
     return setting?.account_number || BANK_CONFIG[bank]?.receiver || "";
@@ -299,9 +314,7 @@ export const BillModal: React.FC<BillModalProps> = ({
 
               {/* Business Name */}
               <div className="text-center mb-1">
-                <h3 className="font-black text-sm uppercase tracking-tight leading-tight font-mono">BARO RESTAURANT</h3>
-                <p className="text-[9px] text-gray-600 leading-tight font-mono">A.A. SUBCITY-KOLFE KERANYO</p>
-                <p className="text-[9px] text-gray-600 leading-tight font-mono">TEL-0962071522</p>
+                <h3 className="font-black text-sm uppercase tracking-tight leading-tight font-mono">{restaurantName}</h3>
               </div>
 
               {/* FS No & Date */}
@@ -322,7 +335,8 @@ export const BillModal: React.FC<BillModalProps> = ({
               <div className="space-y-0.5 text-[10px] mb-2 font-mono">
                 <p>Customer: <span className="font-bold uppercase">Walk-in</span></p>
                 <p>Invoice: <span className="font-bold">ORD-{order.order_number || order.id.slice(0, 8)}</span></p>
-                <p>Operator: <span className="font-bold uppercase">{order.waiter?.full_name || user?.user_metadata?.full_name || 'Staff'}</span></p>
+                <p>Operator: <span className="font-bold uppercase">{order.waiter?.full_name || 'Staff'}</span></p>
+                <p>Table: <span className="font-bold">T-{order.table_number || 'N/A'}</span></p>
               </div>
 
               <p className="text-center text-[9px] text-gray-400 my-1 font-mono">- - - - - - - - - - - - - - - - - - - -</p>
