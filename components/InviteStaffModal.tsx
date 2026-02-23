@@ -30,6 +30,7 @@ export const InviteStaffModal: React.FC<InviteStaffModalProps> = ({ isOpen, onCl
       if (!email || !fullName) return;
 
       setLoading(true);
+      console.log('Invite attempt:', { profile, organizationId: profile?.organization_id, user: user?.id });
       try {
          const newUserId = crypto.randomUUID();
 
@@ -44,6 +45,7 @@ export const InviteStaffModal: React.FC<InviteStaffModalProps> = ({ isOpen, onCl
                created_by: user?.id || null,
                invitation_pending: true,
                home_branch_id: selectedBranchId || activeBranchId,
+                organization_id: profile?.organization_id || '00000000-0000-0000-0000-000000000000',
                // New compensation fields
                base_salary: baseSalary ? parseFloat(baseSalary) : null,
                pay_period: payPeriod,
