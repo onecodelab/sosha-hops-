@@ -3,7 +3,7 @@ import { DashboardLayout } from '../components/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle, Button, Input, cn, showToast, Badge, Dialog } from '../components/ui';
 import {
   Search, RefreshCw, Edit3, Database, Scale,
-  AlertTriangle, Package, ArrowUpDown, Info, Tag, Calendar, DollarSign, Loader2, Lock, Eye
+  AlertTriangle, Package, ArrowUpDown, Info, Tag, Calendar, DollarSign, Loader2, Lock, Eye, Plus, Trash2, Edit
 } from 'lucide-react';
 import { supabase } from '../supabase';
 import { Ingredient, Unit } from '../types';
@@ -16,6 +16,9 @@ type SortField = 'name' | 'current_stock' | 'total_value';
 type SortOrder = 'asc' | 'desc';
 
 interface FormData {
+  name: string;
+  category: string;
+  sku: string;
   current_stock: number;
   par_min: number;
   par_max: number;
@@ -37,11 +40,15 @@ const Inventory: React.FC = () => {
   const [units, setUnits] = useState<Unit[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isAddingNew, setIsAddingNew] = useState(false);
   const [selectedItem, setSelectedItem] = useState<Ingredient | null>(null);
   const [linkedRecipes, setLinkedRecipes] = useState<any[]>([]);
   const [submitting, setSubmitting] = useState(false);
 
   const [formData, setFormData] = useState<FormData>({
+    name: '',
+    category: '',
+    sku: '',
     current_stock: 0,
     par_min: 0,
     par_max: 0,
@@ -126,9 +133,51 @@ const Inventory: React.FC = () => {
     }
   };
 
+  const handleAddClick = () => {
+    setIsAddingNew(true);
+    setSelectedItem(null);
+    setFormData({
+      name: '',
+      category: '',
+      sku: '',
+      current_stock: 0,
+      par_min: 0,
+      par_max: 0,
+      cost_per_unit: 0,
+      expiry_days: 0,
+      unit_id: units[0]?.id || '',
+      weight_per_unit: 1
+    });
+    setLinkedRecipes([]);
+    setIsModalOpen(true);
+  };
+
+  const handleDelete = async (ingredient: Ingredient) => {
+    if (!window.confirm(`Are you sure you want to remove ${ingredient.name} from inventory?`)) return;
+    setLoading(true);
+    try {
+      const { error } = await supabase
+        .from('ingredients')
+        .update({ is_active: false })
+        .eq('id', ingredient.id);
+
+      if (error) throw error;
+      showToast(`${ingredient.name} removed successfully`, "success");
+      await fetchInventory();
+    } catch (err: any) {
+      showToast(err.message || "Failed to delete item", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleEditClick = async (ingredient: Ingredient) => {
+    setIsAddingNew(false);
     setSelectedItem(ingredient);
     setFormData({
+      name: ingredient.name || '',
+      category: ingredient.category || '',
+      sku: ingredient.sku || '',
       current_stock: Number(ingredient.current_stock) || 0,
       par_min: Number(ingredient.par_min) || 0,
       par_max: Number(ingredient.par_max) || 0,
@@ -157,26 +206,54 @@ const Inventory: React.FC = () => {
   };
 
   const handleSave = async () => {
-    if (!selectedItem || !activeBranchId) return;
+    if ((!selectedItem && !isAddingNew) || !activeBranchId) return;
+
+    if (isAddingNew && (!formData.name || !formData.category || !formData.unit_id)) {
+      showToast("Name, Category, and Unit are required.", "error");
+      return;
+    }
+
     setSubmitting(true);
 
     try {
-      // 1. Update Global Ingredient Definitions
-      const globalUpdate = {
-        cost_per_unit: Number(formData.cost_per_unit),
-        expiry_days: Math.floor(Number(formData.expiry_days)),
-        unit_id: formData.unit_id,
-        // derived unit_type for legacy compatibility (optional, better to let DB trigger handle or ignore)
-        weight_per_unit: Number(formData.weight_per_unit),
-        updated_at: new Date().toISOString()
-      };
+      let targetIngredientId = selectedItem?.id;
+      let previousStock = selectedItem ? (selectedItem.current_stock || 0) : 0;
 
-      const { error: globalErr } = await supabase
-        .from('ingredients')
-        .update(globalUpdate)
-        .eq('id', selectedItem.id);
+      if (isAddingNew) {
+        const newSku = formData.sku || `ING-${formData.name.replace(/\s+/g, '-').substring(0, 8).toUpperCase()}-${Math.floor(Math.random() * 1000)}`;
+        const { data: newIng, error: insertErr } = await supabase
+          .from('ingredients')
+          .insert({
+            name: formData.name,
+            sku: newSku,
+            category: formData.category,
+            cost_per_unit: Number(formData.cost_per_unit),
+            expiry_days: Math.floor(Number(formData.expiry_days)),
+            unit_id: formData.unit_id,
+            weight_per_unit: Number(formData.weight_per_unit),
+            is_active: true
+          }).select('id').single();
 
-      if (globalErr) throw globalErr;
+        if (insertErr) throw insertErr;
+        targetIngredientId = newIng.id;
+      } else {
+        // 1. Update Global Ingredient Definitions
+        const globalUpdate = {
+          cost_per_unit: Number(formData.cost_per_unit),
+          expiry_days: Math.floor(Number(formData.expiry_days)),
+          unit_id: formData.unit_id,
+          // derived unit_type for legacy compatibility (optional, better to let DB trigger handle or ignore)
+          weight_per_unit: Number(formData.weight_per_unit),
+          updated_at: new Date().toISOString()
+        };
+
+        const { error: globalErr } = await supabase
+          .from('ingredients')
+          .update(globalUpdate)
+          .eq('id', targetIngredientId);
+
+        if (globalErr) throw globalErr;
+      }
 
       // 2. Update Branch-Specific Reality via BFF (SQL + Redis + Audit)
       if (formData.par_max < formData.par_min && formData.par_max > 0) {
@@ -190,11 +267,11 @@ const Inventory: React.FC = () => {
           body: {
             action: 'update',
             branch_id: activeBranchId,
-            reason: 'Manual Adjustment via Dashboard',
+            reason: isAddingNew ? 'Initial Stock Entry' : 'Manual Adjustment via Dashboard',
             items: [{
-              ingredient_id: selectedItem.id,
+              ingredient_id: targetIngredientId,
               quantity: Number(formData.current_stock),
-              current_stock: selectedItem.current_stock
+              current_stock: previousStock
             }]
           }
         });
@@ -208,15 +285,20 @@ const Inventory: React.FC = () => {
         console.warn("Edge Function unreachable, falling back to direct SQL:", e);
       }
 
-      // 3. Fallback / Main Logic: Direct Database Updates
-      // If edge function failed or was unreachable, we do the manual work here.
+      // Par levels and Stock Fallback updates
+      const stockPayload = {
+        branch_id: activeBranchId,
+        ingredient_id: targetIngredientId,
+        par_min: Number(formData.par_min),
+        par_max: Number(formData.par_max),
+      };
+
       if (!edgeSuccess) {
-        // Update stock
+        // We handle everything (stock, par, last_updated)
         const { error: stockErr } = await supabase
           .from('branch_inventory')
           .upsert({
-            branch_id: activeBranchId,
-            ingredient_id: selectedItem.id,
+            ...stockPayload,
             current_stock: Number(formData.current_stock),
             last_updated: new Date().toISOString()
           }, { onConflict: 'branch_id,ingredient_id' });
@@ -224,34 +306,35 @@ const Inventory: React.FC = () => {
         if (stockErr) throw stockErr;
 
         // Log transaction manually
-        await supabase.from('inventory_transactions').insert({
-          branch_id: activeBranchId,
-          organization_id: organizationId,
-          ingredient_id: selectedItem.id,
-          transaction_type: 'audit',
-          quantity: Number(formData.current_stock) - (selectedItem.current_stock || 0),
-          performed_by: (await supabase.auth.getUser()).data.user?.id,
-          reason: 'Manual Adjustment (Edge Fallback)',
-          created_at: new Date().toISOString()
-        });
+        if (Number(formData.current_stock) !== previousStock) {
+          const userSession = await supabase.auth.getUser();
+          await supabase.from('inventory_transactions').insert({
+            branch_id: activeBranchId,
+            organization_id: organizationId,
+            ingredient_id: targetIngredientId,
+            transaction_type: isAddingNew ? 'initial' : 'audit',
+            quantity: Number(formData.current_stock) - previousStock,
+            performed_by: userSession.data.user?.id,
+            reason: isAddingNew ? 'Initial Setup' : 'Manual Adjustment (Edge Fallback)',
+            created_at: new Date().toISOString()
+          });
+        }
+      } else {
+        // Edge function handled stock and logging, so we just update PAR levels
+        const { error: parErr } = await supabase
+          .from('branch_inventory')
+          .upsert({
+            ...stockPayload,
+          }, { onConflict: 'branch_id,ingredient_id' });
+
+        if (parErr) throw parErr;
       }
 
-      // Update Par Levels (Always direct for now)
-      const { error: parErr } = await supabase
-        .from('branch_inventory')
-        .update({
-          par_min: Number(formData.par_min),
-          par_max: Number(formData.par_max),
-        })
-        .eq('branch_id', activeBranchId)
-        .eq('ingredient_id', selectedItem.id);
-
-      if (parErr) throw parErr;
-
       await fetchInventory();
-      showToast(`Inventory for ${selectedItem.name} updated in this branch!`, "success");
+      showToast(isAddingNew ? `Added ${formData.name} to inventory!` : `Inventory for ${selectedItem?.name} updated in this branch!`, "success");
       setIsModalOpen(false);
       setSelectedItem(null);
+      setIsAddingNew(false);
 
     } catch (err: any) {
       console.error("Critical Save failure:", err);
@@ -332,7 +415,7 @@ const Inventory: React.FC = () => {
     return 'In stock';
   };
   return (
-    <DashboardLayout title="Inventory Management" subtitle="Master Registry Control">
+    <DashboardLayout title="Inventory Management" subtitle="Master Registry Control [FORCE_UI_v2.2]">
       <div className="space-y-6 animate-in fade-in duration-500">
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -376,9 +459,14 @@ const Inventory: React.FC = () => {
               className="pl-14 bg-muted/10 border-border h-14 rounded-2xl focus:border-primary/50 text-sm font-bold shadow-inner"
             />
           </div>
-          <Button onClick={fetchInventory} variant="ghost" className="h-14 w-14 p-0 rounded-2xl bg-muted/5 border border-border text-muted hover:text-foreground transition-all">
-            <RefreshCw className={cn("h-6 w-6", loading && "animate-spin")} strokeWidth={3} />
-          </Button>
+          <div className="flex items-center gap-4 w-full md:w-auto mt-4 md:mt-0 bg-primary/5 p-2 rounded-2xl border border-primary/20">
+            <Button onClick={handleAddClick} className="h-14 px-8 rounded-2xl bg-orange-600 text-white font-black uppercase tracking-[0.2em] shadow-2xl hover:bg-orange-700 active:scale-95 transition-all w-full md:w-auto border-4 border-white/20">
+              <Plus className="w-6 h-6 mr-3" strokeWidth={4} /> ADD NEW ITEM
+            </Button>
+            <Button onClick={fetchInventory} variant="ghost" className="h-14 w-14 shrink-0 p-0 rounded-2xl bg-muted/5 border border-border text-muted hover:text-foreground transition-all">
+              <RefreshCw className={cn("h-6 w-6", loading && "animate-spin")} strokeWidth={3} />
+            </Button>
+          </div>
         </div>
 
         <div className="bg-card/60 backdrop-blur-xl border border-border rounded-[2.5rem] overflow-hidden shadow-2xl">
@@ -390,7 +478,7 @@ const Inventory: React.FC = () => {
                   {canViewStock && <th className="px-8 py-6 text-center w-[15%]">Stock Health</th>}
                   {canViewCost && <th className="px-8 py-6 text-right w-[25%]">Risk & Valuation</th>}
                   <th className="px-8 py-6 text-left w-[25%]">Intelligence</th>
-                  <th className="px-8 py-6 text-right w-[10%]">Actions</th>
+                  <th className="px-8 py-6 text-right w-[15%]">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/40">
@@ -478,19 +566,26 @@ const Inventory: React.FC = () => {
 
                       {/* 5. Action */}
                       <td className="px-8 py-6 text-right">
-                        <RoleGuard
-                          allowedRoles={['owner', 'admin']}
-                          fallback={<Eye className="w-5 h-5 text-muted mx-auto opacity-20" />}
-                        >
+                        <div className="flex items-center justify-end gap-3 min-w-[100px]">
                           <Button
                             size="sm"
                             variant="ghost"
                             onClick={() => handleEditClick(item)}
                             className="h-12 w-12 p-0 rounded-2xl bg-muted/5 border border-border text-muted hover:text-primary transition-all shadow-inner"
+                            title="Edit Item"
                           >
                             <Edit3 className="w-5 h-5" strokeWidth={3} />
                           </Button>
-                        </RoleGuard>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleDelete(item)}
+                            className="h-12 w-12 p-0 rounded-2xl bg-red-500/5 border border-red-500/20 text-red-500/70 hover:text-red-500 hover:bg-red-500/10 transition-all shadow-inner"
+                            title="Delete Item"
+                          >
+                            <Trash2 className="w-5 h-5" strokeWidth={3} />
+                          </Button>
+                        </div>
                       </td>
                     </tr>
                   )
@@ -514,30 +609,66 @@ const Inventory: React.FC = () => {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-8 bg-muted/5 border border-border rounded-[2rem] shadow-inner relative overflow-hidden group">
             <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent pointer-events-none" />
-            <div className="space-y-1.5 relative z-10">
-              <p className="text-[9px] font-black text-muted uppercase tracking-[0.2em]">Node Identity (SKU)</p>
-              <p className="text-sm font-mono text-primary font-black uppercase">{selectedItem?.sku || 'N/A'}</p>
-            </div>
+
+            {isAddingNew ? (
+              <>
+                <div className="space-y-1.5 relative z-10">
+                  <p className="text-[9px] font-black text-muted uppercase tracking-[0.2em]">Asset Descriptor</p>
+                  <Input
+                    placeholder="Ingredient Name"
+                    value={formData.name}
+                    onChange={e => setFormData({ ...formData, name: e.target.value })}
+                    className="bg-card border-border shadow-inner text-sm font-black w-full"
+                  />
+                </div>
+                <div className="space-y-1.5 relative z-10">
+                  <p className="text-[9px] font-black text-muted uppercase tracking-[0.2em]">Node Identity (SKU) - Optional</p>
+                  <Input
+                    placeholder="Auto-generated if blank"
+                    value={formData.sku}
+                    onChange={e => setFormData({ ...formData, sku: e.target.value })}
+                    className="bg-card border-border shadow-inner text-sm font-mono font-black uppercase w-full"
+                  />
+                </div>
+                <div className="space-y-1.5 relative z-10">
+                  <p className="text-[9px] font-black text-muted uppercase tracking-[0.2em]">Asset Class</p>
+                  <Input
+                    placeholder="e.g. Vegetables, Meat"
+                    value={formData.category}
+                    onChange={e => setFormData({ ...formData, category: e.target.value })}
+                    className="bg-card border-border shadow-inner text-sm font-black w-full"
+                  />
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="space-y-1.5 relative z-10">
+                  <p className="text-[9px] font-black text-muted uppercase tracking-[0.2em]">Node Identity (SKU)</p>
+                  <p className="text-sm font-mono text-primary font-black uppercase">{selectedItem?.sku || 'N/A'}</p>
+                </div>
+                <div className="space-y-1.5 relative z-10">
+                  <p className="text-[9px] font-black text-muted uppercase tracking-[0.2em]">Asset Descriptor</p>
+                  <p className="text-base text-foreground font-black tracking-tight">{selectedItem?.name}</p>
+                </div>
+                <div className="space-y-1.5 relative z-10">
+                  <p className="text-[9px] font-black text-muted uppercase tracking-[0.2em]">Asset Class</p>
+                  <p className="text-[10px] text-foreground font-black uppercase tracking-widest">{selectedItem?.category}</p>
+                </div>
+              </>
+            )}
+
             <div className="space-y-1.5 relative z-10">
               <p className="text-[9px] font-black text-muted uppercase tracking-[0.2em]">Master Metric Unit</p>
               <select
                 value={formData.unit_id}
                 onChange={e => setFormData({ ...formData, unit_id: e.target.value })}
-                className="bg-card border border-border rounded-xl px-3 py-1.5 text-xs text-foreground font-black outline-none focus:border-primary/50 w-full transition-all shadow-sm"
+                className="bg-card border border-border rounded-xl px-3 py-1.5 text-xs text-foreground font-black outline-none focus:border-primary/50 w-full transition-all shadow-sm h-12"
               >
                 <option value="" disabled>Select Unit</option>
                 {units.map(u => (
                   <option key={u.id} value={u.id}>{u.abbreviation} ({u.name})</option>
                 ))}
               </select>
-            </div>
-            <div className="space-y-1.5 relative z-10">
-              <p className="text-[9px] font-black text-muted uppercase tracking-[0.2em]">Asset Descriptor</p>
-              <p className="text-base text-foreground font-black tracking-tight">{selectedItem?.name}</p>
-            </div>
-            <div className="space-y-1.5 relative z-10">
-              <p className="text-[9px] font-black text-muted uppercase tracking-[0.2em]">Asset Class</p>
-              <p className="text-[10px] text-foreground font-black uppercase tracking-widest">{selectedItem?.category}</p>
             </div>
           </div>
 

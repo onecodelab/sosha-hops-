@@ -31,6 +31,7 @@ serve(async (req) => {
         }
 
         const body = await req.json();
+        console.log("Manage Menu Body:", JSON.stringify(body, null, 2));
         const { action, item, target_id } = body;
         // item: { id?, name, price, category, ... }
 
@@ -42,6 +43,7 @@ serve(async (req) => {
             .single();
 
         if (profileErr || !profile || !profile.organization_id) {
+            console.error("Profile Fetch Error:", profileErr);
             return new Response(JSON.stringify({ error: "User not associated with an Organization" }), { status: 403, headers: corsHeaders });
         }
 
@@ -71,31 +73,37 @@ serve(async (req) => {
             const payload = {
                 ...item,
                 organization_id: organizationId,
-                // Ensure we don't accidentally overwrite id if it's new (item.id might be null/undefined)
             };
 
             // Clean payload of undefined
             if (!payload.id) delete payload.id;
 
+            // Ensure status/availability is consistent
+            if (!payload.status && payload.is_available !== undefined) {
+                payload.status = payload.is_available ? 'available' : 'unavailable';
+            }
+
+            console.log("Upserting Payload:", JSON.stringify(payload, null, 2));
+
             const { data, error } = await supabase
                 .from('menu')
                 .upsert(payload)
-                .select()
-                .single();
+                .select();
 
-            if (error) throw error;
+            if (error) {
+                console.error("Upsert Database Error:", error);
+                throw error;
+            }
 
-            return new Response(JSON.stringify({ success: true, data }), {
+            // Return the first item if exists
+            const resultItem = data && data.length > 0 ? data[0] : null;
+
+            return new Response(JSON.stringify({ success: true, data: resultItem }), {
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             });
 
         } else if (action === 'delete') {
             if (!target_id) throw new Error("Missing target_id for delete");
-
-            // Verify ownership (RLS does this, but BFF should too)
-            // We can just call the RPC provided it respects Org ID, 
-            // OR we just delete directly since we have Service Role and we validated Org ID implies ownership... 
-            // WAIT: Service Role bypasses RLS. We MUST check that the item belongs to the Org!
 
             const { data: existingItem } = await supabase
                 .from('menu')
@@ -110,7 +118,10 @@ serve(async (req) => {
             // Call the RPC for clean cascading delete
             const { error } = await supabase.rpc('permanently_delete_menu_item', { target_id });
 
-            if (error) throw error;
+            if (error) {
+                console.error("Delete RPC Error:", error);
+                throw error;
+            }
 
             return new Response(JSON.stringify({ success: true }), {
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -120,7 +131,7 @@ serve(async (req) => {
         return new Response(JSON.stringify({ error: "Invalid Action" }), { status: 400, headers: corsHeaders });
 
     } catch (error) {
-        console.error(error);
+        console.error("Edge Function Caught Error:", error);
         return new Response(JSON.stringify({ error: error.message }), {
             status: 400,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },

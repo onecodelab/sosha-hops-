@@ -10,7 +10,7 @@ import {
    AlertTriangle, History, Eye, MapPin,
    Users, TrendingUp, DollarSign, Timer, BarChart3,
    Calendar, Zap, LayoutGrid, Search, Filter, Plus,
-   Sparkles, Trash2, Lock, CreditCard, ChevronRight
+   Sparkles, Trash2, Lock, CreditCard, ChevronRight, Edit3
 } from 'lucide-react';
 import { Table, TableZone, Order } from '../types';
 import { useAuth } from '../AuthContext';
@@ -252,13 +252,14 @@ const TableStatus: React.FC = () => {
       }
    };
 
-   const handleDeleteTable = async () => {
-      if (!editingTableId) return;
+   const handleDeleteTable = async (id?: string) => {
+      const targetId = id || editingTableId;
+      if (!targetId) return;
       if (!confirm('Are you sure you want to delete this table?')) return;
 
       setIsAddingTable(true);
       try {
-         const { error } = await supabase.from('tables').delete().eq('id', editingTableId).eq('organization_id', profile?.organization_id);
+         const { error } = await supabase.from('tables').delete().eq('id', targetId).eq('organization_id', profile?.organization_id);
          if (error) throw error;
 
          showToast('Table deleted successfully', 'success');
@@ -387,7 +388,7 @@ const TableStatus: React.FC = () => {
                      </div>
                   </RoleGuard>
 
-                  <Button variant="ghost" onClick={() => refetch()} size="sm" className="h-10 w-10 p-0 rounded-xl bg-muted/5 border border-primary/20 text-muted hover:text-foreground transition-all">
+                  <Button variant="ghost" onClick={() => { refetch(); }} size="sm" className="h-10 w-10 p-0 rounded-xl bg-muted/5 border border-primary/20 text-muted hover:text-foreground transition-all">
                      <RefreshCw className={cn("w-4 h-4", isLoading && "animate-spin")} />
                   </Button>
                </div>
@@ -485,6 +486,9 @@ const TableStatus: React.FC = () => {
                               currentTime={currentTime}
                               onQuickOrder={handleQuickOrder}
                               isAnalyticsMode={isAnalyticsMode}
+                              isSetupMode={isSetupMode}
+                              onEdit={() => openEditModal(table)}
+                              onDelete={() => handleDeleteTable(table.id)}
                               metric={metric}
                               onViewHistory={handleViewHistory}
                            />
@@ -502,7 +506,6 @@ const TableStatus: React.FC = () => {
             isOpen={!!selectedTableHistory}
             onClose={() => setSelectedTableHistory(null)}
             title={`Table History: #${selectedTableHistory?.number}`}
-            className="max-w-4xl"
          >
             <div className="space-y-6">
                <div className="flex bg-black/40 p-1.5 rounded-xl border border-primary/10 backdrop-blur-md self-start w-fit">
@@ -804,11 +807,14 @@ interface TableCardProps {
    currentTime: Date;
    onQuickOrder: (table: any) => void;
    isAnalyticsMode?: boolean;
+   isSetupMode?: boolean;
+   onEdit?: () => void;
+   onDelete?: () => void;
    metric?: TableMetric;
    onViewHistory?: (tableId: string, tableNumber: string) => void;
 }
 
-const TableCard: React.FC<TableCardProps> = React.memo(({ table, currentTime, onQuickOrder, isAnalyticsMode, metric, onViewHistory }) => {
+const TableCard: React.FC<TableCardProps> = React.memo(({ table, currentTime, onQuickOrder, isAnalyticsMode, isSetupMode, onEdit, onDelete, metric, onViewHistory }) => {
    const { profile } = useAuth();
    const isOccupied = table.status === 'occupied';
    const isDirty = table.status === 'needs_cleaning';
@@ -857,8 +863,31 @@ const TableCard: React.FC<TableCardProps> = React.memo(({ table, currentTime, on
                </div>
                <h3 className="text-3xl font-black text-foreground tracking-tighter">#{table.table_number}</h3>
             </div>
-            <div className={cn("p-3 rounded-2xl shadow-inner", isAnalyticsMode ? heatColor : statusStyles[table.status as keyof typeof statusStyles])}>
-               <Armchair className="w-6 h-6" strokeWidth={3} />
+            <div className="flex flex-col items-end gap-2">
+               {isSetupMode ? (
+                  <div className="flex gap-1">
+                     <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={(e) => { e.stopPropagation(); onEdit?.(); }}
+                        className="h-8 w-8 p-0 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-500 hover:bg-blue-500/20"
+                     >
+                        <Edit3 className="w-3.5 h-3.5" />
+                     </Button>
+                     <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={(e) => { e.stopPropagation(); onDelete?.(); }}
+                        className="h-8 w-8 p-0 rounded-lg bg-red-500/10 border border-red-500/20 text-red-500 hover:bg-red-500/20"
+                     >
+                        <Trash2 className="w-3.5 h-3.5" />
+                     </Button>
+                  </div>
+               ) : (
+                  <div className={cn("p-3 rounded-2xl shadow-inner", isAnalyticsMode ? heatColor : statusStyles[table.status as keyof typeof statusStyles])}>
+                     <Armchair className="w-6 h-6" strokeWidth={3} />
+                  </div>
+               )}
             </div>
          </div>
 
@@ -871,7 +900,7 @@ const TableCard: React.FC<TableCardProps> = React.memo(({ table, currentTime, on
                   </div>
                   <div className="bg-muted/5 border border-border p-3 rounded-2xl">
                      <p className="text-[8px] font-black text-muted uppercase tracking-widest mb-1">Orders</p>
-                     <p className="text-lg font-black text-foreground">{metric?.orders_count || 0}</p>
+                     <p className="text-lg font-black text-foreground">{(metric as any)?.orders_count || 0}</p>
                   </div>
                </div>
                <div className="flex items-center justify-between p-3 rounded-2xl bg-primary/5 border border-primary/10">
