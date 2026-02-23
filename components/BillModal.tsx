@@ -72,9 +72,9 @@ const BANK_CONFIG: Record<string, { receiver: string, label: string, placeholder
 export const BillModal: React.FC<BillModalProps> = ({
   isOpen, onClose, order, onSuccess
 }) => {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
 
-  const [view, setView] = useState<'bill' | 'payment' | 'success' | 'split'>('bill');
+  const [view, setView] = useState<'bill' | 'payment' | 'receipt' | 'success' | 'split'>('bill');
   const [paymentMethod, setPaymentMethod] = useState<string>('cash');
   const [amountPaid, setAmountPaid] = useState<string>('');
   const [refNumber, setRefNumber] = useState('');
@@ -179,6 +179,19 @@ export const BillModal: React.FC<BillModalProps> = ({
   });
   const restaurantName = orgData?.name || 'My Restaurant';
 
+  // Fetch branch/location name
+  const { data: branchData } = useQuery({
+    queryKey: ['branch_info', order?.branch_id],
+    queryFn: async () => {
+      if (!order?.branch_id) return null;
+      const { data } = await supabase.from('branches').select('name').eq('id', order.branch_id).maybeSingle();
+      return data;
+    },
+    enabled: !!order?.branch_id,
+    staleTime: 1000 * 60 * 30
+  });
+  const locationName = branchData?.name || 'Main Branch';
+
   const getDynamicReceiver = (bank: string) => {
     const setting = bankSettings.find((s: any) => s.bank_key === bank);
     return setting?.account_number || BANK_CONFIG[bank]?.receiver || "";
@@ -259,8 +272,7 @@ export const BillModal: React.FC<BillModalProps> = ({
             tipAmount: Math.max(0, overpayment),
             reference: data.receipt_reference || refNumber
           }).then(() => {
-            setView('success');
-            onSuccess();
+            setView('receipt');
           });
         }
       } else {
@@ -289,8 +301,7 @@ export const BillModal: React.FC<BillModalProps> = ({
         reference: refNumber
       });
 
-      setView('success');
-      onSuccess();
+      setView('receipt');
     } catch (err: any) {
       showToast(err.message, 'error');
     } finally {
@@ -315,6 +326,7 @@ export const BillModal: React.FC<BillModalProps> = ({
               {/* Business Name */}
               <div className="text-center mb-1">
                 <h3 className="font-black text-sm uppercase tracking-tight leading-tight font-mono">{restaurantName}</h3>
+                <p className="text-[9px] text-gray-600 leading-tight font-mono">Location: {locationName}</p>
               </div>
 
               {/* FS No & Date */}
@@ -335,7 +347,7 @@ export const BillModal: React.FC<BillModalProps> = ({
               <div className="space-y-0.5 text-[10px] mb-2 font-mono">
                 <p>Customer: <span className="font-bold uppercase">Walk-in</span></p>
                 <p>Invoice: <span className="font-bold">ORD-{order.order_number || order.id.slice(0, 8)}</span></p>
-                <p>Operator: <span className="font-bold uppercase">{order.waiter?.full_name || 'Staff'}</span></p>
+                <p>Operator: <span className="font-bold uppercase">{order.waiter?.full_name || profile?.full_name || user?.user_metadata?.full_name || 'Staff'}</span></p>
                 <p>Table: <span className="font-bold">T-{order.table_number || 'N/A'}</span></p>
               </div>
 
@@ -552,6 +564,110 @@ export const BillModal: React.FC<BillModalProps> = ({
                 onSuccess();
               }}
             />
+          )
+        }
+
+        {
+          view === 'receipt' && (
+            <div className="animate-in fade-in zoom-in-95 duration-300 flex flex-col items-center">
+              <div className="bg-white text-black p-5 rounded-lg shadow-inner mx-1 w-full max-w-[320px] mx-auto mt-4" style={{ fontFamily: "'Courier New', Courier, monospace" }}>
+                {/* TIN */}
+                <div className="text-center mb-1">
+                  <p className="text-[10px] tracking-wider font-mono">TIN: 0043819230</p>
+                </div>
+                <p className="text-center text-[9px] text-gray-400 mb-1 font-mono">- - - - - - - - - - - - - - - - - - - -</p>
+
+                {/* Business Name */}
+                <div className="text-center mb-1">
+                  <h3 className="font-black text-sm uppercase tracking-tight leading-tight font-mono">{restaurantName}</h3>
+                  <p className="text-[9px] text-gray-600 leading-tight font-mono">Location: {locationName}</p>
+                </div>
+
+                {/* FS No & Date */}
+                <div className="flex justify-between text-[9px] text-gray-600 mt-1 font-mono">
+                  <span>FS No.{order.order_number || order.id.slice(0, 7)}</span>
+                  <span>{new Date().toLocaleDateString('en-GB')}</span>
+                  <span>{new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</span>
+                </div>
+
+                <p className="text-center text-[9px] text-gray-400 my-1 font-mono">- - - - - - - - - - - - - - - - - - - -</p>
+
+                {/* Invoice Type */}
+                <div className="text-center mb-2">
+                  <p className="font-black text-xs uppercase tracking-widest font-mono bg-green-100 py-1 rounded inline-block px-2">PAID INVOICE</p>
+                </div>
+
+                {/* Customer / Invoice / Operator */}
+                <div className="space-y-0.5 text-[10px] mb-2 font-mono">
+                  <p>Customer: <span className="font-bold uppercase">{isVerified && refNumber ? 'Verified Payer' : 'Walk-in'}</span></p>
+                  <p>Invoice: <span className="font-bold">ORD-{order.order_number || order.id.slice(0, 8)}</span></p>
+                  <p>Operator: <span className="font-bold uppercase">{order.waiter?.full_name || profile?.full_name || user?.user_metadata?.full_name || 'Staff'}</span></p>
+                  <p>Table: <span className="font-bold">T-{order.table_number || 'N/A'}</span></p>
+                </div>
+
+                <p className="text-center text-[9px] text-gray-400 my-1 font-mono">- - - - - - - - - - - - - - - - - - - -</p>
+
+                {/* Items Header */}
+                <div className="flex text-[9px] font-black uppercase tracking-wider text-gray-500 mb-1 font-mono">
+                  <span className="flex-1">Description</span>
+                  <span className="w-8 text-center">Qty</span>
+                  <span className="w-16 text-right">Price</span>
+                  <span className="w-20 text-right">Amount</span>
+                </div>
+
+                {/* Items */}
+                <div className="space-y-1 mb-2 max-h-40 overflow-y-auto custom-scrollbar font-mono">
+                  {order.order_items?.map((item: any, i: number) => (
+                    <div key={i} className="flex text-[10px]">
+                      <span className="flex-1 truncate pr-1 uppercase">{item.menu_item?.name || 'Item'}</span>
+                      <span className="w-8 text-center">{item.quantity}</span>
+                      <span className="w-16 text-right">{(item.price || 0).toLocaleString()}</span>
+                      <span className="w-20 text-right font-bold">{((item.price || 0) * (item.quantity || 1)).toLocaleString()}</span>
+                    </div>
+                  ))}
+                </div>
+
+                <p className="text-center text-[9px] text-gray-400 my-1 font-mono">- - - - - - - - - - - - - - - - - - - -</p>
+
+                {/* Tax Breakdown */}
+                <div className="space-y-1 text-[10px] font-mono">
+                  <div className="flex justify-between">
+                    <span>TXBL 1</span>
+                    <span className="font-bold">*{(order.total_amount / 1.15).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>TAX1 15%</span>
+                    <span className="font-bold">*{(order.total_amount - order.total_amount / 1.15).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                  </div>
+                </div>
+
+                <p className="text-center text-[9px] text-gray-400 my-2 font-mono">- - - - - - - - - - - - - - - - - - - -</p>
+
+                {/* TOTAL */}
+                <div className="flex justify-between text-sm font-black font-mono">
+                  <span>TOTAL PAID</span>
+                  <span>*{order.total_amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                </div>
+
+                <p className="text-center text-[9px] text-gray-400 my-2 font-mono">- - - - - - - - - - - - - - - - - - - -</p>
+
+                {/* ERCA Footer */}
+                <div className="text-center space-y-1 mt-2 font-mono">
+                  <span className="font-black text-[11px] tracking-wide">ERCA</span>
+                  <p className="text-[9px] text-gray-500">FG{order.id.slice(0, 8).toUpperCase()}</p>
+                  <p className="text-[9px] text-gray-400 mt-2 tracking-wider">Powered by Baro OS</p>
+                </div>
+              </div>
+
+              <div className="flex flex-col md:grid md:grid-cols-2 gap-3 mt-6 w-full max-w-[320px]">
+                <Button onClick={() => window.print()} className="w-full h-14 bg-white/10 text-white font-black uppercase rounded-xl border border-white/10 hover:bg-white/20 order-2 md:order-1">
+                  <Printer className="w-5 h-5 mr-2" /> Print
+                </Button>
+                <Button onClick={() => { setView('success'); onSuccess(); }} className="w-full h-14 bg-primary text-black font-black uppercase rounded-xl order-1 md:order-2">
+                  Continue <ChevronRight className="ml-2 w-5 h-5" />
+                </Button>
+              </div>
+            </div>
           )
         }
 
