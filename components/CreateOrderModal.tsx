@@ -188,6 +188,7 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
       // 2. Prep Payload for Edge Function (The Guard)
       const payload = {
         branch_id: activeBranchId,
+        order_id: finalOrderId,
         items: cart.map(item => ({
           menu_item_id: item.dish.id,
           quantity: item.quantity,
@@ -216,14 +217,24 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
           throw new Error(`Edge Function: ${errorDetail}`);
         }
 
-        if (result && result.error) {
-          console.error("Function returned logical error:", result);
-          const msg = result.error || "Execution failed";
-          const stepMsg = result.step ? ` (at ${result.step})` : "";
+        // Extract response body in case invoke returns it poorly mapped
+        let parsedResult = result;
+        if (typeof result === 'string') {
+          try {
+            parsedResult = JSON.parse(result);
+          } catch (e) {
+            console.error("Failed to parse string response:", result);
+          }
+        }
+
+        if (parsedResult && parsedResult.error) {
+          console.error("Function returned logical error:", parsedResult);
+          const msg = parsedResult.error || "Execution failed";
+          const stepMsg = parsedResult.step ? ` (at ${parsedResult.step})` : "";
           throw new Error(`${msg}${stepMsg}`);
         }
 
-        if (!result || (!result.success && !result.order_id)) {
+        if (!parsedResult || (!parsedResult.success && !parsedResult.order_id)) {
           throw new Error("Unexpected response from server.");
         }
       } catch (invokeErr: any) {
@@ -387,11 +398,23 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
           </div>
 
           <div className="p-4 border-t border-border bg-card/60 backdrop-blur-xl">
-            <div className="flex justify-between items-end mb-4 px-2">
-              <span className="text-[10px] font-black text-muted uppercase tracking-widest">Total Estimated</span>
-              <span className="text-2xl font-black text-foreground tracking-tighter">
-                <small className="text-sm text-muted mr-1 font-normal">ETB</small>
-                {totalAmount.toLocaleString()}
+            <div className="flex justify-between items-center px-2 mb-1">
+              <span className="text-[10px] font-black text-muted uppercase tracking-widest">Subtotal (Excl. VAT)</span>
+              <span className="text-sm font-black text-foreground font-mono">
+                {totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </span>
+            </div>
+            <div className="flex justify-between items-center px-2 mb-3">
+              <span className="text-[10px] font-black text-muted/60 uppercase tracking-widest">VAT (15%)</span>
+              <span className="text-sm font-black text-muted font-mono">
+                {(totalAmount * 0.15).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </span>
+            </div>
+            <div className="flex justify-between items-end mb-4 px-2 pt-2 border-t border-border/50">
+              <span className="text-[10px] font-black text-primary uppercase tracking-widest">Final Total</span>
+              <span className="text-2xl font-black text-primary tracking-tighter">
+                <small className="text-sm text-primary/60 mr-1 font-normal">ETB</small>
+                {(totalAmount * 1.15).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </span>
             </div>
             <Button onClick={submitOrder} disabled={submitting} className={cn("w-full h-12 md:h-14 rounded-2xl font-black uppercase text-[10px] md:text-xs shadow-[0_0_20px_rgba(251,191,36,0.2)] transition-all flex items-center justify-between px-6 group", submitting ? "bg-zinc-800 text-zinc-600" : "bg-primary text-black hover:bg-white hover:scale-[1.02]")}>

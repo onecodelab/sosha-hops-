@@ -43,6 +43,8 @@ const ManagerPendingRequests = lazy(() => import('./pages/ManagerPendingRequests
 const ManagerPurchaseOrders = lazy(() => import('./pages/ManagerPurchaseOrders'));
 const Settings = lazy(() => import('./pages/Settings'));
 const OwnerCommandCenter = lazy(() => import('./pages/OwnerCommandCenter'));
+const WaiterTips = lazy(() => import('./pages/WaiterTips'));
+const AdminTipsAudit = lazy(() => import('./pages/AdminTipsAudit'));
 
 import { ChatWidget } from './components/ChatWidget';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -165,6 +167,12 @@ const App: React.FC = () => {
                     </ProtectedRoute>
                   } />
 
+                  <Route path="/app/waiter/tips" element={
+                    <ProtectedRoute allowedRoles={['waiter']}>
+                      <WaiterTips />
+                    </ProtectedRoute>
+                  } />
+
                   <Route path="/app/kitchen" element={
                     <ProtectedRoute allowedRoles={['kitchen', 'manager', 'owner']}>
                       <KitchenDashboard />
@@ -192,6 +200,12 @@ const App: React.FC = () => {
                   <Route path="/app/admin/analytics" element={
                     <ProtectedRoute allowedRoles={['owner', 'admin' as any]}>
                       <AdminFloorAnalytics />
+                    </ProtectedRoute>
+                  } />
+
+                  <Route path="/app/admin/tips" element={
+                    <ProtectedRoute allowedRoles={['owner', 'admin' as any]}>
+                      <AdminTipsAudit />
                     </ProtectedRoute>
                   } />
 

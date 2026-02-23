@@ -18,7 +18,7 @@ export const useMenu = (filterAvailable = false) => {
       const { data, error } = await supabase
         .from('view_menu_details')
         .select('*')
-        .eq('branch_id', activeBranchId)
+        .or(`branch_id.eq.${activeBranchId},branch_id.eq.00000000-0000-0000-0000-000000000000`)
         .order('name', { ascending: true });
 
       if (error) throw error;

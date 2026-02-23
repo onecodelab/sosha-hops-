@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, Input, Button, Badge, cn, sho
 import { Truck, Search, ShoppingBag, Send, Loader2, X, Clock, CheckCircle2, XCircle } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../AuthContext';
+import { useBranch } from '../contexts/BranchContext';
 import { Ingredient, RestockRequest, Urgency } from '../types';
 
 const KitchenRestockRequests: React.FC = () => {
@@ -23,16 +24,31 @@ const KitchenRestockRequests: React.FC = () => {
    const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
    // Fetch Ingredients for dropdown
+   const { activeBranchId } = useBranch();
    const { data: ingredients } = useQuery({
-      queryKey: ['kitchen-ingredients'],
+      queryKey: ['kitchen-ingredients', activeBranchId],
       queryFn: async () => {
+         if (!activeBranchId) return [];
          const { data, error } = await supabase
             .from('ingredients')
-            .select('*')
+            .select(`
+               *,
+               branch_inventory!inner(branch_id, current_stock)
+            `)
             .eq('is_active', true)
+            .eq('branch_inventory.branch_id', activeBranchId)
             .order('name');
-         if (error) return [];
-         return data as Ingredient[];
+
+         if (error) {
+            console.error("Ingredients fetch error:", error);
+            return [];
+         }
+
+         // Map the data to override base current_stock with the branch_inventory stock
+         return data.map((item: any) => ({
+            ...item,
+            current_stock: item.branch_inventory[0]?.current_stock || 0
+         })) as Ingredient[];
       }
    });
 

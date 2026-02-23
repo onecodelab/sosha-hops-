@@ -5,6 +5,7 @@ import { Redis } from "https://esm.sh/@upstash/redis";
 const corsHeaders = {
     'Access-Control-Allow-Origin': Deno.env.get('ALLOWED_ORIGIN') ?? '*',
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Content-Type': 'application/json',
 };
 
 serve(async (req) => {
@@ -43,7 +44,7 @@ serve(async (req) => {
 
         currentStep = 'parsing_payload';
         const payload = await req.json();
-        let { branch_id, items, order_details, source, table_number, table_id, user_id, organization_id: input_org_id } = payload;
+        let { branch_id, items, order_details, source, table_number, table_id, user_id, organization_id: input_org_id, order_id } = payload;
 
         if (order_details) {
             table_number = table_number || order_details.table_number;
@@ -149,62 +150,108 @@ serve(async (req) => {
         const normalizedItems = items.map((i: any) => ({ ...i, menu_item_id: i.menu_item_id || i.id }));
         const itemIds = normalizedItems.map((i: any) => i.menu_item_id);
 
+        console.log(`[DEBUG] Resolving items: ${JSON.stringify(itemIds)}`);
+
         const { data: menuData, error: menuErr } = await supabase
             .from('menu')
-            .select('id, name, price, branch_id')
-            .eq('organization_id', organizationId)
+            .select('id, name, price, branch_id, organization_id')
+            .or(`branch_id.eq.${branch_id},branch_id.eq.00000000-0000-0000-0000-000000000000,organization_id.eq.00000000-0000-0000-0000-000000000000`)
             .in('id', itemIds);
 
         if (menuErr) throw new Error(`Menu retrieval failed: ${menuErr.message}`);
+        if (!menuData || menuData.length === 0) {
+            console.error(`[ERROR] No menu items found for IDs: ${itemIds.join(', ')} in branch ${branch_id}`);
+            throw new Error(`Menu items not found. Please ensure they belong to branch ${branch_id} or are global.`);
+        }
 
         currentStep = 'calculating_totals';
         let orderTotal = 0;
         const mappedItems = normalizedItems.map(item => {
             const menuMatch = menuData?.find(m => m.id === item.menu_item_id);
-            if (!menuMatch) throw new Error(`Menu item not found: ${item.menu_item_id}`);
+            if (!menuMatch) {
+                console.error(`[ERROR] Specific item not found in branch/global scope: ${item.menu_item_id}`);
+                throw new Error(`Menu item not found or inaccessible: ${item.menu_item_id}`);
+            }
             const price = Number(menuMatch.price) || 0;
             orderTotal += price * Number(item.quantity || 0);
             return { ...item, price };
         });
 
-        const subtotal = Math.round((orderTotal / 1.15) * 100) / 100;
-        const vatAmount = Math.round((orderTotal - subtotal) * 100) / 100;
+        const subtotal = Math.round(orderTotal * 100) / 100;
+        const vatAmount = Math.round((subtotal * 0.15) * 100) / 100;
+        orderTotal = Math.round((subtotal + vatAmount) * 100) / 100;
 
         currentStep = 'persisting_order';
-        const { data: order, error: orderErr } = await supabase
-            .from('orders')
-            .insert({
-                customer_notes: order_details?.customer_notes,
-                order_number: order_details?.order_number,
-                branch_id,
-                organization_id: organizationId,
-                table_id: finalTableId,
-                table_number: finalTableNumber,
-                waiter_id: user.id || user_id || null,
-                source: source || 'chatbot',
-                status: 'pending',
-                total_amount: orderTotal,
-                subtotal_amount: subtotal,
-                vat_amount: vatAmount,
-                vat_rate: 15
-            })
-            .select().single();
+        let finalOrderId = order_id;
 
-        if (orderErr) throw new Error(`Order insertion failed: ${orderErr.message}`);
+        if (finalOrderId) {
+            // Update existing order
+            const { data: existingOrder, error: fetchErr } = await supabase
+                .from('orders')
+                .select('total_amount, subtotal_amount, vat_amount')
+                .eq('id', finalOrderId)
+                .single();
 
-        currentStep = 'updating_table_status';
-        if (finalTableId) {
-            await supabase.from('tables').update({
-                status: 'occupied',
-                current_order_id: order.id,
-                current_session_id: sessionId,
-                last_updated: new Date().toISOString()
-            }).eq('id', finalTableId);
+            if (fetchErr) throw new Error(`Failed to fetch existing order: ${fetchErr.message}`);
+
+            const newTotal = Number(existingOrder.total_amount || 0) + orderTotal;
+            const newSubtotal = Number(existingOrder.subtotal_amount || 0) + subtotal;
+            const newVat = Number(existingOrder.vat_amount || 0) + vatAmount;
+
+            const { error: updateErr } = await supabase
+                .from('orders')
+                .update({
+                    total_amount: newTotal,
+                    subtotal_amount: newSubtotal,
+                    vat_amount: newVat
+                })
+                .eq('id', finalOrderId);
+
+            if (updateErr) throw new Error(`Failed to update existing order: ${updateErr.message}`);
+
+            // Touch table last updated
+            if (finalTableId) {
+                await supabase.from('tables').update({
+                    last_updated: new Date().toISOString()
+                }).eq('id', finalTableId);
+            }
+        } else {
+            const { data: order, error: orderErr } = await supabase
+                .from('orders')
+                .insert({
+                    customer_notes: order_details?.customer_notes,
+                    order_number: order_details?.order_number,
+                    branch_id,
+                    organization_id: organizationId,
+                    table_id: finalTableId,
+                    table_number: finalTableNumber,
+                    waiter_id: user.id || user_id || null,
+                    source: source || 'chatbot',
+                    status: 'pending',
+                    total_amount: orderTotal,
+                    subtotal_amount: subtotal,
+                    vat_amount: vatAmount,
+                    vat_rate: 15
+                })
+                .select().single();
+
+            if (orderErr) throw new Error(`Order insertion failed: ${orderErr.message}`);
+            finalOrderId = order.id;
+
+            currentStep = 'updating_table_status';
+            if (finalTableId) {
+                await supabase.from('tables').update({
+                    status: 'occupied',
+                    current_order_id: finalOrderId,
+                    current_session_id: sessionId,
+                    last_updated: new Date().toISOString()
+                }).eq('id', finalTableId);
+            }
         }
 
         currentStep = 'persisting_items';
         const itemsPayload = mappedItems.map(i => ({
-            order_id: order.id,
+            order_id: finalOrderId,
             organization_id: organizationId,
             menu_item_id: i.menu_item_id,
             quantity: i.quantity,
@@ -215,7 +262,7 @@ serve(async (req) => {
         const { error: itemsErr } = await supabase.from('order_items').insert(itemsPayload);
         if (itemsErr) throw new Error(`Order items insertion failed: ${itemsErr.message}`);
 
-        return new Response(JSON.stringify({ success: true, order_id: order.id }), { headers: corsHeaders });
+        return new Response(JSON.stringify({ success: true, order_id: finalOrderId }), { headers: corsHeaders });
 
     } catch (err: any) {
         console.error(`[ERROR] place-order failure at step: ${currentStep}`);
@@ -224,7 +271,8 @@ serve(async (req) => {
             error: err.message,
             step: currentStep,
             type: 'TOOL_ERROR',
-            detail: err.stack
+            detail: err.stack,
+            timestamp: new Date().toISOString()
         }), { status: 500, headers: corsHeaders });
     }
 });

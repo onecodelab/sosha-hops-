@@ -4,7 +4,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import {
     LogOut, LayoutDashboard, ShoppingBag, Users,
     ClipboardList, Utensils, ChevronLeft, ChevronRight,
-    Trash2, Truck, PlusCircle, PackageCheck, FileText, Monitor, BookOpen, TrendingUp, Clock, ShoppingCart, Zap
+    Trash2, Truck, PlusCircle, PackageCheck, FileText, Monitor, BookOpen, TrendingUp, Clock, ShoppingCart, Zap, DollarSign
 } from 'lucide-react';
 import { cn } from './ui';
 import { BaroLogo } from './BaroLogo';
@@ -160,6 +160,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, setIsCollapsed, h
                     allowedRoles={['waiter']}
                 />
                 <NavItem
+                    icon={DollarSign}
+                    label="My Tips & Gratuity"
+                    path="/app/waiter/tips"
+                    allowedRoles={['waiter']}
+                />
+                <NavItem
                     icon={LayoutDashboard}
                     label={t('nav.kds')}
                     path="/app/kitchen"
@@ -193,6 +199,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, setIsCollapsed, h
                     icon={Utensils}
                     label={t('nav.menuAnalytics')}
                     path="/app/menu-analytics"
+                    allowedRoles={['owner', 'admin']}
+                />
+                <NavItem
+                    icon={DollarSign}
+                    label="Tips & Gratuity Audit"
+                    path="/app/admin/tips"
                     allowedRoles={['owner', 'admin']}
                 />
 
