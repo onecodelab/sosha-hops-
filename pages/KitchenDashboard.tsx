@@ -35,6 +35,7 @@ const KitchenDashboard: React.FC = () => {
                   quantity,
                   price,
                   special_instructions,
+                  created_at,
                   menu_item:menu (name)
                )
             `)

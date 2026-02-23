@@ -97,6 +97,7 @@ export interface OrderItem {
   menu_dish?: MenuDish;
   menu_item?: { name: string; category?: string };
   out_of_stock_impact?: 'kills_dish' | 'disable_variant' | 'optional';
+  created_at?: string;
 }
 
 export interface TipsLog {
@@ -227,6 +228,7 @@ export interface WasteLog {
   quantity: number;
   unit_id?: string;
   unit_type?: string; // Legacy/Snapshot
+  inventory_impact?: number; // Normalized to base unit
   waste_reason: WasteCategory;
   reason?: string; // Alias for waste_reason or notes
   notes: string;
@@ -238,8 +240,10 @@ export interface WasteLog {
     name: string;
     unit_id?: string;
     unit_type?: string;
+    weight_per_unit?: number;
     units?: Unit;
   };
+  unit?: { abbreviation: string };
 }
 
 // Added missing Restock related types

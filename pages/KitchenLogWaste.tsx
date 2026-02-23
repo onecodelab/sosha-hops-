@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../supabase';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle, Input, Button, cn, showToast } from '../components/ui';
-import { Trash2, Search, AlertTriangle, Calendar, DollarSign, History, Check, X, Loader2 } from 'lucide-react';
+import { Trash2, Search, AlertTriangle, Calendar, DollarSign, History, Check, X, Loader2, Info } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { Ingredient, WasteCategory, WasteLog } from '../types';
 import { useAuth } from '../AuthContext';
@@ -23,6 +23,26 @@ const KitchenLogWaste: React.FC = () => {
    const [category, setCategory] = useState<WasteCategory>('spoiled');
    const [reason, setReason] = useState('');
    const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+   const [selectedUnitId, setSelectedUnitId] = useState<string>('');
+
+   // Fetch All Units for Selection
+   const { data: allUnits } = useQuery({
+      queryKey: ['units'],
+      queryFn: async () => {
+         const { data, error } = await supabase.from('units').select('*').order('name');
+         if (error) return [];
+         return data;
+      }
+   });
+
+   // Auto-select ingredient's base unit
+   React.useEffect(() => {
+      if (selectedIngredient) {
+         setSelectedUnitId(selectedIngredient.unit_id || '');
+      } else {
+         setSelectedUnitId('');
+      }
+   }, [selectedIngredient]);
 
    // Fetch Ingredients
    const { data: ingredients } = useQuery({
@@ -54,7 +74,8 @@ const KitchenLogWaste: React.FC = () => {
             .from('waste_logs')
             .select(`
           *,
-          ingredient:ingredients(name, unit_id, units(abbreviation))
+          ingredient:ingredients(name, unit_id, weight_per_unit, units(abbreviation)),
+          unit:units!waste_logs_unit_id_fkey(abbreviation)
         `)
             .eq('branch_id', activeBranchId)
             .order('created_at', { ascending: false })
@@ -87,15 +108,31 @@ const KitchenLogWaste: React.FC = () => {
          const qtyNum = parseFloat(quantity);
          if (isNaN(qtyNum) || qtyNum <= 0) throw new Error("Invalid quantity");
 
-         // Calculate cost
-         const cost = (selectedIngredient.cost_per_unit || 0) * qtyNum;
+         // Client-side conversion check (prevent submission if obviously over)
+         const selectedUnit = allUnits?.find(u => u.id === selectedUnitId);
+         const baseUnit = selectedIngredient.units;
+         let normalizedQty = qtyNum;
+
+         if (selectedUnit && baseUnit && selectedUnit.id !== baseUnit.id) {
+            if (selectedUnit.type === baseUnit.type) {
+               normalizedQty = (qtyNum * selectedUnit.base_factor) / baseUnit.base_factor;
+            } else if (selectedUnit.type === 'count' && (baseUnit.type === 'mass' || baseUnit.type === 'volume')) {
+               normalizedQty = (qtyNum * (selectedIngredient.weight_per_unit || 1)) / baseUnit.base_factor;
+            } else if ((selectedUnit.type === 'mass' || selectedUnit.type === 'volume') && baseUnit.type === 'count') {
+               normalizedQty = (qtyNum * selectedUnit.base_factor) / (selectedIngredient.weight_per_unit || 1);
+            }
+         }
+
+         if (normalizedQty > (selectedIngredient.current_stock || 0)) {
+            throw new Error(`Cannot waste more than current stock (${selectedIngredient.current_stock} ${baseUnit?.abbreviation || 'units'} available)`);
+         }
 
          const { error } = await supabase.rpc('submit_waste_report', {
-            p_branch_id: activeBranchId,
             p_ingredient_id: selectedIngredient.id,
             p_quantity: qtyNum,
             p_reason: category,
-            p_notes: reason
+            p_notes: reason,
+            p_unit_id: selectedUnitId
          });
 
          if (error) throw error;
@@ -200,11 +237,39 @@ const KitchenLogWaste: React.FC = () => {
                         </div>
                         <div className="space-y-2">
                            <label className="text-xs font-bold text-gray-500 uppercase">{t('stock.unit')}</label>
-                           <div className="h-11 flex items-center px-3 bg-black/10 border border-gray-800 rounded-lg text-gray-400 text-sm">
-                              {selectedIngredient?.units?.abbreviation || selectedIngredient?.unit_type || '-'}
-                           </div>
+                           <select
+                              value={selectedUnitId}
+                              onChange={(e) => setSelectedUnitId(e.target.value)}
+                              className="w-full h-11 bg-black/20 border border-gray-800 rounded-lg px-3 text-sm text-white outline-none focus:border-red-500/50 appearance-none"
+                              disabled={!selectedIngredient}
+                           >
+                              <option value="" disabled>Unit...</option>
+                              {allUnits?.map(u => (
+                                 <option key={u.id} value={u.id} className="bg-[#222]">
+                                    {u.abbreviation} ({u.name})
+                                 </option>
+                              ))}
+                           </select>
                         </div>
                      </div>
+
+                     {/* Conversion Info / Warning */}
+                     {selectedIngredient && selectedUnitId && selectedUnitId !== selectedIngredient.unit_id && (
+                        <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg animate-in fade-in slide-in-from-top-1">
+                           <p className="text-[10px] text-blue-400 font-bold uppercase tracking-widest flex items-center gap-2">
+                              <Info className="w-3 h-3" /> Unit Conversion Active
+                           </p>
+                           <p className="text-[11px] text-gray-400 mt-1">
+                              Logging in <b>{allUnits?.find(u => u.id === selectedUnitId)?.abbreviation}</b>.
+                              Inventory is tracked in <b>{selectedIngredient.units?.abbreviation}</b>.
+                              {allUnits?.find(u => u.id === selectedUnitId)?.type !== selectedIngredient.units?.type && !selectedIngredient.weight_per_unit && (
+                                 <span className="block text-amber-500 mt-1 font-bold">
+                                    ⚠️ Warning: Weight per unit not set for this ingredient. Conversion might be inaccurate.
+                                 </span>
+                              )}
+                           </p>
+                        </div>
+                     )}
 
                      {/* Category */}
                      <div className="space-y-2">
@@ -269,6 +334,7 @@ const KitchenLogWaste: React.FC = () => {
                               <th className="px-6 py-4">{t('waste.date')}</th>
                               <th className="px-6 py-4">{t('stock.name')}</th>
                               <th className="px-6 py-4">{t('waste.quantity')}</th>
+                              <th className="px-6 py-4">Inventory Impact</th>
                               <th className="px-6 py-4">{t('waste.category')}</th>
                               <th className="px-6 py-4">{t('waste.reason')}</th>
                               <th className="px-6 py-4 text-right">{t('waste.cost')}</th>
@@ -276,10 +342,10 @@ const KitchenLogWaste: React.FC = () => {
                         </thead>
                         <tbody className="divide-y divide-gray-800">
                            {logsLoading && (
-                              <tr><td colSpan={6} className="p-8 text-center text-gray-500">{t('common.loading')}</td></tr>
+                              <tr><td colSpan={7} className="p-8 text-center text-gray-500">{t('common.loading')}</td></tr>
                            )}
                            {!logsLoading && (!recentLogs || recentLogs.length === 0) && (
-                              <tr><td colSpan={6} className="p-8 text-center text-gray-500">{t('stock.empty')}</td></tr>
+                              <tr><td colSpan={7} className="p-8 text-center text-gray-500">{t('stock.empty')}</td></tr>
                            )}
                            {recentLogs?.map((log) => (
                               <tr key={log.id} className="hover:bg-white/5 transition-colors">
@@ -290,7 +356,25 @@ const KitchenLogWaste: React.FC = () => {
                                     {log.ingredient?.name || 'Unknown'}
                                  </td>
                                  <td className="px-6 py-4 text-gray-300">
-                                    <span className="text-red-400 font-bold">-{log.quantity}</span> <span className="text-xs text-gray-500">{log.ingredient?.units?.abbreviation || log.unit_type}</span>
+                                    <span className="text-red-400 font-bold">-{log.quantity}</span> <span className="text-xs text-gray-500">{log.unit?.abbreviation || log.unit_type}</span>
+                                 </td>
+                                 <td className="px-6 py-4">
+                                    {(() => {
+                                       if (log.inventory_impact) {
+                                          return <span className="text-orange-400 font-mono">-{log.inventory_impact} <span className="text-[10px]">{log.ingredient?.units?.abbreviation}</span></span>;
+                                       }
+                                       // Fallback calculation in frontend
+                                       const ingredient = log.ingredient;
+                                       if (!ingredient || !ingredient.units) return '-';
+
+                                       const logUnitAbbr = log.unit?.abbreviation || log.unit_type;
+                                       if (logUnitAbbr === ingredient.units.abbreviation) {
+                                          return <span className="text-orange-400 font-mono">-{log.quantity} <span className="text-[10px]">{ingredient.units.abbreviation}</span></span>;
+                                       }
+
+                                       // Simple estimate if conversion logic is needed but impact column isn't populated yet
+                                       return <span className="text-orange-400/50 font-mono italic">Calculating...</span>;
+                                    })()}
                                  </td>
                                  <td className="px-6 py-4">
                                     <span className="bg-red-500/10 text-red-400 border border-red-500/20 px-2 py-1 rounded text-xs capitalize">
