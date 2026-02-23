@@ -203,7 +203,8 @@ serve(async (req) => {
                 .update({
                     total_amount: newTotal,
                     subtotal_amount: newSubtotal,
-                    vat_amount: newVat
+                    vat_amount: newVat,
+                    status: 'pending'
                 })
                 .eq('id', finalOrderId);
 
@@ -250,14 +251,22 @@ serve(async (req) => {
         }
 
         currentStep = 'persisting_items';
-        const itemsPayload = mappedItems.map(i => ({
-            order_id: finalOrderId,
-            organization_id: organizationId,
-            menu_item_id: i.menu_item_id,
-            quantity: i.quantity,
-            price: i.price,
-            special_instructions: i.notes || ''
-        }));
+        const isAppendOperation = !!order_id;
+        const itemsPayload = mappedItems.map(i => {
+            let notes = i.notes || '';
+            if (isAppendOperation) {
+                notes = notes ? `[NEW] ${notes}` : '[NEW]';
+            }
+
+            return {
+                order_id: finalOrderId,
+                organization_id: organizationId,
+                menu_item_id: i.menu_item_id,
+                quantity: i.quantity,
+                price: i.price,
+                special_instructions: notes
+            };
+        });
 
         const { error: itemsErr } = await supabase.from('order_items').insert(itemsPayload);
         if (itemsErr) throw new Error(`Order items insertion failed: ${itemsErr.message}`);

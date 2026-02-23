@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { Order } from '../types';
 import { cn, Badge, Button, showToast } from './ui';
 import { useAuth } from '../AuthContext';
-import { Clock, MessageSquare, PlusCircle, CheckCircle2, Loader2, Flag, Receipt, FileText, User } from 'lucide-react';
+import { Clock, MessageSquare, PlusCircle, CheckCircle2, Loader2, Flag, Receipt, FileText, User, Zap } from 'lucide-react';
 
 import { orderService } from '../services/orderService';
 import { BaroLeafyCard } from './ElectricCard';
@@ -48,6 +48,10 @@ export const OrderCard: React.FC<OrderCardProps> = ({
 
   const isKitchen = role === 'kitchen';
   const isWaiter = role === 'waiter';
+
+  // Detect newly-appended items by checking for the [NEW] prefix in special instructions
+  const hasNewItems = (order.order_items || []).some((i: any) => i.special_instructions?.startsWith('[NEW]'));
+  const isNewItem = (item: any) => item.special_instructions?.startsWith('[NEW]');
 
   const handleMarkServed = async () => {
     setIsActing(true);
@@ -130,6 +134,11 @@ export const OrderCard: React.FC<OrderCardProps> = ({
             <MessageSquare className="w-3 h-3" /> BOT
           </Badge>
         )}
+        {hasNewItems && (
+          <Badge className="absolute -top-2 left-1/2 -translate-x-1/2 bg-cyan-500 text-black border-2 border-background text-[8px] font-black px-2.5 py-1 shadow-[0_0_20px_rgba(6,182,212,0.4)] flex items-center gap-1 animate-pulse z-20">
+            <Zap className="w-3 h-3" /> UPDATED
+          </Badge>
+        )}
       </div>
 
       {/* Items List - Cleaner Look */}
@@ -140,12 +149,17 @@ export const OrderCard: React.FC<OrderCardProps> = ({
               <div className="flex items-start gap-2 leading-tight">
                 <span className="text-primary font-black text-xs min-w-[18px] text-center bg-primary/10 rounded-sm">{item.quantity}x</span>
                 <span className="text-xs font-bold text-foreground/90">{item.menu_item?.name}</span>
+                {isNewItem(item) && (
+                  <span className="text-[8px] font-black text-cyan-400 bg-cyan-500/15 border border-cyan-500/30 px-1.5 py-0.5 rounded-full uppercase tracking-wider animate-pulse shadow-[0_0_8px_rgba(6,182,212,0.3)]">
+                    🆕 NEW
+                  </span>
+                )}
               </div>
             </div>
             {item.special_instructions && (
               <div className="ml-6 mt-1 flex items-start gap-1.5 p-1.5 bg-yellow-500/5 rounded-lg border border-yellow-500/10">
                 <MessageSquare className="w-2.5 h-2.5 text-yellow-500 shrink-0 mt-0.5" />
-                <p className="text-[10px] text-yellow-200/90 italic leading-snug">{item.special_instructions}</p>
+                <p className="text-[10px] text-yellow-200/90 italic leading-snug">{item.special_instructions.replace('[NEW]', '').trim()}</p>
               </div>
             )}
           </div>

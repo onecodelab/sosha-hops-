@@ -6,6 +6,7 @@ ALTER TABLE public.menu ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'available'
 
 -- 2. Update the Master View to respect manual status
 -- We modify 'view_menu_details' to combine manual status + inventory check
+DROP VIEW IF EXISTS view_menu_details CASCADE;
 CREATE OR REPLACE VIEW view_menu_details AS
 SELECT 
   m.id,

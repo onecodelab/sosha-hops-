@@ -11,8 +11,22 @@ interface SearchResult {
     name: string;
     unit_type: string;
     unit_id: string;
-    units?: { abbreviation: string };
+    units?: {
+        id: string;
+        abbreviation: string;
+        base_factor: number;
+        type: string;
+    };
     current_stock: number;
+    weight_per_unit: number;
+}
+
+interface Unit {
+    id: string;
+    name: string;
+    abbreviation: string;
+    type: string;
+    base_factor: number;
 }
 
 const WASTE_REASONS = [
@@ -38,6 +52,27 @@ const KitchenWaste: React.FC = () => {
     const [isSearching, setIsSearching] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [successMode, setSuccessMode] = useState(false);
+    const [units, setUnits] = useState<Unit[]>([]);
+    const [selectedUnitId, setSelectedUnitId] = useState<string>('');
+
+    // Load available units
+    useEffect(() => {
+        const fetchUnits = async () => {
+            const { data } = await supabase.from('units').select('*').order('name');
+            if (data) setUnits(data);
+        };
+        fetchUnits();
+    }, []);
+
+    // Also need weight_per_unit to do logic
+    // Set default unit when item is selected
+    useEffect(() => {
+        if (selectedItem) {
+            setSelectedUnitId(selectedItem.unit_id);
+        } else {
+            setSelectedUnitId('');
+        }
+    }, [selectedItem]);
 
     // 1. Search Logic
     useEffect(() => {
@@ -52,8 +87,8 @@ const KitchenWaste: React.FC = () => {
                 const { data, error } = await supabase
                     .from('ingredients')
                     .select(`
-            id, name, unit_type, unit_id,
-            units(abbreviation),
+            id, name, unit_type, unit_id, weight_per_unit,
+            units(id, abbreviation, base_factor, type),
             branch_inventory!inner(branch_id, current_stock)
           `)
                     .eq('branch_inventory.branch_id', activeBranchId)
@@ -69,7 +104,8 @@ const KitchenWaste: React.FC = () => {
                     unit_type: item.unit_type,
                     unit_id: item.unit_id,
                     units: item.units,
-                    current_stock: item.branch_inventory[0]?.current_stock || 0
+                    current_stock: item.branch_inventory[0]?.current_stock || 0,
+                    weight_per_unit: item.weight_per_unit || 1
                 }));
 
                 setSearchResults(results);
@@ -94,19 +130,35 @@ const KitchenWaste: React.FC = () => {
             return;
         }
 
-        if (qtyNum > selectedItem.current_stock) {
-            showToast(`Cannot waste more than current stock (${selectedItem.current_stock} ${selectedItem.units?.abbreviation || selectedItem.unit_type})`, "error");
+        // Logic check: Convert to base unit to check against stock
+        const selectedUnit = units.find(u => u.id === selectedUnitId);
+        const baseUnit = selectedItem.units;
+
+        let normalizedQty = qtyNum;
+        if (selectedUnit && baseUnit && selectedUnit.id !== baseUnit.id) {
+            // My factor logic matches get_unit_conversion_factor
+            if (selectedUnit.type === baseUnit.type) {
+                normalizedQty = (qtyNum * selectedUnit.base_factor) / baseUnit.base_factor;
+            } else if (selectedUnit.type === 'count' && (baseUnit.type === 'mass' || baseUnit.type === 'volume')) {
+                normalizedQty = (qtyNum * selectedItem.weight_per_unit) / baseUnit.base_factor;
+            } else if ((selectedUnit.type === 'mass' || selectedUnit.type === 'volume') && baseUnit.type === 'count') {
+                normalizedQty = (qtyNum * selectedUnit.base_factor) / selectedItem.weight_per_unit;
+            }
+        }
+
+        if (normalizedQty > selectedItem.current_stock) {
+            showToast(`Cannot waste more than current stock (${selectedItem.current_stock} ${selectedItem.units?.abbreviation || selectedItem.unit_type} avail)`, "error");
             return;
         }
 
         setIsSubmitting(true);
         try {
             const { error } = await supabase.rpc('submit_waste_report', {
-                p_branch_id: activeBranchId,
                 p_ingredient_id: selectedItem.id,
                 p_quantity: qtyNum,
                 p_reason: reason,
-                p_notes: notes || null
+                p_notes: notes || null,
+                p_unit_id: selectedUnitId
             });
 
             if (error) throw error;
@@ -216,16 +268,35 @@ const KitchenWaste: React.FC = () => {
                                 <div className="space-y-8">
                                     {/* Quantity Input */}
                                     <div className="space-y-3">
-                                        <label className="text-xs font-black text-gray-500 uppercase tracking-widest pl-1">Quantity Wasted ({selectedItem.units?.abbreviation || selectedItem.unit_type})</label>
-                                        <div className="flex items-center gap-4">
-                                            <Input
-                                                type="number"
-                                                className="h-16 text-3xl font-black text-center bg-primary/5 border border-primary/20 rounded-2xl text-red-500 focus:border-red-500/50"
-                                                placeholder="0.0"
-                                                value={quantity}
-                                                onChange={e => setQuantity(e.target.value)}
-                                                autoFocus
-                                            />
+                                        <div className="flex items-center justify-between pl-1">
+                                            <label className="text-xs font-black text-gray-500 uppercase tracking-widest">Quantity Wasted</label>
+                                            <label className="text-xs font-black text-gray-500 uppercase tracking-widest">Unit</label>
+                                        </div>
+                                        <div className="flex items-center gap-3">
+                                            <div className="flex-1">
+                                                <Input
+                                                    type="number"
+                                                    className="h-16 text-3xl font-black text-center bg-primary/5 border border-primary/20 rounded-2xl text-red-500 focus:border-red-500/50"
+                                                    placeholder="0.0"
+                                                    value={quantity}
+                                                    onChange={e => setQuantity(e.target.value)}
+                                                    autoFocus
+                                                />
+                                            </div>
+                                            <div className="w-1/3">
+                                                <div className="relative">
+                                                    <select
+                                                        value={selectedUnitId}
+                                                        onChange={e => setSelectedUnitId(e.target.value)}
+                                                        className="w-full h-16 bg-primary/5 border border-primary/20 rounded-2xl px-4 text-xl font-black text-white outline-none appearance-none focus:border-primary/50"
+                                                    >
+                                                        {units.map(u => (
+                                                            <option key={u.id} value={u.id} className="bg-zinc-900 text-white font-bold">{u.abbreviation}</option>
+                                                        ))}
+                                                    </select>
+                                                    <Scale className="absolute right-4 top-5.5 w-5 h-5 text-gray-500 pointer-events-none" />
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
 

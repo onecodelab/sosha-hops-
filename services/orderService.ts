@@ -13,7 +13,7 @@ export const orderService = {
             .select(`
         *,
         order_items (
-          id, quantity, price, 
+          id, quantity, price, created_at,
           menu_item:menu (name)
         )
       `)
@@ -457,7 +457,7 @@ export const orderService = {
             .select(`
                 *,
                 order_items (
-                    id, quantity, price,
+                    id, quantity, price, created_at,
                     menu_item:menu (name)
                 )
             `)
