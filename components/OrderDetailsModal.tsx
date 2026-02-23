@@ -1,11 +1,9 @@
 
-import React from 'react';
-import { Dialog, Badge, Button, cn } from './ui';
+import React, { useEffect, useState } from 'react';
+import { Dialog, Button, cn } from './ui';
 import { Order } from '../types';
-import {
-    X, Receipt, Clock, MapPin, User, CreditCard,
-    DollarSign, Hash, ShieldCheck, ShoppingBag
-} from 'lucide-react';
+import { supabase } from '../supabase';
+import { Printer, X } from 'lucide-react';
 
 interface OrderDetailsModalProps {
     isOpen: boolean;
@@ -13,138 +11,207 @@ interface OrderDetailsModalProps {
     order: Order | null;
 }
 
+const DASHED = '- - - - - - - - - - - - - - - - - - - - - - - -';
+const SOLID = '————————————————————————————';
+
 export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ isOpen, onClose, order }) => {
+    const [customerName, setCustomerName] = useState<string>('Walk-in');
+
+    useEffect(() => {
+        if (!order || !isOpen) return;
+        // Try to get customer name from order_payments reference or verification
+        const fetchCustomerInfo = async () => {
+            const { data } = await supabase
+                .from('order_payments')
+                .select('payment_method, reference')
+                .eq('order_id', order.id)
+                .order('created_at', { ascending: false })
+                .limit(1);
+            if (data && data.length > 0 && data[0].reference) {
+                // If we have a reference, the customer used digital payment
+                setCustomerName(data[0].reference ? 'Verified Payer' : 'Walk-in');
+            } else {
+                setCustomerName('Walk-in');
+            }
+        };
+        fetchCustomerInfo();
+    }, [order, isOpen]);
+
     if (!order) return null;
 
-    const subtotal = order.subtotal_amount || 0;
-    const vat = order.vat_amount || 0;
-    const tip = order.tip_amount || 0;
+    const subtotal = order.subtotal_amount || parseFloat((order.total_amount / 1.15).toFixed(2));
+    const vat = order.vat_amount || parseFloat((order.total_amount - subtotal).toFixed(2));
     const total = order.total_amount || 0;
+    const tip = order.tip_amount || 0;
+    const itemCount = order.order_items?.reduce((sum, item: any) => sum + (item.quantity || 1), 0) || 0;
 
-    const getStatusColor = (status: string) => {
-        switch (status) {
-            case 'paid': return 'bg-green-500/20 text-green-400 border-green-500/30';
-            case 'served': return 'bg-purple-500/20 text-purple-400 border-purple-500/30';
-            case 'closed': return 'bg-gray-500/20 text-gray-400 border-gray-500/30';
-            default: return 'bg-yellow-500/20 text-yellow-500 border-yellow-500/30';
-        }
+    const orderDate = new Date(order.created_at);
+    const dateStr = orderDate.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    const timeStr = orderDate.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+
+    const getPaymentLabel = (method: string) => {
+        const map: Record<string, string> = {
+            cash: 'Cash', cbe: 'CBE Transfer', telebirr: 'Telebirr',
+            abyssinia: 'Bank of Abyssinia', dashen: 'Dashen Bank',
+            cbebirr: 'CBE Birr'
+        };
+        return map[method] || method || 'Cash';
+    };
+
+    const handlePrint = () => {
+        window.print();
     };
 
     return (
-        <Dialog isOpen={isOpen} onClose={onClose} title="Transaction Details">
-            <div className="space-y-6 animate-in fade-in zoom-in duration-300">
-
-                {/* Header Section */}
-                <div className="flex justify-between items-start bg-white/5 p-4 rounded-2xl border border-white/5">
-                    <div className="space-y-1">
-                        <div className="flex items-center gap-2">
-                            <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Receipt No</span>
-                            <Badge variant="outline" className="font-mono text-zinc-300 border-white/10 uppercase">
-                                #{order.order_number || order.id.slice(0, 8)}
-                            </Badge>
-                        </div>
-                        <h3 className="text-3xl font-black tracking-tighter text-white">
-                            Table {order.table_number || 'N/A'}
-                        </h3>
-                        <div className="flex items-center gap-3 text-[10px] text-zinc-500 font-bold uppercase">
-                            <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {new Date(order.created_at).toLocaleTimeString()}</span>
-                            <span className="flex items-center gap-1"><MapPin className="w-3 h-3" /> {order.order_type || 'Dine-in'}</span>
-                        </div>
-                    </div>
-                    <Badge className={cn("px-4 py-1.5 rounded-full text-[10px] font-black uppercase shadow-lg", getStatusColor(order.status))}>
-                        {order.status}
-                    </Badge>
-                </div>
-
-                {/* Staff & Role Section */}
-                <div className="grid grid-cols-2 gap-4">
-                    <div className="bg-black/40 p-4 rounded-2xl border border-white/5 space-y-2">
-                        <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500 block">Served By</span>
-                        <div className="flex items-center gap-2">
-                            <User className="w-4 h-4 text-primary" />
-                            <div>
-                                <p className="text-xs font-black text-white">{order.waiter?.full_name || 'System'}</p>
-                                <p className="text-[9px] font-bold text-primary uppercase">{(order as any).waiter?.role || 'Waiter'}</p>
-                            </div>
-                        </div>
-                    </div>
-                    <div className="bg-black/40 p-4 rounded-2xl border border-white/5 space-y-2">
-                        <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500 block">Payment Method</span>
-                        <div className="flex items-center gap-2">
-                            <CreditCard className="w-4 h-4 text-blue-400" />
-                            <div>
-                                <p className="text-xs font-black text-white uppercase">{order.payment_method || 'Unpaid'}</p>
-                                <p className="text-[9px] font-bold text-zinc-500 uppercase">{order.payment_status}</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Order Items Section */}
-                <div className="space-y-3">
-                    <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500 flex items-center gap-2 px-1">
-                        <ShoppingBag className="w-3 h-3" /> Items Summary
-                    </h4>
-                    <div className="bg-white/5 rounded-2xl border border-white/5 overflow-hidden">
-                        <table className="w-full text-left border-collapse">
-                            <thead className="bg-black/40 text-[9px] font-black uppercase text-zinc-500">
-                                <tr>
-                                    <th className="px-4 py-2">Item</th>
-                                    <th className="px-4 py-2 text-center">Qty</th>
-                                    <th className="px-4 py-2 text-right">Price</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-white/5 text-[11px] text-zinc-300">
-                                {order.order_items?.map((item: any) => (
-                                    <tr key={item.id} className="hover:bg-white/5 transition-colors">
-                                        <td className="px-4 py-3 font-black text-white">{item.menu_item?.name || 'Unknown Item'}</td>
-                                        <td className="px-4 py-3 text-center">
-                                            <span className="bg-zinc-800 px-2 py-0.5 rounded font-mono text-[10px]">x{item.quantity}</span>
-                                        </td>
-                                        <td className="px-4 py-3 text-right font-mono">{(item.price * item.quantity).toLocaleString()}</td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
-                {/* Financial Section */}
-                <div className="bg-black/60 p-6 rounded-[2rem] border border-white/10 space-y-3 shadow-2xl relative overflow-hidden">
-                    <div className="absolute top-0 right-0 p-8 opacity-5">
-                        <Receipt className="w-32 h-32" />
-                    </div>
-
-                    <div className="flex justify-between text-[11px] font-bold uppercase tracking-wider text-zinc-500">
-                        <span>Subtotal</span>
-                        <span className="text-white font-mono">{subtotal.toLocaleString()}</span>
-                    </div>
-                    <div className="flex justify-between text-[11px] font-bold uppercase tracking-wider text-zinc-500">
-                        <span>Tax (VAT)</span>
-                        <span className="text-white font-mono">{vat.toLocaleString()}</span>
-                    </div>
-
-                    <div className="pt-4 border-t border-white/10 flex justify-between items-end">
-                        <div>
-                            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">Final Total</p>
-                            <h4 className="text-4xl font-black tracking-tighter text-primary">ETB {total.toLocaleString()}</h4>
-                        </div>
-                        {order.payment_status === 'paid' && (
-                            <div className="flex items-center gap-1.5 px-3 py-1 bg-green-500/10 rounded-lg text-green-400 border border-green-500/20">
-                                <ShieldCheck className="w-3.5 h-3.5" />
-                                <span className="text-[10px] font-black uppercase">Verified</span>
-                            </div>
-                        )}
-                    </div>
-                </div>
-
-                <Button
-                    variant="outline"
-                    className="w-full border-white/10 bg-white/5 h-12 rounded-[1rem] font-black uppercase tracking-widest hover:bg-white/10"
-                    onClick={onClose}
+        <Dialog isOpen={isOpen} onClose={onClose} title="" maxWidth="max-w-sm">
+            <div className="flex flex-col">
+                {/* Receipt Paper */}
+                <div
+                    id="receipt-content"
+                    className="bg-white text-black font-mono text-[11px] leading-relaxed p-5 rounded-lg shadow-inner mx-auto w-full max-w-[320px]"
+                    style={{ fontFamily: "'Courier New', Courier, monospace" }}
                 >
-                    Close Detail
-                </Button>
+                    {/* TIN */}
+                    <div className="text-center mb-1">
+                        <p className="text-[10px] tracking-wider">TIN: 0043819230</p>
+                    </div>
+
+                    <p className="text-center text-[9px] text-gray-400 mb-1">{DASHED}</p>
+
+                    {/* Business Name */}
+                    <div className="text-center mb-1">
+                        <h3 className="font-black text-sm uppercase tracking-tight leading-tight">
+                            BARO RESTAURANT
+                        </h3>
+                        <p className="text-[9px] text-gray-600 leading-tight">
+                            A.A. SUBCITY-KOLFE KERANYO
+                        </p>
+                        <p className="text-[9px] text-gray-600 leading-tight">
+                            TEL-0962071522
+                        </p>
+                    </div>
+
+                    {/* FS No & Date */}
+                    <div className="flex justify-between text-[9px] text-gray-600 mt-1">
+                        <span>FS No.{order.order_number || order.id.slice(0, 7)}</span>
+                        <span>{dateStr}</span>
+                        <span>{timeStr}</span>
+                    </div>
+
+                    <p className="text-center text-[9px] text-gray-400 my-1">{DASHED}</p>
+
+                    {/* Invoice Type */}
+                    <div className="text-center mb-2">
+                        <p className="font-black text-xs uppercase tracking-widest">
+                            {order.payment_method === 'cash' ? 'CASH INVOICE' : 'BANK INVOICE'}
+                        </p>
+                    </div>
+
+                    {/* Customer / Invoice / Operator */}
+                    <div className="space-y-0.5 text-[10px] mb-2">
+                        <p>Customer: <span className="font-bold uppercase">{customerName}</span></p>
+                        <p>Invoice: <span className="font-bold">ORD-{order.order_number || order.id.slice(0, 8)}</span></p>
+                        <p>Operator: <span className="font-bold uppercase">{order.waiter?.full_name || 'System'}</span></p>
+                    </div>
+
+                    <p className="text-center text-[9px] text-gray-400 my-1">{DASHED}</p>
+
+                    {/* Items Header */}
+                    <div className="flex text-[9px] font-black uppercase tracking-wider text-gray-500 mb-1">
+                        <span className="flex-1">Description</span>
+                        <span className="w-8 text-center">Qty</span>
+                        <span className="w-16 text-right">Price</span>
+                        <span className="w-20 text-right">Amount</span>
+                    </div>
+
+                    {/* Items */}
+                    <div className="space-y-1 mb-2">
+                        {order.order_items?.map((item: any, i: number) => {
+                            const lineTotal = (item.price || 0) * (item.quantity || 1);
+                            return (
+                                <div key={i} className="flex text-[10px]">
+                                    <span className="flex-1 truncate pr-1 uppercase">{item.menu_item?.name || 'Item'}</span>
+                                    <span className="w-8 text-center">{item.quantity}</span>
+                                    <span className="w-16 text-right">{(item.price || 0).toLocaleString()}</span>
+                                    <span className="w-20 text-right font-bold">{lineTotal.toLocaleString()}</span>
+                                </div>
+                            );
+                        })}
+                    </div>
+
+                    <p className="text-center text-[9px] text-gray-400 my-1">{DASHED}</p>
+
+                    {/* Tax Breakdown */}
+                    <div className="space-y-1 text-[10px]">
+                        <div className="flex justify-between">
+                            <span>TXBL 1</span>
+                            <span className="font-bold">*{subtotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                        </div>
+                        <div className="flex justify-between">
+                            <span>TAX1 15%</span>
+                            <span className="font-bold">*{vat.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                        </div>
+                    </div>
+
+                    <p className="text-center text-[9px] text-gray-400 my-2">{DASHED}</p>
+
+                    {/* TOTAL */}
+                    <div className="flex justify-between text-sm font-black">
+                        <span>TOTAL</span>
+                        <span>*{total.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                    </div>
+
+                    <p className="text-center text-[9px] text-gray-400 my-2">{DASHED}</p>
+
+                    {/* Payment Method */}
+                    <div className="flex justify-between text-[11px] font-bold">
+                        <span>{getPaymentLabel(order.payment_method || 'cash')}</span>
+                        <span>*{total.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                    </div>
+
+                    {/* Tip (if any) */}
+                    {tip > 0 && (
+                        <div className="flex justify-between text-[10px] text-gray-600 mt-1">
+                            <span>Tip (Gratuity)</span>
+                            <span className="font-bold">+{tip.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                        </div>
+                    )}
+
+                    {/* Item Count */}
+                    <div className="flex justify-between text-[10px] text-gray-500 mt-1">
+                        <span>ITEM#</span>
+                        <span className="font-bold">{itemCount}</span>
+                    </div>
+
+                    <p className="text-center text-[9px] text-gray-400 my-2">{DASHED}</p>
+
+                    {/* ERCA Footer */}
+                    <div className="text-center space-y-1 mt-2">
+                        <div className="flex items-center justify-center gap-2">
+                            <span className="font-black text-[11px] tracking-wide">ERCA</span>
+                        </div>
+                        <p className="text-[9px] text-gray-500 font-mono">FG{order.id.slice(0, 8).toUpperCase()}</p>
+                        <p className="text-[9px] text-gray-400 mt-2 tracking-wider">Powered by Baro OS</p>
+                    </div>
+                </div>
+
+                {/* Action Buttons (not printed) */}
+                <div className="flex gap-3 mt-4 px-2 print:hidden">
+                    <Button
+                        onClick={handlePrint}
+                        variant="outline"
+                        className="flex-1 border-white/10 bg-white/5 h-11 rounded-xl font-black uppercase tracking-widest hover:bg-white/10 text-xs"
+                    >
+                        <Printer className="w-4 h-4 mr-2" /> Print
+                    </Button>
+                    <Button
+                        onClick={onClose}
+                        variant="outline"
+                        className="flex-1 border-white/10 bg-white/5 h-11 rounded-xl font-black uppercase tracking-widest hover:bg-white/10 text-xs"
+                    >
+                        Close
+                    </Button>
+                </div>
             </div>
         </Dialog>
     );
