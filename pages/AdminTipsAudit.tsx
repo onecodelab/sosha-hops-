@@ -40,8 +40,8 @@ const AdminTipsAudit: React.FC = () => {
                 .from('tips_ledger')
                 .select(`
           id, amount, tip_type, created_at,
-          order:orders(order_number, total_amount),
-          staff:profiles(full_name)
+          order:orders!tips_ledger_order_id_fkey(order_number, total_amount),
+          staff:profiles!tips_ledger_staff_id_fkey(full_name)
         `)
                 .gte('created_at', start.toISOString())
                 .order('created_at', { ascending: false });

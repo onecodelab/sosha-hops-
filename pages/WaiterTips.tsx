@@ -39,7 +39,7 @@ const WaiterTips: React.FC = () => {
                 .from('tips_ledger')
                 .select(`
           id, amount, tip_type, created_at,
-          order:orders(order_number, total_amount)
+          order:orders!tips_ledger_order_id_fkey(order_number, total_amount)
         `)
                 .eq('staff_id', user.id)
                 .gte('created_at', start.toISOString())
