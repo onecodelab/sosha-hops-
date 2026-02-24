@@ -1,9 +1,10 @@
-
 import React, { useEffect, useState } from 'react';
 import { Dialog, Button, cn } from './ui';
 import { Order } from '../types';
 import { supabase } from '../supabase';
 import { Printer, X } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { useAuth } from '../AuthContext';
 
 interface OrderDetailsModalProps {
     isOpen: boolean;
@@ -15,7 +16,36 @@ const DASHED = '- - - - - - - - - - - - - - - - - - - - - - - -';
 const SOLID = '————————————————————————————';
 
 export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ isOpen, onClose, order }) => {
+    const { user, profile } = useAuth();
     const [customerName, setCustomerName] = useState<string>('Walk-in');
+
+    // Fetch the organization name for the receipt header
+    const { data: orgData } = useQuery({
+        queryKey: ['organization_info'],
+        queryFn: async () => {
+            const { data: { user: authUser } } = await supabase.auth.getUser();
+            if (!authUser) return null;
+            const { data: prof } = await supabase.from('profiles').select('organization_id').eq('id', authUser.id).maybeSingle();
+            if (!prof?.organization_id) return null;
+            const { data: org } = await supabase.from('organizations').select('name').eq('id', prof.organization_id).maybeSingle();
+            return org;
+        },
+        staleTime: 1000 * 60 * 30
+    });
+    const restaurantName = orgData?.name || 'My Restaurant';
+
+    // Fetch branch/location name
+    const { data: branchData } = useQuery({
+        queryKey: ['branch_info', order?.branch_id],
+        queryFn: async () => {
+            if (!order?.branch_id) return null;
+            const { data } = await supabase.from('branches').select('name').eq('id', order.branch_id).maybeSingle();
+            return data;
+        },
+        enabled: !!order?.branch_id,
+        staleTime: 1000 * 60 * 30
+    });
+    const locationName = branchData?.name || 'Main Branch';
 
     useEffect(() => {
         if (!order || !isOpen) return;
@@ -81,14 +111,9 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ isOpen, on
                     {/* Business Name */}
                     <div className="text-center mb-1">
                         <h3 className="font-black text-sm uppercase tracking-tight leading-tight">
-                            BARO RESTAURANT
+                            {restaurantName}
                         </h3>
-                        <p className="text-[9px] text-gray-600 leading-tight">
-                            A.A. SUBCITY-KOLFE KERANYO
-                        </p>
-                        <p className="text-[9px] text-gray-600 leading-tight">
-                            TEL-0962071522
-                        </p>
+                        <p className="text-[9px] text-gray-600 leading-tight font-mono">Location: {locationName}</p>
                     </div>
 
                     {/* FS No & Date */}
@@ -111,7 +136,8 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ isOpen, on
                     <div className="space-y-0.5 text-[10px] mb-2">
                         <p>Customer: <span className="font-bold uppercase">{customerName}</span></p>
                         <p>Invoice: <span className="font-bold">ORD-{order.order_number || order.id.slice(0, 8)}</span></p>
-                        <p>Operator: <span className="font-bold uppercase">{order.waiter?.full_name || 'System'}</span></p>
+                        <p>Operator: <span className="font-bold uppercase">{order.waiter?.full_name || profile?.full_name || user?.user_metadata?.full_name || 'Staff'}</span></p>
+                        <p>Table: <span className="font-bold">T-{order.table_number || 'N/A'}</span></p>
                     </div>
 
                     <p className="text-center text-[9px] text-gray-400 my-1">{DASHED}</p>

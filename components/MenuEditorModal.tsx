@@ -7,6 +7,7 @@ import { MenuItem, Category } from '../types';
 import { RecipeEditor } from './RecipeEditor';
 import { RoleGuard } from './RoleGuard';
 import { useRoleAccess } from '../hooks/useRoleAccess';
+import { useAuth } from '../AuthContext';
 
 interface MenuEditorModalProps {
   isOpen: boolean;
@@ -23,6 +24,7 @@ export const MenuEditorModal: React.FC<MenuEditorModalProps> = ({
   const [activeTab, setActiveTab] = useState<'basic' | 'recipe'>('basic');
   const [internalItem, setInternalItem] = useState<MenuItem | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
+  const { profile: userProfile } = useAuth();
 
   // Track modal open state to handle initialization
   const wasOpen = useRef(false);
@@ -143,50 +145,87 @@ export const MenuEditorModal: React.FC<MenuEditorModalProps> = ({
       return;
     }
 
+    const selectedCategory = categories.find(c => c.id === categoryId);
+    const categoryName = selectedCategory?.name || 'Uncategorized';
+
+    const payload: any = {
+      name: name.trim(),
+      category: categoryName,
+      price: parseFloat(price.toString()),
+      image_url: imageUrl.trim() || null,
+      status: isAvailable ? 'available' : 'unavailable',
+      ...(internalItem?.id ? { id: internalItem.id } : {})
+    };
+
+    // UUID Validation: Only send category_id if it looks like a valid UUID (not empty string)
+    if (categoryId && categoryId.length > 10) {
+      payload.category_id = categoryId;
+    }
+
+    console.log("Saving Menu Item Payload:", payload);
+
     setLoading(true);
     try {
-      const selectedCategory = categories.find(c => c.id === categoryId);
-      const categoryName = selectedCategory?.name || 'Uncategorized';
+      let bffResult: any = null;
+      let bffErr: any = null;
 
-      const payload = {
-        name: name.trim(),
-        category_id: categoryId,
-        category: categoryName, // Backward compatibility for NOT NULL constraint
-        price: parseFloat(price.toString()),
-        image_url: imageUrl.trim() || null,
-        status: isAvailable ? 'available' : 'unavailable',
-        // Pass ID if editing, otherwise omit
-        ...(internalItem?.id ? { id: internalItem.id } : {})
-      };
-
-      // Call BFF Edge Function
-      const { data: bffResult, error: bffErr } = await supabase.functions.invoke('manage-menu', {
-        body: {
-          action: 'upsert',
-          item: payload,
-        }
-      });
-
-      if (bffErr || (bffResult && bffResult.error)) {
-        throw new Error(bffErr?.message || bffResult?.error || "Menu update failed");
+      // ATTEMPT 1: Edge Function (BFF)
+      try {
+        const response = await supabase.functions.invoke('manage-menu', {
+          body: {
+            action: 'upsert',
+            item: payload,
+          }
+        });
+        bffResult = response.data;
+        bffErr = response.error;
+      } catch (invokeErr: any) {
+        console.warn("Edge Function unreachable, will attempt fallback:", invokeErr);
+        bffErr = invokeErr;
       }
 
-      const returnedItem = bffResult.data || bffResult; // Adjust based on strict return shape
+      let finalItem = null;
+
+      if (!bffErr && bffResult && !bffResult.error) {
+        finalItem = bffResult.data || bffResult;
+        console.log("Edge Function Success:", finalItem);
+      } else {
+        // ATTEMPT 2: Direct Database Fallback (RLS-aware)
+        console.warn("Edge Function failed, attempting direct DB fallback...", bffErr || bffResult?.error);
+
+        const dbPayload = {
+          ...payload,
+          organization_id: userProfile?.organization_id || '00000000-0000-0000-0000-000000000000'
+        };
+
+        const { data: dbData, error: dbErr } = await supabase
+          .from('menu')
+          .upsert(dbPayload)
+          .select()
+          .single();
+
+        if (dbErr) {
+          console.error("Direct DB Fallback Failed:", dbErr);
+          throw new Error(dbErr.message || "Both Edge Function and DB fallback failed.");
+        }
+
+        finalItem = dbData;
+        console.log("Direct DB Fallback Success:", finalItem);
+      }
 
       if (internalItem) {
         showToast("Dish updated", "success");
       } else {
-        // Critical: Set internalItem to the newly created dish so the Recipe tab works
-        if (returnedItem) {
-          setInternalItem(returnedItem as MenuItem);
+        if (finalItem && finalItem.id) {
+          setInternalItem(finalItem);
         }
         showToast("Dish created! You can now map recipes.", "success");
         setActiveTab('recipe');
       }
 
-      // Notify parent to refresh list, but our local internalItem preserves the ID
       onSuccess();
     } catch (err: any) {
+      console.error("HandleSaveBasic Caught Error:", err);
       showToast(err.message || "Failed to save dish", "error");
     } finally {
       setLoading(false);
