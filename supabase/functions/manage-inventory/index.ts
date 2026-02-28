@@ -41,7 +41,7 @@ serve(async (req) => {
             : null;
 
         const body = await req.json();
-        const { action, branch_id, items, reason } = body;
+        const { action, branch_id, items, reason, organization_id: input_org_id } = body;
         // items: [{ ingredient_id, quantity, old_quantity }] 
         // quantity is the NEW TARGET VALUE for 'update' action
 
@@ -69,6 +69,11 @@ serve(async (req) => {
 
         if (profileErr || !profile || profile.organization_id !== organizationId) {
             return new Response(JSON.stringify({ error: 'Unauthorized for this branch' }), { status: 403, headers: corsHeaders });
+        }
+
+        // SACRED RULE: Tenant Isolation
+        if (input_org_id && input_org_id !== organizationId) {
+            return new Response(JSON.stringify({ error: "Tenant isolation violation" }), { status: 403, headers: corsHeaders });
         }
 
         if (!['owner', 'admin', 'manager'].includes(profile.role)) {

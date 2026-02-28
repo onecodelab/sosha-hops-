@@ -30,7 +30,7 @@ serve(async (req) => {
         if (userErr || !user) {
             return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: corsHeaders });
         }
-        const { action, staff_data, target_id, branch_id } = await req.json();
+        const { action, staff_data, target_id, branch_id, organization_id: input_org_id } = await req.json();
         // action: 'list', 'create', 'update', 'delete'
 
         if (!action) {
@@ -44,11 +44,15 @@ serve(async (req) => {
             .eq('id', user.id)
             .single();
 
-        if (profileErr || !['owner', 'admin'].includes(profile?.role)) {
+        if (profileErr || !profile || !['owner', 'admin'].includes(profile?.role)) {
             return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 403, headers: corsHeaders });
         }
 
+        // SACRED RULE: Tenant Isolation
         const organizationId = profile.organization_id;
+        if (input_org_id && input_org_id !== organizationId) {
+            return new Response(JSON.stringify({ error: "Tenant isolation violation" }), { status: 403, headers: corsHeaders });
+        }
 
         // 2. Handle Actions
         if (action === 'list') {

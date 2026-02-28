@@ -12,12 +12,42 @@ serve(async (req) => {
     }
 
     try {
+        const sbUrl = Deno.env.get('SUPABASE_URL')!;
+        const sbKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || Deno.env.get('SERVICE_ROLE_KEY')!;
+        const supabase = createClient(sbUrl, sbKey);
+
+        const authHeader = req.headers.get('Authorization');
+        const anonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+
+        if (!authHeader) {
+            return new Response(JSON.stringify({ error: 'Missing authorization header' }), {
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                status: 401,
+            });
+        }
+
+        const authClient = createClient(sbUrl, anonKey, { global: { headers: { Authorization: authHeader } } });
+        const { data: { user }, error: userErr } = await authClient.auth.getUser();
+
+        if (userErr || !user) {
+            return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                status: 401,
+            });
+        }
+
         const { order_id, table_number, branch_id } = await req.json();
 
-        // Initialize Supabase (Use URL/ANON KEY from Env)
-        const sbUrl = Deno.env.get('SUPABASE_URL')!;
-        const sbKey = Deno.env.get('SUPABASE_ANON_KEY')!;
-        const supabase = createClient(sbUrl, sbKey);
+        // 1. Authorization: Fetch User Profile for Organization Context
+        const { data: profile, error: profileErr } = await supabase
+            .from('profiles')
+            .select('organization_id, role')
+            .eq('id', user.id)
+            .single();
+
+        if (profileErr || !profile) {
+            return new Response(JSON.stringify({ error: 'User profile not found' }), { status: 403, headers: corsHeaders });
+        }
 
         let query = supabase
             .from('orders')
@@ -28,6 +58,7 @@ serve(async (req) => {
                 total_amount, 
                 payment_status,
                 created_at,
+                organization_id,
                 items:order_items(
                     quantity,
                     menu_item:menu(name)
@@ -63,6 +94,11 @@ serve(async (req) => {
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' },
                 status: 200
             });
+        }
+
+        // SACRED RULE: Tenant Isolation
+        if (data.organization_id !== profile.organization_id) {
+            return new Response(JSON.stringify({ error: 'Tenant isolation violation' }), { status: 403, headers: corsHeaders });
         }
 
         // Translate Status for Humans/Agent
