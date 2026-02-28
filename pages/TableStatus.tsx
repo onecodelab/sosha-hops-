@@ -15,6 +15,7 @@ import {
 import { Table, TableZone, Order } from '../types';
 import { useAuth } from '../AuthContext';
 import { useBranch } from '../contexts/BranchContext';
+import { useLanguage } from '../contexts/LanguageContext';
 import { CreateOrderModal } from '../components/CreateOrderModal';
 import { useRoleAccess } from '../hooks/useRoleAccess';
 import { RoleGuard } from '../components/RoleGuard';
@@ -28,6 +29,7 @@ const TableStatus: React.FC = () => {
    const { profile } = useAuth();
    const { hasPermission } = useRoleAccess();
    const { activeBranchId } = useBranch();
+   const { t } = useLanguage();
    const [selectedTableId, setSelectedTableId] = useState<string | null>(null);
    const [zoneFilter, setZoneFilter] = useState<TableZone | 'all'>('all');
    const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -305,7 +307,7 @@ const TableStatus: React.FC = () => {
    }, [fetchTableOrders]);
 
    return (
-      <DashboardLayout title="Floor Status" subtitle={isAnalyticsMode ? "Performance Heatmap (Today)" : "Real-time occupancy visualization"}>
+      <DashboardLayout title={t('tableStatus.title')} subtitle={isAnalyticsMode ? t('tableStatus.subtitleData') : t('tableStatus.subtitleLive')}>
          <div className="space-y-6 animate-in fade-in duration-500 pb-20">
 
             <div className="flex flex-col md:flex-row justify-between items-center gap-6 bg-card/60 backdrop-blur-xl p-6 rounded-[2.5rem] border border-primary/20 shadow-2xl">
@@ -320,7 +322,7 @@ const TableStatus: React.FC = () => {
                            zoneFilter === z ? "bg-primary text-black shadow-lg" : "text-muted hover:text-foreground hover:bg-muted/10 font-bold"
                         )}
                      >
-                        {z}
+                        {t(`tableStatus.filters.${z}`)}
                      </button>
                   ))}
                </div>
@@ -340,7 +342,7 @@ const TableStatus: React.FC = () => {
                                        analyticsRange === r ? "bg-card text-foreground shadow-sm border border-border" : "text-muted hover:text-foreground"
                                     )}
                                  >
-                                    {r}
+                                    {t(`analytics.period.${r}`)}
                                  </button>
                               ))}
                            </div>
@@ -350,19 +352,19 @@ const TableStatus: React.FC = () => {
                               onClick={() => { setIsAnalyticsMode(false); setIsMapView(false); }}
                               className={cn("px-4 py-2 text-[10px] uppercase font-black tracking-widest rounded-lg transition-all flex items-center gap-2", !isAnalyticsMode && !isMapView ? "bg-primary text-black shadow-md" : "text-muted hover:text-foreground")}
                            >
-                              <LayoutGrid className="w-3.5 h-3.5" strokeWidth={3} /> LIVE
+                              <LayoutGrid className="w-3.5 h-3.5" strokeWidth={3} /> {t('tableStatus.view.live')}
                            </button>
                            <button
                               onClick={() => { setIsAnalyticsMode(false); setIsMapView(true); }}
                               className={cn("px-4 py-2 text-[10px] uppercase font-black tracking-widest rounded-lg transition-all flex items-center gap-2", isMapView ? "bg-blue-500 text-white shadow-md" : "text-muted hover:text-foreground")}
                            >
-                              <MapPin className="w-3.5 h-3.5" strokeWidth={3} /> MAP
+                              <MapPin className="w-3.5 h-3.5" strokeWidth={3} /> {t('tableStatus.view.map')}
                            </button>
                            <button
                               onClick={() => { setIsAnalyticsMode(true); setIsMapView(false); }}
                               className={cn("px-4 py-2 text-[10px] uppercase font-black tracking-widest rounded-lg transition-all flex items-center gap-2", isAnalyticsMode ? "bg-purple-500 text-white shadow-md" : "text-muted hover:text-foreground")}
                            >
-                              <TrendingUp className="w-3.5 h-3.5" strokeWidth={3} /> DATA
+                              <TrendingUp className="w-3.5 h-3.5" strokeWidth={3} /> {t('tableStatus.view.data')}
                            </button>
                         </div>
                      </div>
@@ -379,11 +381,11 @@ const TableStatus: React.FC = () => {
                                  : "bg-muted/10 text-muted border-border hover:text-foreground"
                            )}
                         >
-                           <Zap className="w-3.5 h-3.5" /> {isSetupMode ? 'SYNC ON' : 'SETUP'}
+                           <Zap className="w-3.5 h-3.5" /> {isSetupMode ? t('tableStatus.actions.syncOn') : t('tableStatus.actions.setup')}
                         </button>
 
                         <Button onClick={openAddTableModal} size="sm" className="h-10 bg-primary/10 text-primary border-primary/20 hover:bg-primary/20 rounded-xl font-black text-[10px] uppercase tracking-widest">
-                           <Plus className="w-4 h-4 mr-2" strokeWidth={3} /> TABLE
+                           <Plus className="w-4 h-4 mr-2" strokeWidth={3} /> {t('tableStatus.actions.table')}
                         </Button>
                      </div>
                   </RoleGuard>
@@ -396,11 +398,11 @@ const TableStatus: React.FC = () => {
 
             {!isAnalyticsMode && (
                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-                  <StatPill label="Total" value={stats.total} icon={MapPin} />
-                  <StatPill label="Free" value={stats.available} icon={CheckCircle2} color="green" />
-                  <StatPill label="In Use" value={stats.occupied} icon={Users} color="red" />
-                  <StatPill label="Dirty" value={stats.dirty} icon={Sparkles} color="yellow" />
-                  <StatPill label="Load" value={`${stats.occupancy}%`} icon={TrendingUp} color="blue" />
+                  <StatPill label={t('tableStatus.stats.total')} value={stats.total} icon={MapPin} />
+                  <StatPill label={t('tableStatus.stats.free')} value={stats.available} icon={CheckCircle2} color="green" />
+                  <StatPill label={t('tableStatus.stats.inUse')} value={stats.occupied} icon={Users} color="red" />
+                  <StatPill label={t('tableStatus.stats.dirty')} value={stats.dirty} icon={Sparkles} color="yellow" />
+                  <StatPill label={t('tableStatus.stats.load')} value={`${stats.occupancy}%`} icon={TrendingUp} color="blue" />
                </div>
             )}
 
@@ -505,7 +507,7 @@ const TableStatus: React.FC = () => {
          <Dialog
             isOpen={!!selectedTableHistory}
             onClose={() => setSelectedTableHistory(null)}
-            title={`Table History: #${selectedTableHistory?.number}`}
+            title={`${t('tableStatus.historyTitle')}: #${selectedTableHistory?.number}`}
          >
             <div className="space-y-6">
                <div className="flex bg-black/40 p-1.5 rounded-xl border border-primary/10 backdrop-blur-md self-start w-fit">
@@ -518,7 +520,7 @@ const TableStatus: React.FC = () => {
                            historyView === v ? "bg-primary text-black shadow-lg" : "text-gray-500 hover:text-white"
                         )}
                      >
-                        {v}
+                        {t(`tableStatus.historyPeriod.${v}`)}
                      </button>
                   ))}
                </div>
@@ -527,7 +529,7 @@ const TableStatus: React.FC = () => {
                   {historyLoading ? (
                      <div className="flex flex-col items-center justify-center py-20 opacity-30">
                         <RefreshCw className="w-10 h-10 animate-spin mb-4 text-primary" strokeWidth={3} />
-                        <p className="text-[10px] font-black uppercase tracking-[0.3em]">Syncing Table History...</p>
+                        <p className="text-[10px] font-black uppercase tracking-[0.3em]">{t('tableStatus.syncingHistory')}</p>
                      </div>
                   ) : (
                      <TableOrderHistory
@@ -543,7 +545,7 @@ const TableStatus: React.FC = () => {
                      onClick={() => setSelectedTableHistory(null)}
                      className="w-full bg-white text-black font-black rounded-xl h-12 uppercase tracking-widest text-xs shadow-xl transition-transform active:scale-95"
                   >
-                     Exit History
+                     {t('tableStatus.exitHistory')}
                   </button>
                </div>
             </div>
@@ -576,16 +578,16 @@ const TableStatus: React.FC = () => {
                      onChange={e => setNewTableData({ ...newTableData, zone: e.target.value })}
                      className="w-full bg-black/60 border border-white/10 rounded-xl px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary/50"
                   >
-                     <option value="indoor">Indoor</option>
-                     <option value="outdoor">Outdoor</option>
-                     <option value="vip">VIP</option>
-                     <option value="bar">Bar</option>
+                     <option value="indoor">{t('tableStatus.filters.indoor')}</option>
+                     <option value="outdoor">{t('tableStatus.filters.outdoor')}</option>
+                     <option value="vip">{t('tableStatus.filters.vip')}</option>
+                     <option value="bar">{t('tableStatus.filters.bar')}</option>
                   </select>
                </div>
 
                <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                     <label className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Min Capacity</label>
+                     <label className="text-[10px] font-black uppercase tracking-widest text-zinc-500">{t('tableStatus.minCapacity')}</label>
                      <Input
                         type="number"
                         value={newTableData.capacity_min}
@@ -594,7 +596,7 @@ const TableStatus: React.FC = () => {
                      />
                   </div>
                   <div className="space-y-2">
-                     <label className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Max Capacity</label>
+                     <label className="text-[10px] font-black uppercase tracking-widest text-zinc-500">{t('tableStatus.maxCapacity')}</label>
                      <Input
                         type="number"
                         value={newTableData.capacity_max}
@@ -607,12 +609,12 @@ const TableStatus: React.FC = () => {
                {/* Position on Floor Map */}
                <div className="space-y-3 p-4 bg-blue-500/5 border border-blue-500/20 rounded-xl">
                   <label className="text-[10px] font-black uppercase tracking-widest text-blue-400 flex items-center gap-2">
-                     <MapPin className="w-3 h-3" /> Map Position
+                     <MapPin className="w-3 h-3" /> {t('tableStatus.mapPosition')}
                   </label>
                   <div className="grid grid-cols-2 gap-4">
                      <div className="space-y-1">
                         <div className="flex justify-between">
-                           <span className="text-[9px] text-zinc-500">X Position</span>
+                           <span className="text-[9px] text-zinc-500">{t('tableStatus.xPos')}</span>
                            <span className="text-[9px] font-mono text-zinc-400">{newTableData.pos_x}%</span>
                         </div>
                         <input
@@ -626,7 +628,7 @@ const TableStatus: React.FC = () => {
                      </div>
                      <div className="space-y-1">
                         <div className="flex justify-between">
-                           <span className="text-[9px] text-zinc-500">Y Position</span>
+                           <span className="text-[9px] text-zinc-500">{t('tableStatus.yPos')}</span>
                            <span className="text-[9px] font-mono text-zinc-400">{newTableData.pos_y}%</span>
                         </div>
                         <input
@@ -648,7 +650,7 @@ const TableStatus: React.FC = () => {
                      className="w-full bg-primary text-black font-black h-14 rounded-2xl shadow-xl shadow-primary/20 text-sm uppercase tracking-widest"
                      isLoading={isAddingTable}
                   >
-                     {isAddingTable ? 'Creating...' : 'Create Table'}
+                     {isAddingTable ? t('common.loading') : t('tableStatus.addTableTitle')}
                   </Button>
                   <Button
                      variant="ghost"
@@ -656,7 +658,7 @@ const TableStatus: React.FC = () => {
                      disabled={isAddingTable}
                      className="w-full text-zinc-500 text-xs font-bold uppercase tracking-widest"
                   >
-                     Cancel
+                     {t('common.cancel')}
                   </Button>
                </div>
             </div>
@@ -683,16 +685,16 @@ const TableStatus: React.FC = () => {
                      onChange={e => setNewTableData({ ...newTableData, zone: e.target.value })}
                      className="w-full bg-black/60 border border-white/10 rounded-xl px-4 py-3 text-sm font-bold text-white outline-none focus:border-primary/50"
                   >
-                     <option value="indoor">Indoor</option>
-                     <option value="outdoor">Outdoor</option>
-                     <option value="vip">VIP</option>
-                     <option value="bar">Bar</option>
+                     <option value="indoor">{t('tableStatus.filters.indoor')}</option>
+                     <option value="outdoor">{t('tableStatus.filters.outdoor')}</option>
+                     <option value="vip">{t('tableStatus.filters.vip')}</option>
+                     <option value="bar">{t('tableStatus.filters.bar')}</option>
                   </select>
                </div>
 
                <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                     <label className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Min Capacity</label>
+                     <label className="text-[10px] font-black uppercase tracking-widest text-zinc-500">{t('tableStatus.minCapacity')}</label>
                      <Input
                         type="number"
                         value={newTableData.capacity_min}
@@ -701,7 +703,7 @@ const TableStatus: React.FC = () => {
                      />
                   </div>
                   <div className="space-y-2">
-                     <label className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Max Capacity</label>
+                     <label className="text-[10px] font-black uppercase tracking-widest text-zinc-500">{t('tableStatus.maxCapacity')}</label>
                      <Input
                         type="number"
                         value={newTableData.capacity_max}
@@ -719,7 +721,7 @@ const TableStatus: React.FC = () => {
                   <div className="grid grid-cols-2 gap-4">
                      <div className="space-y-1">
                         <div className="flex justify-between">
-                           <span className="text-[9px] text-zinc-500">X Position</span>
+                           <span className="text-[9px] text-zinc-500">{t('tableStatus.xPos')}</span>
                            <span className="text-[9px] font-mono text-zinc-400">{newTableData.pos_x}%</span>
                         </div>
                         <input
@@ -733,7 +735,7 @@ const TableStatus: React.FC = () => {
                      </div>
                      <div className="space-y-1">
                         <div className="flex justify-between">
-                           <span className="text-[9px] text-zinc-500">Y Position</span>
+                           <span className="text-[9px] text-zinc-500">{t('tableStatus.yPos')}</span>
                            <span className="text-[9px] font-mono text-zinc-400">{newTableData.pos_y}%</span>
                         </div>
                         <input
@@ -755,7 +757,7 @@ const TableStatus: React.FC = () => {
                      className="w-full bg-orange-500 text-black font-black h-14 rounded-2xl shadow-xl shadow-orange-500/20 text-sm uppercase tracking-widest hover:bg-orange-400"
                      isLoading={isAddingTable}
                   >
-                     {isAddingTable ? 'Saving...' : 'Save Changes'}
+                     {isAddingTable ? t('common.loading') : t('tableStatus.saveChanges')}
                   </Button>
 
                   <div className="grid grid-cols-2 gap-3">
@@ -765,7 +767,7 @@ const TableStatus: React.FC = () => {
                         disabled={isAddingTable}
                         className="w-full text-red-500 bg-red-500/10 hover:bg-red-500/20 text-xs font-bold uppercase tracking-widest"
                      >
-                        Delete Table
+                        {t('tableStatus.deleteTable')}
                      </Button>
                      <Button
                         variant="ghost"
@@ -773,7 +775,7 @@ const TableStatus: React.FC = () => {
                         disabled={isAddingTable}
                         className="w-full text-zinc-500 text-xs font-bold uppercase tracking-widest"
                      >
-                        Cancel
+                        {t('common.cancel')}
                      </Button>
                   </div>
                </div>
@@ -816,6 +818,7 @@ interface TableCardProps {
 
 const TableCard: React.FC<TableCardProps> = React.memo(({ table, currentTime, onQuickOrder, isAnalyticsMode, isSetupMode, onEdit, onDelete, metric, onViewHistory }) => {
    const { profile } = useAuth();
+   const { t } = useLanguage();
    const isOccupied = table.status === 'occupied';
    const isDirty = table.status === 'needs_cleaning';
    const elapsedMins = table.active_session ? Math.floor((currentTime.getTime() - new Date(table.active_session.seated_at).getTime()) / 60000) : 0;
@@ -857,7 +860,7 @@ const TableCard: React.FC<TableCardProps> = React.memo(({ table, currentTime, on
                   {metric?.is_camper && (
                      <div className="flex items-center gap-1 bg-red-500/10 px-2 py-0.5 rounded-full">
                         <Zap className="w-2.5 h-2.5 text-red-500" />
-                        <span className="text-[8px] font-black text-red-500 uppercase">CAMPER</span>
+                        <span className="text-[8px] font-black text-red-500 uppercase">{t('tableStatus.camper')}</span>
                      </div>
                   )}
                </div>
@@ -872,7 +875,7 @@ const TableCard: React.FC<TableCardProps> = React.memo(({ table, currentTime, on
                         onClick={(e) => { e.stopPropagation(); onEdit?.(); }}
                         className="h-8 w-8 p-0 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-500 hover:bg-blue-500/20"
                      >
-                        <Edit3 className="w-3.5 h-3.5" />
+                        <Edit3 className="w-3.5 h-3.5" strokeWidth={3} />
                      </Button>
                      <Button
                         size="sm"
@@ -880,7 +883,7 @@ const TableCard: React.FC<TableCardProps> = React.memo(({ table, currentTime, on
                         onClick={(e) => { e.stopPropagation(); onDelete?.(); }}
                         className="h-8 w-8 p-0 rounded-lg bg-red-500/10 border border-red-500/20 text-red-500 hover:bg-red-500/20"
                      >
-                        <Trash2 className="w-3.5 h-3.5" />
+                        <Trash2 className="w-3.5 h-3.5" strokeWidth={3} />
                      </Button>
                   </div>
                ) : (
@@ -895,11 +898,11 @@ const TableCard: React.FC<TableCardProps> = React.memo(({ table, currentTime, on
             <div className="space-y-4">
                <div className="grid grid-cols-2 gap-3">
                   <div className="bg-muted/5 border border-border p-3 rounded-2xl">
-                     <p className="text-[8px] font-black text-muted uppercase tracking-widest mb-1">Score</p>
+                     <p className="text-[8px] font-black text-muted uppercase tracking-widest mb-1">{t('tableStatus.metrics.score')}</p>
                      <p className="text-lg font-black text-foreground">{score}%</p>
                   </div>
                   <div className="bg-muted/5 border border-border p-3 rounded-2xl">
-                     <p className="text-[8px] font-black text-muted uppercase tracking-widest mb-1">Orders</p>
+                     <p className="text-[8px] font-black text-muted uppercase tracking-widest mb-1">{t('tableStatus.metrics.orders')}</p>
                      <p className="text-lg font-black text-foreground">{(metric as any)?.orders_count || 0}</p>
                   </div>
                </div>
@@ -914,7 +917,7 @@ const TableCard: React.FC<TableCardProps> = React.memo(({ table, currentTime, on
                      onClick={() => onViewHistory?.(table.id, table.table_number)}
                      className="h-8 px-3 rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-primary/10 hover:text-primary transition-all"
                   >
-                     <History className="w-3.5 h-3.5 mr-1.5" /> History
+                     <History className="w-3.5 h-3.5 mr-1.5" /> {t('tableStatus.metrics.history')}
                   </Button>
                </div>
             </div>
@@ -926,7 +929,7 @@ const TableCard: React.FC<TableCardProps> = React.memo(({ table, currentTime, on
                   </Badge>
                   {isOccupied && (
                      <Badge className="bg-blue-500/10 text-blue-500 border-blue-500/20 px-3 py-1 font-black text-[9px] uppercase tracking-widest">
-                        {elapsedMins}m In
+                        {elapsedMins}{t('tableStatus.elapsedIn')}
                      </Badge>
                   )}
                </div>
@@ -936,7 +939,7 @@ const TableCard: React.FC<TableCardProps> = React.memo(({ table, currentTime, on
                      onClick={() => onQuickOrder(table)}
                      className="flex-1 bg-foreground text-background font-black rounded-2xl h-12 text-[10px] uppercase tracking-widest shadow-xl hover:bg-foreground/90 transition-all active:scale-95"
                   >
-                     Quick Order
+                     {t('tableStatus.quickOrder')}
                   </Button>
                   <Button
                      variant="ghost"

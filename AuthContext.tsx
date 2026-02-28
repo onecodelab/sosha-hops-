@@ -35,12 +35,13 @@ export const useAuth = () => useContext(AuthContext);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
   const [needsSetup, setNeedsSetup] = useState(false);
   const navigate = useNavigate();
 
   const {
     data: profile,
-    isLoading,
+    isLoading: isProfileLoading,
     isError,
     error,
     refetch
@@ -49,10 +50,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
+      setAuthLoading(false);
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setUser(session?.user ?? null);
+      setAuthLoading(false);
       if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'SIGNED_OUT') {
         refetch();
       }
@@ -93,7 +96,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   );
 
   // If loading and we have no cached data, show spinner
-  if (isLoading && !profile && !isAuthMissing) {
+  // We check BOTH auth session and profile data
+  const isActuallyLoading = authLoading || (isProfileLoading && !profile && !isAuthMissing);
+
+  if (isActuallyLoading) {
     return (
       <LoadingSpinner
         timeout={8000}
@@ -120,7 +126,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       user,
       profile: profile || null,
       organizationId: profile?.organization_id || null,
-      loading: false,
+      loading: isActuallyLoading,
       isProfileStale: isError,
       signOut,
       refreshProfile,

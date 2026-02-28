@@ -1,8 +1,9 @@
 
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../AuthContext';
 import { MarketingLayout } from '../components/MarketingLayout';
-import { Button, cn } from '../components/ui';
+import { Button, cn, showToast } from '../components/ui';
 import { WaveDivider } from '../components/WaveDivider';
 import { useLanguage } from '../contexts/LanguageContext';
 import {
@@ -160,7 +161,27 @@ const EpicDashboardShowcase: React.FC<{ t: (path: string) => string }> = ({ t })
 
 const Landing: React.FC = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { t } = useLanguage();
+
+  // Auto-redirect to dashboard if already logged in OR handle errors
+  React.useEffect(() => {
+    // Check for error fragment from Supabase (Magic Link failure)
+    const hash = window.location.hash;
+    if (hash.includes('error=')) {
+      const params = new URLSearchParams(hash.substring(1));
+      const errorCode = params.get('error_code');
+      if (errorCode === 'otp_expired') {
+        showToast("Authentication Error: The link has expired or was already used.", "error");
+        navigate('/login');
+        return;
+      }
+    }
+
+    if (user) {
+      navigate('/app');
+    }
+  }, [user, navigate]);
 
   const sequence = [
     { num: '01', title: t('marketing.seq1Title'), desc: t('marketing.seq1Desc'), icon: Cpu },

@@ -113,11 +113,20 @@ serve(async (req) => {
         let sessionId = null;
 
         if (finalTableNumber || finalTableId) {
-            let query = supabase.from('tables').select('id, table_number');
+            let query = supabase.from('tables').select('id, table_number, branch_id');
             if (finalTableId) query = query.eq('id', finalTableId);
             else query = query.eq('branch_id', branch_id).eq('table_number', finalTableNumber);
 
             const { data: tableData } = await query.maybeSingle();
+
+            // SACRED RULE: Table MUST belong to the branch
+            if (tableData && tableData.branch_id !== branch_id) {
+                return new Response(JSON.stringify({
+                    error: "Isolation Error",
+                    detail: "Table does not belong to the selected branch"
+                }), { status: 403, headers: corsHeaders });
+            }
+
             if (tableData) {
                 finalTableId = tableData.id;
                 finalTableNumber = tableData.table_number;

@@ -18,6 +18,7 @@ import { OrderDetailsModal } from '../components/OrderDetailsModal';
 import { useBranch } from '../contexts/BranchContext';
 
 const AdminDashboard: React.FC = () => {
+   const { t } = useLanguage();
    const navigate = useNavigate();
    const { activeBranchId } = useBranch();
    const [loading, setLoading] = useState(true);
@@ -251,7 +252,7 @@ const AdminDashboard: React.FC = () => {
    };
 
    return (
-      <DashboardLayout title="Executive Dashboard" subtitle="Mission Control" className="h-full md:h-screen md:overflow-hidden">
+      <DashboardLayout title={t('adminDashboard.title')} subtitle={t('adminDashboard.subtitle')} className="h-full md:h-screen md:overflow-hidden">
          <div className="space-y-3 animate-in fade-in duration-500 h-full flex flex-col overflow-y-auto md:overflow-hidden">
 
             {/* Top Compact Metrics Bar */}
@@ -260,9 +261,9 @@ const AdminDashboard: React.FC = () => {
                   <div className="p-6 relative">
                      <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/5 rounded-full -mr-16 -mt-16 blur-3xl" />
                      <div className="relative z-10 flex flex-col">
-                        <p className="text-[10px] font-black text-muted uppercase tracking-[0.2em] opacity-60 mb-2">Revenue Today</p>
+                        <p className="text-[10px] font-black text-muted uppercase tracking-[0.2em] opacity-60 mb-2">{t('adminDashboard.revenueToday')}</p>
                         <h3 className="text-3xl font-black text-foreground tracking-tighter">
-                           <span className="text-sm mr-1 opacity-40">ETB</span>
+                           <span className="text-sm mr-1 opacity-40">{t('adminDashboard.etb')}</span>
                            {stats.totalRevenue.toLocaleString()}
                         </h3>
                      </div>
@@ -279,7 +280,7 @@ const AdminDashboard: React.FC = () => {
                   <div className="p-6 relative">
                      <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full -mr-16 -mt-16 blur-3xl" />
                      <div className="relative z-10 flex flex-col">
-                        <p className="text-[10px] font-black text-muted uppercase tracking-[0.2em] opacity-60 mb-2">Live Activity</p>
+                        <p className="text-[10px] font-black text-muted uppercase tracking-[0.2em] opacity-60 mb-2">{t('adminDashboard.liveActivity')}</p>
                         <div className="flex items-center gap-3">
                            <h3 className="text-3xl font-black text-foreground tracking-tighter">{stats.activeOrdersCount}</h3>
                            <div className="h-2.5 w-2.5 rounded-full bg-blue-500 animate-pulse shadow-glow" />
@@ -301,7 +302,7 @@ const AdminDashboard: React.FC = () => {
                   <div className="bg-card/60 backdrop-blur-xl border border-primary/20 rounded-[2.5rem] p-8 flex flex-col h-full shadow-2xl">
                      <div className="flex items-center justify-between mb-8">
                         <h3 className="text-[10px] font-black text-muted uppercase tracking-[0.2em] flex items-center gap-3 opacity-60">
-                           <LayoutList className="w-4 h-4 text-primary" strokeWidth={3} /> Live System Production
+                           <LayoutList className="w-4 h-4 text-primary" strokeWidth={3} /> {t('adminDashboard.liveSystemProduction')}
                         </h3>
 
                         <div className="flex items-center gap-3">
@@ -311,7 +312,7 @@ const AdminDashboard: React.FC = () => {
                                  onChange={(e) => setSelectedStaffId(e.target.value)}
                                  className="appearance-none bg-white/5 border border-primary/30 rounded-xl px-4 py-2 pr-10 text-[10px] font-black text-foreground hover:border-primary/60 focus:border-primary/60 transition-all outline-none uppercase tracking-widest cursor-pointer backdrop-blur-md shadow-inner"
                               >
-                                 <option value="all" className="bg-[#0A0A0A] text-foreground">ALL_NODES</option>
+                                 <option value="all" className="bg-[#0A0A0A] text-foreground">{t('adminDashboard.allNodes')}</option>
                                  {staffList.map(s => (
                                     <option key={s.id} value={s.id} className="bg-[#0A0A0A] text-foreground">
                                        {s.full_name.toUpperCase()}
@@ -332,7 +333,7 @@ const AdminDashboard: React.FC = () => {
                         {filteredActiveOrders.length === 0 ? (
                            <div className="h-full flex flex-col items-center justify-center text-muted gap-4 opacity-30 mt-10">
                               <Activity className="w-12 h-12" strokeWidth={3} />
-                              <span className="text-[10px] font-black uppercase tracking-[0.4em] italic text-center text-muted">Operational_Clear<br />Wait_State_Active</span>
+                              <span className="text-[10px] font-black uppercase tracking-[0.4em] italic text-center text-muted">{t('adminDashboard.operationalClear')}<br />{t('adminDashboard.waitStateActive')}</span>
                            </div>
                         ) : (
                            <div className="space-y-4">
@@ -352,7 +353,7 @@ const AdminDashboard: React.FC = () => {
                   <Card className="bg-card/60 backdrop-blur-xl border border-primary/20 rounded-[2.5rem] flex-1 flex flex-col min-h-0 p-0 overflow-hidden shadow-2xl">
                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-8 gap-6 shrink-0 border-b border-primary/20 bg-muted/5">
                         <h3 className="flex items-center gap-3 text-[10px] font-black text-muted uppercase tracking-[0.2em] opacity-60">
-                           <ClipboardList className="w-4 h-4 text-primary" strokeWidth={3} /> Finalized_Node_Audit
+                           <ClipboardList className="w-4 h-4 text-primary" strokeWidth={3} /> {t('adminDashboard.finalizedNodeAudit')}
                         </h3>
 
                         <div className="flex flex-wrap items-center gap-4">
@@ -361,7 +362,7 @@ const AdminDashboard: React.FC = () => {
                               <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-primary group-hover:text-primary transition-colors" strokeWidth={3} />
                               <input
                                  type="text"
-                                 placeholder="AUDIT_QUERY..."
+                                 placeholder={t('adminDashboard.auditQuery')}
                                  value={searchQuery}
                                  onChange={(e) => setSearchQuery(e.target.value)}
                                  className="bg-white/5 border border-primary/30 rounded-xl pl-11 pr-5 h-10 text-[10px] text-foreground font-black focus:outline-none focus:border-primary/60 hover:border-primary/60 transition-all w-48 uppercase tracking-widest placeholder:text-primary/20 backdrop-blur-md shadow-inner"
@@ -379,7 +380,7 @@ const AdminDashboard: React.FC = () => {
                                        dateFilter === d ? "bg-primary text-black shadow-lg shadow-primary/20" : "text-muted hover:text-foreground opacity-60"
                                     )}
                                  >
-                                    {d}
+                                    {t(`adminDashboard.filters.${d}`)}
                                  </button>
                               ))}
                            </div>
@@ -396,7 +397,7 @@ const AdminDashboard: React.FC = () => {
                                           : "bg-transparent border-transparent text-muted opacity-60 hover:opacity-100"
                                     )}
                                  >
-                                    {filter}
+                                    {t(`adminDashboard.filters.${filter}`)}
                                  </button>
                               ))}
                            </div>
@@ -407,11 +408,11 @@ const AdminDashboard: React.FC = () => {
                         <table className="w-full text-left border-collapse">
                            <thead className="sticky top-0 bg-muted/5 border-b border-primary/20 text-[9px] font-black uppercase text-muted tracking-widest z-10 backdrop-blur-xl">
                               <tr>
-                                 <th className="px-6 py-4">IDENT_VECTOR</th>
-                                 <th className="px-6 py-4">SPATIAL_NODE</th>
-                                 <th className="px-6 py-4 hidden sm:table-cell">HUMAN_ORIGIN</th>
-                                 <th className="px-6 py-4 text-right">GROSS_VAL</th>
-                                 <th className="px-6 py-4 text-right">STATUS</th>
+                                 <th className="px-6 py-4">{t('adminDashboard.identVector')}</th>
+                                 <th className="px-6 py-4">{t('adminDashboard.spatialNode')}</th>
+                                 <th className="px-6 py-4 hidden sm:table-cell">{t('adminDashboard.humanOrigin')}</th>
+                                 <th className="px-6 py-4 text-right">{t('adminDashboard.grossVal')}</th>
+                                 <th className="px-6 py-4 text-right">{t('adminDashboard.status')}</th>
                               </tr>
                            </thead>
                            <tbody className="divide-y divide-primary/20">
@@ -434,17 +435,17 @@ const AdminDashboard: React.FC = () => {
                                     <td className="px-6 py-5">
                                        <div className="flex flex-col items-start gap-1">
                                           <span className="font-black text-foreground text-xs uppercase italic group-hover:text-primary">T-{order.table_number}</span>
-                                          <span className="px-2 py-0.5 text-[8px] bg-primary/5 text-primary border border-primary/10 rounded-full font-black uppercase tracking-tighter opacity-70">{order.order_type || 'DINE-IN'}</span>
+                                          <span className="px-2 py-0.5 text-[8px] bg-primary/5 text-primary border border-primary/10 rounded-full font-black uppercase tracking-tighter opacity-70">{order.order_type || t('adminDashboard.dineIn')}</span>
                                        </div>
                                     </td>
                                     <td className="px-6 py-5 hidden sm:table-cell">
                                        <div className="flex flex-col">
-                                          <span className="text-[10px] text-foreground font-black uppercase italic group-hover:text-primary">{order.waiter?.full_name || 'SYSTEM_NODE'}</span>
-                                          <span className="text-[8px] text-muted font-black uppercase tracking-[0.2em] opacity-40">{(order as any).waiter?.role || (order.closed_by_user ? 'ADMIN' : 'STAFF')}</span>
+                                          <span className="text-[10px] text-foreground font-black uppercase italic group-hover:text-primary">{order.waiter?.full_name || t('adminDashboard.systemNode')}</span>
+                                          <span className="text-[8px] text-muted font-black uppercase tracking-[0.2em] opacity-40">{(order as any).waiter?.role || (order.closed_by_user ? t('adminDashboard.adminRole') : t('adminDashboard.staffRole'))}</span>
                                        </div>
                                     </td>
                                     <td className="px-6 py-5 text-right font-mono font-black text-foreground text-sm">
-                                       <span className="text-[9px] mr-1 opacity-20 font-sans NOT-italic">ETB</span>
+                                       <span className="text-[9px] mr-1 opacity-20 font-sans NOT-italic">{t('adminDashboard.etb')}</span>
                                        {order.total_amount.toLocaleString()}
                                     </td>
                                     <td className="px-6 py-5 text-right">
@@ -468,7 +469,7 @@ const AdminDashboard: React.FC = () => {
                         {filteredAuditLog.length === 0 && (
                            <div className="text-center py-20 opacity-30 mt-10">
                               <ClipboardList className="w-16 h-16 mx-auto mb-4" strokeWidth={3} />
-                              <p className="text-[10px] font-black uppercase tracking-[0.4em]">Zero_Result_Found</p>
+                              <p className="text-[10px] font-black uppercase tracking-[0.4em]">{t('adminDashboard.zeroResultFound')}</p>
                               {searchQuery && (
                                  <Button
                                     variant="link"
@@ -476,7 +477,7 @@ const AdminDashboard: React.FC = () => {
                                     onClick={() => setSearchQuery('')}
                                     className="text-[10px] font-black text-primary mt-4 uppercase tracking-[0.2em] h-auto p-0"
                                  >
-                                    Reset_Global_Query
+                                    {t('adminDashboard.resetGlobalQuery')}
                                  </Button>
                               )}
                            </div>

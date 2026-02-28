@@ -12,6 +12,7 @@ export const orderService = {
             .from('orders')
             .select(`
         *,
+        waiter:profiles!orders_waiter_id_fkey (full_name),
         order_items (
           id, quantity, price, created_at,
           menu_item:menu (name)
@@ -384,6 +385,16 @@ export const orderService = {
      */
     async markServed(orderId: string): Promise<void> {
         return this.updateStatus(orderId, 'served', { served_at: new Date().toISOString() });
+    },
+
+    /**
+     * Dispatch order for delivery (puts it in the driver queue)
+     */
+    async dispatchForDelivery(orderId: string): Promise<void> {
+        return this.updateStatus(orderId, 'ready', {
+            delivery_status: 'searching',
+            ready_at: new Date().toISOString()
+        });
     },
 
     /**

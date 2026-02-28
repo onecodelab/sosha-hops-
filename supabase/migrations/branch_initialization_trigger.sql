@@ -21,13 +21,13 @@ BEGIN
 
     -- B. Provision Default Floor Plan
     -- We create a set of base tables so the branch is "Ready to Serve" immediately
-    INSERT INTO public.tables (branch_id, table_number, status, capacity_min, capacity_max)
+    INSERT INTO public.tables (branch_id, organization_id, table_number, zone, status, capacity_min, capacity_max)
     VALUES 
-        (NEW.id, '1', 'available', 2, 4),
-        (NEW.id, '2', 'available', 2, 4),
-        (NEW.id, '3', 'available', 2, 4),
-        (NEW.id, '4', 'available', 4, 6),
-        (NEW.id, '5', 'available', 4, 10)
+        (NEW.id, NEW.organization_id, '1', 'Indoor', 'available', 2, 4),
+        (NEW.id, NEW.organization_id, '2', 'Indoor', 'available', 2, 4),
+        (NEW.id, NEW.organization_id, '3', 'Indoor', 'available', 2, 4),
+        (NEW.id, NEW.organization_id, '4', 'Indoor', 'available', 4, 6),
+        (NEW.id, NEW.organization_id, '5', 'Indoor', 'available', 4, 10)
     ON CONFLICT DO NOTHING;
 
     RETURN NEW;

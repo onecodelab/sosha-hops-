@@ -2,6 +2,7 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { supabase } from '../supabase';
+import { useBranch } from '../contexts/BranchContext';
 import { Order } from '../types';
 import { Button, Badge, showToast, cn, Card } from '../components/ui';
 import {
@@ -11,12 +12,14 @@ import {
    Clock,
    CheckCircle2,
    ChefHat,
-   LayoutPanelTop
+   LayoutPanelTop,
+   Truck
 } from 'lucide-react';
 import { OrderCard } from '../components/OrderCard';
 import { orderService } from '../services/orderService';
 
 const KitchenDashboard: React.FC = () => {
+   const { activeBranchId } = useBranch();
    const [orders, setOrders] = useState<Order[]>([]);
    const [loading, setLoading] = useState(true);
    const [isSyncing, setIsSyncing] = useState(false);
@@ -25,7 +28,15 @@ const KitchenDashboard: React.FC = () => {
    const fetchOrders = useCallback(async () => {
       setIsSyncing(true);
       try {
-         const { data, error: fetchErr } = await supabase
+         // SACRED RULE: Strict Branch Isolation
+         if (!activeBranchId) {
+            setOrders([]);
+            setLoading(false);
+            setIsSyncing(false);
+            return;
+         }
+
+         let query = supabase
             .from('orders')
             .select(`
                *,
@@ -39,10 +50,12 @@ const KitchenDashboard: React.FC = () => {
                   menu_item:menu (name)
                )
             `)
+            .eq('branch_id', activeBranchId)
             .neq('status', 'paid')
             .neq('status', 'closed')
-            .neq('status', 'cancelled')
-            .order('created_at', { ascending: true });
+            .neq('status', 'cancelled');
+
+         const { data, error: fetchErr } = await query.order('created_at', { ascending: true });
 
          if (fetchErr) throw fetchErr;
          setOrders(data || []);
@@ -58,18 +71,30 @@ const KitchenDashboard: React.FC = () => {
    }, []);
 
    useEffect(() => {
+      if (!activeBranchId) return;
+
       fetchOrders();
-      const channel = supabase.channel('kitchen_sync')
-         .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => fetchOrders())
+
+      const filter = `branch_id=eq.${activeBranchId}`;
+      const channel = supabase.channel(`kitchen_sync_${activeBranchId}`)
+         .on('postgres_changes', {
+            event: '*',
+            schema: 'public',
+            table: 'orders',
+            filter: filter
+         }, () => fetchOrders())
          .subscribe();
       return () => { supabase.removeChannel(channel); };
-   }, [fetchOrders]);
+   }, [fetchOrders, activeBranchId]);
 
    const handleOrderAction = async (action: string, orderId: string) => {
       try {
          if (action === 'accepted' || action === 'ready') {
             await orderService.updateStatus(orderId, action as any);
             showToast(`Order marked as ${action}`, "success");
+         } else if (action === 'dispatch') {
+            await orderService.dispatchForDelivery(orderId);
+            showToast(`Order dispatched for delivery`, "success");
          }
          await fetchOrders();
       } catch (err: any) {

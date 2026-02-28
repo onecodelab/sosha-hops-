@@ -4,7 +4,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import {
     LogOut, LayoutDashboard, ShoppingBag, Users,
     ClipboardList, Utensils, ChevronLeft, ChevronRight,
-    Trash2, Truck, PlusCircle, PackageCheck, FileText, Monitor, BookOpen, TrendingUp, Clock, ShoppingCart, Zap, DollarSign
+    Trash2, Truck, PlusCircle, PackageCheck, FileText, Monitor, BookOpen, TrendingUp, Clock, ShoppingCart, Zap, DollarSign, ShieldAlert, Building, Bike
 } from 'lucide-react';
 import { cn } from './ui';
 import { BaroLogo } from './BaroLogo';
@@ -130,14 +130,32 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, setIsCollapsed, h
             <nav className="flex-1 px-4 space-y-2 py-4 overflow-y-auto custom-scrollbar">
                 {/* Dashboard/Ops */}
                 <NavItem
+                    icon={ShieldAlert}
+                    label="Platform Admin"
+                    path="/app/baro-admin"
+                    allowedRoles={['super_admin']}
+                />
+                <NavItem
                     icon={LayoutDashboard}
-                    label="ADMIN HOME"
+                    label={t('nav.adminHome')}
                     path="/app/admin"
                     allowedRoles={['owner', 'admin']}
                 />
                 <NavItem
+                    icon={Building}
+                    label="Procurement Hub"
+                    path="/app/supplier/dashboard"
+                    allowedRoles={['supplier']}
+                />
+                <NavItem
+                    icon={Bike}
+                    label="Delivery Hub"
+                    path="/app/driver/dashboard"
+                    allowedRoles={['driver']}
+                />
+                <NavItem
                     icon={Zap}
-                    label="OWNER COMMAND"
+                    label={t('nav.ownerCommand')}
                     path="/app/owner"
                     allowedRoles={['owner']}
                 />
@@ -155,13 +173,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, setIsCollapsed, h
                 />
                 <NavItem
                     icon={ShoppingCart}
-                    label="My Order Transaction"
+                    label={t('nav.myOrderTransaction')}
                     path="/app/waiter/orders"
                     allowedRoles={['waiter']}
                 />
                 <NavItem
                     icon={DollarSign}
-                    label="My Tips & Gratuity"
+                    label={t('nav.myTipsGratuity')}
                     path="/app/waiter/tips"
                     allowedRoles={['waiter']}
                 />
@@ -175,7 +193,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, setIsCollapsed, h
                 {/* Kitchen Display - Manager only */}
                 <NavItem
                     icon={Monitor}
-                    label="Kitchen Board"
+                    label={t('nav.kitchenBoard')}
                     path="/app/kitchen"
                     allowedRoles={['manager']}
                 />
@@ -183,7 +201,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, setIsCollapsed, h
                 {/* Floor Live Map - Owner/Admin manage the floor */}
                 <NavItem
                     icon={Monitor}
-                    label="Floor Live Map"
+                    label={t('nav.floorLiveMap')}
                     path="/app/tables"
                     allowedRoles={['owner', 'admin', 'waiter', 'manager']}
                 />
@@ -203,7 +221,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, setIsCollapsed, h
                 />
                 <NavItem
                     icon={DollarSign}
-                    label="Tips & Gratuity Audit"
+                    label={t('nav.tipsAudit')}
                     path="/app/admin/tips"
                     allowedRoles={['owner', 'admin']}
                 />
@@ -217,7 +235,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, setIsCollapsed, h
                 />
                 <NavItem
                     icon={Trash2}
-                    label="Waste Analytics"
+                    label={t('nav.wasteAnalytics')}
                     path="/app/admin/waste"
                     allowedRoles={['manager', 'admin', 'owner']}
                 />

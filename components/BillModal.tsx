@@ -126,8 +126,14 @@ export const BillModal: React.FC<BillModalProps> = ({
           detectedBank = 'dashen';
         }
       } else {
+        // Priority check for CBE (FT + digits)
+        const cbeMatch = rawData.match(/(FT[A-Z0-9]{10})/i);
         const teleMatch = rawData.match(/(?:receipt\/|transaction\/)?([A-Z0-9]{10})/i);
-        if (teleMatch) {
+
+        if (cbeMatch) {
+          extractedRef = cbeMatch[1].toUpperCase();
+          detectedBank = 'cbe';
+        } else if (teleMatch) {
           extractedRef = teleMatch[1];
           detectedBank = 'telebirr';
         } else {
@@ -136,6 +142,12 @@ export const BillModal: React.FC<BillModalProps> = ({
       }
     } catch (e) {
       extractedRef = rawData.trim();
+    }
+
+    // Standardize CBE to 12 chars if it starts with FT
+    if (extractedRef.toUpperCase().startsWith('FT') && extractedRef.length > 12) {
+      extractedRef = extractedRef.slice(0, 12).toUpperCase();
+      detectedBank = 'cbe';
     }
 
     extractedRef = extractedRef.replace(/[^a-zA-Z0-9]+$/, "");

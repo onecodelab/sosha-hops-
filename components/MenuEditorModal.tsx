@@ -8,6 +8,7 @@ import { RecipeEditor } from './RecipeEditor';
 import { RoleGuard } from './RoleGuard';
 import { useRoleAccess } from '../hooks/useRoleAccess';
 import { useAuth } from '../AuthContext';
+import { useBranch } from '../contexts/BranchContext';
 
 interface MenuEditorModalProps {
   isOpen: boolean;
@@ -25,6 +26,7 @@ export const MenuEditorModal: React.FC<MenuEditorModalProps> = ({
   const [internalItem, setInternalItem] = useState<MenuItem | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const { profile: userProfile } = useAuth();
+  const { activeBranchId } = useBranch();
 
   // Track modal open state to handle initialization
   const wasOpen = useRef(false);
@@ -38,6 +40,10 @@ export const MenuEditorModal: React.FC<MenuEditorModalProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isAvailable, setIsAvailable] = useState(true);
   const [recipeCost, setRecipeCost] = useState(0);
+
+  // Manual Category State
+  const [isAddingCategory, setIsAddingCategory] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState('');
 
   // Initialize state when modal opens or editingItem changes
   useEffect(() => {
@@ -63,6 +69,8 @@ export const MenuEditorModal: React.FC<MenuEditorModalProps> = ({
           setImageUrl('');
           setIsAvailable(true);
           setRecipeCost(0);
+          setIsAddingCategory(false);
+          setNewCategoryName('');
         }
       }
       wasOpen.current = true;
@@ -140,90 +148,136 @@ export const MenuEditorModal: React.FC<MenuEditorModalProps> = ({
   };
 
   const handleSaveBasic = async () => {
-    if (!name || price <= 0 || !categoryId) {
-      showToast("Please provide name, price, and category", "error");
+    // Validation
+    if (!name || price <= 0) {
+      showToast("Please provide name and price", "error");
       return;
     }
 
-    const selectedCategory = categories.find(c => c.id === categoryId);
-    const categoryName = selectedCategory?.name || 'Uncategorized';
-
-    const payload: any = {
-      name: name.trim(),
-      category: categoryName,
-      price: parseFloat(price.toString()),
-      image_url: imageUrl.trim() || null,
-      status: isAvailable ? 'available' : 'unavailable',
-      ...(internalItem?.id ? { id: internalItem.id } : {})
-    };
-
-    // UUID Validation: Only send category_id if it looks like a valid UUID (not empty string)
-    if (categoryId && categoryId.length > 10) {
-      payload.category_id = categoryId;
+    if (!isAddingCategory && !categoryId) {
+      showToast("Please select a category", "error");
+      return;
     }
 
-    console.log("Saving Menu Item Payload:", payload);
+    if (isAddingCategory && !newCategoryName.trim()) {
+      showToast("Please enter a category name", "error");
+      return;
+    }
 
     setLoading(true);
+
     try {
-      let bffResult: any = null;
-      let bffErr: any = null;
+      let finalCategoryId = categoryId;
+      let finalCategoryName = '';
 
-      // ATTEMPT 1: Edge Function (BFF)
+      // 1. Create Category if needed
+      if (isAddingCategory) {
+        const trimmedCat = newCategoryName.trim();
+        // Check if category already exists (simple client-side check)
+        const existing = categories.find(c => c.name.toLowerCase() === trimmedCat.toLowerCase());
+
+        if (existing) {
+          finalCategoryId = existing.id;
+          finalCategoryName = existing.name;
+        } else {
+          // Create New
+          const { data: newCat, error: catErr } = await supabase
+            .from('categories')
+            .insert({
+              name: trimmedCat,
+              organization_id: userProfile?.organization_id
+            })
+            .select()
+            .single();
+
+          if (catErr) throw catErr;
+          finalCategoryId = newCat.id;
+          finalCategoryName = newCat.name;
+
+          // Refresh categories list for next time
+          fetchCategories();
+        }
+      } else {
+        const selected = categories.find(c => c.id === categoryId);
+        finalCategoryName = selected?.name || 'Uncategorized';
+      }
+
+      const payload: any = {
+        name: name.trim(),
+        category: finalCategoryName,
+        category_id: finalCategoryId,
+        price: parseFloat(price.toString()),
+        image_url: imageUrl.trim() || null,
+        status: isAvailable ? 'available' : 'unavailable',
+        ...(internalItem?.id ? { id: internalItem.id } : { branch_id: activeBranchId || null }),
+        ...(internalItem?.id ? {} : { organization_id: userProfile?.organization_id })
+      };
+
+      console.log("Saving Menu Item Payload:", payload);
+
+      setLoading(true);
       try {
-        const response = await supabase.functions.invoke('manage-menu', {
-          body: {
-            action: 'upsert',
-            item: payload,
+        let bffResult: any = null;
+        let bffErr: any = null;
+
+        // ATTEMPT 1: Edge Function (BFF)
+        try {
+          const response = await supabase.functions.invoke('manage-menu', {
+            body: {
+              action: 'upsert',
+              item: payload,
+            }
+          });
+          bffResult = response.data;
+          bffErr = response.error;
+        } catch (invokeErr: any) {
+          console.warn("Edge Function unreachable, will attempt fallback:", invokeErr);
+          bffErr = invokeErr;
+        }
+
+        let finalItem = null;
+
+        if (!bffErr && bffResult && !bffResult.error) {
+          finalItem = bffResult.data || bffResult;
+          console.log("Edge Function Success:", finalItem);
+        } else {
+          // ATTEMPT 2: Direct Database Fallback (RLS-aware)
+          console.warn("Edge Function failed, attempting direct DB fallback...", bffErr || bffResult?.error);
+
+          const dbPayload = {
+            ...payload,
+            organization_id: userProfile?.organization_id || '00000000-0000-0000-0000-000000000000'
+          };
+
+          const { data: dbData, error: dbErr } = await supabase
+            .from('menu')
+            .upsert(dbPayload)
+            .select()
+            .single();
+
+          if (dbErr) {
+            console.error("Direct DB Fallback Failed:", dbErr);
+            throw new Error(dbErr.message || "Both Edge Function and DB fallback failed.");
           }
-        });
-        bffResult = response.data;
-        bffErr = response.error;
-      } catch (invokeErr: any) {
-        console.warn("Edge Function unreachable, will attempt fallback:", invokeErr);
-        bffErr = invokeErr;
-      }
 
-      let finalItem = null;
-
-      if (!bffErr && bffResult && !bffResult.error) {
-        finalItem = bffResult.data || bffResult;
-        console.log("Edge Function Success:", finalItem);
-      } else {
-        // ATTEMPT 2: Direct Database Fallback (RLS-aware)
-        console.warn("Edge Function failed, attempting direct DB fallback...", bffErr || bffResult?.error);
-
-        const dbPayload = {
-          ...payload,
-          organization_id: userProfile?.organization_id || '00000000-0000-0000-0000-000000000000'
-        };
-
-        const { data: dbData, error: dbErr } = await supabase
-          .from('menu')
-          .upsert(dbPayload)
-          .select()
-          .single();
-
-        if (dbErr) {
-          console.error("Direct DB Fallback Failed:", dbErr);
-          throw new Error(dbErr.message || "Both Edge Function and DB fallback failed.");
+          finalItem = dbData;
+          console.log("Direct DB Fallback Success:", finalItem);
         }
 
-        finalItem = dbData;
-        console.log("Direct DB Fallback Success:", finalItem);
-      }
-
-      if (internalItem) {
-        showToast("Dish updated", "success");
-      } else {
-        if (finalItem && finalItem.id) {
-          setInternalItem(finalItem);
+        if (internalItem) {
+          showToast("Dish updated", "success");
+        } else {
+          if (finalItem && finalItem.id) {
+            setInternalItem(finalItem);
+          }
+          showToast("Dish created! You can now map recipes.", "success");
+          setActiveTab('recipe');
         }
-        showToast("Dish created! You can now map recipes.", "success");
-        setActiveTab('recipe');
-      }
 
-      onSuccess();
+        onSuccess();
+      } catch (err: any) {
+        throw err;
+      }
     } catch (err: any) {
       console.error("HandleSaveBasic Caught Error:", err);
       showToast(err.message || "Failed to save dish", "error");
@@ -278,18 +332,40 @@ export const MenuEditorModal: React.FC<MenuEditorModalProps> = ({
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Category</label>
-                  <div className="relative">
-                    <select
-                      value={categoryId}
-                      onChange={e => setCategoryId(e.target.value)}
-                      className="w-full h-11 bg-black/40 border border-gray-700 rounded-lg px-3 text-sm text-white outline-none focus:border-primary/50 appearance-none"
+                  <div className="flex items-center justify-between ml-1">
+                    <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Category</label>
+                    <button
+                      type="button"
+                      onClick={() => setIsAddingCategory(!isAddingCategory)}
+                      className="text-[9px] font-black text-primary hover:text-primary/80 uppercase tracking-tighter transition-colors"
                     >
-                      <option value="" disabled>Select category...</option>
-                      {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                    </select>
-                    <ListTree className="absolute right-3 top-3.5 w-4 h-4 text-gray-600 pointer-events-none" />
+                      {isAddingCategory ? 'Select Existing' : '+ New Category'}
+                    </button>
                   </div>
+                  {isAddingCategory ? (
+                    <div className="relative animate-in zoom-in-95 duration-200">
+                      <Input
+                        value={newCategoryName}
+                        onChange={e => setNewCategoryName(e.target.value)}
+                        placeholder="Type category name..."
+                        className="bg-black/40 border-primary/30 h-11 pr-10"
+                        autoFocus
+                      />
+                      <BookOpen className="absolute right-3 top-3.5 w-4 h-4 text-primary opacity-40" />
+                    </div>
+                  ) : (
+                    <div className="relative">
+                      <select
+                        value={categoryId}
+                        onChange={e => setCategoryId(e.target.value)}
+                        className="w-full h-11 bg-black/40 border border-gray-700 rounded-lg px-3 text-sm text-white outline-none focus:border-primary/50 appearance-none transition-all"
+                      >
+                        <option value="" disabled>Select category...</option>
+                        {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                      </select>
+                      <ListTree className="absolute right-3 top-3.5 w-4 h-4 text-gray-600 pointer-events-none" />
+                    </div>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">

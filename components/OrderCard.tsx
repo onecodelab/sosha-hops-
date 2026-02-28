@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { Order } from '../types';
 import { cn, Badge, Button, showToast } from './ui';
 import { useAuth } from '../AuthContext';
-import { Clock, MessageSquare, PlusCircle, CheckCircle2, Loader2, Flag, Receipt, FileText, User, Zap } from 'lucide-react';
+import { Clock, MessageSquare, PlusCircle, CheckCircle2, Loader2, Flag, Receipt, FileText, User, Zap, Truck } from 'lucide-react';
 
 import { orderService } from '../services/orderService';
 import { BaroLeafyCard } from './ElectricCard';
@@ -182,6 +182,11 @@ export const OrderCard: React.FC<OrderCardProps> = ({
         )}
         {isKitchen && (order.status === 'accepted' || order.status === 'preparing') && (
           <Button size="sm" onClick={() => onAction?.('ready', order.id)} className="w-full bg-green-500 text-black h-10 rounded-xl font-black uppercase text-[10px] tracking-widest shadow-[0_0_15px_rgba(34,197,94,0.2)] hover:bg-green-400 hover:scale-[1.02] transition-all">Mark Prepared</Button>
+        )}
+        {isKitchen && order.status === 'ready' && (
+          <Button size="sm" onClick={() => onAction?.('dispatch', order.id)} className="w-full bg-emerald-600 text-white h-10 rounded-xl font-black uppercase text-[10px] tracking-widest shadow-[0_0_15px_rgba(16,185,129,0.2)] hover:bg-emerald-500 hover:scale-[1.02] transition-all">
+            <Truck className="w-4 h-4 mr-2" /> Dispatch for Delivery
+          </Button>
         )}
 
         {/* Waiter Actions - Same Style */}

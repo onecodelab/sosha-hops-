@@ -10,11 +10,13 @@ import {
 import { analyticsService, TableMetric } from '../services/analyticsService';
 import { useRoleAccess } from '../hooks/useRoleAccess';
 import { useBranch } from '../contexts/BranchContext';
+import { useLanguage } from '../contexts/LanguageContext';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const AdminFloorAnalytics: React.FC = () => {
     const { hasPermission } = useRoleAccess();
     const { activeBranchId } = useBranch();
+    const { t } = useLanguage();
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
     const [timeRange, setTimeRange] = useState<'today' | 'week' | 'month'>('today');
 
@@ -27,11 +29,11 @@ const AdminFloorAnalytics: React.FC = () => {
 
     if (!hasPermission('canViewAnalytics')) {
         return (
-            <DashboardLayout title="Floor Analytics" subtitle="Restricted Access">
+            <DashboardLayout title={t('floorAnalytics.title')} subtitle={t('floorAnalytics.restricted')}>
                 <div className="flex flex-col items-center justify-center h-[50vh] text-center p-8">
                     <ShieldAlert className="w-16 h-16 text-red-500 mb-4" />
-                    <h2 className="text-2xl font-black text-white mb-2">Access Denied</h2>
-                    <p className="text-zinc-400">You do not have permission to view sensitive financial analytics.</p>
+                    <h2 className="text-2xl font-black text-white mb-2">{t('floorAnalytics.denied')}</h2>
+                    <p className="text-zinc-400">{t('floorAnalytics.deniedDesc')}</p>
                 </div>
             </DashboardLayout>
         );
@@ -48,12 +50,12 @@ const AdminFloorAnalytics: React.FC = () => {
 
     return (
         <DashboardLayout
-            title="Floor Analytics"
-            subtitle="Advanced performance metrics & suspicious activity detection"
+            title={t('floorAnalytics.title')}
+            subtitle={t('floorAnalytics.subtitle')}
             actions={
                 <div className="flex gap-2">
                     <Button variant="outline" onClick={() => refetch()} size="sm" className="gap-2">
-                        <RefreshCw className={cn("w-4 h-4", isLoading && "animate-spin")} /> Refresh
+                        <RefreshCw className={cn("w-4 h-4", isLoading && "animate-spin")} /> {t('common.retry')}
                     </Button>
                 </div>
             }
@@ -63,28 +65,28 @@ const AdminFloorAnalytics: React.FC = () => {
                 {/* 1. KPI Cards */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                     <MetricCard
-                        label="Total Revenue"
-                        value={`ETB ${totalRev.toLocaleString()}`}
+                        label={t('floorAnalytics.totalRevenue')}
+                        value={`${t('adminDashboard.etb')} ${totalRev.toLocaleString()}`}
                         icon={DollarSign}
                         trend="+12% vs last week" // Placeholder trend
                         color="green"
                     />
                     <MetricCard
-                        label="Floor Utilization"
+                        label={t('floorAnalytics.utilization')}
                         value={`${avgUtil}%`}
                         icon={Zap}
                         subValue="Target: 75%"
                         color="blue"
                     />
                     <MetricCard
-                        label="Active Campers"
+                        label={t('floorAnalytics.activeCampers')}
                         value={camperCount}
                         icon={Clock}
-                        subValue={camperCount > 0 ? "Action Required" : "Floor Optimized"}
+                        subValue={camperCount > 0 ? t('floorAnalytics.actionRequired') : t('floorAnalytics.floorOptimized')}
                         color={camperCount > 0 ? "red" : "gray"}
                     />
                     <MetricCard
-                        label="Dead Hours"
+                        label={t('floorAnalytics.deadHours')}
                         value="2h"
                         icon={XCircle}
                         subValue="14:00 - 16:00"
@@ -97,23 +99,23 @@ const AdminFloorAnalytics: React.FC = () => {
                     <CardHeader className="flex flex-row items-center justify-between border-b border-white/5 pb-4">
                         <div className="space-y-1">
                             <CardTitle className="text-lg font-black uppercase tracking-widest text-white flex items-center gap-2">
-                                <LayoutGrid className="w-5 h-5 text-primary" /> Performance Heatmap
+                                <LayoutGrid className="w-5 h-5 text-primary" /> {t('floorAnalytics.heatmapTitle')}
                             </CardTitle>
                             <p className="text-xs text-zinc-500 font-mono">
-                                Live scoring based on Revenue (50%), Utilization (30%), Turnover (20%)
+                                {t('floorAnalytics.heatmapSubtitle')}
                             </p>
                         </div>
                         <div className="flex bg-zinc-900 p-1 rounded-lg border border-white/5">
-                            {(['today', 'week', 'month'] as const).map(t => (
+                            {(['today', 'week', 'month'] as const).map(p => (
                                 <button
-                                    key={t}
-                                    onClick={() => setTimeRange(t)}
+                                    key={p}
+                                    onClick={() => setTimeRange(p)}
                                     className={cn(
                                         "px-4 py-1.5 text-[10px] font-black uppercase tracking-wider rounded-md transition-all",
-                                        timeRange === t ? "bg-zinc-800 text-white shadow-sm" : "text-zinc-500 hover:text-white"
+                                        timeRange === p ? "bg-zinc-800 text-white shadow-sm" : "text-zinc-500 hover:text-white"
                                     )}
                                 >
-                                    {t}
+                                    {t(`analytics.period.${p}`)}
                                 </button>
                             ))}
                         </div>
@@ -144,16 +146,16 @@ const AdminFloorAnalytics: React.FC = () => {
                                         >
                                             <span className="text-2xl font-black text-white/90">{table.table_number}</span>
                                             <Badge variant="outline" className="mt-2 text-[11px] border-white/20 bg-black/20 text-white backdrop-blur-md font-black">
-                                                GRADE: {grade}
+                                                {t('floorAnalytics.grade')}: {grade}
                                             </Badge>
 
                                             {/* Hover Details */}
                                             <div className="absolute inset-0 bg-black/95 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center p-4 text-center rounded-2xl z-10 space-y-1">
-                                                <p className="text-[10px] font-bold text-zinc-400 uppercase">Rev/Hour</p>
-                                                <p className="text-lg font-black text-white">ETB {table.revenue_per_hour}</p>
+                                                <p className="text-[10px] font-bold text-zinc-400 uppercase">{t('floorAnalytics.revPerHour')}</p>
+                                                <p className="text-lg font-black text-white">{t('adminDashboard.etb')} {table.revenue_per_hour}</p>
                                                 <div className="w-full h-px bg-white/10 my-2" />
-                                                <p className="text-[10px] font-bold text-zinc-400 uppercase">Turnover</p>
-                                                <p className="text-xs font-mono text-white">{table.avg_duration_minutes}m Avg</p>
+                                                <p className="text-[10px] font-bold text-zinc-400 uppercase">{t('floorAnalytics.turnover')}</p>
+                                                <p className="text-xs font-mono text-white">{table.avg_duration_minutes}{t('floorAnalytics.avgMinutes')}</p>
                                             </div>
 
                                             {/* Alerts */}
@@ -169,7 +171,7 @@ const AdminFloorAnalytics: React.FC = () => {
                                             )}
                                             {table.void_count > 0 && (
                                                 <div className="absolute -bottom-2 -right-2 bg-zinc-600 text-white px-2 py-0.5 rounded-full text-[8px] font-black z-20">
-                                                    {table.void_count} VOIDS
+                                                    {table.void_count} {t('floorAnalytics.voids')}
                                                 </div>
                                             )}
                                         </div>
@@ -186,7 +188,7 @@ const AdminFloorAnalytics: React.FC = () => {
                     <Card className="bg-gradient-to-br from-green-500/5 to-transparent border-green-500/10">
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2 text-green-400 text-sm uppercase tracking-widest font-black">
-                                <TrendingUp className="w-4 h-4" /> Top Performers ({timeRange})
+                                <TrendingUp className="w-4 h-4" /> {t('floorAnalytics.topPerformers')} ({t(`analytics.period.${timeRange}`)})
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-3">
@@ -200,8 +202,8 @@ const AdminFloorAnalytics: React.FC = () => {
                                         </div>
                                     </div>
                                     <div className="text-right">
-                                        <p className="font-mono text-green-400 font-bold">ETB {t.total_revenue.toLocaleString()}</p>
-                                        <p className="text-[10px] text-zinc-500">{t.total_sessions} Sessions</p>
+                                        <p className="font-mono text-green-400 font-bold">{t('adminDashboard.etb')} {t.total_revenue.toLocaleString()}</p>
+                                        <p className="text-[10px] text-zinc-500">{t.total_sessions} {t('floorAnalytics.sessions')}</p>
                                     </div>
                                 </div>
                             ))}
@@ -212,7 +214,7 @@ const AdminFloorAnalytics: React.FC = () => {
                     <Card className="bg-gradient-to-br from-red-500/5 to-transparent border-red-500/10">
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2 text-red-400 text-sm uppercase tracking-widest font-black">
-                                <AlertTriangle className="w-4 h-4" /> Underperforming Areas
+                                <AlertTriangle className="w-4 h-4" /> {t('floorAnalytics.underperforming')}
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-3">
@@ -226,8 +228,8 @@ const AdminFloorAnalytics: React.FC = () => {
                                         </div>
                                     </div>
                                     <div className="text-right">
-                                        <p className="font-mono text-red-400 font-bold">Score: {t.score}/100</p>
-                                        <p className="text-[10px] text-zinc-500">{t.dead_hours}h Idle</p>
+                                        <p className="font-mono text-red-400 font-bold">{t('floorAnalytics.score')}: {t.score}/100</p>
+                                        <p className="text-[10px] text-zinc-500">{t.dead_hours}h {t('floorAnalytics.idle')}</p>
                                     </div>
                                 </div>
                             ))}

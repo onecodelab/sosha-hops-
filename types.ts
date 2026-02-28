@@ -1,5 +1,5 @@
 
-export type Role = 'owner' | 'admin' | 'manager' | 'waiter' | 'kitchen';
+export type Role = 'owner' | 'admin' | 'manager' | 'waiter' | 'kitchen' | 'super_admin' | 'supplier' | 'driver';
 
 export interface Organization {
   id: string;
@@ -24,6 +24,8 @@ export interface UserProfile {
   is_salary_approved?: boolean;
   created_by?: string;
   invitation_pending?: boolean;
+  status?: 'pending' | 'active' | 'suspended';
+  supplier_id?: string;
 }
 
 export interface MenuDish {

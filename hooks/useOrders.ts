@@ -57,9 +57,14 @@ export const useOrders = (waiterId?: string) => {
 
     const kitchenPipeline = useMemo(() =>
         orders.filter(o =>
-            ['pending', 'accepted', 'preparing', 'ready'].includes(o.status) &&
-            !(o.source === 'chatbot' && !o.waiter_id) // Exclude unassigned chatbot orders (they go to verification queue)
+            ['pending', 'accepted', 'preparing'].includes(o.status) &&
+            !(o.source === 'chatbot' && !o.waiter_id)
         ),
+        [orders]
+    );
+
+    const readyOrders = useMemo(() =>
+        orders.filter(o => o.status === 'ready'),
         [orders]
     );
 
@@ -71,6 +76,7 @@ export const useOrders = (waiterId?: string) => {
     return {
         orders,
         kitchenPipeline,
+        readyOrders,
         billingQueue,
         isLoading,
         refresh: fetchOrders

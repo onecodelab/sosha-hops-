@@ -11,8 +11,14 @@ import {
    Armchair, Utensils, Truck, CheckCircle2, AlertTriangle, ArrowRight, Loader2
 } from 'lucide-react';
 import { supabase } from '../supabase';
+import { useLanguage } from '../contexts/LanguageContext';
+import { useBranch } from '../contexts/BranchContext';
+import { useAuth } from '../AuthContext';
 
 const OrdersTables: React.FC = () => {
+   const { t } = useLanguage();
+   const { activeBranchId } = useBranch();
+   const { organizationId } = useAuth();
    const [period, setPeriod] = useState<'today' | 'week' | 'month'>('today');
    const [loading, setLoading] = useState(true);
 
@@ -41,11 +47,16 @@ const OrdersTables: React.FC = () => {
 
       // Subscribe to updates
       const sub = supabase.channel('orders_tables_analytics')
-         .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => fetchData())
+         .on('postgres_changes', {
+            event: '*',
+            schema: 'public',
+            table: 'orders',
+            filter: activeBranchId ? `branch_id=eq.${activeBranchId}` : undefined
+         }, () => fetchData())
          .subscribe();
 
       return () => { supabase.removeChannel(sub); };
-   }, [period]);
+   }, [period, activeBranchId]);
 
    const fetchData = async () => {
       setLoading(true);
@@ -71,10 +82,16 @@ const OrdersTables: React.FC = () => {
          profiles?.forEach(u => profileMap.set(u.id, u));
 
          // 3. Fetch Orders
-         const { data: orders, error } = await supabase
+         let query = supabase
             .from('orders')
             .select('*')
             .gte('created_at', startISO);
+
+         if (activeBranchId) {
+            query = query.eq('branch_id', activeBranchId);
+         }
+
+         const { data: orders, error } = await query;
 
          if (error) throw error;
          const safeOrders = orders || [];
@@ -137,7 +154,9 @@ const OrdersTables: React.FC = () => {
          });
 
          const oTypeData = Object.entries(typeCount).map(([name, value]) => ({
-            name,
+            name: name === 'Dine-in' ? t('ordersTables.channels.dineIn') :
+               name === 'Delivery' ? t('ordersTables.channels.delivery') :
+                  t('ordersTables.channels.takeaway'),
             value,
             color: name === 'Dine-in' ? '#FFB800' : name === 'Delivery' ? '#84CC16' : '#3B82F6'
          })).filter(d => d.value > 0);
@@ -249,7 +268,7 @@ const OrdersTables: React.FC = () => {
    };
 
    return (
-      <DashboardLayout title="Orders & Tables" subtitle="Throughput analysis and service efficiency">
+      <DashboardLayout title={t('ordersTables.title')} subtitle={t('ordersTables.subtitle')}>
          <div className="space-y-8 animate-in fade-in duration-700">
 
             {/* Header Controls */}
@@ -266,14 +285,14 @@ const OrdersTables: React.FC = () => {
                               : "text-muted hover:text-foreground hover:bg-muted/10 opacity-60 hover:opacity-100"
                         )}
                      >
-                        {p}
+                        {t(`analytics.period.${p}`)}
                      </button>
                   ))}
                </div>
                {loading && (
                   <div className="flex items-center gap-3 px-4 py-2 bg-primary/10 rounded-full border border-primary/20">
                      <Loader2 className="w-4 h-4 animate-spin text-primary" />
-                     <span className="text-[10px] font-black text-primary uppercase tracking-[0.2em]">Syncing Nodes...</span>
+                     <span className="text-[10px] font-black text-primary uppercase tracking-[0.2em]">{t('ordersTables.syncing')}</span>
                   </div>
                )}
             </div>
@@ -284,10 +303,10 @@ const OrdersTables: React.FC = () => {
                   <div className="p-6 flex justify-between items-start relative">
                      <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full -mr-16 -mt-16 blur-3xl" />
                      <div className="relative z-10">
-                        <p className="text-[10px] font-black text-muted uppercase tracking-[0.2em] opacity-60">Total Orders</p>
+                        <p className="text-[10px] font-black text-muted uppercase tracking-[0.2em] opacity-60">{t('ordersTables.totalOrders')}</p>
                         <h3 className="text-3xl font-black text-foreground mt-2 tracking-tighter">{kpi.totalOrders}</h3>
                         <div className="text-[10px] text-emerald-500 font-black mt-2 flex items-center gap-1 uppercase tracking-widest">
-                           <TrendingUp className="w-3 h-3" strokeWidth={3} /> High_Activity
+                           <TrendingUp className="w-3 h-3" strokeWidth={3} /> {t('ordersTables.highActivity')}
                         </div>
                      </div>
                      <div className="p-4 bg-primary/10 rounded-2xl group-hover:scale-110 transition-transform duration-500 shadow-inner">
@@ -300,13 +319,13 @@ const OrdersTables: React.FC = () => {
                   <div className="p-6 flex justify-between items-start relative">
                      <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full -mr-16 -mt-16 blur-3xl" />
                      <div className="relative z-10">
-                        <p className="text-[10px] font-black text-muted uppercase tracking-[0.2em] opacity-60">Avg Order Value</p>
+                        <p className="text-[10px] font-black text-muted uppercase tracking-[0.2em] opacity-60">{t('ordersTables.avgOrderValue')}</p>
                         <h3 className="text-3xl font-black text-foreground mt-2 tracking-tighter">
-                           <span className="text-sm mr-1 opacity-40">ETB</span>
+                           <span className="text-sm mr-1 opacity-40">{t('adminDashboard.etb')}</span>
                            {kpi.avgValue}
                         </h3>
                         <div className="text-[10px] text-emerald-500 font-black mt-2 flex items-center gap-1 uppercase tracking-widest">
-                           <TrendingUp className="w-3 h-3" strokeWidth={3} /> Per Ticket
+                           <TrendingUp className="w-3 h-3" strokeWidth={3} /> {t('ordersTables.perTicket')}
                         </div>
                      </div>
                      <div className="p-4 bg-emerald-500/10 rounded-2xl group-hover:scale-110 transition-transform duration-500 shadow-inner">
@@ -319,7 +338,7 @@ const OrdersTables: React.FC = () => {
                   <div className="p-6 flex justify-between items-start relative">
                      <div className="absolute top-0 right-0 w-32 h-32 bg-red-500/5 rounded-full -mr-16 -mt-16 blur-3xl" />
                      <div className="relative z-10">
-                        <p className="text-[10px] font-black text-muted uppercase tracking-[0.2em] opacity-60">Cancellations</p>
+                        <p className="text-[10px] font-black text-muted uppercase tracking-[0.2em] opacity-60">{t('ordersTables.cancellations')}</p>
                         <h3 className="text-3xl font-black text-foreground mt-2 tracking-tighter">
                            {kpi.cancellationRate}%
                            <span className="text-sm font-black text-muted/40 ml-2">({kpi.cancellations})</span>
@@ -328,7 +347,7 @@ const OrdersTables: React.FC = () => {
                            "text-[10px] font-black mt-2 flex items-center gap-1 uppercase tracking-widest",
                            kpi.cancellations > 5 ? "text-red-500" : "text-muted opacity-40"
                         )}>
-                           <AlertOctagon className="w-3 h-3" strokeWidth={3} /> {kpi.cancellations > 5 ? 'High Rate' : 'Stable'}
+                           <AlertOctagon className="w-3 h-3" strokeWidth={3} /> {t('ordersTables.highRate')}
                         </div>
                      </div>
                      <div className="p-4 bg-red-500/10 rounded-2xl group-hover:scale-110 transition-transform duration-500 shadow-inner">
@@ -341,10 +360,10 @@ const OrdersTables: React.FC = () => {
                   <div className="p-6 flex justify-between items-start relative">
                      <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full -mr-16 -mt-16 blur-3xl" />
                      <div className="relative z-10">
-                        <p className="text-[10px] font-black text-muted uppercase tracking-[0.2em] opacity-60">Table Turnover</p>
-                        <h3 className="text-3xl font-black text-foreground mt-2 tracking-tighter">{kpi.turnover > 0 ? kpi.turnover + ' MIN' : 'N/A'}</h3>
+                        <p className="text-[10px] font-black text-muted uppercase tracking-[0.2em] opacity-60">{t('ordersTables.tableTurnover')}</p>
+                        <h3 className="text-3xl font-black text-foreground mt-2 tracking-tighter">{kpi.turnover > 0 ? `${kpi.turnover} ${t('ordersTables.min')}` : t('ordersTables.na')}</h3>
                         <div className="text-[10px] text-blue-500 font-black mt-2 flex items-center gap-1 uppercase tracking-widest">
-                           <Clock className="w-3 h-3" strokeWidth={3} /> Cycle Time
+                           <Clock className="w-3 h-3" strokeWidth={3} /> {t('ordersTables.cycleTime')}
                         </div>
                      </div>
                      <div className="p-4 bg-blue-500/10 rounded-2xl group-hover:scale-110 transition-transform duration-500 shadow-inner">
@@ -361,13 +380,13 @@ const OrdersTables: React.FC = () => {
                <Card className="lg:col-span-2 bg-card/60 backdrop-blur-xl border border-border rounded-[2.5rem] shadow-2xl overflow-hidden">
                   <CardHeader className="p-8 border-b border-border bg-muted/5">
                      <CardTitle className="text-[10px] font-black text-foreground uppercase tracking-[0.2em] flex items-center gap-3">
-                        <TrendingUp className="w-4 h-4 text-primary" strokeWidth={3} /> Hourly Load Distribution
+                        <TrendingUp className="w-4 h-4 text-primary" strokeWidth={3} /> {t('ordersTables.hourlyDistribution')}
                      </CardTitle>
                   </CardHeader>
                   <CardContent className="p-8">
                      <div className="h-[350px] w-full">
                         {hourlyData.length === 0 ? (
-                           <div className="h-full flex items-center justify-center text-muted uppercase font-black text-[10px] tracking-widest opacity-40">Zero Data Point Signal</div>
+                           <div className="h-full flex items-center justify-center text-muted uppercase font-black text-[10px] tracking-widest opacity-40">{t('ordersTables.zeroData')}</div>
                         ) : (
                            <ResponsiveContainer width="100%" height="100%">
                               <BarChart data={hourlyData} margin={{ top: 20, right: 30, left: 0, bottom: 0 }}>
@@ -405,13 +424,13 @@ const OrdersTables: React.FC = () => {
                <Card className="bg-card/60 backdrop-blur-xl border border-border rounded-[2.5rem] shadow-2xl overflow-hidden">
                   <CardHeader className="p-8 border-b border-border bg-muted/5">
                      <CardTitle className="text-[10px] font-black text-foreground uppercase tracking-[0.2em] flex items-center gap-3">
-                        <Utensils className="w-4 h-4 text-primary" strokeWidth={3} /> Channel Fragmentation
+                        <Utensils className="w-4 h-4 text-primary" strokeWidth={3} /> {t('ordersTables.channelFragmentation')}
                      </CardTitle>
                   </CardHeader>
                   <CardContent className="p-8 flex flex-col items-center justify-center min-h-[400px]">
                      <div className="h-[250px] w-full relative">
                         {orderTypeData.length === 0 ? (
-                           <div className="h-full flex items-center justify-center text-muted uppercase font-black text-[10px] tracking-widest opacity-40">Empty_Set</div>
+                           <div className="h-full flex items-center justify-center text-muted uppercase font-black text-[10px] tracking-widest opacity-40">{t('ordersTables.emptySet')}</div>
                         ) : (
                            <ResponsiveContainer width="100%" height="100%">
                               <PieChart>
@@ -442,7 +461,7 @@ const OrdersTables: React.FC = () => {
                         )}
                         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
                            <span className="text-4xl font-black text-foreground italic tracking-tighter">{kpi.totalOrders}</span>
-                           <span className="text-[9px] text-muted font-black uppercase tracking-widest opacity-40">AGGREGATE_VOL</span>
+                           <span className="text-[9px] text-muted font-black uppercase tracking-widest opacity-40">{t('ordersTables.aggregateVol')}</span>
                         </div>
                      </div>
                      <div className="w-full space-y-4 mt-8">
@@ -464,7 +483,7 @@ const OrdersTables: React.FC = () => {
             <Card className="bg-card/60 backdrop-blur-xl border border-border rounded-[2.5rem] shadow-2xl overflow-hidden">
                <CardHeader className="p-8 border-b border-border bg-muted/5">
                   <CardTitle className="text-[10px] font-black text-foreground uppercase tracking-[0.2em] flex items-center gap-3">
-                     <Clock className="w-4 h-4 text-primary" strokeWidth={3} /> Node Latency & Internal Service Flow
+                     <Clock className="w-4 h-4 text-primary" strokeWidth={3} /> {t('ordersTables.flowTitle')}
                   </CardTitle>
                </CardHeader>
                <CardContent className="p-10">
@@ -475,8 +494,8 @@ const OrdersTables: React.FC = () => {
                         <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mb-4 shadow-inner group-hover:scale-110 transition-transform">
                            <ClipboardList className="w-6 h-6 text-primary" strokeWidth={3} />
                         </div>
-                        <p className="text-[11px] font-black text-foreground uppercase italic tracking-tighter">Order_Origin</p>
-                        <p className="text-[9px] text-muted font-black uppercase tracking-widest mt-1 opacity-40">Node_Start</p>
+                        <p className="text-[11px] font-black text-foreground uppercase italic tracking-tighter">{t('ordersTables.orderOrigin')}</p>
+                        <p className="text-[9px] text-muted font-black uppercase tracking-widest mt-1 opacity-40">{t('ordersTables.nodeStart')}</p>
 
                         <div className="hidden md:flex absolute top-1/2 -right-8 w-8 h-8 z-10 items-center justify-center bg-card rounded-full border border-border shadow-lg">
                            <ArrowRight className="w-4 h-4 text-primary" strokeWidth={3} />
@@ -488,8 +507,8 @@ const OrdersTables: React.FC = () => {
                         <div className="w-14 h-14 rounded-2xl bg-purple-500/10 flex items-center justify-center mb-4 shadow-inner group-hover:scale-110 transition-transform">
                            <CheckCircle2 className="w-6 h-6 text-purple-500" strokeWidth={3} />
                         </div>
-                        <p className="text-[11px] font-black text-foreground uppercase italic tracking-tighter">Kitchen_Sync</p>
-                        <p className="text-[10px] text-primary font-black mt-1 font-mono">{serviceFlow.toKitchen} MIN</p>
+                        <p className="text-[11px] font-black text-foreground uppercase italic tracking-tighter">{t('ordersTables.kitchenSync')}</p>
+                        <p className="text-[10px] text-primary font-black mt-1 font-mono">{serviceFlow.toKitchen} {t('ordersTables.min')}</p>
 
                         <div className="hidden md:flex absolute top-1/2 -right-8 w-8 h-8 z-10 items-center justify-center bg-card rounded-full border border-border shadow-lg">
                            <ArrowRight className="w-4 h-4 text-primary" strokeWidth={3} />
@@ -501,8 +520,8 @@ const OrdersTables: React.FC = () => {
                         <div className="w-14 h-14 rounded-2xl bg-orange-500/10 flex items-center justify-center mb-4 shadow-inner group-hover:scale-110 transition-transform">
                            <Utensils className="w-6 h-6 text-orange-500" strokeWidth={3} />
                         </div>
-                        <p className="text-[11px] font-black text-foreground uppercase italic tracking-tighter">Production_Ready</p>
-                        <p className="text-[10px] text-primary font-black mt-1 font-mono">{serviceFlow.toReady} MIN</p>
+                        <p className="text-[11px] font-black text-foreground uppercase italic tracking-tighter">{t('ordersTables.productionReady')}</p>
+                        <p className="text-[10px] text-primary font-black mt-1 font-mono">{serviceFlow.toReady} {t('ordersTables.min')}</p>
 
                         <div className="hidden md:flex absolute top-1/2 -right-8 w-8 h-8 z-10 items-center justify-center bg-card rounded-full border border-border shadow-lg">
                            <ArrowRight className="w-4 h-4 text-primary" strokeWidth={3} />
@@ -514,17 +533,17 @@ const OrdersTables: React.FC = () => {
                         <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 flex items-center justify-center mb-4 shadow-inner group-hover:scale-110 transition-transform">
                            <Truck className="w-6 h-6 text-emerald-500" strokeWidth={3} />
                         </div>
-                        <p className="text-[11px] font-black text-foreground uppercase italic tracking-tighter">Settle_Vector</p>
-                        <p className="text-[10px] text-primary font-black mt-1 font-mono">{serviceFlow.toServed} MIN</p>
+                        <p className="text-[11px] font-black text-foreground uppercase italic tracking-tighter">{t('ordersTables.settleVector')}</p>
+                        <p className="text-[10px] text-primary font-black mt-1 font-mono">{serviceFlow.toServed} {t('ordersTables.min')}</p>
                      </div>
 
                   </div>
                   <div className="mt-8 flex items-center justify-center gap-8 bg-muted/5 p-4 rounded-2xl border border-dashed border-border">
                      <div className="flex items-center gap-3">
-                        <span className="text-[9px] font-black text-muted uppercase tracking-[0.3em]">Total_Cycle_Latency:</span>
-                        <span className="text-lg font-black text-foreground italic font-mono">{serviceFlow.total} MIN</span>
+                        <span className="text-[9px] font-black text-muted uppercase tracking-[0.3em]">{t('ordersTables.totalLatency')}</span>
+                        <span className="text-lg font-black text-foreground italic font-mono">{serviceFlow.total} {t('ordersTables.min')}</span>
                      </div>
-                     <span className="text-[9px] font-black text-muted/40 uppercase tracking-widest italic">Requires KDS node engagement for extreme accuracy</span>
+                     <span className="text-[9px] font-black text-muted/40 uppercase tracking-widest italic">{t('ordersTables.kdsRequirement')}</span>
                   </div>
                </CardContent>
             </Card>
@@ -536,7 +555,7 @@ const OrdersTables: React.FC = () => {
                <Card className="bg-card/60 backdrop-blur-xl border border-border rounded-[2.5rem] shadow-2xl overflow-hidden">
                   <CardHeader className="p-8 border-b border-border bg-muted/5">
                      <CardTitle className="text-[10px] font-black text-foreground uppercase tracking-[0.2em] flex items-center gap-3">
-                        <Armchair className="w-4 h-4 text-primary" strokeWidth={3} /> Spatial Utilization Analytics
+                        <Armchair className="w-4 h-4 text-primary" strokeWidth={3} /> {t('ordersTables.spatialAnalytics')}
                      </CardTitle>
                   </CardHeader>
                   <CardContent className="p-0">
@@ -544,23 +563,23 @@ const OrdersTables: React.FC = () => {
                         <table className="w-full text-sm text-left border-collapse">
                            <thead className="text-[9px] font-black text-muted uppercase bg-muted/5 border-b border-border sticky top-0 backdrop-blur-xl z-10 tracking-widest">
                               <tr>
-                                 <th className="px-8 py-5">NODE_IDENT</th>
-                                 <th className="px-8 py-5">SESSIONS</th>
-                                 <th className="px-8 py-5">LATENCY</th>
-                                 <th className="px-8 py-5 text-right">GROSS_REV</th>
+                                 <th className="px-8 py-5">{t('ordersTables.nodeIdent')}</th>
+                                 <th className="px-8 py-5">{t('ordersTables.sessions')}</th>
+                                 <th className="px-8 py-5">{t('ordersTables.latency')}</th>
+                                 <th className="px-8 py-5 text-right">{t('ordersTables.grossRev')}</th>
                               </tr>
                            </thead>
                            <tbody className="divide-y divide-border">
-                              {tableStats.length === 0 && <tr><td colSpan={4} className="p-8 text-center text-muted uppercase font-black text-[10px] tracking-widest opacity-40">No spatial load detected</td></tr>}
+                              {tableStats.length === 0 && <tr><td colSpan={4} className="p-8 text-center text-muted uppercase font-black text-[10px] tracking-widest opacity-40">{t('ordersTables.noSpatialLoad')}</td></tr>}
                               {tableStats.map((table) => (
                                  <tr key={table.id} className="hover:bg-muted/5 transition-colors group">
                                     <td className="px-8 py-5 font-black text-foreground italic group-hover:text-primary transition-colors text-lg">{table.id}</td>
                                     <td className="px-8 py-5 font-mono text-xs text-muted font-black uppercase">
-                                       {table.usage} <span className="opacity-40">TXN</span>
+                                       {table.usage} <span className="opacity-40">{t('ordersTables.txn')}</span>
                                     </td>
                                     <td className="px-8 py-5 font-mono text-xs text-muted font-black">{table.avgTurnover}</td>
                                     <td className="px-8 py-5 text-right font-mono text-foreground font-black text-base">
-                                       <span className="text-[10px] mr-1 opacity-30 font-sans NOT-italic">ETB</span>
+                                       <span className="text-[10px] mr-1 opacity-30 font-sans NOT-italic">{t('adminDashboard.etb')}</span>
                                        {table.revenue.toLocaleString()}
                                     </td>
                                  </tr>
@@ -575,7 +594,7 @@ const OrdersTables: React.FC = () => {
                <Card className="bg-card/60 backdrop-blur-xl border border-border rounded-[2.5rem] shadow-2xl overflow-hidden">
                   <CardHeader className="p-8 border-b border-border bg-muted/5">
                      <CardTitle className="text-[10px] font-black text-foreground uppercase tracking-[0.2em] flex items-center gap-3">
-                        <CheckCircle2 className="w-4 h-4 text-emerald-500" strokeWidth={3} /> Human Resource Efficiency
+                        <CheckCircle2 className="w-4 h-4 text-emerald-500" strokeWidth={3} /> {t('ordersTables.humanEfficiency')}
                      </CardTitle>
                   </CardHeader>
                   <CardContent className="p-0">
@@ -583,14 +602,14 @@ const OrdersTables: React.FC = () => {
                         <table className="w-full text-sm text-left border-collapse">
                            <thead className="text-[9px] font-black text-muted uppercase bg-muted/5 border-b border-border sticky top-0 backdrop-blur-xl z-10 tracking-widest">
                               <tr>
-                                 <th className="px-8 py-5">HUMAN_NODE</th>
-                                 <th className="px-8 py-5">VOLUME</th>
-                                 <th className="px-8 py-5">SPEED_COEFF</th>
-                                 <th className="px-8 py-5 text-right">ERR_VECTOR</th>
+                                 <th className="px-8 py-5">{t('ordersTables.humanNode')}</th>
+                                 <th className="px-8 py-5">{t('ordersTables.volume')}</th>
+                                 <th className="px-8 py-5">{t('ordersTables.speedCoeff')}</th>
+                                 <th className="px-8 py-5 text-right">{t('ordersTables.errVector')}</th>
                               </tr>
                            </thead>
                            <tbody className="divide-y divide-border">
-                              {staffStats.length === 0 && <tr><td colSpan={4} className="p-8 text-center text-muted uppercase font-black text-[10px] tracking-widest opacity-40">No active human nodes</td></tr>}
+                              {staffStats.length === 0 && <tr><td colSpan={4} className="p-8 text-center text-muted uppercase font-black text-[10px] tracking-widest opacity-40">{t('ordersTables.noHumanNodes')}</td></tr>}
                               {staffStats.map((staff) => (
                                  <tr key={staff.name} className="hover:bg-muted/5 transition-colors group">
                                     <td className="px-8 py-5">
@@ -601,9 +620,9 @@ const OrdersTables: React.FC = () => {
                                     <td className="px-8 py-5 font-mono text-xs text-muted font-black">{staff.speed}</td>
                                     <td className="px-8 py-5 text-right">
                                        {staff.errors === 0 ? (
-                                          <Badge className="bg-emerald-500/10 text-emerald-500 border-none font-black text-[9px] tracking-[0.2em] px-3 py-1">ULTRA_PERFECT</Badge>
+                                          <Badge className="bg-emerald-500/10 text-emerald-500 border-none font-black text-[9px] tracking-[0.2em] px-3 py-1">{t('ordersTables.ultraPerfect')}</Badge>
                                        ) : (
-                                          <Badge className="bg-red-500/10 text-red-500 border-none font-black text-[9px] tracking-[0.2em] px-3 py-1">{staff.errors} V-ERRORS</Badge>
+                                          <Badge className="bg-red-500/10 text-red-500 border-none font-black text-[9px] tracking-[0.2em] px-3 py-1">{staff.errors} {t('ordersTables.vErrors')}</Badge>
                                        )}
                                     </td>
                                  </tr>

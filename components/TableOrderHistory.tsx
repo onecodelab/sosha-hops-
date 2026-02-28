@@ -6,6 +6,7 @@ import {
     Clock, Calendar, DollarSign,
     Hash, User, ShoppingBag, ChevronRight, CreditCard
 } from 'lucide-react';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface TableOrderHistoryProps {
     orders: Order[];
@@ -18,6 +19,7 @@ export const TableOrderHistory: React.FC<TableOrderHistoryProps> = ({
     view,
     onOrderClick
 }) => {
+    const { t } = useLanguage();
 
     const groupedOrders = useMemo(() => {
         const groups: Record<string, Order[]> = {};
@@ -27,7 +29,7 @@ export const TableOrderHistory: React.FC<TableOrderHistoryProps> = ({
             let groupKey = '';
 
             if (view === 'daily') {
-                groupKey = date.toLocaleDateString('en-US', {
+                groupKey = date.toLocaleDateString(t('common.locale') === 'am' ? 'am-ET' : 'en-US', {
                     weekday: 'short',
                     month: 'short',
                     day: 'numeric'
@@ -35,9 +37,9 @@ export const TableOrderHistory: React.FC<TableOrderHistoryProps> = ({
             } else if (view === 'weekly') {
                 const startOfWeek = new Date(date);
                 startOfWeek.setDate(date.getDate() - date.getDay());
-                groupKey = `Week of ${startOfWeek.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
+                groupKey = `${t('tableStatus.weekOf')} ${startOfWeek.toLocaleDateString(t('common.locale') === 'am' ? 'am-ET' : 'en-US', { month: 'short', day: 'numeric' })}`;
             } else {
-                groupKey = date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+                groupKey = date.toLocaleDateString(t('common.locale') === 'am' ? 'am-ET' : 'en-US', { month: 'long', year: 'numeric' });
             }
 
             if (!groups[groupKey]) groups[groupKey] = [];
@@ -47,13 +49,13 @@ export const TableOrderHistory: React.FC<TableOrderHistoryProps> = ({
         return Object.entries(groups).sort((a, b) => {
             return new Date(b[1][0].created_at).getTime() - new Date(a[1][0].created_at).getTime();
         });
-    }, [orders, view]);
+    }, [orders, view, t]);
 
     if (orders.length === 0) {
         return (
             <div className="flex flex-col items-center justify-center py-20 opacity-30 grayscale">
                 <ShoppingBag className="w-12 h-12 mb-4" />
-                <p className="text-[10px] font-black uppercase tracking-[0.3em]">No Transactions for this Table</p>
+                <p className="text-[10px] font-black uppercase tracking-[0.3em]">{t('tableStatus.noTransactions')}</p>
             </div>
         );
     }
@@ -86,7 +88,7 @@ export const TableOrderHistory: React.FC<TableOrderHistoryProps> = ({
                                         <div className="min-w-0">
                                             <div className="flex items-center gap-2">
                                                 <span className="text-[11px] font-black text-white uppercase tracking-tight truncate">
-                                                    By {order.waiter?.full_name || 'System'}
+                                                    {t('tableStatus.by')} {order.waiter?.full_name || 'System'}
                                                 </span>
                                                 <Badge variant="outline" className="text-[9px] border-white/10 text-zinc-500 flex-shrink-0">
                                                     #{order.order_number || order.id.slice(0, 4)}
@@ -107,9 +109,9 @@ export const TableOrderHistory: React.FC<TableOrderHistoryProps> = ({
 
                                     <div className="text-right flex items-center gap-5 flex-shrink-0">
                                         <div className="flex flex-col items-end">
-                                            <p className="text-[9px] font-black text-zinc-500 uppercase tracking-widest leading-none mb-1.5 opacity-60">Items: {order.order_items?.length || 0}</p>
+                                            <p className="text-[9px] font-black text-zinc-500 uppercase tracking-widest leading-none mb-1.5 opacity-60">{t('tableStatus.items')}: {order.order_items?.length || 0}</p>
                                             <p className="text-sm font-black text-primary font-mono tracking-tighter">
-                                                ETB {order.total_amount.toLocaleString()}
+                                                {t('common.etb')} {order.total_amount.toLocaleString()}
                                             </p>
                                         </div>
                                         <ChevronRight className="w-4 h-4 text-zinc-700 group-hover:text-primary transition-all translate-x-0 group-hover:translate-x-1 duration-300" />

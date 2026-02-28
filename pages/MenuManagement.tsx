@@ -27,7 +27,7 @@ const MenuManagement: React.FC = () => {
       const isPrivileged = user?.role === 'owner' || user?.role === 'admin';
       if (!isPrivileged && !item.is_available) return false;
 
-      const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesSearch = (item.name || '').toLowerCase().includes(searchTerm.toLowerCase());
       const matchesCategory = selectedCategory === 'all' || item.category === selectedCategory;
       return matchesSearch && matchesCategory;
     });

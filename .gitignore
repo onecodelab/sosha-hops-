@@ -26,3 +26,15 @@ dist-ssr
 .env*.local
 .env
 env
+
+# Diagnostic and temp files
+baroAUDIT.md
+diag_profile.cjs
+out.sql
+temp_run.js
+tmp/
+supabase/AMIR_ORG_DIAGNOSTIC.sql
+supabase/DIAGNOSTIC_RLS_LEAK.sql
+supabase/FINAL_AMIR_CLEANUP.sql
+supabase/FINAL_AMIR_CLEANUP_V2.sql
+supabase/ULTIMATE_TRUTH.sql

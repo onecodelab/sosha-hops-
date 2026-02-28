@@ -41,7 +41,7 @@ export const Header: React.FC<HeaderProps> = ({
                         <div className="hidden lg:flex items-center gap-8 mr-4">
                             <div className="flex flex-col items-end">
                                 <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">{headerStats.label}</span>
-                                <span className="text-xl font-black text-foreground font-mono tracking-tighter">ETB {headerStats.value.toLocaleString()}</span>
+                                <span className="text-xl font-black text-foreground font-mono tracking-tighter">{t('adminDashboard.etb')} {headerStats.value.toLocaleString()}</span>
                             </div>
                         </div>
                     </RoleGuard>
@@ -83,15 +83,15 @@ export const Header: React.FC<HeaderProps> = ({
                                     <div className="flex items-center gap-2 mt-1">
                                         <Badge className="bg-black/20 text-black border-black/10 text-[8px] font-black uppercase">{role}</Badge>
                                         <span className="w-1 h-1 rounded-full bg-black/20" />
-                                        <span className="text-[9px] font-bold uppercase opacity-60 tracking-widest">Active Station</span>
+                                        <span className="text-[9px] font-bold uppercase opacity-60 tracking-widest">{t('common.activeStation')}</span>
                                     </div>
                                 </div>
                                 <div className="p-2">
                                     <button className="w-full text-left px-4 py-3 rounded-xl text-sm font-bold text-foreground hover:bg-primary/10 hover:text-primary transition-colors flex items-center gap-3">
-                                        <Users className="w-4 h-4" /> My Profile
+                                        <Users className="w-4 h-4" /> {t('common.myProfile')}
                                     </button>
                                     <button className="w-full text-left px-4 py-3 rounded-xl text-sm font-bold text-foreground hover:bg-primary/10 hover:text-primary transition-colors flex items-center gap-3">
-                                        <Bell className="w-4 h-4" /> Notifications
+                                        <Bell className="w-4 h-4" /> {t('common.notifications')}
                                     </button>
                                     <div className="h-px bg-primary/30 my-2 mx-2" />
                                     <button

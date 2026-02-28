@@ -19,6 +19,7 @@ export const MarketingLayout: React.FC<MarketingLayoutProps> = ({ children }) =>
 
     const navLinks = [
         { label: t('marketingNav.features'), to: '/features' },
+        { label: t('marketingNav.pricing'), to: '/pricing' },
         { label: t('marketingNav.demo'), to: '/book-demo' },
     ];
 
@@ -86,6 +87,11 @@ export const MarketingLayout: React.FC<MarketingLayoutProps> = ({ children }) =>
                                 </Link>
                             ) : (
                                 <div className="hidden md:flex items-center gap-3">
+                                    <Link to="/onboarding" className="ripple-link">
+                                        <Button variant="ghost" className="mono-os text-[9px] font-black tracking-widest px-5 h-10 text-brand-yellow/80 hover:text-brand-yellow hover:bg-brand-yellow/5 uppercase">
+                                            Apply for Access
+                                        </Button>
+                                    </Link>
                                     <Link to="/login" className="ripple-link">
                                         <Button variant="ghost" className="mono-os text-[9px] font-black tracking-widest px-6 h-10 text-white/70 hover:text-white hover:bg-white/5 uppercase">
                                             {t('marketingNav.login')}
@@ -147,6 +153,13 @@ export const MarketingLayout: React.FC<MarketingLayoutProps> = ({ children }) =>
                                 </div>
                                 {!user && (
                                     <div className="pt-6 space-y-4 border-t border-white/5">
+                                        <Link
+                                            to="/onboarding"
+                                            onClick={() => setMobileOpen(false)}
+                                            className="block mono-os text-xs font-black text-brand-yellow/80 hover:text-brand-yellow transition-colors uppercase"
+                                        >
+                                            New here? Apply for Access →
+                                        </Link>
                                         <Link
                                             to="/login"
                                             onClick={() => setMobileOpen(false)}

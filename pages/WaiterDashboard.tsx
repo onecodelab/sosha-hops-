@@ -13,7 +13,8 @@ import {
   Receipt,
   PlusCircle,
   Timer,
-  MessageSquare
+  MessageSquare,
+  ChefHat
 } from 'lucide-react';
 import { PaymentVerificationModal, FloatingPaymentButton } from '../components/PaymentVerificationModal';
 import { ReceiptVerificationModal } from '../components/ReceiptVerificationModal';
@@ -29,7 +30,7 @@ const WaiterDashboard: React.FC = () => {
   const { profile, user } = useAuth();
   const { activeBranchId } = useBranch();
   const [tables, setTables] = useState<Table[]>([]);
-  const { orders, kitchenPipeline, billingQueue, isLoading: ordersLoading, refresh: refreshOrders } = useOrders(user?.id);
+  const { orders, kitchenPipeline, readyOrders, billingQueue, isLoading: ordersLoading, refresh: refreshOrders } = useOrders(user?.id);
 
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isPaymentOpen, setIsPaymentOpen] = useState(false);
@@ -44,18 +45,23 @@ const WaiterDashboard: React.FC = () => {
   const [selectedClaimTable, setSelectedClaimTable] = useState<string | null>(null);
   const [claiming, setClaiming] = useState(false);
   const [isSyncingTables, setIsSyncingTables] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   const fetchTables = useCallback(async () => {
+    if (!activeBranchId) {
+      setTables([]);
+      setIsSyncingTables(false);
+      return;
+    }
     setIsSyncingTables(true);
     try {
-      let query = supabase.from('tables').select('*').order('table_number');
+      const { data: tableData, error: tableErr } = await supabase
+        .from('tables')
+        .select('*')
+        .eq('branch_id', activeBranchId)
+        .order('table_number');
 
-      // Filter by active branch
-      if (activeBranchId) {
-        query = query.eq('branch_id', activeBranchId);
-      }
-
-      const { data: tableData } = await query;
+      if (tableErr) throw tableErr;
       if (tableData) setTables(tableData as Table[]);
     } catch (err: any) {
       showToast("Sync Failed: " + err.message, "error");
@@ -70,16 +76,24 @@ const WaiterDashboard: React.FC = () => {
   }, [fetchTables, refreshOrders]);
 
   useEffect(() => {
+    if (!activeBranchId) return;
     fetchTables();
-    const sub = supabase.channel('waiter_tables_sync')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'tables' }, () => fetchTables())
+    const channelName = `waiter_tables_${activeBranchId}`;
+    const sub = supabase.channel(channelName)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'tables',
+        filter: `branch_id=eq.${activeBranchId}`
+      }, () => fetchTables())
       .subscribe();
     return () => { supabase.removeChannel(sub); };
-  }, [fetchTables]);
+  }, [fetchTables, activeBranchId]);
 
   const handleTableAction = (table: Table) => {
     setSelectedTableData({ id: table.id, number: table.table_number });
     setAppendOrderId(table.current_order_id || null);
+    setIsSidebarCollapsed(true);
     setIsCreateOpen(true);
   };
 
@@ -93,8 +107,10 @@ const WaiterDashboard: React.FC = () => {
     } else if (action === 'pay') {
       if (target) {
         setActiveBillOrder(target);
+        setIsSidebarCollapsed(true);
         setIsBillModalOpen(true);
       } else {
+        setIsSidebarCollapsed(true);
         setIsPaymentOpen(true);
       }
     } else if (action === 'served' && target) {
@@ -129,6 +145,8 @@ const WaiterDashboard: React.FC = () => {
   return (
     <DashboardLayout
       title="Waiter Station"
+      isSidebarCollapsed={isSidebarCollapsed}
+      onSidebarCollapseChange={setIsSidebarCollapsed}
       subtitle={
         <span className="flex items-center gap-1.5 uppercase font-black tracking-widest text-[10px]">
           <span className="text-zinc-500">Floor •</span>
@@ -137,61 +155,133 @@ const WaiterDashboard: React.FC = () => {
       }
       actions={
         <div className="flex gap-3">
-          <Button onClick={() => setIsCreateOpen(true)} className="bg-primary hover:bg-primary/90 text-black h-10 px-6 font-black uppercase text-[10px] rounded-xl flex items-center gap-2 shadow-lg shadow-primary/20 hover:shadow-primary/40 transition-all">
+          <Button
+            onClick={() => {
+              setIsSidebarCollapsed(true);
+              setIsCreateOpen(true);
+            }}
+            className="bg-primary hover:bg-primary/90 text-black h-10 px-6 font-black uppercase text-[10px] rounded-xl flex items-center gap-2 shadow-lg shadow-primary/20 hover:shadow-primary/40 transition-all hover:scale-[1.05] active:scale-[0.95]"
+          >
             <PlusCircle className="w-4 h-4" /> New Order
           </Button>
           <Button onClick={refreshAll} variant="outline" size="icon" className="border-white/10 bg-white/5 hover:bg-white/10 h-10 w-10 text-white"><RefreshCw className={cn("h-4 w-4", isLoading && "animate-spin")} /></Button>
         </div>
       }
     >
-      <div className="space-y-10 animate-in fade-in duration-700">
+      <motion.div
+        initial="hidden"
+        animate={isCreateOpen || isBillModalOpen || isPaymentOpen || isClaimModalOpen ? "modalOpen" : "show"}
+        variants={{
+          hidden: { opacity: 0 },
+          show: {
+            opacity: 1,
+            scale: 1,
+            filter: 'blur(0px)',
+            transition: {
+              staggerChildren: 0.1,
+              delayChildren: 0.2
+            }
+          },
+          modalOpen: {
+            scale: 0.98,
+            opacity: 0.6,
+            filter: 'blur(4px)',
+            transition: { duration: 0.4, ease: "circOut" }
+          }
+        }}
+        className="space-y-10"
+      >
         {/* Standardized Glass HUD */}
-        <Card variant="elevated" className="mx-2 p-8 flex flex-col md:flex-row items-center justify-between gap-8 relative overflow-hidden group border-primary/10">
-          <div className="absolute inset-0 bg-gradient-to-r from-primary/5 via-transparent to-primary/5 opacity-50" />
+        <motion.div
+          variants={{
+            hidden: { opacity: 0, y: 20 },
+            show: { opacity: 1, y: 0 },
+            modalOpen: { opacity: 0.4 }
+          }}
+        >
+          <Card variant="elevated" className="mx-2 p-8 flex flex-col md:flex-row items-center justify-between gap-8 relative overflow-hidden group border-primary/10">
+            <div className="absolute inset-0 bg-gradient-to-r from-primary/5 via-transparent to-primary/5 opacity-50" />
 
-          <div className="flex items-center gap-12 z-10 w-full md:w-auto justify-between md:justify-start">
-            <div className="flex flex-col">
-              <span className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] mb-1">Floor Availability</span>
-              <div className="flex items-baseline gap-2">
-                <span className="text-4xl font-black text-foreground tracking-tighter">{tables.filter(t => t.status === 'available').length}</span>
-                <span className="text-[10px] font-black text-gray-600 uppercase tracking-widest">/ {tables.length} FREE</span>
+            <div className="flex items-center gap-12 z-10 w-full md:w-auto justify-between md:justify-start">
+              <div className="flex flex-col">
+                <span className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] mb-1">Floor Availability</span>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-4xl font-black text-foreground tracking-tighter">{tables.filter(t => t.status === 'available').length}</span>
+                  <span className="text-[10px] font-black text-gray-600 uppercase tracking-widest">/ {tables.length} FREE</span>
+                </div>
+              </div>
+
+              <div className="w-px h-10 bg-white/5 hidden md:block" />
+
+              <div className="flex flex-col">
+                <span className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] mb-1">Table Load</span>
+                <div className="flex items-center gap-3">
+                  <span className="text-4xl font-black text-red-500 tracking-tighter drop-shadow-[0_0_15px_rgba(239,68,68,0.3)]">{tables.filter(t => t.status === 'occupied').length}</span>
+                  <Badge variant="destructive" className="text-[8px] h-4">Occupied</Badge>
+                </div>
+              </div>
+
+              <div className="w-px h-10 bg-white/5 hidden md:block" />
+
+              <div className="flex flex-col">
+                <span className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] mb-1">Workload</span>
+                <div className="flex items-center gap-3">
+                  <span className="text-4xl font-black text-primary tracking-tighter drop-shadow-[0_0_15px_rgba(251,191,36,0.3)]">{orders.length}</span>
+                  {kitchenPipeline.length > 0 && <Badge variant="warning" className="text-[8px] h-4">+{kitchenPipeline.length} Pipeline</Badge>}
+                </div>
               </div>
             </div>
 
-            <div className="w-px h-10 bg-white/5 hidden md:block" />
-
-            <div className="flex flex-col">
-              <span className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] mb-1">Table Load</span>
-              <div className="flex items-center gap-3">
-                <span className="text-4xl font-black text-red-500 tracking-tighter drop-shadow-[0_0_15px_rgba(239,68,68,0.3)]">{tables.filter(t => t.status === 'occupied').length}</span>
-                <Badge variant="destructive" className="text-[8px] h-4">Occupied</Badge>
-              </div>
+            <div className="z-10 hidden lg:block">
+              <Button onClick={refreshAll} variant="outline" size="sm" className="h-10 px-6">
+                <RefreshCw className={cn("h-4 w-4 mr-2", isLoading && "animate-spin")} />
+                Sync Station
+              </Button>
             </div>
-
-            <div className="w-px h-10 bg-white/5 hidden md:block" />
-
-            <div className="flex flex-col">
-              <span className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] mb-1">Workload</span>
-              <div className="flex items-center gap-3">
-                <span className="text-4xl font-black text-primary tracking-tighter drop-shadow-[0_0_15px_rgba(251,191,36,0.3)]">{orders.length}</span>
-                {kitchenPipeline.length > 0 && <Badge variant="warning" className="text-[8px] h-4">+{kitchenPipeline.length} Queue</Badge>}
-              </div>
-            </div>
-          </div>
-
-          <div className="z-10 hidden lg:block">
-            <Button onClick={refreshAll} variant="outline" size="sm" className="h-10 px-6">
-              <RefreshCw className={cn("h-4 w-4 mr-2", isLoading && "animate-spin")} />
-              Sync Station
-            </Button>
-          </div>
-        </Card>
+          </Card>
+        </motion.div>
 
         {/* Task View Only */}
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-10 px-2 pb-32">
+          {/* Ready to Serve - CRITICAL FOR WAITER */}
+          <motion.div
+            variants={{
+              hidden: { opacity: 0, x: -20 },
+              show: { opacity: 1, x: 0 },
+              modalOpen: { opacity: 0.2, filter: 'grayscale(1)' }
+            }}
+            className="space-y-6 col-span-full"
+          >
+            <div className="flex items-center justify-between px-2">
+              <h3 className="text-sm font-black text-foreground uppercase tracking-widest flex items-center gap-3">
+                <ChefHat className="w-5 h-5 text-green-500" /> Ready to Serve
+              </h3>
+              <Badge variant="outline" className="bg-green-500/10 text-green-500 border-green-500/20 font-mono">
+                {readyOrders.length}
+              </Badge>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {readyOrders.map(order =>
+                <OrderCard key={order.id} order={order} role="waiter" onAction={handleOrderAction} />
+              )}
+              {readyOrders.length === 0 && (
+                <div className="h-24 flex flex-col gap-2 items-center justify-center border border-dashed border-white/5 rounded-3xl opacity-20 text-[10px] font-black uppercase tracking-widest col-span-full">
+                  All orders served
+                </div>
+              )}
+            </div>
+          </motion.div>
+
           {/* Unassigned Chat Orders */}
           {orders.filter(o => o.source === 'chatbot' && !o.waiter_id).length > 0 && (
-            <div className="space-y-6 col-span-full">
+            <motion.div
+              variants={{
+                hidden: { opacity: 0, y: 20 },
+                show: { opacity: 1, y: 0 },
+                modalOpen: { opacity: 0.1 }
+              }}
+              className="space-y-6 col-span-full"
+            >
               <div className="flex items-center justify-between px-2">
                 <h3 className="text-sm font-black text-foreground uppercase tracking-widest flex items-center gap-3">
                   <MessageSquare className="w-5 h-5 text-primary" /> Unassigned Chat Orders
@@ -242,11 +332,17 @@ const WaiterDashboard: React.FC = () => {
                   </Card>
                 ))}
               </div>
-            </div>
+            </motion.div>
           )}
 
           {/* Kitchen Pipeline */}
-          <div className="space-y-6">
+          <motion.div
+            variants={{
+              hidden: { opacity: 0, y: 20 },
+              show: { opacity: 1, y: 0 }
+            }}
+            className="space-y-6"
+          >
             <div className="flex items-center justify-between px-2">
               <h3 className="text-sm font-black text-foreground uppercase tracking-widest flex items-center gap-3">
                 <Timer className="w-5 h-5 text-orange-500" /> Kitchen Pipeline
@@ -262,10 +358,16 @@ const WaiterDashboard: React.FC = () => {
                 </div>
               )}
             </div>
-          </div>
+          </motion.div>
 
           {/* Billing Queue */}
-          <div className="space-y-6">
+          <motion.div
+            variants={{
+              hidden: { opacity: 0, y: 20 },
+              show: { opacity: 1, y: 0 }
+            }}
+            className="space-y-6"
+          >
             <div className="flex items-center justify-between px-2">
               <h3 className="text-sm font-black text-foreground uppercase tracking-widest flex items-center gap-3">
                 <Receipt className="w-5 h-5 text-green-500" /> Billing Queue
@@ -281,9 +383,9 @@ const WaiterDashboard: React.FC = () => {
                 </div>
               )}
             </div>
-          </div>
+          </motion.div>
         </div>
-      </div>
+      </motion.div>
 
       {/* Claim Modal */}
       <Dialog
@@ -327,7 +429,7 @@ const WaiterDashboard: React.FC = () => {
             </Button>
           </div>
         </div>
-      </Dialog>
+      </Dialog >
 
       <BillModal
         isOpen={isBillModalOpen}

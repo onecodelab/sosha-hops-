@@ -11,15 +11,18 @@ export const useMenu = (filterAvailable = false) => {
   const [loading, setLoading] = useState(true);
 
   const fetchData = async () => {
-    if (!activeBranchId) return;
     setLoading(true);
     try {
       // Switched to 'view_menu_details' for Single Source of Truth
-      const { data, error } = await supabase
+      let query = supabase
         .from('view_menu_details')
-        .select('*')
-        .or(`branch_id.eq.${activeBranchId},branch_id.eq.00000000-0000-0000-0000-000000000000`)
-        .order('name', { ascending: true });
+        .select('*');
+
+      if (activeBranchId) {
+        query = query.or(`branch_id.eq.${activeBranchId},branch_id.is.null`);
+      }
+
+      const { data, error } = await query.order('name', { ascending: true });
 
       if (error) throw error;
 
@@ -38,6 +41,7 @@ export const useMenu = (filterAvailable = false) => {
   };
 
   useEffect(() => {
+    // Fetch even if activeBranchId is null to show global items
     fetchData();
     // Real-time sync for menu, recipes, and ingredients to satisfy "event-driven" rule
     const menuSub = supabase.channel('menu_economics_sync')
@@ -48,7 +52,7 @@ export const useMenu = (filterAvailable = false) => {
       .subscribe();
 
     return () => { supabase.removeChannel(menuSub); };
-  }, []);
+  }, [activeBranchId]);
 
   return { menuItems, categories, loading, refreshMenu: fetchData };
 };

@@ -62,13 +62,18 @@ const Inventory: React.FC = () => {
   const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
 
   useEffect(() => {
-    if (!activeBranchId) return;
+    // We allow fetching even if activeBranchId is null (System Global) 
+    // to see organization-wide inventory or empty state for new orgs.
     fetchInventory();
     fetchUnits();
 
     // Subscribe to both ingredients (for global info) and branch_inventory (for stock)
     const ingredientsSub = supabase.channel('ingredients_sync_v2')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'ingredients' }, () => fetchInventory())
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'ingredients'
+      }, () => fetchInventory())
       .subscribe();
 
     const branchSub = supabase.channel('branch_inventory_sync')
@@ -76,7 +81,8 @@ const Inventory: React.FC = () => {
         event: '*',
         schema: 'public',
         table: 'branch_inventory',
-        filter: `branch_id=eq.${activeBranchId}`
+        // If no branch is active, we don't apply an ID filter but let RLS handle it
+        filter: activeBranchId ? `branch_id=eq.${activeBranchId}` : undefined
       }, () => fetchInventory())
       .subscribe();
 
@@ -92,22 +98,25 @@ const Inventory: React.FC = () => {
   };
 
   const fetchInventory = async () => {
-    if (!activeBranchId) return;
     setLoading(true);
     try {
-      // Since 'view_inventory_intelligence' might not be fully branch-aware yet for all fields,
-      // we'll fetch from ingredients and join branch_inventory for the current branch truth.
-      // We still use intelligence view if possible, but let's favor branch truth for operational fields.
-      const { data, error } = await supabase
+      // If we are in System Global (no branch), we'll fetch across the whole organization.
+      // RLS keeps it secure.
+      let query = supabase
         .from('ingredients')
         .select(`
           *,
           units(id, abbreviation, name),
           branch_inventory!left(current_stock, par_min, par_max, last_updated)
         `)
-        .eq('is_active', true)
-        .eq('branch_inventory.branch_id', activeBranchId);
+        .eq('is_active', true);
 
+      // Only apply branch filter if one is selected
+      if (activeBranchId) {
+        query = query.eq('branch_inventory.branch_id', activeBranchId);
+      }
+
+      const { data, error } = await query;
       if (error) throw error;
 
       // Transform data to flatten branch_inventory
@@ -221,6 +230,7 @@ const Inventory: React.FC = () => {
 
       if (isAddingNew) {
         const newSku = formData.sku || `ING-${formData.name.replace(/\s+/g, '-').substring(0, 8).toUpperCase()}-${Math.floor(Math.random() * 1000)}`;
+        const selectedUnit = units.find(u => u.id === formData.unit_id);
         const { data: newIng, error: insertErr } = await supabase
           .from('ingredients')
           .insert({
@@ -230,7 +240,9 @@ const Inventory: React.FC = () => {
             cost_per_unit: Number(formData.cost_per_unit),
             expiry_days: Math.floor(Number(formData.expiry_days)),
             unit_id: formData.unit_id,
+            unit_type: selectedUnit?.abbreviation || '',
             weight_per_unit: Number(formData.weight_per_unit),
+            organization_id: organizationId,
             is_active: true
           }).select('id').single();
 
@@ -238,11 +250,12 @@ const Inventory: React.FC = () => {
         targetIngredientId = newIng.id;
       } else {
         // 1. Update Global Ingredient Definitions
+        const selectedUnit = units.find(u => u.id === formData.unit_id);
         const globalUpdate = {
           cost_per_unit: Number(formData.cost_per_unit),
           expiry_days: Math.floor(Number(formData.expiry_days)),
           unit_id: formData.unit_id,
-          // derived unit_type for legacy compatibility (optional, better to let DB trigger handle or ignore)
+          unit_type: selectedUnit?.abbreviation || '',
           weight_per_unit: Number(formData.weight_per_unit),
           updated_at: new Date().toISOString()
         };

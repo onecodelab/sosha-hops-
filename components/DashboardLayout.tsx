@@ -19,16 +19,25 @@ interface DashboardLayoutProps {
   subtitle?: string;
   actions?: React.ReactNode;
   className?: string;
+  isSidebarCollapsed?: boolean;
+  onSidebarCollapseChange?: (collapsed: boolean) => void;
 }
 
-export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, title, subtitle, actions, className }) => {
+export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
+  children, title, subtitle, actions, className,
+  isSidebarCollapsed, onSidebarCollapseChange
+}) => {
   const { profile, signOut } = useAuth();
   const { t } = useLanguage();
   const navigate = useNavigate();
   const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [internalIsCollapsed, setInternalIsCollapsed] = useState(false);
+
+  const isCollapsed = isSidebarCollapsed !== undefined ? isSidebarCollapsed : internalIsCollapsed;
+  const setIsCollapsed = onSidebarCollapseChange || setInternalIsCollapsed;
+
   const [isProfileActive, setIsProfileActive] = useState(false);
   const profileRef = React.useRef<HTMLButtonElement>(null);
 

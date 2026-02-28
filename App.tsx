@@ -11,11 +11,13 @@ import { queryClient } from './lib/queryClient';
 // Marketing Pages
 const Landing = lazy(() => import('./pages/Landing'));
 const BookDemo = lazy(() => import('./pages/Pricing'));
+const PricingPage = lazy(() => import('./pages/PricingPage'));
 const Features = lazy(() => import('./pages/Features'));
 
 // Auth Pages
 const Login = lazy(() => import('./pages/Login'));
 const SignUp = lazy(() => import('./pages/SignUp'));
+const Onboarding = lazy(() => import('./pages/Onboarding'));
 
 // App Dispatcher
 const AppDispatcher = lazy(() => import('./pages/AppDispatcher'));
@@ -45,6 +47,9 @@ const Settings = lazy(() => import('./pages/Settings'));
 const OwnerCommandCenter = lazy(() => import('./pages/OwnerCommandCenter'));
 const WaiterTips = lazy(() => import('./pages/WaiterTips'));
 const AdminTipsAudit = lazy(() => import('./pages/AdminTipsAudit'));
+const BaroAdminDashboard = lazy(() => import('./pages/BaroAdminDashboard'));
+const SupplierDashboard = lazy(() => import('./pages/SupplierDashboard'));
+const DriverDashboard = lazy(() => import('./pages/DriverDashboard'));
 
 import { ChatWidget } from './components/ChatWidget';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -76,13 +81,14 @@ const App: React.FC = () => {
                   {/* Public Marketing Layer */}
                   <Route path="/" element={<Landing />} />
                   <Route path="/book-demo" element={<BookDemo />} />
-                  <Route path="/pricing" element={<Navigate to="/book-demo" replace />} />
+                  <Route path="/pricing" element={<PricingPage />} />
                   <Route path="/features" element={<Features />} />
 
                   {/* Auth Layer */}
                   <Route path="/login" element={<Login />} />
                   <Route path="/login/:role" element={<Login />} />
                   <Route path="/signup" element={<SignUp />} />
+                  <Route path="/onboarding" element={<Onboarding />} />
 
                   {/* Protected App Layer */}
                   <Route path="/app" element={<ProtectedRoute><AppDispatcher /></ProtectedRoute>} />
@@ -218,6 +224,24 @@ const App: React.FC = () => {
                   <Route path="/app/owner" element={
                     <ProtectedRoute allowedRoles={['owner']}>
                       <OwnerCommandCenter />
+                    </ProtectedRoute>
+                  } />
+
+                  <Route path="/app/baro-admin" element={
+                    <ProtectedRoute allowedRoles={['super_admin']}>
+                      <BaroAdminDashboard />
+                    </ProtectedRoute>
+                  } />
+
+                  <Route path="/app/supplier/dashboard" element={
+                    <ProtectedRoute allowedRoles={['supplier']}>
+                      <SupplierDashboard />
+                    </ProtectedRoute>
+                  } />
+
+                  <Route path="/app/driver/dashboard" element={
+                    <ProtectedRoute allowedRoles={['driver']}>
+                      <DriverDashboard />
                     </ProtectedRoute>
                   } />
 

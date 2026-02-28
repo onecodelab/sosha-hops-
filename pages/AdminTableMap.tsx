@@ -10,6 +10,7 @@ import {
 import { supabase } from '../supabase';
 import { useAuth } from '../AuthContext';
 import { useBranch } from '../contexts/BranchContext';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface Table {
   id: string;
@@ -24,6 +25,7 @@ interface Table {
 }
 
 const AdminTableMap: React.FC = () => {
+  const { t } = useLanguage();
   const { profile } = useAuth();
   const { activeBranchId } = useBranch();
   const [tables, setTables] = useState<Table[]>([]);
@@ -75,7 +77,7 @@ const AdminTableMap: React.FC = () => {
       if (error) throw error;
       setTables([...tables, data]);
       setSelectedId(data.id);
-      showToast(`Table ${data.table_number} added`);
+      showToast(t('tableMap.addSuccess').replace('{num}', data.table_number));
     } catch (err: any) {
       showToast(err.message, "error");
     }
@@ -87,14 +89,14 @@ const AdminTableMap: React.FC = () => {
 
   const handleDeleteTable = async () => {
     if (!selectedId) return;
-    if (!confirm("Delete this table?")) return;
+    if (!confirm(t('tableMap.confirmDelete'))) return;
 
     try {
       const { error } = await supabase.from('tables').delete().eq('id', selectedId).eq('organization_id', profile?.organization_id);
       if (error) throw error;
       setTables(prev => prev.filter(t => t.id !== selectedId));
       setSelectedId(null);
-      showToast("Table removed");
+      showToast(t('tableMap.deleteSuccess'));
     } catch (err: any) {
       showToast(err.message, "error");
     }
@@ -111,7 +113,7 @@ const AdminTableMap: React.FC = () => {
       }));
       const { error } = await supabase.from('tables').upsert(tablesToSave);
       if (error) throw error;
-      showToast("Layout saved successfully!", "success");
+      showToast(t('tableMap.saveSuccess'), "success");
     } catch (err: any) {
       showToast(err.message, "error");
     } finally {
@@ -123,8 +125,8 @@ const AdminTableMap: React.FC = () => {
 
   return (
     <DashboardLayout
-      title="Table Map Editor"
-      subtitle="Design your restaurant floor plan"
+      title={t('tableMap.title')}
+      subtitle={t('tableMap.subtitle')}
       actions={
         <div className="flex gap-2">
           <Button variant="outline" onClick={fetchTables} size="icon">
@@ -132,7 +134,7 @@ const AdminTableMap: React.FC = () => {
           </Button>
           <Button onClick={handleSaveLayout} className="bg-primary text-black font-bold" disabled={saving}>
             {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
-            Save Layout
+            {t('tableMap.saveLayout')}
           </Button>
         </div>
       }
@@ -141,20 +143,20 @@ const AdminTableMap: React.FC = () => {
 
         {/* Toolbar */}
         <div className="xl:col-span-4 flex flex-wrap gap-4 bg-card/50 p-4 rounded-2xl border border-border backdrop-blur-md">
-          <p className="w-full text-[10px] font-bold text-muted uppercase tracking-widest mb-1">Add Elements</p>
+          <p className="w-full text-[10px] font-bold text-muted uppercase tracking-widest mb-1">{t('tableMap.addElements')}</p>
           <Button variant="outline" size="sm" onClick={() => handleAddTable('round')} className="gap-2 border-zinc-800 hover:bg-zinc-800">
-            <Circle className="w-4 h-4" /> 2-Top (Round)
+            <Circle className="w-4 h-4" /> {t('tableMap.round2Top')}
           </Button>
           <Button variant="outline" size="sm" onClick={() => handleAddTable('square')} className="gap-2 border-zinc-800 hover:bg-zinc-800">
-            <Square className="w-4 h-4" /> 4-Top (Square)
+            <Square className="w-4 h-4" /> {t('tableMap.square4Top')}
           </Button>
           <Button variant="outline" size="sm" onClick={() => handleAddTable('rectangle')} className="gap-2 border-zinc-800 hover:bg-zinc-800">
-            <Maximize2 className="w-4 h-4" /> 6-Top (Rect)
+            <Maximize2 className="w-4 h-4" /> {t('tableMap.rect6Top')}
           </Button>
 
           <div className="ml-auto flex items-center gap-2 text-xs text-muted">
             <Info className="w-3 h-3" />
-            Drag tables to reposition. Click to edit properties.
+            {t('tableMap.dragHint')}
           </div>
         </div>
 
@@ -168,7 +170,7 @@ const AdminTableMap: React.FC = () => {
           >
             {/* Floor Label */}
             <div className="absolute top-6 left-6 text-[10px] font-mono text-zinc-700 uppercase tracking-[0.3em] font-bold">
-              Main Dining Hall / Layout Editor
+              {t('tableMap.floorLabel')}
             </div>
 
             {loading ? (
@@ -222,7 +224,7 @@ const AdminTableMap: React.FC = () => {
             {tables.length === 0 && !loading && (
               <div className="absolute inset-0 flex flex-col items-center justify-center text-zinc-600">
                 <Layout className="w-12 h-12 mb-4 opacity-20" />
-                <p className="text-sm font-medium">Floor is empty. Add your first table from the toolbar.</p>
+                <p className="text-sm font-medium">{t('tableMap.emptyFloor')}</p>
               </div>
             )}
           </div>
@@ -233,31 +235,31 @@ const AdminTableMap: React.FC = () => {
           <Card className="bg-[#111] border-border h-full sticky top-4">
             <CardHeader className="border-b border-border">
               <CardTitle className="text-sm uppercase tracking-widest text-muted font-bold flex items-center gap-2">
-                <MousePointer2 className="w-4 h-4" /> Properties
+                <MousePointer2 className="w-4 h-4" /> {t('tableMap.properties')}
               </CardTitle>
             </CardHeader>
             <CardContent className="pt-6 space-y-6">
               {!selectedTable ? (
                 <div className="py-10 text-center text-zinc-600 italic text-sm">
-                  Select a table on the map to edit its details.
+                  {t('tableMap.selectHint')}
                 </div>
               ) : (
                 <div className="space-y-5 animate-in slide-in-from-right-2 duration-300">
                   <div className="space-y-2">
-                    <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Table Identity</label>
+                    <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">{t('tableMap.tableIdentity')}</label>
                     <div className="relative">
                       <span className="absolute left-3 top-3 text-zinc-500 text-xs font-mono">#</span>
                       <Input
                         value={selectedTable.table_number}
                         onChange={(e) => handleUpdateTable(selectedTable.id, { table_number: e.target.value })}
                         className="pl-8 bg-black/40 border-zinc-800 font-mono"
-                        placeholder="e.g. T1"
+                        placeholder={t('tableMap.idPlaceholder')}
                       />
                     </div>
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Seating Capacity</label>
+                    <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">{t('tableMap.seatingCapacity')}</label>
                     <div className="relative">
                       <Armchair className="absolute left-3 top-3 w-4 h-4 text-zinc-500" />
                       <Input
@@ -272,7 +274,7 @@ const AdminTableMap: React.FC = () => {
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Shape</label>
+                    <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">{t('tableMap.shape')}</label>
                     <div className="grid grid-cols-3 gap-2">
                       {(['square', 'round', 'rectangle'] as const).map(s => (
                         <button
@@ -295,9 +297,9 @@ const AdminTableMap: React.FC = () => {
                       onClick={handleDeleteTable}
                       className="w-full bg-red-500/10 text-red-500 border-red-500/20 hover:bg-red-500/20"
                     >
-                      <Trash2 className="w-4 h-4 mr-2" /> Delete Table
+                      <Trash2 className="w-4 h-4 mr-2" /> {t('tableMap.deleteTable')}
                     </Button>
-                    <p className="text-[10px] text-zinc-600 text-center">Changes are temporary until you hit "Save Layout"</p>
+                    <p className="text-[10px] text-zinc-600 text-center">{t('tableMap.temporaryHint')}</p>
                   </div>
                 </div>
               )}

@@ -9,9 +9,9 @@ import {
 } from 'lucide-react';
 import { supabase } from '../supabase';
 import { InviteStaffModal } from '../components/InviteStaffModal';
-import { UserProfile } from '../types';
 import { useAuth } from '../AuthContext';
 import { useBranch } from '../contexts/BranchContext';
+import { useLanguage } from '../contexts/LanguageContext';
 import { StaffOrderHistory } from '../components/StaffOrderHistory';
 import { OrderDetailsModal } from '../components/OrderDetailsModal';
 import { Order } from '../types';
@@ -32,6 +32,7 @@ interface PerformanceMetric {
 const AdminStaffPerformance: React.FC = () => {
    const { profile: currentUserProfile } = useAuth();
    const { branches, activeBranchId } = useBranch();
+   const { t } = useLanguage();
    const [loading, setLoading] = useState(true);
    const [metrics, setMetrics] = useState<PerformanceMetric[]>([]);
    const [activeShifts, setActiveShifts] = useState<any[]>([]);
@@ -152,17 +153,17 @@ const AdminStaffPerformance: React.FC = () => {
       const labels = [];
 
       if (activeTab === 'waiter') {
-         if (m.total_sales > 50000) labels.push({ text: 'Top Earner', color: 'text-yellow-400 border-yellow-400/30 bg-yellow-400/10' });
-         if (m.orders_per_shift > 15) labels.push({ text: 'High Efficiency', color: 'text-blue-400 border-blue-400/30 bg-blue-400/10' });
-         if (m.total_orders > 50 && m.avg_order_value < 100) labels.push({ text: 'High Vol / Low Val', color: 'text-orange-400 border-orange-400/30 bg-orange-400/10' });
+         if (m.total_sales > 50000) labels.push({ text: t('staffPerformance.labels.topEarner'), color: 'text-yellow-400 border-yellow-400/30 bg-yellow-400/10' });
+         if (m.orders_per_shift > 15) labels.push({ text: t('staffPerformance.labels.highEfficiency'), color: 'text-blue-400 border-blue-400/30 bg-blue-400/10' });
+         if (m.total_orders > 50 && m.avg_order_value < 100) labels.push({ text: t('staffPerformance.labels.highVolLowVal'), color: 'text-orange-400 border-orange-400/30 bg-orange-400/10' });
       }
       else if (activeTab === 'kitchen') {
-         if (m.total_orders > 200) labels.push({ text: 'Machine', color: 'text-red-400 border-red-400/30 bg-red-400/10' });
-         if (m.orders_per_shift > 50) labels.push({ text: 'Shift Leader', color: 'text-green-400 border-green-400/30 bg-green-400/10' });
+         if (m.total_orders > 200) labels.push({ text: t('staffPerformance.labels.machine'), color: 'text-red-400 border-red-400/30 bg-red-400/10' });
+         if (m.orders_per_shift > 50) labels.push({ text: t('staffPerformance.labels.shiftLeader'), color: 'text-green-400 border-green-400/30 bg-green-400/10' });
       }
 
       // Universal
-      if (m.shifts_count === 0) labels.push({ text: 'Inactive', color: 'text-zinc-500 border-zinc-500/30 bg-zinc-500/10' });
+      if (m.shifts_count === 0) labels.push({ text: t('staffPerformance.labels.inactive'), color: 'text-zinc-500 border-zinc-500/30 bg-zinc-500/10' });
 
       return labels;
    };
@@ -231,8 +232,8 @@ const AdminStaffPerformance: React.FC = () => {
 
    return (
       <DashboardLayout
-         title="Staff Intelligence"
-         subtitle="Performance metrics and roster management"
+         title={t('staffPerformance.title')}
+         subtitle={t('staffPerformance.subtitle')}
          actions={
             <div className="flex items-center gap-2">
                <div className="flex bg-primary/5 p-1 rounded-lg border border-primary/20">
@@ -245,12 +246,12 @@ const AdminStaffPerformance: React.FC = () => {
                            timeRange === range ? "bg-primary text-black" : "text-gray-400 hover:text-white"
                         )}
                      >
-                        {range === 'today' ? 'Today' : range === '7d' ? '7 Days' : '30 Days'}
+                        {range === 'today' ? t('staffPerformance.today') : range === '7d' ? t('staffPerformance.days7') : t('staffPerformance.days30')}
                      </button>
                   ))}
                </div>
                <Button onClick={() => setIsInviteOpen(true)} className="bg-white text-black font-bold h-9">
-                  <UserPlus className="w-4 h-4 mr-2" /> Add Staff
+                  <UserPlus className="w-4 h-4 mr-2" /> {t('staffPerformance.addStaff')}
                </Button>
             </div>
          }
@@ -265,7 +266,7 @@ const AdminStaffPerformance: React.FC = () => {
                         <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                         <div>
                            <p className="font-bold text-emerald-400 text-xs uppercase">{s.staff_name}</p>
-                           <p className="text-[10px] text-emerald-500/60 font-mono">Clocked In: {new Date(s.clock_in_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                           <p className="text-[10px] text-emerald-500/60 font-mono">{t('staffPerformance.clockedIn')}: {new Date(s.clock_in_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
                         </div>
                      </div>
                      <Timer className="w-4 h-4 text-emerald-500/50" />
@@ -273,7 +274,7 @@ const AdminStaffPerformance: React.FC = () => {
                ))}
                {activeShifts.length === 0 && (
                   <div className="col-span-full bg-primary/5 border border-primary/20 p-3 rounded-xl flex items-center justify-center gap-2 text-gray-500 text-xs uppercase font-bold tracking-widest">
-                     <Clock className="w-4 h-4" /> No Active Shifts
+                     <Clock className="w-4 h-4" /> {t('staffPerformance.noActiveShifts')}
                   </div>
                )}
             </div>
@@ -303,19 +304,19 @@ const AdminStaffPerformance: React.FC = () => {
                      <table className="w-full text-sm text-left">
                         <thead className="text-xs text-gray-500 uppercase bg-black/40 font-black tracking-wider">
                            <tr>
-                              <th className="px-6 py-4">Rank & Staff</th>
-                              <th className="px-6 py-4 text-right">Orders</th>
-                              <th className="px-6 py-4 text-right">Sales Generated</th>
-                              <th className="px-6 py-4 text-center">Efficiency</th>
-                              <th className="px-6 py-4">Insight</th>
-                              <th className="px-6 py-4 text-right">Action</th>
+                              <th className="px-6 py-4">{t('staffPerformance.rankAndStaff')}</th>
+                              <th className="px-6 py-4 text-right">{t('staffPerformance.orders')}</th>
+                              <th className="px-6 py-4 text-right">{t('staffPerformance.salesGenerated')}</th>
+                              <th className="px-6 py-4 text-center">{t('staffPerformance.efficiency')}</th>
+                              <th className="px-6 py-4">{t('staffPerformance.insight')}</th>
+                              <th className="px-6 py-4 text-right">{t('staffPerformance.action')}</th>
                            </tr>
                         </thead>
                         <tbody className="divide-y divide-primary/10">
                            {rankedList.length === 0 ? (
                               <tr>
                                  <td colSpan={6} className="px-6 py-12 text-center text-gray-500 uppercase font-bold tracking-widest text-xs">
-                                    No Data for this period
+                                    {t('staffPerformance.noData')}
                                  </td>
                               </tr>
                            ) : rankedList.map((m, idx) => (
@@ -333,7 +334,7 @@ const AdminStaffPerformance: React.FC = () => {
                                        </div>
                                        <div>
                                           <p className="font-bold text-white text-sm">{m.staff_name}</p>
-                                          <p className="text-[10px] text-gray-500 font-mono">{m.shifts_count} Shifts • {m.hours_worked} Hrs</p>
+                                          <p className="text-[10px] text-gray-500 font-mono">{m.shifts_count} {t('staffPerformance.shifts')} • {m.hours_worked} {t('staffPerformance.hours')}</p>
                                        </div>
                                     </div>
                                  </td>
@@ -342,8 +343,8 @@ const AdminStaffPerformance: React.FC = () => {
                                  </td>
                                  <td className="px-6 py-4 text-right">
                                     <div className="flex flex-col items-end">
-                                       <span className="font-bold text-primary font-mono">ETB {m.total_sales.toLocaleString()}</span>
-                                       {m.total_orders > 0 && <span className="text-[9px] text-gray-500">AOV: {Math.round(m.avg_order_value)}</span>}
+                                       <span className="font-bold text-primary font-mono">{t('adminDashboard.etb')} {m.total_sales.toLocaleString()}</span>
+                                       {m.total_orders > 0 && <span className="text-[9px] text-gray-500">{t('staffPerformance.snapshot.aov')}: {Math.round(m.avg_order_value)}</span>}
                                     </div>
                                  </td>
                                  <td className="px-6 py-4 text-center">
@@ -376,7 +377,7 @@ const AdminStaffPerformance: React.FC = () => {
                                           }}
                                           className="h-9 px-3 bg-primary/5 border border-primary/10 text-primary hover:bg-primary hover:text-black font-black text-[10px] uppercase tracking-widest rounded-xl transition-all"
                                        >
-                                          View History
+                                          {t('staffPerformance.viewHistory')}
                                        </Button>
                                        <Button
                                           size="sm"
@@ -405,7 +406,7 @@ const AdminStaffPerformance: React.FC = () => {
             </Card>
 
             {/* Edit Compensation Modal */}
-            <Dialog isOpen={!!editingStaff} onClose={() => setEditingStaff(null)} title={`Personnel Master File: ${editingStaff?.full_name}`}>
+            <Dialog isOpen={!!editingStaff} onClose={() => setEditingStaff(null)} title={`${t('staffPerformance.personnelFile')}: ${editingStaff?.full_name}`}>
                <div className="space-y-6 pt-2">
 
                   {/* Performance Snapshot */}
@@ -415,15 +416,15 @@ const AdminStaffPerformance: React.FC = () => {
                      return (
                         <div className="grid grid-cols-3 gap-3">
                            <div className="bg-primary/5 border border-primary/10 p-3 rounded-2xl">
-                              <p className="text-[10px] font-black text-gray-500 uppercase">30D Orders</p>
+                              <p className="text-[10px] font-black text-gray-500 uppercase">{t('staffPerformance.snapshot.orders30d')}</p>
                               <p className="text-xl font-black text-white font-mono mt-1">{m.total_orders}</p>
                            </div>
                            <div className="bg-primary/5 border border-primary/10 p-3 rounded-2xl">
-                              <p className="text-[10px] font-black text-gray-500 uppercase">30D Sales</p>
+                              <p className="text-[10px] font-black text-gray-500 uppercase">{t('staffPerformance.snapshot.sales30d')}</p>
                               <p className="text-xl font-black text-primary font-mono mt-1">{Math.round(m.total_sales / 1000)}k</p>
                            </div>
                            <div className="bg-primary/5 border border-primary/10 p-3 rounded-2xl">
-                              <p className="text-[10px] font-black text-gray-500 uppercase">AOV</p>
+                              <p className="text-[10px] font-black text-gray-500 uppercase">{t('staffPerformance.snapshot.aov')}</p>
                               <p className="text-xl font-black text-white font-mono mt-1">{Math.round(m.avg_order_value)}</p>
                            </div>
                         </div>
@@ -433,14 +434,14 @@ const AdminStaffPerformance: React.FC = () => {
                   <div className="p-4 bg-primary/5 border border-primary/20 rounded-2xl flex gap-3">
                      <DollarSign className="w-5 h-5 text-primary shrink-0" />
                      <div>
-                        <p className="text-xs font-bold text-white uppercase tracking-wider">Salary & Compensation</p>
-                        <p className="text-[10px] text-gray-400 mt-0.5">Adjust base pay and authorization status. Changes are logged for audit.</p>
+                        <p className="text-xs font-bold text-white uppercase tracking-wider">{t('staffPerformance.compensation')}</p>
+                        <p className="text-[10px] text-gray-400 mt-0.5">{t('staffPerformance.compensationSubtitle')}</p>
                      </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
                      <div className="space-y-2">
-                        <label className="text-xs font-bold text-gray-500 uppercase">Home Branch</label>
+                        <label className="text-xs font-bold text-gray-500 uppercase">{t('staffPerformance.homeBranch')}</label>
                         <div className="relative">
                            <MapPin className="absolute left-3 top-3 h-4 w-4 text-gray-500 pointer-events-none" />
                            <select
@@ -459,7 +460,7 @@ const AdminStaffPerformance: React.FC = () => {
 
                   <div className="grid grid-cols-2 gap-4">
                      <div className="space-y-2">
-                        <label className="text-xs font-bold text-gray-500 uppercase">Base Salary (ETB)</label>
+                        <label className="text-xs font-bold text-gray-500 uppercase">{t('staffPerformance.baseSalary')} ({t('adminDashboard.etb')})</label>
                         <Input
                            type="number"
                            value={editForm.base_salary}
@@ -469,7 +470,7 @@ const AdminStaffPerformance: React.FC = () => {
                         />
                      </div>
                      <div className="space-y-2">
-                        <label className="text-xs font-bold text-gray-500 uppercase">Pay Period</label>
+                        <label className="text-xs font-bold text-gray-500 uppercase">{t('staffPerformance.payPeriod')}</label>
                         <select
                            value={editForm.pay_period}
                            onChange={e => setEditForm({ ...editForm, pay_period: e.target.value as any })}
@@ -484,8 +485,8 @@ const AdminStaffPerformance: React.FC = () => {
 
                   <div className="flex items-center justify-between p-4 bg-black/20 rounded-2xl border border-primary/10">
                      <div>
-                        <p className="text-sm font-bold text-white">Salary Approval</p>
-                        <p className="text-[10px] text-gray-500 uppercase font-black tracking-widest mt-0.5">Required for payroll issuance</p>
+                        <p className="text-sm font-bold text-white">{t('staffPerformance.salaryApproval')}</p>
+                        <p className="text-[10px] text-gray-500 uppercase font-black tracking-widest mt-0.5">{t('staffPerformance.payrollIssuance')}</p>
                      </div>
                      <button
                         disabled={!isOwner}
@@ -501,8 +502,8 @@ const AdminStaffPerformance: React.FC = () => {
                   </div>
 
                   <div className="flex gap-3 justify-end pt-4 border-t border-primary/10">
-                     <Button variant="ghost" onClick={() => setEditingStaff(null)} className="rounded-xl text-xs font-bold uppercase tracking-widest">Discard</Button>
-                     <Button onClick={handleSaveEdit} className="bg-primary text-black font-black rounded-xl text-xs tracking-widest uppercase shadow-xl hover:scale-[1.02] active:scale-95 transition-all">Update Master Record</Button>
+                     <Button variant="ghost" onClick={() => setEditingStaff(null)} className="rounded-xl text-xs font-bold uppercase tracking-widest">{t('staffPerformance.discard')}</Button>
+                     <Button onClick={handleSaveEdit} className="bg-primary text-black font-black rounded-xl text-xs tracking-widest uppercase shadow-xl hover:scale-[1.02] active:scale-95 transition-all">{t('staffPerformance.updateRecord')}</Button>
                   </div>
                </div>
             </Dialog>
@@ -511,7 +512,7 @@ const AdminStaffPerformance: React.FC = () => {
             <Dialog
                isOpen={!!selectedStaffHistory}
                onClose={() => setSelectedStaffHistory(null)}
-               title={`Order History: ${selectedStaffHistory?.name}`}
+               title={`${t('staffPerformance.orderHistoryTitle')}: ${selectedStaffHistory?.name}`}
                className="max-w-4xl"
             >
                <div className="space-y-6">
@@ -526,7 +527,7 @@ const AdminStaffPerformance: React.FC = () => {
                               historyView === v ? "bg-primary text-black shadow-lg" : "text-gray-500 hover:text-white"
                            )}
                         >
-                           {v}
+                           {t(`staffPerformance.periods.${v}`)}
                         </button>
                      ))}
                   </div>
@@ -535,7 +536,7 @@ const AdminStaffPerformance: React.FC = () => {
                      {historyLoading ? (
                         <div className="flex flex-col items-center justify-center py-20 opacity-30">
                            <RefreshCw className="w-10 h-10 animate-spin mb-4" />
-                           <p className="text-[10px] font-black uppercase tracking-[0.3em]">Syncing History...</p>
+                           <p className="text-[10px] font-black uppercase tracking-[0.3em]">{t('staffPerformance.syncingHistory')}</p>
                         </div>
                      ) : (
                         <StaffOrderHistory
@@ -557,23 +558,23 @@ const AdminStaffPerformance: React.FC = () => {
             <InviteStaffModal isOpen={isInviteOpen} onClose={() => setIsInviteOpen(false)} onSuccess={fetchData} />
 
             {/* Delete Confirmation Dialog */}
-            <Dialog isOpen={!!staffToDelete} onClose={() => !isDeleting && setStaffToDelete(null)} title="Confirm Deletion">
+            <Dialog isOpen={!!staffToDelete} onClose={() => !isDeleting && setStaffToDelete(null)} title={t('staffPerformance.confirmDeletion')}>
                <div className="space-y-6 pt-2">
                   <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-2xl flex gap-3 text-red-500">
                      <AlertTriangle className="w-5 h-5 shrink-0" />
                      <div>
-                        <p className="text-xs font-bold uppercase tracking-wider">Permanent Action</p>
-                        <p className="text-[10px] opacity-80 mt-0.5">Deleting this profile will remove all associated performance records. This cannot be undone.</p>
+                        <p className="text-xs font-bold uppercase tracking-wider">{t('staffPerformance.permanentAction')}</p>
+                        <p className="text-[10px] opacity-80 mt-0.5">{t('staffPerformance.deletionWarning')}</p>
                      </div>
                   </div>
 
                   <p className="text-sm text-gray-300 px-1">
-                     Are you sure you want to delete <span className="text-white font-bold">{metrics.find(m => m.staff_id === staffToDelete)?.staff_name}</span>?
+                     {t('staffPerformance.deleteConfirmationPrompt')} <span className="text-white font-bold">{metrics.find(m => m.staff_id === staffToDelete)?.staff_name}</span>?
                   </p>
 
                   <div className="flex gap-3 justify-end pt-4">
-                     <Button variant="ghost" onClick={() => setStaffToDelete(null)} disabled={isDeleting} className="rounded-xl text-xs font-bold uppercase tracking-widest text-gray-500">Cancel</Button>
-                     <Button onClick={handleDeleteStaff} isLoading={isDeleting} className="bg-red-600 hover:bg-red-500 text-white font-black rounded-xl text-xs tracking-widest uppercase shadow-xl transition-all">Yes, Delete Profile</Button>
+                     <Button variant="ghost" onClick={() => setStaffToDelete(null)} disabled={isDeleting} className="rounded-xl text-xs font-bold uppercase tracking-widest text-gray-500">{t('common.cancel')}</Button>
+                     <Button onClick={handleDeleteStaff} isLoading={isDeleting} className="bg-red-600 hover:bg-red-500 text-white font-black rounded-xl text-xs tracking-widest uppercase shadow-xl transition-all">{t('staffPerformance.deleteProfile')}</Button>
                   </div>
                </div>
             </Dialog>

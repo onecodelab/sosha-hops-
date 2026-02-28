@@ -17,6 +17,7 @@ const Login: React.FC = () => {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [magicLinkSent, setMagicLinkSent] = useState(false);
 
   // Auto-redirect if already logged in with a valid profile
   useEffect(() => {
@@ -61,19 +62,9 @@ const Login: React.FC = () => {
       }
 
       if (!currentProfile) {
-        const targetRole = role ? role.toLowerCase() : 'waiter';
-        const displayName = authData.user.user_metadata?.full_name || email.split('@')[0];
-
-        const { error: upsertError } = await supabase.from('profiles').upsert({
-          id: authData.user.id,
-          email: authData.user.email,
-          full_name: displayName,
-          name: displayName,
-          role: targetRole,
-          is_online: true
-        }, { onConflict: 'id' });
-
-        if (upsertError) throw new Error(`Profile sync failed: ${upsertError.message}`);
+        // No profile exists — user must apply via onboarding first
+        await supabase.auth.signOut();
+        throw new Error('No account found. Please apply for access first.');
       } else {
         await supabase.from('profiles').update({ is_online: true }).eq('id', authData.user.id);
       }
@@ -81,11 +72,40 @@ const Login: React.FC = () => {
       await refreshProfile();
       showToast(t('login.welcomeBack'), "success");
 
+      // Force immediate redirect to dispatcher to handle role routing
+      navigate('/app');
+
     } catch (err: any) {
-      showToast(err.message || t('login.error'), 'error');
+      console.error("Login Error:", err);
+      // Show the raw error message if available to help debugging
+      const errorMessage = err.message || t('login.error');
+      showToast(errorMessage, 'error');
     } finally {
       setLoading(false);
       setSyncing(false);
+    }
+  };
+
+  const handleMagicLink = async () => {
+    if (!email) {
+      showToast("Please enter your email first.", "error");
+      return;
+    }
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.signInWithOtp({
+        email: email.trim(),
+        options: {
+          emailRedirectTo: window.location.origin,
+        }
+      });
+      if (error) throw error;
+      setMagicLinkSent(true);
+      showToast("Magic Link sent! Check your inbox.", "success");
+    } catch (err: any) {
+      showToast(err.message || "Failed to send Magic Link.", 'error');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -150,7 +170,7 @@ const Login: React.FC = () => {
                 <Button
                   type="submit"
                   className="w-full bg-brand-yellow hover:bg-white text-black font-black uppercase tracking-widest text-xs h-18 rounded-2xl mt-4 shadow-2xl shadow-brand-yellow/20 transition-all active:scale-[0.98] flex items-center justify-center gap-4 ripple-link"
-                  isLoading={loading}
+                  isLoading={loading && !magicLinkSent}
                   disabled={loading}
                 >
                   {syncing ? (
@@ -164,9 +184,41 @@ const Login: React.FC = () => {
                   )}
                 </Button>
 
+                <div className="relative py-4">
+                  <div className="absolute inset-0 flex items-center">
+                    <span className="w-full border-t border-white/10"></span>
+                  </div>
+                  <div className="relative flex justify-center text-[8px] font-black uppercase tracking-widest">
+                    <span className="bg-[#0a0a0a] px-4 text-white/30 italic">Alternative Protocol</span>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleMagicLink}
+                  disabled={loading || magicLinkSent}
+                  className={cn(
+                    "w-full h-14 rounded-2xl border border-white/10 bg-white/5 text-[9px] font-black uppercase tracking-[0.2em] flex items-center justify-center gap-3 transition-all hover:bg-white/10 active:scale-95",
+                    magicLinkSent && "border-brand-green/30 bg-brand-green/10 text-brand-green"
+                  )}
+                >
+                  {magicLinkSent ? (
+                    <>
+                      <ShieldCheck className="w-4 h-4" /> Link Sent to Inbox
+                    </>
+                  ) : (
+                    <>
+                      <Mail className="w-4 h-4" /> Request Magic Link
+                    </>
+                  )}
+                </button>
+
                 <div className="flex flex-col gap-5 pt-8 text-center border-t border-white/5 mt-8">
-                  <Link to="/signup" className="text-[10px] font-black uppercase tracking-widest text-white/40 hover:text-brand-yellow transition-colors">
-                    First time? <span className="text-brand-yellow underline underline-offset-4 decoration-brand-yellow/30">Initialize Organization</span>
+                  <Link to="/onboarding" className="text-[10px] font-black uppercase tracking-widest text-white/40 hover:text-brand-yellow transition-colors">
+                    New here? <span className="text-brand-yellow underline underline-offset-4 decoration-brand-yellow/30">Apply for access →</span>
+                  </Link>
+                  <Link to="/signup" className="text-[10px] font-black uppercase tracking-widest text-white/30 hover:text-white/50 transition-colors">
+                    Already have an org? <span className="underline underline-offset-4 decoration-white/20">Initialize Organization</span>
                   </Link>
                   <button
                     type="button"

@@ -37,19 +37,57 @@ serve(async (req) => {
             return new Response(JSON.stringify({ error: "Missing required field: action" }), { status: 400, headers: corsHeaders });
         }
 
-        // 1. Authorization Check (Must be Owner/Manager)
+        // 1. Authorization & Profile Fetch
         const { data: profile } = await supabase
             .from('profiles')
-            .select('organization_id, role, full_name')
+            .select('organization_id, role, full_name, supplier_id')
             .eq('id', user.id)
             .single();
 
-        if (!['owner', 'admin'].includes(profile?.role)) {
+        if (!profile) {
+            return new Response(JSON.stringify({ error: "Profile not found" }), { status: 404, headers: corsHeaders });
+        }
+
+        // 2. Handle Actions
+        if (action === 'update_supplier_status') {
+            if (profile.role !== 'supplier' && !['owner', 'admin'].includes(profile.role)) {
+                return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 403, headers: corsHeaders });
+            }
+            if (!po_id || !notes) throw new Error("PO ID and status (in notes) required");
+
+            const targetStatus = notes; // Using 'notes' as status for simplicity or add 'status' to JSON
+
+            // Suppliers can only update POs assigned to them
+            let query = supabase.from('purchase_orders').update({
+                status: targetStatus,
+                updated_at: new Date().toISOString()
+            }).eq('id', po_id);
+
+            if (profile.role === 'supplier') {
+                query = query.eq('supplier_id', profile.supplier_id);
+            }
+
+            const { error: updateError } = await query;
+            if (updateError) throw updateError;
+
+            // Log activity
+            await supabase.from('po_activity_log').insert({
+                po_id: po_id,
+                action_type: 'updated',
+                performed_by: user.id,
+                notes: `Status updated by ${profile.role}: ${targetStatus}`,
+                organization_id: '00000000-0000-0000-0000-000000000000' // Default or fetch real one
+            });
+
+            return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        }
+
+        // Owner/Admin Only Actions below
+        if (!['owner', 'admin'].includes(profile.role)) {
             return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 403, headers: corsHeaders });
         }
         const organizationId = profile.organization_id;
 
-        // 2. Handle Actions
         if (action === 'list_pending') {
             const { data, error } = await supabase
                 .from('purchase_orders')
@@ -100,7 +138,7 @@ serve(async (req) => {
             const { error } = await supabase
                 .from('purchase_orders')
                 .update({
-                    status: 'rejected', // or 'draft' per business logic, but 'rejected' is clearer for agent
+                    status: 'rejected',
                     approval_notes: `Rejected by AI: ${reason}`
                 })
                 .eq('id', po_id)
