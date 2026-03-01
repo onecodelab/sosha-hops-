@@ -12,10 +12,28 @@ serve(async (req) => {
     }
 
     try {
-        const supabase = createClient(
-            Deno.env.get('SUPABASE_URL') ?? '',
-            Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-        )
+        const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
+        const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+        const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+        const authHeader = req.headers.get('Authorization');
+        const anonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? '';
+
+        if (!authHeader) {
+            return new Response(JSON.stringify({ error: 'Missing authorization header' }), {
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                status: 401,
+            });
+        }
+
+        const authClient = createClient(supabaseUrl, anonKey, { global: { headers: { Authorization: authHeader } } });
+        const { data: { user }, error: userErr } = await authClient.auth.getUser();
+        if (userErr || !user) {
+            return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                status: 401,
+            });
+        }
 
         const { table_number, branch_id } = await req.json()
 
@@ -24,6 +42,32 @@ serve(async (req) => {
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' },
                 status: 400,
             })
+        }
+
+        // 1. Authorization: Fetch User Profile for Organization Context
+        const { data: profile, error: profileErr } = await supabase
+            .from('profiles')
+            .select('organization_id, role')
+            .eq('id', user.id)
+            .single();
+
+        if (profileErr || !profile) {
+            return new Response(JSON.stringify({ error: 'User profile not found' }), { status: 403, headers: corsHeaders });
+        }
+
+        // 2. Branch Verification
+        const { data: branchData, error: branchErr } = await supabase
+            .from('branches')
+            .select('organization_id')
+            .eq('id', branch_id)
+            .single();
+
+        if (branchErr || !branchData) {
+            return new Response(JSON.stringify({ error: 'Branch not found' }), { status: 404, headers: corsHeaders });
+        }
+
+        if (branchData.organization_id !== profile.organization_id) {
+            return new Response(JSON.stringify({ error: 'Tenant isolation violation' }), { status: 403, headers: corsHeaders });
         }
 
         const { data: table, error } = await supabase

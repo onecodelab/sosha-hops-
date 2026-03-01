@@ -2,11 +2,11 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const VERIFY_LEUL_KEY = "Y21pdnQwMWVnMDAzYW5vMGtmbmNva2w4Ni0xNzY3NDE0OTU3MTMwLXdvaGQ3a2I1bnBy";
+const VERIFY_LEUL_KEY = Deno.env.get('VERIFY_LEUL_KEY');
 const API_URL = "https://verifyapi.leulzenebe.pro/verify";
 
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Origin': Deno.env.get('ALLOWED_ORIGIN') ?? '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
   'Access-Control-Max-Age': '86400',
@@ -18,6 +18,35 @@ serve(async (req) => {
   }
 
   try {
+    const sbUrl = Deno.env.get('SUPABASE_URL')!;
+    const sbKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || Deno.env.get('SERVICE_ROLE_KEY')!;
+    const supabase = createClient(sbUrl, sbKey);
+
+    // 1. JWT Authentication
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: 'Missing authorization header' }), { status: 401, headers: corsHeaders });
+    }
+
+    const anonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+    const authClient = createClient(sbUrl, anonKey, { global: { headers: { Authorization: authHeader } } });
+    const { data: { user }, error: userErr } = await authClient.auth.getUser();
+
+    if (userErr || !user) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: corsHeaders });
+    }
+
+    // 2. Fetch User Profile for Organization Context
+    const { data: profile, error: profileErr } = await supabase
+      .from('profiles')
+      .select('organization_id, role')
+      .eq('id', user.id)
+      .single();
+
+    if (profileErr || !profile) {
+      return new Response(JSON.stringify({ error: 'User profile not found' }), { status: 403, headers: corsHeaders });
+    }
+
     const {
       transaction_id, // From Agent
       bank,           // From Agent
@@ -27,24 +56,31 @@ serve(async (req) => {
     } = await req.json();
 
     if (!transaction_id || !bank) {
-      throw new Error("Please provide both transaction_id and bank name.");
+      return new Response(JSON.stringify({ error: "Please provide both transaction_id and bank name." }), { status: 400, headers: corsHeaders });
     }
 
-    // Initialize Supabase (Use SERVICE KEY to update orders securely)
-    const sbUrl = Deno.env.get('SUPABASE_URL')!;
-    const sbKey = Deno.env.get('SERVICE_ROLE_KEY')!; // Using Service Key to update 'orders'
-    const supabase = createClient(sbUrl, sbKey);
-
-    // 1. If order_id is provided, get the expected amount if not passed
+    // 3. If order_id is provided, verify ownership and get expected amount
     let expectedAmount = amount;
-    if (order_id && !expectedAmount) {
-      const { data: order } = await supabase
+    let order = null;
+
+    if (order_id) {
+      const { data: orderData, error: orderErr } = await supabase
         .from('orders')
-        .select('total_amount, amount_paid')
+        .select('id, total_amount, amount_paid, organization_id')
         .eq('id', order_id)
         .single();
 
-      if (order) {
+      if (orderErr || !orderData) {
+        return new Response(JSON.stringify({ error: "Order not found" }), { status: 404, headers: corsHeaders });
+      }
+
+      // SACRED RULE: Tenant Isolation
+      if (orderData.organization_id !== profile.organization_id) {
+        return new Response(JSON.stringify({ error: "Tenant isolation violation" }), { status: 403, headers: corsHeaders });
+      }
+
+      order = orderData;
+      if (!expectedAmount) {
         expectedAmount = order.total_amount - (order.amount_paid || 0);
       }
 
@@ -67,7 +103,11 @@ serve(async (req) => {
       }
     }
 
-    // 2. Call Verification API
+    // 4. Call Verification API
+    if (!VERIFY_LEUL_KEY) {
+      throw new Error("Verification service not configured (Missing VERIFY_LEUL_KEY)");
+    }
+
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 15000);
 
@@ -147,12 +187,13 @@ serve(async (req) => {
     });
 
   } catch (error: any) {
+    console.error("[ERROR] verify-payment:", error.message);
     return new Response(JSON.stringify({
       success: false,
       error: error.message
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      status: 200, // Return 200 so Flowise can parse the error message
+      status: 400,
     });
   }
 })
