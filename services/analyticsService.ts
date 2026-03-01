@@ -73,20 +73,39 @@ export const analyticsService = {
         if (ordersRes.error) throw ordersRes.error;
 
         const tables = tablesRes.data || [];
-        const sessions = sessionsRes.data || [];
-        const orders = ordersRes.data || [];
+        const rawSessions = sessionsRes.data || [];
+        const rawOrders = ordersRes.data || [];
+
+        // Pre-process data into Maps for O(1) lookup and pre-parse dates
+        // This optimization reduces complexity from O(T * (S + O)) to O(T + S + O)
+        const sessionsByTable = new Map<string, any[]>();
+        rawSessions.forEach(s => {
+            const enriched = {
+                ...s,
+                seated_at_ts: new Date(s.seated_at).getTime(),
+                closed_at_ts: s.closed_at ? new Date(s.closed_at).getTime() : now.getTime()
+            };
+            const list = sessionsByTable.get(s.table_id) || [];
+            list.push(enriched);
+            sessionsByTable.set(s.table_id, list);
+        });
+
+        const ordersByTable = new Map<string, any[]>();
+        rawOrders.forEach(o => {
+            const list = ordersByTable.get(o.table_id) || [];
+            list.push(o);
+            ordersByTable.set(o.table_id, list);
+        });
 
         // 2. Aggregate Data per Table
         const metrics: TableMetric[] = tables.map(table => {
-            const tableSessions = sessions.filter(s => s.table_id === table.id);
-            const tableOrders = orders.filter(o => o.table_id === table.id);
+            const tableSessions = sessionsByTable.get(table.id) || [];
+            const tableOrders = ordersByTable.get(table.id) || [];
 
             // A. Duration & Utilization
             let totalDurationMins = 0;
             tableSessions.forEach(s => {
-                const start = new Date(s.seated_at).getTime();
-                const end = s.closed_at ? new Date(s.closed_at).getTime() : now.getTime();
-                totalDurationMins += (end - start) / 60000;
+                totalDurationMins += (s.closed_at_ts - s.seated_at_ts) / 60000;
             });
 
             // Operating window in minutes (for utilization calc)
@@ -113,9 +132,7 @@ export const analyticsService = {
 
             // Median Calculation
             const durations = tableSessions.map(s => {
-                const start = new Date(s.seated_at).getTime();
-                const end = s.closed_at ? new Date(s.closed_at).getTime() : now.getTime();
-                return (end - start) / 60000;
+                return (s.closed_at_ts - s.seated_at_ts) / 60000;
             }).sort((a, b) => a - b);
             const medianDuration = durations.length > 0
                 ? durations[Math.floor(durations.length / 2)]
@@ -147,20 +164,18 @@ export const analyticsService = {
             // F. Dead Hours Calculation (Hours with no activity)
             // We check each hour of the operating window
             let deadHoursCount = 0;
-            const currentHour = new Date(startDate);
-            while (currentHour < now) {
-                const hourStart = currentHour.getTime();
+            const currentHourTs = startDate.getTime();
+            const nowTs = now.getTime();
+
+            for (let hourStart = currentHourTs; hourStart < nowTs; hourStart += 3600000) {
                 const hourEnd = hourStart + 3600000; // +1 hour
 
-                // Check if any session overlaps this hour
+                // Check if any session overlaps this hour using pre-parsed timestamps
                 const hasActivity = tableSessions.some(s => {
-                    const sStart = new Date(s.seated_at).getTime();
-                    const sEnd = s.closed_at ? new Date(s.closed_at).getTime() : now.getTime();
-                    return sStart < hourEnd && sEnd > hourStart;
+                    return s.seated_at_ts < hourEnd && s.closed_at_ts > hourStart;
                 });
 
                 if (!hasActivity) deadHoursCount++;
-                currentHour.setHours(currentHour.getHours() + 1);
             }
 
             return {

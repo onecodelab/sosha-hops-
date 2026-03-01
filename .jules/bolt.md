@@ -1,0 +1,3 @@
+## 2025-05-14 - [Analytics Aggregation Optimization]
+**Learning:** The 'Server-Side Aggregation Query pattern' used in `analyticsService.ts` fetches raw data and performs grouping/aggregation on the client. For branches with many tables/sessions, the O(T * S) complexity in `getFloorMetrics` creates a significant lag during dashboard loads.
+**Action:** Always use Map-based grouping (O(N)) instead of nested `.filter()` (O(N^2)) when aggregating related datasets (Tables, Sessions, Orders) in the frontend services. Pre-parse ISO date strings into timestamps during the initial iteration to avoid massive overhead in nested loops or 'Dead Hours' calculations.
