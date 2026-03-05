@@ -467,3 +467,14 @@ export interface BusinessAuditLog {
   metadata?: any;
   created_at: string;
 }
+
+export interface BotSettings {
+  id: string;
+  organization_id: string;
+  bot_name: string;
+  tone: 'friendly and casual' | 'professional' | 'fun and witty';
+  default_language: 'auto' | 'english' | 'amharic';
+  system_prompt: string;
+  created_at: string;
+  updated_at: string;
+}

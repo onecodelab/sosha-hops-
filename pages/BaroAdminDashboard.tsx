@@ -75,10 +75,9 @@ export const BaroAdminDashboard: React.FC = () => {
             const { data, error } = await supabase
                 .from('profiles')
                 .select(`
-                    id, email, full_name, role, created_at, status,
+                    id, email, full_name, role, created_at, status, organization_id,
                     organization:organizations(name)
                 `)
-                .in('role', ['owner', 'supplier', 'driver'])
                 .order('created_at', { ascending: false });
 
             if (error) throw error;
@@ -123,7 +122,7 @@ export const BaroAdminDashboard: React.FC = () => {
                     email: app.email,
                     password: tempPassword,
                     fullName: app.full_name,
-                    organizationName: app.restaurant_name || `${app.full_name}'s Restaurant`,
+                    organizationName: app.role === 'supplier' ? app.company_name : (app.restaurant_name || `${app.full_name}'s Restaurant`),
                 }
             });
 
@@ -223,6 +222,43 @@ export const BaroAdminDashboard: React.FC = () => {
         onError: (err: any) => showToast(err.message || 'Failed to delete user', 'error'),
     });
 
+    const { mutate: bulkActivate, isPending: isBulkActivating } = useMutation({
+        mutationFn: async () => {
+            const { data, error } = await supabase.functions.invoke('provision-user', {
+                body: { action: 'bulk_activate' }
+            });
+            if (error) throw error;
+            if (data && data.success === false) throw new Error(data.error);
+            return data;
+        },
+        onSuccess: (data) => {
+            showToast(`Successfully activated ${data.count || 0} accounts!`, 'success');
+            queryClient.invalidateQueries({ queryKey: ['admin-accounts'] });
+        },
+        onError: (err: any) => showToast(err.message || 'Failed to bulk activate accounts', 'error'),
+    });
+
+    const { mutate: setupOrganization, isPending: isSettingUp } = useMutation({
+        mutationFn: async ({ userId, organizationName }: { userId: string, organizationName: string }) => {
+            const { data, error } = await supabase.functions.invoke('provision-user', {
+                body: { action: 'setup_organization', userId, organizationName }
+            });
+            if (error) throw error;
+            if (data && data.success === false) throw new Error(data.error);
+            return data;
+        },
+        onSuccess: () => {
+            showToast('Organization setup complete!', 'success');
+            queryClient.invalidateQueries({ queryKey: ['admin-accounts'] });
+            setSetupOrgModal(null);
+            setOpenDropdown(null);
+        },
+        onError: (err: any) => showToast(err.message || 'Failed to setup organization', 'error'),
+    });
+
+    const [setupOrgModal, setSetupOrgModal] = useState<{ id: string; name: string } | null>(null);
+    const [repairOrgName, setRepairOrgName] = useState('');
+
     const [formData, setFormData] = useState({
         email: '',
         password: '',
@@ -283,10 +319,14 @@ export const BaroAdminDashboard: React.FC = () => {
 
     const getRoleBadge = (role: string) => {
         switch (role) {
+            case 'super_admin': return <Badge className="bg-red-500/10 text-red-500 border-none text-[9px] font-black uppercase tracking-widest px-3 py-1">🛡️ Super Admin</Badge>;
             case 'owner': return <Badge className="bg-amber-500/10 text-amber-500 border-none text-[9px] font-black uppercase tracking-widest px-3 py-1">🍽️ Owner</Badge>;
-            case 'supplier': return <Badge className="bg-blue-500/10 text-blue-400 border-none text-[9px] font-black uppercase tracking-widest px-3 py-1">📦 Supplier</Badge>;
+            case 'manager': return <Badge className="bg-blue-500/10 text-blue-400 border-none text-[9px] font-black uppercase tracking-widest px-3 py-1">👔 Manager</Badge>;
+            case 'waiter': return <Badge className="bg-teal-500/10 text-teal-400 border-none text-[9px] font-black uppercase tracking-widest px-3 py-1">💁 Waiter</Badge>;
+            case 'kitchen': return <Badge className="bg-orange-500/10 text-orange-400 border-none text-[9px] font-black uppercase tracking-widest px-3 py-1">🧑‍🍳 Kitchen</Badge>;
+            case 'supplier': return <Badge className="bg-purple-500/10 text-purple-400 border-none text-[9px] font-black uppercase tracking-widest px-3 py-1">📦 Supplier</Badge>;
             case 'driver': return <Badge className="bg-emerald-500/10 text-emerald-400 border-none text-[9px] font-black uppercase tracking-widest px-3 py-1">🚗 Driver</Badge>;
-            default: return <Badge variant="outline">{role}</Badge>;
+            default: return <Badge variant="outline" className="text-[9px] font-black uppercase tracking-widest">{role}</Badge>;
         }
     };
 
@@ -584,19 +624,35 @@ export const BaroAdminDashboard: React.FC = () => {
                                     )}
 
                                     {activeTab === 'create_supplier' && (
-                                        <div className="space-y-2">
-                                            <label className="text-xs font-black uppercase tracking-widest text-muted ml-1">Supplier ID (Reference)</label>
-                                            <div className="relative">
-                                                <ShieldCheck className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
-                                                <input
-                                                    name="supplier_id"
-                                                    value={formData.supplier_id}
-                                                    onChange={handleInputChange}
-                                                    placeholder="UUID of existing supplier entity"
-                                                    className="w-full bg-background/50 border border-primary/20 rounded-2xl py-3 pl-12 pr-4 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all font-bold placeholder:text-muted/30"
-                                                />
+                                        <>
+                                            <div className="space-y-2">
+                                                <label className="text-xs font-black uppercase tracking-widest text-muted ml-1">Company Name</label>
+                                                <div className="relative">
+                                                    <Building className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
+                                                    <input
+                                                        name="organizationName"
+                                                        value={formData.organizationName}
+                                                        onChange={handleInputChange}
+                                                        placeholder="e.g. Fresh Farms Supply"
+                                                        required
+                                                        className="w-full bg-background/50 border border-primary/20 rounded-2xl py-3 pl-12 pr-4 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all font-bold placeholder:text-muted/30"
+                                                    />
+                                                </div>
                                             </div>
-                                        </div>
+                                            <div className="space-y-2">
+                                                <label className="text-xs font-black uppercase tracking-widest text-muted ml-1">Supplier ID (Optional Reference)</label>
+                                                <div className="relative">
+                                                    <ShieldCheck className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
+                                                    <input
+                                                        name="supplier_id"
+                                                        value={formData.supplier_id}
+                                                        onChange={handleInputChange}
+                                                        placeholder="UUID of existing supplier entity"
+                                                        className="w-full bg-background/50 border border-primary/20 rounded-2xl py-3 pl-12 pr-4 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all font-bold placeholder:text-muted/30"
+                                                    />
+                                                </div>
+                                            </div>
+                                        </>
                                     )}
 
                                     <div className="md:col-span-2 pt-4">
@@ -633,15 +689,31 @@ export const BaroAdminDashboard: React.FC = () => {
                     <div className="bg-card/40 backdrop-blur-2xl border border-border rounded-[2rem] p-8 shadow-2xl relative overflow-hidden flex flex-col min-h-[500px] animate-in fade-in">
                         <div className="flex items-center justify-between mb-8">
                             <h2 className="text-2xl font-black tracking-tight">Registered Entities</h2>
-                            <div className="relative w-72">
-                                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
-                                <input
-                                    type="text"
-                                    placeholder="Search by name or email..."
-                                    value={searchTerm}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
-                                    className="w-full bg-background/50 border border-white/5 rounded-2xl py-3 pl-12 pr-4 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all font-bold placeholder:text-muted/30 text-sm object-contain"
-                                />
+                            <div className="flex items-center gap-4">
+                                {accounts?.some(a => a.status === 'pending') && (
+                                    <Button
+                                        onClick={() => {
+                                            if (window.confirm('Are you sure you want to activate all pending accounts?')) {
+                                                bulkActivate();
+                                            }
+                                        }}
+                                        disabled={isBulkActivating}
+                                        className="bg-green-500/10 text-green-500 border-green-500/20 hover:bg-green-500/20 text-[10px] font-black uppercase tracking-widest h-11 px-6 rounded-xl"
+                                    >
+                                        {isBulkActivating ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <CheckCheck className="w-4 h-4 mr-2" />}
+                                        Activate All Pending
+                                    </Button>
+                                )}
+                                <div className="relative w-72">
+                                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
+                                    <input
+                                        type="text"
+                                        placeholder="Search by name or email..."
+                                        value={searchTerm}
+                                        onChange={(e) => setSearchTerm(e.target.value)}
+                                        className="w-full bg-background/50 border border-white/5 rounded-2xl py-3 pl-12 pr-4 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all font-bold placeholder:text-muted/30 text-sm object-contain"
+                                    />
+                                </div>
                             </div>
                         </div>
 
@@ -681,14 +753,7 @@ export const BaroAdminDashboard: React.FC = () => {
                                                     </div>
                                                 </td>
                                                 <td className="py-4 px-6">
-                                                    <Badge className={cn(
-                                                        "text-[9px] font-black uppercase tracking-widest px-3 py-1 border-none",
-                                                        account.role === 'owner' ? "bg-yellow-500/10 text-yellow-500" :
-                                                            account.role === 'supplier' ? "bg-blue-500/10 text-blue-500" :
-                                                                "bg-emerald-500/10 text-emerald-500"
-                                                    )}>
-                                                        {account.role}
-                                                    </Badge>
+                                                    {getRoleBadge(account.role)}
                                                 </td>
                                                 <td className="py-4 px-6">
                                                     {account.status === 'suspended' ? (
@@ -717,14 +782,27 @@ export const BaroAdminDashboard: React.FC = () => {
                                                             <MoreVertical className="w-4 h-4" />
                                                         </button>
                                                         {openDropdown === account.id && (
-                                                            <div className="absolute top-full right-0 mt-1 bg-[#111] border border-white/10 rounded-2xl shadow-2xl shadow-black/80 z-50 overflow-hidden min-w-[180px] animate-in fade-in zoom-in-95 duration-150">
-                                                                {account.status === 'suspended' ? (
+                                                            <div className="absolute top-full right-0 mt-1 bg-[#111] border border-white/10 rounded-2xl shadow-2xl shadow-black/80 z-50 overflow-hidden min-w-[200px] animate-in fade-in zoom-in-95 duration-150">
+                                                                {account.role === 'owner' && account.organization_id === '00000000-0000-0000-0000-000000000000' && (
+                                                                    <button
+                                                                        onClick={() => {
+                                                                            setSetupOrgModal({ id: account.id, name: account.full_name });
+                                                                            setRepairOrgName(`${account.full_name}'s Restaurant`);
+                                                                            setOpenDropdown(null);
+                                                                        }}
+                                                                        className="w-full px-5 py-3 text-left flex items-center gap-3 text-xs font-black uppercase tracking-widest text-primary hover:bg-primary/10 transition-colors border-b border-white/5"
+                                                                    >
+                                                                        <Building className="w-4 h-4" /> Complete Setup
+                                                                    </button>
+                                                                )}
+                                                                {(account.status === 'suspended' || account.status === 'pending' || !account.status) ? (
                                                                     <button
                                                                         onClick={() => reactivateUser(account.id)}
                                                                         disabled={isReactivating}
                                                                         className="w-full px-5 py-3 text-left flex items-center gap-3 text-xs font-black uppercase tracking-widest text-green-400 hover:bg-green-500/10 transition-colors"
                                                                     >
-                                                                        <RefreshCw className={cn("w-4 h-4", isReactivating && "animate-spin")} /> Reactivate
+                                                                        <RefreshCw className={cn("w-4 h-4", isReactivating && "animate-spin")} />
+                                                                        {account.status === 'pending' ? 'Activate Account' : 'Reactivate'}
                                                                     </button>
                                                                 ) : (
                                                                     <button
@@ -856,6 +934,59 @@ export const BaroAdminDashboard: React.FC = () => {
                         >
                             Done — Close
                         </Button>
+                    </div>
+                </div>
+            )}
+            {/* ═══════════════════ SETUP ORGANIZATION MODAL (REPAIR) ═══════════════════ */}
+            {setupOrgModal && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setSetupOrgModal(null)}>
+                    <div
+                        className="bg-[#111] border border-primary/20 rounded-[2.5rem] p-10 max-w-md w-full mx-4 shadow-[0_50px_100px_rgba(0,0,0,0.9)] animate-in zoom-in-95 duration-300 space-y-6"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className="flex items-center gap-4">
+                            <div className="p-3 bg-primary/10 rounded-xl">
+                                <Building className="w-8 h-8 text-primary" />
+                            </div>
+                            <div>
+                                <h3 className="text-xl font-black text-white tracking-tight">Complete Account Setup</h3>
+                                <p className="text-xs text-muted font-bold">For {setupOrgModal.name}</p>
+                            </div>
+                        </div>
+
+                        <div className="space-y-4">
+                            <p className="text-sm text-muted font-medium">
+                                This will create a new organization and main branch, then link this owner to them. This resolves the "Account Setup Incomplete" error.
+                            </p>
+
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black uppercase tracking-widest text-muted ml-1">Restaurant/Org Name</label>
+                                <input
+                                    value={repairOrgName}
+                                    onChange={(e) => setRepairOrgName(e.target.value)}
+                                    placeholder="e.g. Baro Bistro"
+                                    className="w-full bg-background/50 border border-primary/20 rounded-2xl py-4 px-6 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all font-bold"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="flex gap-3 pt-2">
+                            <Button
+                                onClick={() => setSetupOrgModal(null)}
+                                variant="outline"
+                                className="flex-1 h-14 rounded-2xl font-black uppercase tracking-widest text-xs border-white/10"
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                onClick={() => setupOrganization({ userId: setupOrgModal.id, organizationName: repairOrgName })}
+                                disabled={isSettingUp || !repairOrgName}
+                                className="flex-1 h-14 rounded-2xl font-black uppercase tracking-widest text-xs bg-primary text-black shadow-lg shadow-primary/20"
+                            >
+                                {isSettingUp ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : <CheckCircle2 className="w-4 h-4 mr-2" />}
+                                Setup Now
+                            </Button>
+                        </div>
                     </div>
                 </div>
             )}

@@ -157,6 +157,8 @@ const WaiterDashboard: React.FC = () => {
         <div className="flex gap-3">
           <Button
             onClick={() => {
+              setSelectedTableData(null);
+              setAppendOrderId(null);
               setIsSidebarCollapsed(true);
               setIsCreateOpen(true);
             }}
@@ -446,7 +448,7 @@ const WaiterDashboard: React.FC = () => {
         onPaymentSuccess={() => refreshAll()}
       />
       <FloatingPaymentButton count={billingQueue.filter(o => o.payment_status === 'pending').length} onClick={() => setIsPaymentOpen(true)} />
-      <CreateOrderModal isOpen={isCreateOpen} onClose={() => { setIsCreateOpen(false); setSelectedTableData(null); }} onOrderCreated={refreshAll} initialTableId={selectedTableData?.id} initialTableNo={selectedTableData?.number} appendOrderId={appendOrderId} />
+      <CreateOrderModal isOpen={isCreateOpen} onClose={() => { setIsCreateOpen(false); setSelectedTableData(null); setAppendOrderId(null); }} onOrderCreated={refreshAll} initialTableId={selectedTableData?.id} initialTableNo={selectedTableData?.number} appendOrderId={appendOrderId} />
     </DashboardLayout>
   );
 };

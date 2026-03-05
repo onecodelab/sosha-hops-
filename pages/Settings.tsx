@@ -265,6 +265,24 @@ const Settings: React.FC = () => {
                      <BankSettingsSection isEditable={isOwnerOrAdmin} />
                   </CardContent>
                </Card>
+
+               {/* Bot Settings Card */}
+               <Card className="bg-[#1A1A1A] border-gray-800 rounded-[2.5rem] overflow-hidden">
+                  <div className="p-8 border-b border-gray-800">
+                     <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center border border-primary/20">
+                           <Zap className="w-6 h-6 text-primary" />
+                        </div>
+                        <div>
+                           <CardTitle className="text-white">AI Bot Configuration</CardTitle>
+                           <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mt-0.5">WhatsApp Chatbot Personality</p>
+                        </div>
+                     </div>
+                  </div>
+                  <CardContent className="p-8">
+                     <BotSettingsSection isEditable={isOwnerOrAdmin} organizationId={profile?.organization_id} />
+                  </CardContent>
+               </Card>
             </div>
 
             {/* Organization & Subscription Section */}
@@ -452,6 +470,136 @@ const BankSettingsSection: React.FC<{ isEditable: boolean }> = ({ isEditable }) 
                )}
             </div>
          ))}
+      </div>
+   );
+};
+
+const BotSettingsSection: React.FC<{ isEditable: boolean; organizationId?: string }> = ({ isEditable, organizationId }) => {
+   const queryClient = useQueryClient();
+   const [isSaving, setIsSaving] = useState(false);
+   const [formData, setFormData] = useState({
+      bot_name: 'Selam',
+      tone: 'friendly and casual',
+      default_language: 'auto',
+      system_prompt: ''
+   });
+
+   const { data: botSettings, isLoading } = useQuery({
+      queryKey: ['bot_settings', organizationId],
+      queryFn: async () => {
+         if (!organizationId) return null;
+         const { data, error } = await supabase
+            .from('bot_settings')
+            .select('*')
+            .eq('organization_id', organizationId)
+            .maybeSingle();
+         if (error) throw error;
+         if (data) {
+            setFormData({
+               bot_name: data.bot_name,
+               tone: data.tone,
+               default_language: data.default_language,
+               system_prompt: data.system_prompt || ''
+            });
+         }
+         return data;
+      },
+      enabled: !!organizationId
+   });
+
+   const saveMutation = useMutation({
+      mutationFn: async () => {
+         if (!organizationId) throw new Error("Organization ID is missing");
+         setIsSaving(true);
+         const { error } = await supabase
+            .from('bot_settings')
+            .upsert({
+               organization_id: organizationId,
+               ...formData,
+               updated_at: new Date().toISOString()
+            }, { onConflict: 'organization_id' });
+
+         if (error) throw error;
+      },
+      onSuccess: () => {
+         showToast("Bot settings saved successfully!", "success");
+         queryClient.invalidateQueries({ queryKey: ['bot_settings'] });
+      },
+      onError: (err: any) => showToast(err.message, "error"),
+      onSettled: () => setIsSaving(false)
+   });
+
+   if (isLoading) return <div className="text-center py-4 text-zinc-600 animate-pulse text-[10px] font-black uppercase tracking-widest">Initialising AI...</div>;
+
+   return (
+      <div className="space-y-6">
+         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-1">
+               <label className="text-[10px] font-bold text-gray-500 uppercase ml-1">Bot Identity Name</label>
+               <input
+                  value={formData.bot_name}
+                  onChange={e => setFormData({ ...formData, bot_name: e.target.value })}
+                  disabled={!isEditable}
+                  placeholder="e.g. Selam"
+                  className="w-full h-11 bg-black/40 border border-white/5 rounded-xl px-4 text-sm text-white focus:outline-none focus:border-primary/50"
+               />
+            </div>
+            <div className="space-y-1">
+               <label className="text-[10px] font-bold text-gray-500 uppercase ml-1">Tone & Personality</label>
+               <select
+                  value={formData.tone}
+                  onChange={e => setFormData({ ...formData, tone: e.target.value as any })}
+                  disabled={!isEditable}
+                  className="w-full h-11 bg-black/40 border border-white/5 rounded-xl px-4 text-sm text-white focus:outline-none focus:border-primary/50 appearance-none bg-no-repeat bg-[right_1rem_center]"
+                  style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='white'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundSize: '1em' }}
+               >
+                  <option value="friendly and casual">Friendly & Casual</option>
+                  <option value="professional">Professional</option>
+                  <option value="fun and witty">Fun & Witty</option>
+               </select>
+            </div>
+         </div>
+
+         <div className="space-y-1">
+            <label className="text-[10px] font-bold text-gray-500 uppercase ml-1">Default Communication Language</label>
+            <select
+               value={formData.default_language}
+               onChange={e => setFormData({ ...formData, default_language: e.target.value as any })}
+               disabled={!isEditable}
+               className="w-full h-11 bg-black/40 border border-white/5 rounded-xl px-4 text-sm text-white focus:outline-none focus:border-primary/50 appearance-none bg-no-repeat bg-[right_1rem_center]"
+               style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='white'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundSize: '1em' }}
+            >
+               <option value="auto">Auto-Detect (Amharic/English)</option>
+               <option value="english">English Only</option>
+               <option value="amharic">Amharic (አማርኛ)</option>
+            </select>
+         </div>
+
+         <div className="space-y-1">
+            <div className="flex justify-between items-center mb-1">
+               <label className="text-[10px] font-bold text-gray-500 uppercase ml-1">System Instructions / Prompt</label>
+               <span className="text-[8px] font-black text-primary/40 uppercase tracking-tighter italic">Deep Intelligence Override</span>
+            </div>
+            <textarea
+               value={formData.system_prompt}
+               onChange={e => setFormData({ ...formData, system_prompt: e.target.value })}
+               disabled={!isEditable}
+               rows={4}
+               placeholder="Describe how the bot should behave, restaurant rules, etc..."
+               className="w-full bg-black/40 border border-white/5 rounded-2xl p-4 text-xs text-zinc-300 focus:outline-none focus:border-primary/50 resize-none font-mono"
+            />
+         </div>
+
+         {isEditable && (
+            <Button
+               onClick={() => saveMutation.mutate()}
+               disabled={isSaving}
+               className="w-full bg-primary text-black font-black uppercase tracking-tighter h-12 rounded-xl"
+            >
+               <RefreshCw className={cn("w-4 h-4 mr-2", isSaving && "animate-spin")} />
+               {isSaving ? 'Encrypting Logic...' : 'Synchronize Bot Settings'}
+            </Button>
+         )}
       </div>
    );
 };

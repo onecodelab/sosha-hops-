@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { DashboardLayout } from '../components/DashboardLayout';
 import { supabase } from '../supabase';
 import { useMenu } from '../hooks/useMenu';
@@ -11,6 +11,13 @@ import { useAuth } from '../AuthContext';
 import { RecipeEditor } from '../components/RecipeEditor';
 import { MenuEditorModal } from '../components/MenuEditorModal';
 
+// Known category typo corrections
+const CATEGORY_TYPO_MAP: Record<string, string> = {
+  'stake look': 'Steak',
+  'baro speicail': 'Baro Special',
+  'deseret': 'Dessert',
+};
+
 const MenuManagement: React.FC = () => {
   const { menuItems, categories, loading: menuLoading, refreshMenu } = useMenu(false);
   const { profile: user } = useAuth();
@@ -20,6 +27,62 @@ const MenuManagement: React.FC = () => {
   const [selectedDish, setSelectedDish] = useState<MenuDish | null>(null);
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<MenuDish | null>(null);
+  const hasAutoFixed = useRef(false);
+
+  // Auto-fix misspelled categories on load (one-time, owner-only)
+  useEffect(() => {
+    if (hasAutoFixed.current || menuLoading || !isPrivileged || menuItems.length === 0) return;
+
+    const itemsToFix = menuItems.filter(item => {
+      const key = (item.category || '').toLowerCase().trim();
+      return CATEGORY_TYPO_MAP[key] !== undefined;
+    });
+
+    if (itemsToFix.length === 0) return;
+
+    hasAutoFixed.current = true;
+    console.log(`[CategoryAutoFix] Found ${itemsToFix.length} items with misspelled categories. Fixing...`);
+
+    const fixAll = async () => {
+      let fixedCount = 0;
+      for (const item of itemsToFix) {
+        const correctCategory = CATEGORY_TYPO_MAP[(item.category || '').toLowerCase().trim()];
+        if (!correctCategory) continue;
+
+        try {
+          const { error } = await supabase.functions.invoke('manage-menu', {
+            body: {
+              action: 'upsert',
+              item: {
+                id: item.id,
+                name: item.name,
+                price: item.price,
+                category: correctCategory,
+                category_id: item.category_id,
+                image_url: item.image_url,
+                status: item.is_available ? 'available' : 'unavailable',
+              }
+            }
+          });
+          if (error) {
+            console.error(`[CategoryAutoFix] Failed for "${item.name}":`, error);
+          } else {
+            fixedCount++;
+            console.log(`[CategoryAutoFix] Fixed "${item.name}": "${item.category}" → "${correctCategory}"`);
+          }
+        } catch (err) {
+          console.error(`[CategoryAutoFix] Error fixing "${item.name}":`, err);
+        }
+      }
+
+      if (fixedCount > 0) {
+        showToast(`Auto-fixed ${fixedCount} misspelled category name(s)`, 'success');
+        refreshMenu();
+      }
+    };
+
+    fixAll();
+  }, [menuItems, menuLoading, isPrivileged, refreshMenu]);
 
   const filteredItems = useMemo(() => {
     return menuItems.filter(item => {

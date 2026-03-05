@@ -47,14 +47,13 @@ const ManagerCreatePO: React.FC = () => {
       return [{ id: crypto.randomUUID(), ingredientId: '', qty: 1, unit: '-', price: 0 }];
    });
 
-   // Fetch Suppliers
    const { data: suppliers } = useQuery({
       queryKey: ['suppliers'],
       queryFn: async () => {
          const { data, error } = await supabase
             .from('suppliers')
-            .select('*');
-         // .eq('is_active', true); // Assuming active suppliers
+            .select('*')
+            .eq('is_active', true);
          if (error) {
             console.warn("Suppliers fetch error:", error);
             return [];

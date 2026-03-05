@@ -30,7 +30,7 @@ export const BranchProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     });
 
     // Fetch all branches (for HQ users or to resolve the active branch)
-    const { data: branches = [], isLoading } = useQuery({
+    const { data: rawBranches = [], isLoading } = useQuery({
         queryKey: ['branches'],
         queryFn: async () => {
             const { data, error } = await supabase
@@ -40,10 +40,24 @@ export const BranchProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                 .order('created_at', { ascending: true }); // Ensure main branch comes first
 
             if (error) throw error;
-            return data as Branch[];
+
+            // Deduplicate by name if multiple "Main Branch" or other duplicates exist
+            const uniqueBranches: Branch[] = [];
+            const names = new Set();
+            (data || []).forEach(branch => {
+                const lowerName = branch.name.toLowerCase();
+                if (!names.has(lowerName)) {
+                    names.add(lowerName);
+                    uniqueBranches.push(branch as Branch);
+                }
+            });
+
+            return uniqueBranches;
         },
         enabled: !!profile,
     });
+
+    const branches = rawBranches;
 
     // Handle initial branch assignment
     useEffect(() => {

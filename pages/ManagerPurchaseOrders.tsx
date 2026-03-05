@@ -69,11 +69,13 @@ const ManagerPurchaseOrders: React.FC = () => {
    const [selectedPODetails, setSelectedPODetails] = useState<PurchaseOrder | null>(null);
    const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
 
-   // Fetch Suppliers
    const { data: suppliers } = useQuery({
       queryKey: ['suppliers'],
       queryFn: async () => {
-         const { data, error } = await supabase.from('suppliers').select('*');
+         const { data, error } = await supabase
+            .from('suppliers')
+            .select('*')
+            .eq('is_active', true);
          if (error) return [];
          return data as Supplier[];
       }

@@ -1,9 +1,8 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { Redis } from "https://esm.sh/@upstash/redis";
 
 const corsHeaders = {
-    'Access-Control-Allow-Origin': Deno.env.get('ALLOWED_ORIGIN') ?? '*',
+    'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
     'Content-Type': 'application/json',
 };
@@ -26,10 +25,6 @@ serve(async (req) => {
 
         const supabase = createClient(sbUrl, sbKey);
 
-        const redisUrl = Deno.env.get('UPSTASH_REDIS_REST_URL') || Deno.env.get('VITE_UPSTASH_REDIS_REST_URL');
-        const redisToken = Deno.env.get('UPSTASH_REDIS_REST_TOKEN') || Deno.env.get('VITE_UPSTASH_REDIS_REST_TOKEN');
-        const redis = (redisUrl && redisToken) ? new Redis({ url: redisUrl, token: redisToken }) : null;
-
         const authHeader = req.headers.get('Authorization');
         if (!authHeader) {
             return new Response(JSON.stringify({ error: 'Missing authorization header' }), { status: 401, headers: corsHeaders });
@@ -44,13 +39,14 @@ serve(async (req) => {
 
         currentStep = 'parsing_payload';
         const payload = await req.json();
-        let { branch_id, items, order_details, source, table_number, table_id, user_id, organization_id: input_org_id, order_id } = payload;
+        let { branch_id, items, order_details, source, table_number, table_id, user_id, organization_id: input_org_id, order_id, telegram_id } = payload;
 
         if (order_details) {
             table_number = table_number || order_details.table_number;
             table_id = table_id || order_details.table_id;
             user_id = user_id || order_details.user_id;
             branch_id = branch_id || order_details.branch_id;
+            telegram_id = telegram_id || order_details.telegram_id;
         }
 
         if (!branch_id || !items) {
@@ -76,12 +72,23 @@ serve(async (req) => {
             .eq('id', user.id)
             .single();
 
-        if (profileErr || !profile || profile.organization_id !== organizationId) {
-            return new Response(JSON.stringify({ error: 'Unauthorized for this branch' }), { status: 403, headers: corsHeaders });
+        const userRole = profile?.role?.toLowerCase();
+        const isSuperAdmin = userRole === 'super_admin';
+
+        if (profileErr || !profile || (!isSuperAdmin && profile.organization_id !== organizationId)) {
+            console.error(`[AUTH_ERROR] User: ${user.id} (${userRole}) | User Org: ${profile?.organization_id} | Branch Org: ${organizationId}`);
+            return new Response(JSON.stringify({
+                error: 'Unauthorized for this branch',
+                detail: `User org: ${profile?.organization_id}, Branch org: ${organizationId}`,
+                user_role: userRole
+            }), { status: 403, headers: corsHeaders });
         }
 
-        if (!['waiter', 'manager', 'owner', 'admin'].includes(profile.role)) {
-            return new Response(JSON.stringify({ error: 'Insufficient permissions' }), { status: 403, headers: corsHeaders });
+        if (!['waiter', 'manager', 'owner', 'admin', 'super_admin'].includes(userRole)) {
+            return new Response(JSON.stringify({
+                error: `Insufficient permissions. Role: ${profile?.role}`,
+                role: userRole
+            }), { status: 403, headers: corsHeaders });
         }
 
         // SACRED RULE: Isolation must be structural. 
@@ -161,16 +168,20 @@ serve(async (req) => {
 
         console.log(`[DEBUG] Resolving items: ${JSON.stringify(itemIds)}`);
 
+        // Robust Menu Lookup: Include branch-specific, global, and tenant-shared items
         const { data: menuData, error: menuErr } = await supabase
             .from('menu')
             .select('id, name, price, branch_id, organization_id')
-            .or(`branch_id.eq.${branch_id},branch_id.eq.00000000-0000-0000-0000-000000000000,organization_id.eq.00000000-0000-0000-0000-000000000000`)
+            .or(`branch_id.eq.${branch_id},branch_id.is.null,organization_id.eq.${organizationId},organization_id.eq.00000000-0000-0000-0000-000000000000`)
             .in('id', itemIds);
 
-        if (menuErr) throw new Error(`Menu retrieval failed: ${menuErr.message}`);
+        if (menuErr) {
+            console.error('[CRITICAL] Menu Resolution Failed:', menuErr);
+            throw new Error(`Menu retrieval failed: ${menuErr.message}`);
+        }
         if (!menuData || menuData.length === 0) {
             console.error(`[ERROR] No menu items found for IDs: ${itemIds.join(', ')} in branch ${branch_id}`);
-            throw new Error(`Menu items not found. Please ensure they belong to branch ${branch_id} or are global.`);
+            throw new Error(`Menu items not found. Ensure items belong to branch ${branch_id} or are global. (IDs: ${itemIds.join(', ')})`);
         }
 
         currentStep = 'calculating_totals';
@@ -190,8 +201,9 @@ serve(async (req) => {
         const vatAmount = Math.round((subtotal * 0.15) * 100) / 100;
         orderTotal = Math.round((subtotal + vatAmount) * 100) / 100;
 
-        currentStep = 'persisting_order';
+        currentStep = 'finding_target_order';
         let finalOrderId = order_id;
+        console.log(`[DEBUG] Step: ${currentStep} | Order ID: ${finalOrderId}`);
 
         if (finalOrderId) {
             // Update existing order
@@ -201,7 +213,13 @@ serve(async (req) => {
                 .eq('id', finalOrderId)
                 .single();
 
-            if (fetchErr) throw new Error(`Failed to fetch existing order: ${fetchErr.message}`);
+            if (fetchErr) {
+                console.error(`[CRITICAL] Order Fetch Error for ${finalOrderId}:`, fetchErr);
+                throw new Error(`Target order not found or inaccessible: ${fetchErr.message}`);
+            }
+            if (!existingOrder) {
+                throw new Error(`Order ${finalOrderId} has vanished or belongs to a different node.`);
+            }
 
             const newTotal = Number(existingOrder.total_amount || 0) + orderTotal;
             const newSubtotal = Number(existingOrder.subtotal_amount || 0) + subtotal;
@@ -241,7 +259,8 @@ serve(async (req) => {
                     total_amount: orderTotal,
                     subtotal_amount: subtotal,
                     vat_amount: vatAmount,
-                    vat_rate: 15
+                    vat_rate: 15,
+                    telegram_id: telegram_id || null
                 })
                 .select().single();
 

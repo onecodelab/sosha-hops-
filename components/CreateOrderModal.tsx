@@ -162,6 +162,10 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
 
   const submitOrder = async () => {
     if ((!tableId && !tableNumber) || cart.length === 0 || submitting) return;
+    if (!activeBranchId) {
+      showToast("Node Awareness Error: Please refresh and select an active branch.", "error");
+      return;
+    }
 
 
     setSubmitting(true);
@@ -248,7 +252,10 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
       if (onOrderCreated) await onOrderCreated();
       onClose();
     } catch (err: any) {
-      showToast(err.message || "Order Failed", 'error');
+      console.error("Order Submission Failure Path:", err);
+      // Ensure we show the most specific error message possible
+      const displayMessage = err.message || "Order Deployment Protocol Failed";
+      showToast(displayMessage, 'error');
     } finally {
       setSubmitting(false);
     }

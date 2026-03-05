@@ -19,6 +19,7 @@ export const InviteStaffModal: React.FC<InviteStaffModalProps> = ({ isOpen, onCl
    const [fullName, setFullName] = useState('');
    const [role, setRole] = useState('waiter');
    const [selectedBranchId, setSelectedBranchId] = useState<string>(activeBranchId || '');
+   const [password, setPassword] = useState('');
    const [loading, setLoading] = useState(false);
 
    // Compensation fields
@@ -27,35 +28,31 @@ export const InviteStaffModal: React.FC<InviteStaffModalProps> = ({ isOpen, onCl
 
    const handleInvite = async (e: React.FormEvent) => {
       e.preventDefault();
-      if (!email || !fullName) return;
+      if (!email || !fullName || !password) return;
 
       setLoading(true);
-      console.log('Invite attempt:', { profile, organizationId: profile?.organization_id, user: user?.id });
       try {
-         const newUserId = crypto.randomUUID();
-
-         const { error } = await supabase
-            .from('profiles')
-            .insert({
-               id: newUserId,
-               email: email,
-               full_name: fullName,
-               role: role,
-               is_online: false,
-               created_by: user?.id || null,
-               invitation_pending: true,
-               home_branch_id: selectedBranchId || activeBranchId,
-                organization_id: profile?.organization_id || '00000000-0000-0000-0000-000000000000',
-               // New compensation fields
-               base_salary: baseSalary ? parseFloat(baseSalary) : null,
-               pay_period: payPeriod,
-               is_salary_approved: profile?.role === 'owner' // Auto-approve if owner is creating
-            });
+         // Call manage-staff edge function to create Auth user and Profile
+         const { data, error } = await supabase.functions.invoke('manage-staff', {
+            body: {
+               action: 'create',
+               staff_data: {
+                  email,
+                  password,
+                  role,
+                  full_name: fullName,
+                  base_salary: baseSalary ? parseFloat(baseSalary) : null,
+                  pay_period: payPeriod,
+                  home_branch_id: selectedBranchId || activeBranchId
+               }
+            }
+         });
 
          if (error) throw error;
+         if (data && data.error) throw new Error(data.error);
 
          showToast(
-            `Invitation created for ${fullName}! Base salary set to ${baseSalary || 'None'}.`,
+            `Staff account created for ${fullName}! They can now log in immediately.`,
             "success"
          );
 
@@ -63,12 +60,13 @@ export const InviteStaffModal: React.FC<InviteStaffModalProps> = ({ isOpen, onCl
          onClose();
          setEmail('');
          setFullName('');
+         setPassword('');
          setRole('waiter');
          setBaseSalary('');
 
       } catch (err: any) {
          console.error('Invite error:', err);
-         showToast(err.message || 'Failed to create invitation', 'error');
+         showToast(err.message || 'Failed to create staff account', 'error');
       } finally {
          setLoading(false);
       }
@@ -82,9 +80,9 @@ export const InviteStaffModal: React.FC<InviteStaffModalProps> = ({ isOpen, onCl
                   <Send className="w-4 h-4 text-blue-400" />
                </div>
                <div>
-                  <h4 className="text-sm font-bold text-white">Create Invitation</h4>
+                  <h4 className="text-sm font-bold text-white">Create Staff Account</h4>
                   <p className="text-xs text-gray-400 mt-1">
-                     This creates a pending profile. Staff can sign up manually with this email to activate.
+                     This creates an active Auth account immediately. Staff can log in with their email and the password you set.
                   </p>
                </div>
             </div>
@@ -104,6 +102,14 @@ export const InviteStaffModal: React.FC<InviteStaffModalProps> = ({ isOpen, onCl
                      <div className="relative">
                         <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-500" />
                         <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="staff@baro.os" className="pl-9" required />
+                     </div>
+                  </div>
+
+                  <div className="space-y-2">
+                     <label className="text-xs font-bold text-gray-500 uppercase">Initial Password</label>
+                     <div className="relative">
+                        <Send className="absolute left-3 top-3 h-4 w-4 text-gray-500" />
+                        <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" className="pl-9" required />
                      </div>
                   </div>
                </div>
@@ -177,7 +183,7 @@ export const InviteStaffModal: React.FC<InviteStaffModalProps> = ({ isOpen, onCl
                <div className="pt-4 flex justify-end gap-3">
                   <Button type="button" variant="ghost" onClick={onClose}>Cancel</Button>
                   <Button type="submit" isLoading={loading} className="bg-primary text-black font-bold">
-                     {loading ? 'Creating...' : 'Create Invite'}
+                     {loading ? 'Creating...' : 'Create Account'}
                   </Button>
                </div>
             </form>

@@ -40,7 +40,8 @@ serve(async (req) => {
             throw new Error('Insufficient permissions. Super Admin role required.')
         }
 
-        const { action, email, password, fullName, organizationName, supplier_id } = await req.json()
+        const body = await req.json();
+        const { action, email, password, fullName, organizationName, supplier_id, userId } = body;
 
         if (action === 'create_owner') {
             // Logic similar to create-organization but centralized here
@@ -102,13 +103,35 @@ serve(async (req) => {
             })
             if (createError) throw createError
 
+            let finalSupplierId = supplier_id;
+
+            // If no supplier_id provided, create a new supplier entity record
+            if (!finalSupplierId && organizationName) {
+                const { data: newSupplier, error: supError } = await supabaseAdmin
+                    .from('suppliers')
+                    .insert({
+                        name: organizationName,
+                        organization_id: '00000000-0000-0000-0000-000000000000',
+                        is_active: true
+                    })
+                    .select()
+                    .single();
+
+                if (supError) {
+                    console.error('Error creating supplier entity:', supError);
+                    // Continue anyway, but log it
+                } else {
+                    finalSupplierId = newSupplier.id;
+                }
+            }
+
             const { error: profileError } = await supabaseAdmin
                 .from('profiles')
                 .update({
                     full_name: fullName,
                     role: 'supplier',
                     organization_id: '00000000-0000-0000-0000-000000000000', // Baro Platform
-                    supplier_id: supplier_id || null,
+                    supplier_id: finalSupplierId || null,
                     status: 'active'
                 })
                 .eq('id', authData.user.id)
@@ -122,6 +145,21 @@ serve(async (req) => {
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' },
                 status: 200
             })
+        }
+
+        if (action === 'bulk_activate') {
+            const { data, error, count } = await supabaseAdmin
+                .from('profiles')
+                .update({ status: 'active' })
+                .eq('status', 'pending')
+                .select('*', { count: 'exact' });
+
+            if (error) throw error;
+
+            return new Response(JSON.stringify({ success: true, count, activated_users: data?.map((u: any) => u.email) }), {
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                status: 200
+            });
         }
 
         if (action === 'create_driver') {
@@ -149,6 +187,47 @@ serve(async (req) => {
             })
 
             return new Response(JSON.stringify({ success: true, userId: authData.user.id }), {
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                status: 200
+            })
+        }
+
+        if (action === 'setup_organization') {
+            if (!userId) throw new Error('userId is required')
+
+            const { data: orgData, error: orgError } = await supabaseAdmin
+                .from('organizations')
+                .insert({ name: organizationName || `New Restaurant`, plan: 'free' })
+                .select()
+                .single()
+            if (orgError) throw orgError
+
+            const { data: branchData, error: branchError } = await supabaseAdmin
+                .from('branches')
+                .insert({
+                    name: 'Main Branch',
+                    organization_id: orgData.id,
+                    is_active: true
+                })
+                .select()
+                .single()
+            if (branchError) throw branchError
+
+            const { error: profileError } = await supabaseAdmin
+                .from('profiles')
+                .update({
+                    organization_id: orgData.id,
+                    home_branch_id: branchData.id,
+                    status: 'active'
+                })
+                .eq('id', userId)
+            if (profileError) throw profileError
+
+            await supabaseAdmin.auth.admin.updateUserById(userId, {
+                app_metadata: { organization_id: orgData.id }
+            })
+
+            return new Response(JSON.stringify({ success: true, orgId: orgData.id }), {
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' },
                 status: 200
             })

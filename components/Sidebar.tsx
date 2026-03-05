@@ -60,7 +60,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, setIsCollapsed, h
             <div className="flex flex-col p-6 h-32 border-b border-primary/20">
                 {!isCollapsed ? (
                     <div className="flex flex-col gap-4 animate-in fade-in duration-500">
-                        <div className="h-12 w-full max-w-[160px]">
+                        <div className="h-12 w-full max-w-[160px] cursor-pointer" onClick={() => navigate('/')}>
                             <BaroLogo />
                         </div>
                         <div className="flex items-center gap-2">

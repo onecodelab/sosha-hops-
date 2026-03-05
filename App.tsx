@@ -55,6 +55,7 @@ import { ChatWidget } from './components/ChatWidget';
 import ProtectedRoute from './components/ProtectedRoute';
 import { BrandLoader } from './components/BrandLoader';
 import ScrollToTop from './components/ScrollToTop';
+import { DashboardLayout } from './components/DashboardLayout';
 
 // Loading Placeholder
 const PageLoader = () => <BrandLoader />;
@@ -223,7 +224,9 @@ const App: React.FC = () => {
 
                   <Route path="/app/owner" element={
                     <ProtectedRoute allowedRoles={['owner']}>
-                      <OwnerCommandCenter />
+                      <DashboardLayout className="p-0 overflow-hidden" title="Owner Command Center" subtitle="Intelligent Oversight">
+                        <OwnerCommandCenter />
+                      </DashboardLayout>
                     </ProtectedRoute>
                   } />
 

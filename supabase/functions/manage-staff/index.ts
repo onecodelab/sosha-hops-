@@ -2,7 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
-    'Access-Control-Allow-Origin': Deno.env.get('ALLOWED_ORIGIN') ?? '*',
+    'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
@@ -44,8 +44,9 @@ serve(async (req) => {
             .eq('id', user.id)
             .single();
 
-        if (profileErr || !profile || !['owner', 'admin'].includes(profile?.role)) {
-            return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 403, headers: corsHeaders });
+        const userRole = profile?.role?.toLowerCase();
+        if (profileErr || !['owner', 'admin'].includes(userRole)) {
+            return new Response(JSON.stringify({ error: `Unauthorized. Role: ${profile?.role}` }), { status: 403, headers: corsHeaders });
         }
 
         // SACRED RULE: Tenant Isolation
@@ -76,39 +77,81 @@ serve(async (req) => {
         }
 
         if (action === 'create') {
-            // Create a new user profile (Note: Creating Auth User usually requires Admin API, 
-            // here we might just be creating the Profile entry if Auth User exists, 
-            // OR we use Supabase Admin Auth to create the user).
+            const {
+                email,
+                password,
+                role,
+                full_name,
+                base_salary,
+                pay_period,
+                home_branch_id
+            } = staff_data;
 
-            // For simplicity in this Agent context, we'll assume we are creating a 'Staff Profile' 
-            // that maps to a real user later, or we use the Admin API to invite.
-
-            const { email, password, role, first_name, last_name } = staff_data;
+            if (!email || !password || !full_name) {
+                return new Response(JSON.stringify({ error: "Missing required fields (email, password, full_name)" }), { status: 400, headers: corsHeaders });
+            }
 
             // 2.1 Create Auth User
             const { data: authData, error: authError } = await supabase.auth.admin.createUser({
                 email,
                 password,
                 email_confirm: true,
-                user_metadata: { first_name, last_name, role, organization_id: organizationId }
+                user_metadata: { full_name, role, organization_id: organizationId }
             });
 
-            if (authError) throw authError;
+            if (authError) {
+                console.error('Auth Error:', authError);
+                return new Response(JSON.stringify({ error: authError.message }), { status: 400, headers: corsHeaders });
+            }
 
             // 2.2 Profile is usually created by Trigger, but we can ensure/update it
-            // Wait a moment or upsert
             const newUserId = authData.user.id;
 
-            await supabase.from('profiles').upsert({
+            const { error: upsertError } = await supabase.from('profiles').upsert({
                 id: newUserId,
-                first_name,
-                last_name,
+                full_name,
                 role,
                 organization_id: organizationId,
-                email
+                email,
+                home_branch_id: home_branch_id || null,
+                base_salary: base_salary || null,
+                pay_period: pay_period || 'monthly',
+                status: 'active'
             });
 
+            if (upsertError) {
+                console.error('Profile Upsert Error:', upsertError);
+                // We don't necessarily want to fail the whole thing if Auth user was created, 
+                // but for debugging let's report it.
+                return new Response(JSON.stringify({ error: `User created, but profile update failed: ${upsertError.message}` }), { status: 500, headers: corsHeaders });
+            }
+
             return new Response(JSON.stringify({ success: true, user: authData.user }), {
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                status: 200
+            });
+        }
+
+        if (action === 'update') {
+            if (!target_id) throw new Error("Target ID required");
+            const { status, role: newRole, home_branch_id, base_salary, pay_period } = staff_data || {};
+
+            const { error: updateError } = await supabase
+                .from('profiles')
+                .update({
+                    status,
+                    role: newRole,
+                    home_branch_id,
+                    base_salary,
+                    pay_period,
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', target_id)
+                .eq('organization_id', organizationId);
+
+            if (updateError) throw updateError;
+
+            return new Response(JSON.stringify({ success: true }), {
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' },
                 status: 200
             });

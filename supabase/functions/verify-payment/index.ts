@@ -1,4 +1,5 @@
 // Follow Supabase Edge Function standards (Deno)
+// HARDENED: Unique reference check, order status check, audit logging
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -11,6 +12,33 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
   'Access-Control-Max-Age': '86400',
 };
+
+// Helper: Log every verification attempt
+async function logVerificationAttempt(
+  supabase: any,
+  data: {
+    organization_id?: string;
+    order_id?: string;
+    transaction_id: string;
+    bank: string;
+    status: string;
+    response_data?: any;
+  }
+) {
+  try {
+    await supabase.from('payment_verification_log').insert({
+      organization_id: data.organization_id || null,
+      order_id: data.order_id || null,
+      transaction_id: data.transaction_id,
+      bank: data.bank,
+      status: data.status,
+      response_data: data.response_data || {},
+      created_at: new Date().toISOString()
+    });
+  } catch (e) {
+    console.error("[AUDIT] Failed to log verification attempt:", e);
+  }
+}
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -48,9 +76,9 @@ serve(async (req) => {
     }
 
     const {
-      transaction_id, // From Agent
-      bank,           // From Agent
-      order_id,       // Optional: If provided, we update the order!
+      transaction_id, // From Agent/Chatbot
+      bank,           // From Agent/Chatbot
+      order_id,       // Optional: If provided, we update the order
       amount,         // Optional: Expected amount for validation
       receiver_account // Optional
     } = await req.json();
@@ -59,51 +87,151 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: "Please provide both transaction_id and bank name." }), { status: 400, headers: corsHeaders });
     }
 
-    // 3. If order_id is provided, verify ownership and get expected amount
+    // ================================================================
+    // STEP 1: GLOBAL DUPLICATE CHECK (even without order_id)
+    // The same reference must NEVER be accepted twice, period.
+    // ================================================================
+    const { data: existingPayment } = await supabase
+      .from('order_payments')
+      .select('id, order_id')
+      .eq('reference', transaction_id)
+      .maybeSingle();
+
+    if (existingPayment) {
+      await logVerificationAttempt(supabase, {
+        order_id: order_id || existingPayment.order_id,
+        transaction_id,
+        bank,
+        status: 'duplicate',
+        response_data: { blocked_reason: 'Reference already used', existing_payment_id: existingPayment.id }
+      });
+
+      return new Response(JSON.stringify({
+        success: false,
+        message: "This transaction reference has already been used!",
+        action_taken: "Blocked Duplicate"
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 200
+      });
+    }
+
+    // Also check orders.transaction_reference (belt-and-suspenders)
+    const { data: existingOrderRef } = await supabase
+      .from('orders')
+      .select('id')
+      .eq('transaction_reference', transaction_id)
+      .maybeSingle();
+
+    if (existingOrderRef) {
+      await logVerificationAttempt(supabase, {
+        order_id: order_id || existingOrderRef.id,
+        transaction_id,
+        bank,
+        status: 'duplicate',
+        response_data: { blocked_reason: 'Reference already on another order' }
+      });
+
+      return new Response(JSON.stringify({
+        success: false,
+        message: "This transaction reference is already linked to another order!",
+        action_taken: "Blocked Duplicate"
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 200
+      });
+    }
+
+    // ================================================================
+    // STEP 2: ORDER STATUS CHECK (if order_id provided)
+    // Cannot pay a closed/paid/cancelled order
+    // ================================================================
+    let order: any = null;
     let expectedAmount = amount;
-    let order = null;
+    let organizationId: string | null = null;
 
     if (order_id) {
       const { data: orderData, error: orderErr } = await supabase
         .from('orders')
-        .select('id, total_amount, amount_paid, organization_id')
+        .select('id, status, payment_status, total_amount, amount_paid, organization_id, table_id, qr_verification_code')
         .eq('id', order_id)
         .single();
 
       if (orderErr || !orderData) {
-        return new Response(JSON.stringify({ error: "Order not found" }), { status: 404, headers: corsHeaders });
-      }
+        if (orderErr || !orderData) {
+          await logVerificationAttempt(supabase, {
+            order_id,
+            transaction_id,
+            bank,
+            status: 'failed',
+            response_data: { error: 'Order not found' }
+          });
+          return new Response(JSON.stringify({ error: "Order not found" }), { status: 404, headers: corsHeaders });
+        }
 
-      // SACRED RULE: Tenant Isolation
-      if (orderData.organization_id !== profile.organization_id) {
-        return new Response(JSON.stringify({ error: "Tenant isolation violation" }), { status: 403, headers: corsHeaders });
-      }
+        // SACRED RULE: Tenant Isolation
+        if (orderData.organization_id !== profile.organization_id) {
+          return new Response(JSON.stringify({ error: "Tenant isolation violation" }), { status: 403, headers: corsHeaders });
+        }
 
-      order = orderData;
-      if (!expectedAmount) {
-        expectedAmount = order.total_amount - (order.amount_paid || 0);
-      }
+        order = orderData;
+        if (!expectedAmount) {
+          expectedAmount = order.total_amount - (order.amount_paid || 0);
+        }
 
-      // 1.1 Check for Duplicate Transaction ID
-      const { data: existingPayment } = await supabase
-        .from('order_payments')
-        .select('id')
-        .eq('reference', transaction_id)
-        .maybeSingle();
-
-      if (existingPayment) {
         return new Response(JSON.stringify({
           success: false,
-          message: "This transaction reference has already been used!",
-          action_taken: "Blocked Duplicate"
+          message: "Order not found.",
+          action_taken: "Failed - Order Missing"
         }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           status: 200
         });
       }
+
+      order = orderData;
+      organizationId = order.organization_id;
+
+      // Block payment on already-settled orders
+      if (['closed', 'cancelled'].includes(order.status) || order.payment_status === 'paid') {
+        await logVerificationAttempt(supabase, {
+          organization_id: organizationId || undefined,
+          order_id,
+          transaction_id,
+          bank,
+          status: 'already_paid',
+          response_data: { order_status: order.status, payment_status: order.payment_status }
+        });
+
+        return new Response(JSON.stringify({
+          success: false,
+          message: "This order is already settled. No further payments accepted.",
+          action_taken: "Blocked - Order Already Paid/Closed"
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200
+        });
+      }
+
+      if (!expectedAmount) {
+        expectedAmount = order.total_amount - (order.amount_paid || 0);
+      }
     }
 
-    // 4. Call Verification API
+    // ================================================================
+    // STEP 3: LOG THE ATTEMPT (before calling external API)
+    // ================================================================
+    await logVerificationAttempt(supabase, {
+      organization_id: organizationId || undefined,
+      order_id,
+      transaction_id,
+      bank,
+      status: 'attempted'
+    });
+
+    // ================================================================
+    // STEP 4: CALL VERIFICATION API
+    // ================================================================
     if (!VERIFY_LEUL_KEY) {
       throw new Error("Verification service not configured (Missing VERIFY_LEUL_KEY)");
     }
@@ -117,7 +245,7 @@ serve(async (req) => {
       receiver_account
     };
 
-    console.log("Verifying:", apiPayload);
+    console.log("[verify-payment] Calling API:", apiPayload);
 
     const response = await fetch(API_URL, {
       method: 'POST',
@@ -132,46 +260,140 @@ serve(async (req) => {
     clearTimeout(timeoutId);
     const data = await response.json();
 
-    // 3. Logic: If Valid -> Update Order
-    let actionTaken = "Verified only.";
+    // ================================================================
+    // STEP 5: PROCESS RESULT
+    // ================================================================
+    let actionTaken = "Verified only (no order linked).";
+    let receiptData: any = null;
 
-    if (data.success && data.validated && order_id) {
-      // Double check amount if we know it
+    if (data.success && data.validated && order_id && order) {
       const verifiedAmount = data.amount;
-      if (expectedAmount && verifiedAmount < expectedAmount) {
-        // Partial Payment or Underpayment
-        actionTaken = `Verified ${verifiedAmount}, but expected ${expectedAmount}. Order partially paid.`;
+      const now = new Date().toISOString();
 
-        // Manually update order_payments and orders as no RPC exists
+      if (expectedAmount && verifiedAmount < expectedAmount) {
+        // --- PARTIAL PAYMENT ---
+        actionTaken = `Verified ${verifiedAmount} ETB, but expected ${expectedAmount} ETB. Order partially paid.`;
+
         await supabase.from('order_payments').insert({
           order_id: order_id,
           amount: verifiedAmount,
           payment_method: bank,
           reference: transaction_id,
-          created_at: new Date().toISOString()
+          organization_id: organizationId,
+          created_at: now
         });
 
         await supabase.from('orders').update({
           payment_status: 'split',
-          amount_paid: (order?.amount_paid || 0) + verifiedAmount, // Use 'order' variable
-          last_updated: new Date().toISOString()
+          amount_paid: (order.amount_paid || 0) + verifiedAmount,
+          last_updated: now
         }).eq('id', order_id);
-      } else {
-        // Full Payment
-        actionTaken = "Payment verified and Order updated to PAID/CLOSED.";
 
-        // Update Order
+        await logVerificationAttempt(supabase, {
+          organization_id: organizationId || undefined,
+          order_id,
+          transaction_id,
+          bank,
+          status: 'success',
+          response_data: { type: 'partial', verified_amount: verifiedAmount, expected: expectedAmount }
+        });
+
+      } else {
+        // --- FULL PAYMENT ---
+        actionTaken = "Payment verified. Order marked as PAID and CLOSED.";
+
+        // Calculate receipt data
+        const subtotal = order.total_amount / 1.15;
+        const vat = order.total_amount - subtotal;
+        const tin = "0043819230";
+
+        const qrData = {
+          v: "1.0",
+          oid: order.id,
+          tot: order.total_amount,
+          vat: parseFloat(vat.toFixed(2)),
+          ref: transaction_id,
+          bank: bank,
+          ts: now
+        };
+
+        const qrCode = btoa(JSON.stringify(qrData));
+
+        // Record payment
+        await supabase.from('order_payments').insert({
+          order_id: order_id,
+          amount: verifiedAmount || order.total_amount,
+          payment_method: bank,
+          reference: transaction_id,
+          organization_id: organizationId,
+          created_at: now
+        });
+
+        // Close the order
         await supabase.from('orders').update({
           status: 'closed',
           payment_status: 'paid',
-          amount_paid: verifiedAmount, // or total_amount
-          paid_at: new Date().toISOString(),
-          closed_at: new Date().toISOString()
+          payment_method: bank,
+          amount_paid: verifiedAmount || order.total_amount,
+          transaction_reference: transaction_id,
+          paid_at: now,
+          closed_at: now,
+          completed_at: now,
+          last_updated: now,
+          subtotal_amount: parseFloat(subtotal.toFixed(2)),
+          vat_amount: parseFloat(vat.toFixed(2)),
+          vat_rate: 15.0,
+          qr_verification_code: qrCode
         }).eq('id', order_id);
 
-        // Also close table (optional, logical)
-        // We can trigger a cleanup function here if needed
+        // Clear the table if linked
+        if (order.table_id) {
+          // Deactivate sessions
+          await supabase
+            .from('table_sessions')
+            .update({ is_active: false, closed_at: now })
+            .eq('table_id', order.table_id)
+            .eq('is_active', true);
+
+          // Reset table
+          await supabase.from('tables').update({
+            status: 'available',
+            current_order_id: null,
+            current_session_id: null,
+            last_updated: now
+          }).eq('id', order.table_id);
+        }
+
+        receiptData = {
+          order_id: order.id,
+          total: order.total_amount,
+          subtotal: parseFloat(subtotal.toFixed(2)),
+          vat: parseFloat(vat.toFixed(2)),
+          payment_method: bank,
+          reference: transaction_id,
+          qr_code: qrCode,
+          paid_at: now
+        };
+
+        await logVerificationAttempt(supabase, {
+          organization_id: organizationId || undefined,
+          order_id,
+          transaction_id,
+          bank,
+          status: 'success',
+          response_data: { type: 'full', verified_amount: verifiedAmount, receipt_generated: true }
+        });
       }
+    } else if (!data.success || !data.validated) {
+      // Verification failed at bank level
+      await logVerificationAttempt(supabase, {
+        organization_id: organizationId || undefined,
+        order_id,
+        transaction_id,
+        bank,
+        status: 'failed',
+        response_data: data
+      });
     }
 
     return new Response(JSON.stringify({
@@ -180,6 +402,7 @@ serve(async (req) => {
       amount_found: data.amount,
       message: data.message || (data.validated ? "Transaction Found and Valid." : "Transaction not found or invalid."),
       action_taken: actionTaken,
+      receipt: receiptData,
       raw: data
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -187,7 +410,7 @@ serve(async (req) => {
     });
 
   } catch (error: any) {
-    console.error("[ERROR] verify-payment:", error.message);
+    console.error("[verify-payment] Fatal error:", error.message);
     return new Response(JSON.stringify({
       success: false,
       error: error.message

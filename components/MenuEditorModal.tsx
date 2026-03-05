@@ -240,13 +240,17 @@ export const MenuEditorModal: React.FC<MenuEditorModalProps> = ({
         if (!bffErr && bffResult && !bffResult.error) {
           finalItem = bffResult.data || bffResult;
           console.log("Edge Function Success:", finalItem);
-        } else {
           // ATTEMPT 2: Direct Database Fallback (RLS-aware)
           console.warn("Edge Function failed, attempting direct DB fallback...", bffErr || bffResult?.error);
 
+          const orgId = userProfile?.organization_id;
+          if (!orgId) {
+            throw new Error("Missing Organization Identity. Please refresh your session.");
+          }
+
           const dbPayload = {
             ...payload,
-            organization_id: userProfile?.organization_id || '00000000-0000-0000-0000-000000000000'
+            organization_id: orgId
           };
 
           const { data: dbData, error: dbErr } = await supabase
