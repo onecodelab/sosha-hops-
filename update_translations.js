@@ -1,6 +1,13 @@
 const fs = require('fs');
+const path = require('path');
 
-const file = 'c:/Users/hp/Desktop/sosha-hops-/lib/translations.ts';
+// Ensure the path is correct for both local and CI environments
+const file = path.resolve(__dirname, 'lib/translations.ts');
+if (!fs.existsSync(file)) {
+  console.warn(`File not found: ${file}. Skipping translation update.`);
+  process.exit(0);
+}
+
 let content = fs.readFileSync(file, 'utf8');
 
 const additions = {
@@ -118,15 +125,12 @@ const additions = {
 
 for (const lang of ['en', 'am', 'om', 'ti', 'af']) {
     // Insert into nav
-    const navRegex = new RegExp(\`(\${lang}: \\{[\\s\\S]*?nav: \\{)\`);
-  content = content.replace(navRegex, \`$1\${additions[lang].nav}\`);
+    const navRegex = new RegExp(`${lang}: {[\\s\\S]*?nav: {`);
+    content = content.replace(navRegex, `$1${additions[lang].nav}`);
 
-  // Insert extra blocks before the final '}' of the language
-  // Wait, let's inject after 'login: { ... },' or 'dashboard: { ... },'
-  // Actually, we can inject it right before \`landing: {\` or \`footer: {\`.
-  // Wait, let's inject it right before \`footer: {\`
-  const injectTargetRegex = new RegExp(\`(\${lang}: \\{[\\s\\S]*?)(footer: \\{)\`);
-  content = content.replace(injectTargetRegex, \`$1\${additions[lang].extra}\n    $2\`);
+    // Insert extra blocks before footer
+    const injectTargetRegex = new RegExp(`${lang}: {[\\s\\S]*?footer: {`);
+    content = content.replace(injectTargetRegex, `$1${additions[lang].extra}\n    $2`);
 }
 
 // Write back
