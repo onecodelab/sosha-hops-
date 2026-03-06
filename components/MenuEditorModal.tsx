@@ -240,6 +240,7 @@ export const MenuEditorModal: React.FC<MenuEditorModalProps> = ({
         if (!bffErr && bffResult && !bffResult.error) {
           finalItem = bffResult.data || bffResult;
           console.log("Edge Function Success:", finalItem);
+        } else {
           // ATTEMPT 2: Direct Database Fallback (RLS-aware)
           console.warn("Edge Function failed, attempting direct DB fallback...", bffErr || bffResult?.error);
 
@@ -468,7 +469,7 @@ export const MenuEditorModal: React.FC<MenuEditorModalProps> = ({
                       </div>
                       <div className="text-center space-y-1">
                         <span className="block text-[11px] font-black text-gray-400 uppercase tracking-widest group-hover:text-white transition-colors">
-                          {uploading ? 'Processing File...' : 'Uplode Dish Photo'}
+                          {uploading ? 'Processing File...' : 'Upload Dish Photo'}
                         </span>
                         <span className="block text-[9px] text-gray-600 font-bold">Standard format (16:9 recommended)</span>
                       </div>
