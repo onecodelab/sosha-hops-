@@ -197,34 +197,49 @@ const MenuManagement: React.FC = () => {
                         if (confirm(`PERMANENT DELETE: Are you sure you want to wipe "${item.name}" and ALL its history? This action cannot be undone.`)) {
                           try {
                             let edgeSuccess = false;
+                            let errorMessage = "";
+
+                            // ATTEMPT 1: Edge Function (BFF)
                             try {
-                              const { error, data: result } = await supabase.functions.invoke('manage-menu', {
+                              const { error: invokeErr, data: result } = await supabase.functions.invoke('manage-menu', {
                                 body: {
                                   action: 'delete',
                                   target_id: item.id,
                                 }
                               });
-                              if (!error && !(result && result.error)) {
+
+                              if (!invokeErr && result && !result.error) {
                                 edgeSuccess = true;
                               } else {
-                                console.warn("Edge Function failed, falling back to direct RPC:", error || result?.error);
+                                errorMessage = invokeErr?.message || result?.error || "Unknown Edge Error";
+                                console.warn("Edge Function failed, falling back to direct RPC:", errorMessage);
                               }
-                            } catch (e) {
-                              console.warn("Edge Function unreachable, falling back to direct RPC:", e);
+                            } catch (e: any) {
+                              errorMessage = e.message || "Edge unreachable";
+                              console.warn("Edge Function unreachable, falling back to direct RPC:", errorMessage);
                             }
 
-                            // Fallback: Direct RPC call to the Deep Wipe Protocol
+                            // ATTEMPT 2: Direct RPC Fallback (Deep Wipe Protocol)
                             if (!edgeSuccess) {
-                              const { error: rpcErr } = await supabase.rpc('permanently_delete_menu_item', {
+                              console.log("Executing direct RPC fallback for deletion...");
+                              const { data: rpcResult, error: rpcErr } = await supabase.rpc('permanently_delete_menu_item', {
                                 target_id: item.id
                               });
-                              if (rpcErr) throw rpcErr;
+
+                              if (rpcErr) {
+                                throw new Error(`Wipe Failed: ${rpcErr.message} (Fallback for: ${errorMessage})`);
+                              }
+
+                              if (rpcResult && rpcResult.success === false) {
+                                throw new Error(`Wipe Rejected: ${rpcResult.error || rpcResult.message}`);
+                              }
                             }
 
-                            refreshMenu();
                             showToast("Menu Item Purged from Project", "success");
+                            refreshMenu();
                           } catch (err: any) {
-                            showToast(err.message, "error");
+                            console.error("Deep Wipe Error:", err);
+                            showToast(err.message || "Failed to purge menu item", "error");
                           }
                         }
                       }}

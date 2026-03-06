@@ -103,6 +103,11 @@ const AdminTableMap: React.FC = () => {
   };
 
   const handleSaveLayout = async () => {
+    if (!activeBranchId) {
+      showToast("Please select a branch first", "error");
+      return;
+    }
+
     setSaving(true);
     try {
       // Supabase upsert requires unique id
@@ -111,11 +116,20 @@ const AdminTableMap: React.FC = () => {
         branch_id: activeBranchId,
         organization_id: profile?.organization_id
       }));
+
+      if (tablesToSave.length === 0) {
+        showToast("No tables to save", "info");
+        return;
+      }
+
       const { error } = await supabase.from('tables').upsert(tablesToSave);
       if (error) throw error;
+
       showToast(t('tableMap.saveSuccess'), "success");
+      await fetchTables(); // Refresh to get any server-side defaults
     } catch (err: any) {
-      showToast(err.message, "error");
+      console.error("Save Layout Error:", err);
+      showToast(err.message || "Failed to save layout", "error");
     } finally {
       setSaving(false);
     }

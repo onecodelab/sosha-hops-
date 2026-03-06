@@ -275,6 +275,7 @@ const Inventory: React.FC = () => {
 
       // Edge Function Call
       let edgeSuccess = false;
+      let bffErrorMessage = "";
       try {
         const { data: bffResult, error: bffErr } = await supabase.functions.invoke('manage-inventory', {
           body: {
@@ -284,18 +285,22 @@ const Inventory: React.FC = () => {
             items: [{
               ingredient_id: targetIngredientId,
               quantity: Number(formData.current_stock),
-              current_stock: previousStock
+              current_stock: previousStock,
+              par_min: Number(formData.par_min),
+              par_max: Number(formData.par_max)
             }]
           }
         });
 
         if (bffErr || (bffResult && bffResult.error)) {
-          console.warn("Edge Function failed, falling back to direct SQL:", bffErr || bffResult?.error);
+          bffErrorMessage = bffErr?.message || bffResult?.error || "Unknown Edge Error";
+          console.warn("Edge Function failed, falling back to direct SQL:", bffErrorMessage);
         } else {
           edgeSuccess = true;
         }
-      } catch (e) {
-        console.warn("Edge Function unreachable, falling back to direct SQL:", e);
+      } catch (e: any) {
+        bffErrorMessage = e.message || "Edge unreachable";
+        console.warn("Edge Function unreachable, falling back to direct SQL:", bffErrorMessage);
       }
 
       // Par levels and Stock Fallback updates
@@ -316,31 +321,25 @@ const Inventory: React.FC = () => {
             last_updated: new Date().toISOString()
           }, { onConflict: 'branch_id,ingredient_id' });
 
-        if (stockErr) throw stockErr;
+        if (stockErr) {
+          throw new Error(`Inventory Update Failed: ${stockErr.message} (Fallback for: ${bffErrorMessage})`);
+        }
 
         // Log transaction manually
         if (Number(formData.current_stock) !== previousStock) {
-          const userSession = await supabase.auth.getUser();
-          await supabase.from('inventory_transactions').insert({
+          const { data: { user } } = await supabase.auth.getUser();
+          const { error: logErr } = await supabase.from('inventory_transactions').insert({
             branch_id: activeBranchId,
             organization_id: organizationId,
             ingredient_id: targetIngredientId,
             transaction_type: isAddingNew ? 'initial' : 'audit',
             quantity: Number(formData.current_stock) - previousStock,
-            performed_by: userSession.data.user?.id,
+            performed_by: user?.id,
             reason: isAddingNew ? 'Initial Setup' : 'Manual Adjustment (Edge Fallback)',
             created_at: new Date().toISOString()
           });
+          if (logErr) console.error("Manual Transaction Log Failed:", logErr);
         }
-      } else {
-        // Edge function handled stock and logging, so we just update PAR levels
-        const { error: parErr } = await supabase
-          .from('branch_inventory')
-          .upsert({
-            ...stockPayload,
-          }, { onConflict: 'branch_id,ingredient_id' });
-
-        if (parErr) throw parErr;
       }
 
       await fetchInventory();
