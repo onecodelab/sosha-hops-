@@ -38,8 +38,19 @@ serve(async (req) => {
         }
 
         currentStep = 'parsing_payload';
-        const payload = await req.json();
+        let payload;
+        try {
+            payload = await req.json();
+        } catch (e) {
+            return new Response(JSON.stringify({ error: "Invalid JSON payload" }), { status: 400, headers: corsHeaders });
+        }
+
         let { branch_id, items, order_details, source, table_number, table_id, user_id, organization_id: input_org_id, order_id, telegram_id } = payload;
+
+        // Ensure order_id is a valid UUID or null (don't allow empty strings)
+        if (order_id === "" || order_id === "null" || order_id === undefined) {
+            order_id = null;
+        }
 
         if (order_details) {
             table_number = table_number || order_details.table_number;
@@ -70,16 +81,25 @@ serve(async (req) => {
             .from('profiles')
             .select('organization_id, role')
             .eq('id', user.id)
-            .single();
+            .maybeSingle();
 
-        const userRole = profile?.role?.toLowerCase();
+        if (profileErr) {
+            console.error("Profile Fetch Error:", profileErr);
+            return new Response(JSON.stringify({ error: "Profile fetch failed", detail: profileErr.message }), { status: 500, headers: corsHeaders });
+        }
+
+        if (!profile) {
+            return new Response(JSON.stringify({ error: "User profile not found" }), { status: 403, headers: corsHeaders });
+        }
+
+        const userRole = (profile.role || '').toLowerCase();
         const isSuperAdmin = userRole === 'super_admin';
 
-        if (profileErr || !profile || (!isSuperAdmin && profile.organization_id !== organizationId)) {
-            console.error(`[AUTH_ERROR] User: ${user.id} (${userRole}) | User Org: ${profile?.organization_id} | Branch Org: ${organizationId}`);
+        if (!isSuperAdmin && profile.organization_id !== organizationId) {
+            console.error(`[AUTH_ERROR] User: ${user.id} (${userRole}) | User Org: ${profile.organization_id} | Branch Org: ${organizationId}`);
             return new Response(JSON.stringify({
                 error: 'Unauthorized for this branch',
-                detail: `User org: ${profile?.organization_id}, Branch org: ${organizationId}`,
+                detail: `User org: ${profile.organization_id}, Branch org: ${organizationId}`,
                 user_role: userRole
             }), { status: 403, headers: corsHeaders });
         }
@@ -211,7 +231,7 @@ serve(async (req) => {
                 .from('orders')
                 .select('total_amount, subtotal_amount, vat_amount')
                 .eq('id', finalOrderId)
-                .single();
+                .maybeSingle();
 
             if (fetchErr) {
                 console.error(`[CRITICAL] Order Fetch Error for ${finalOrderId}:`, fetchErr);
@@ -262,9 +282,15 @@ serve(async (req) => {
                     vat_rate: 15,
                     telegram_id: telegram_id || null
                 })
-                .select().single();
+                .select('id')
+                .maybeSingle();
 
             if (orderErr) throw new Error(`Order insertion failed: ${orderErr.message}`);
+            if (!order) {
+                // FALLBACK: If RLS prevents selection after insert, we can't get the ID.
+                // But normally service role bypasses RLS. If it fails, something is wrong.
+                throw new Error("Order was inserted but could not be retrieved. Check database constraints.");
+            }
             finalOrderId = order.id;
 
             currentStep = 'updating_table_status';

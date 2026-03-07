@@ -216,9 +216,23 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
 
         if (rpcErr) {
           // Try to parse the error context/message for better feedback
-          console.error("RPC Error:", rpcErr);
-          const errorDetail = rpcErr.message || "Connection failed";
-          throw new Error(`Edge Function: ${errorDetail}`);
+          console.error("RPC/Edge Invocation Error:", rpcErr);
+
+          let errorDetail = "Unknown Error";
+
+          // If Supabase functions.invoke returns an error, it often contains context
+          if (rpcErr.context) {
+            try {
+              const body = await rpcErr.context.json();
+              errorDetail = body.error || body.message || rpcErr.message;
+            } catch (e) {
+              errorDetail = rpcErr.message;
+            }
+          } else {
+            errorDetail = rpcErr.message;
+          }
+
+          throw new Error(`Cloud Protocol: ${errorDetail}`);
         }
 
         // Extract response body in case invoke returns it poorly mapped
@@ -235,7 +249,7 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
           console.error("Function returned logical error:", parsedResult);
           const msg = parsedResult.error || "Execution failed";
           const stepMsg = parsedResult.step ? ` (at ${parsedResult.step})` : "";
-          throw new Error(`${msg}${stepMsg}`);
+          throw new Error(`Internal System Error: ${msg}${stepMsg}`);
         }
 
         if (!parsedResult || (!parsedResult.success && !parsedResult.order_id)) {
