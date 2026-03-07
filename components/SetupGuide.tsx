@@ -134,7 +134,87 @@ CREATE TABLE IF NOT EXISTS public.order_items (
     created_at TIMESTAMPTZ DEFAULT now()
 );
 
--- 8. INITIAL SEED (Optional)
+-- 8. PERFORMANCE & VIEWS (MODERN ARCHITECTURE)
+CREATE INDEX IF NOT EXISTS idx_orders_status_closed_at ON public.orders(status, closed_at);
+CREATE INDEX IF NOT EXISTS idx_orders_waiter_date ON public.orders(waiter_id, created_at);
+
+DROP VIEW IF EXISTS view_menu_details CASCADE;
+CREATE OR REPLACE VIEW view_menu_details
+WITH (security_invoker = true) AS
+SELECT DISTINCT ON (m.id, COALESCE(m.branch_id, a.branch_id))
+  m.id,
+  m.name,
+  m.price,
+  m.category,
+  m.image_url,
+  COALESCE(m.branch_id, a.branch_id) as branch_id,
+  m.branch_id as scope_branch_id,
+  c.recipe_id,
+  COALESCE(c.calculated_cost, 0) as cost_per_plate,
+  COALESCE(a.is_available, true) as is_available,
+  (m.price - COALESCE(c.calculated_cost, 0)) as margin,
+  CASE
+    WHEN m.price > 0 THEN
+      LEAST(GREATEST(((m.price - COALESCE(c.calculated_cost, 0)) / m.price) * 100, -100), 100)
+    ELSE 0
+  END as margin_percent
+FROM
+  menu m
+LEFT JOIN
+  view_recipe_costs c ON m.id = c.menu_item_id
+LEFT JOIN
+  view_menu_availability a ON m.id = a.menu_item_id
+    AND (m.branch_id = a.branch_id OR m.branch_id IS NULL)
+ORDER BY
+  m.id, COALESCE(m.branch_id, a.branch_id), m.created_at DESC;
+
+-- 9. ATOMIC BUSINESS LOGIC (Optimization: Single DB Roundtrip)
+CREATE OR REPLACE FUNCTION public.finalize_order_payment(
+    p_order_id UUID,
+    p_waiter_id UUID,
+    p_method TEXT,
+    p_amount_paid NUMERIC,
+    p_tip_amount NUMERIC,
+    p_reference TEXT,
+    p_qr_payload TEXT,
+    p_org_id UUID DEFAULT NULL
+) RETURNS VOID AS $$
+DECLARE
+    v_order_total NUMERIC;
+    v_true_shortage NUMERIC;
+    v_true_tip NUMERIC;
+    v_now TIMESTAMPTZ := now();
+    v_today DATE := CURRENT_DATE;
+    v_table_id UUID;
+    v_org_id UUID := p_org_id;
+BEGIN
+    SELECT total_amount, table_id, organization_id INTO v_order_total, v_table_id, v_org_id
+    FROM public.orders WHERE id = p_order_id FOR UPDATE;
+
+    IF v_org_id IS NULL THEN v_org_id := p_org_id; END IF;
+    v_true_shortage := GREATEST(0, v_order_total - p_amount_paid);
+    v_true_tip := GREATEST(0, p_amount_paid - v_order_total);
+
+    UPDATE public.orders SET
+        status = 'closed', payment_status = 'paid', payment_method = p_method,
+        amount_paid = p_amount_paid, tip_amount = v_true_tip, transaction_reference = p_reference,
+        paid_at = v_now, closed_at = v_now, completed_at = v_now, last_updated = v_now,
+        qr_verification_code = p_qr_payload
+    WHERE id = p_order_id;
+
+    IF v_true_tip > 0 AND p_waiter_id IS NOT NULL THEN
+        INSERT INTO public.tips_ledger (staff_id, order_id, amount, tip_type, organization_id, created_at)
+        VALUES (p_waiter_id, p_order_id, v_true_tip, CASE WHEN p_method = 'cash' THEN 'cash' ELSE 'digital' END, v_org_id, v_now);
+    END IF;
+
+    IF v_table_id IS NOT NULL THEN
+        UPDATE public.tables SET status = 'available', current_order_id = null, current_session_id = null, last_updated = v_now WHERE id = v_table_id;
+        UPDATE public.table_sessions SET is_active = false, closed_at = v_now WHERE table_id = v_table_id AND is_active = true;
+    END IF;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- 10. INITIAL SEED (Optional)
 INSERT INTO public.ingredients (name, sku, current_stock, unit_type, cost_per_unit)
 VALUES ('Premium Beef Fillet', 'BEEF-001', 50, 'kg', 850)
 ON CONFLICT (sku) DO NOTHING;

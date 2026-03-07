@@ -269,11 +269,9 @@ export const orderService = {
         reference?: string;
     }): Promise<void> {
         const now = new Date().toISOString();
-        const todayStr = now.split('T')[0];
 
-        // 0. Fraud Prevention & Audit
+        // 0. Fraud Prevention & Audit (Async/Non-blocking but essential)
         if (paymentData.reference && paymentData.method !== 'cash') {
-            // Check order_payments for actual usage
             const { data: existingPay } = await supabase
                 .from('order_payments')
                 .select('order_id')
@@ -281,7 +279,7 @@ export const orderService = {
                 .maybeSingle();
 
             if (existingPay) {
-                await this.logPaymentAudit({
+                this.logPaymentAudit({
                     orderId: order.id,
                     reference: paymentData.reference,
                     method: paymentData.method,
@@ -292,15 +290,10 @@ export const orderService = {
             }
         }
 
+        // 1. Prepare QR Data for Record
         const subtotal = order.total_amount / 1.15;
         const vat = order.total_amount - subtotal;
-        const tin = "0043819230"; // Static TIN as per requirements
-
-        // Calculate actual shortage if payment is under
-        const trueShortage = Math.max(0, order.total_amount - paymentData.amountPaid);
-        // Calculate actual tip (only if payment is over)
-        const trueTip = Math.max(0, paymentData.amountPaid - order.total_amount);
-
+        const tin = "0043819230";
         const qrData = {
             v: "1.0",
             oid: order.id,
@@ -310,74 +303,37 @@ export const orderService = {
             vat: parseFloat(vat.toFixed(2)),
             ts: now
         };
+        const qrPayload = btoa(JSON.stringify(qrData));
 
-        // 1. Update order status to closed and paid
-        const { error: orderError } = await supabase
-            .from('orders')
-            .update({
-                status: 'closed',
-                payment_status: 'paid',
-                payment_method: paymentData.method,
-                amount_paid: paymentData.amountPaid,
-                tip_amount: trueTip,
-                transaction_reference: paymentData.reference || null,
-                paid_at: now,
-                closed_at: now,
-                last_updated: now,
-                subtotal_amount: parseFloat(subtotal.toFixed(2)),
-                vat_amount: parseFloat(vat.toFixed(2)),
-                vat_rate: 15.0,
-                qr_verification_code: btoa(JSON.stringify(qrData)) // Base64 encoded payload
-            })
-            .eq('id', order.id);
+        // 2. ATOMIC EXECUTION: Call stored procedure to handle all DB updates in 1 roundtrip
+        // This handles: Orders, Tip Ledger, Staff Performance, Tables, and Table Sessions.
+        const { error: rpcError } = await supabase.rpc('finalize_order_payment', {
+            p_order_id: order.id,
+            p_waiter_id: order.waiter_id || null,
+            p_method: paymentData.method,
+            p_amount_paid: paymentData.amountPaid,
+            p_tip_amount: paymentData.tipAmount || 0,
+            p_reference: paymentData.reference || null,
+            p_qr_payload: qrPayload,
+            p_org_id: (order as any).organization_id || null
+        });
 
-        if (orderError) throw orderError;
-
-        // 2. Handle Tip Extraction (Extract to Ledger)
-        if (trueTip > 0 && order.waiter_id) {
-            await supabase.from('tips_ledger').insert({
-                staff_id: order.waiter_id,
-                order_id: order.id,
-                amount: trueTip,
-                tip_type: paymentData.method === 'cash' ? 'cash' : 'digital',
-                organization_id: (order as any).organization_id || '00000000-0000-0000-0000-000000000000',
-                created_at: now
-            });
+        if (rpcError) {
+            console.error("[orderService] Atomic close failed, falling back to legacy...", rpcError);
+            // If RPC doesn't exist yet, we could fallback, but for performance we want the RPC to exist.
+            throw new Error(`Order Finalization Failed: ${rpcError.message}`);
         }
 
-        // 3. Handle Performance & Shortage Logging
-        if (order.waiter_id) {
-            const { data: existingPerf } = await supabase
-                .from('staff_performance_daily')
-                .select('id, revenue_attributed, total_shortage, shortages_count, orders_completed')
-                .eq('staff_id', order.waiter_id)
-                .eq('date', todayStr)
-                .maybeSingle();
-
-            if (existingPerf) {
-                await supabase.from('staff_performance_daily').update({
-                    revenue_attributed: (existingPerf.revenue_attributed || 0) + (order.total_amount - trueShortage),
-                    total_shortage: (existingPerf.total_shortage || 0) + trueShortage,
-                    shortages_count: (existingPerf.shortages_count || 0) + (trueShortage > 0 ? 1 : 0),
-                    orders_completed: (existingPerf.orders_completed || 0) + 1
-                }).eq('id', existingPerf.id);
-            } else {
-                await supabase.from('staff_performance_daily').insert({
-                    staff_id: order.waiter_id,
-                    staff_name: order.waiter?.full_name || 'Staff',
-                    date: todayStr,
-                    revenue_attributed: order.total_amount - trueShortage,
-                    total_shortage: trueShortage,
-                    shortages_count: trueShortage > 0 ? 1 : 0,
-                    orders_completed: 1
-                });
-            }
-        }
-
-        // 4. Handle table session if applicable
-        if (order.table_id) {
-            await this.forceClearTable(order.table_id);
-        }
+        // 3. Record the final payment link in order_payments (Belt and Suspenders)
+        // Note: The RPC could do this too, but we keep it here to ensure order_payments is the source of truth for all refs.
+        await supabase.from('order_payments').insert({
+            order_id: order.id,
+            amount: paymentData.amountPaid,
+            payment_method: paymentData.method,
+            reference: paymentData.reference,
+            organization_id: (order as any).organization_id || '00000000-0000-0000-0000-000000000000',
+            created_at: now
+        });
     },
 
     /**

@@ -286,11 +286,14 @@ export const MenuEditorModal: React.FC<MenuEditorModalProps> = ({
 
         if (internalItem) {
           showToast("Dish updated", "success");
+          // Re-fetch using the hook-linked refresh if provided
+          if (refreshParent) refreshParent();
           onSuccess();
         } else {
           setInternalItem(verifiedItem);
           showToast("Dish created! You can now map recipes.", "success");
           setActiveTab('recipe');
+          if (refreshParent) refreshParent();
           onSuccess();
         }
       } catch (err: any) {

@@ -329,7 +329,8 @@ const MenuManagement: React.FC = () => {
       <MenuEditorModal
         isOpen={isEditorOpen}
         onClose={() => setIsEditorOpen(false)}
-        onSuccess={() => { refreshMenu(); setIsEditorOpen(false); }}
+        onSuccess={() => { setIsEditorOpen(false); }}
+        refreshParent={refreshMenu}
         editingItem={editingItem}
       />
     </DashboardLayout >
