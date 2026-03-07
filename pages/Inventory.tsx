@@ -171,6 +171,18 @@ const Inventory: React.FC = () => {
         .eq('id', ingredient.id);
 
       if (error) throw error;
+
+      // Verify deactivation
+      const { data: verify } = await supabase
+        .from('ingredients')
+        .select('is_active')
+        .eq('id', ingredient.id)
+        .single();
+
+      if (verify && verify.is_active !== false) {
+        throw new Error("Persistence failure: Item state did not update.");
+      }
+
       showToast(`${ingredient.name} removed successfully`, "success");
       await fetchInventory();
     } catch (err: any) {

@@ -125,11 +125,13 @@ const additions = {
 
 for (const lang of ['en', 'am', 'om', 'ti', 'af']) {
     // Insert into nav
-    const navRegex = new RegExp(`${lang}: {[\\s\\S]*?nav: {`);
+    // Using parentheses to create capturing groups for $1
+    const navRegex = new RegExp(`(${lang}: {[\\s\\S]*?nav: {)`);
     content = content.replace(navRegex, `$1${additions[lang].nav}`);
 
     // Insert extra blocks before footer
-    const injectTargetRegex = new RegExp(`${lang}: {[\\s\\S]*?footer: {`);
+    // Using parentheses to create capturing groups for $1 and $2
+    const injectTargetRegex = new RegExp(`(${lang}: {[\\s\\S]*?)(footer: {)`);
     content = content.replace(injectTargetRegex, `$1${additions[lang].extra}\n    $2`);
 }
 

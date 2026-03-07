@@ -80,6 +80,8 @@ const AdminTableMap: React.FC = () => {
       showToast(t('tableMap.addSuccess').replace('{num}', data.table_number));
     } catch (err: any) {
       showToast(err.message, "error");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -91,14 +93,24 @@ const AdminTableMap: React.FC = () => {
     if (!selectedId) return;
     if (!confirm(t('tableMap.confirmDelete'))) return;
 
+    setLoading(true);
     try {
       const { error } = await supabase.from('tables').delete().eq('id', selectedId).eq('organization_id', profile?.organization_id);
       if (error) throw error;
+
+      // Verify deletion
+      const { data: verify } = await supabase.from('tables').select('id').eq('id', selectedId).maybeSingle();
+      if (verify) {
+        throw new Error("Deletion failed: Item still exists in database.");
+      }
+
       setTables(prev => prev.filter(t => t.id !== selectedId));
       setSelectedId(null);
       showToast(t('tableMap.deleteSuccess'));
     } catch (err: any) {
       showToast(err.message, "error");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -131,6 +143,7 @@ const AdminTableMap: React.FC = () => {
       console.error("Save Layout Error:", err);
       showToast(err.message || "Failed to save layout", "error");
     } finally {
+      setLoading(false);
       setSaving(false);
     }
   };

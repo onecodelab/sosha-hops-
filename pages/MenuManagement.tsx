@@ -236,7 +236,7 @@ const MenuManagement: React.FC = () => {
                             }
 
                             showToast("Menu Item Purged from Project", "success");
-                            refreshMenu();
+                            await refreshMenu();
                           } catch (err: any) {
                             console.error("Deep Wipe Error:", err);
                             showToast(err.message || "Failed to purge menu item", "error");
@@ -257,16 +257,22 @@ const MenuManagement: React.FC = () => {
 
                     {/* Real Margin & Cost Logic */}
                     <div className="flex flex-col items-end">
-                      {item.cost_per_plate !== undefined && item.cost_per_plate > 0 ? (
+                      {item.cost_per_plate !== undefined && item.cost_per_plate > 0 && item.price > 0 ? (
                         <>
-                          <Badge className={cn(
-                            "text-[8px] font-black uppercase border",
-                            ((item.price - item.cost_per_plate) / item.price) > 0.4
-                              ? "bg-green-500/10 text-green-500 border-green-500/20"
-                              : "bg-yellow-500/10 text-yellow-500 border-yellow-500/20"
-                          )}>
-                            {(((item.price - item.cost_per_plate) / item.price) * 100).toFixed(0)}% Margin
-                          </Badge>
+                          {(() => {
+                            const rawMargin = ((item.price - item.cost_per_plate) / item.price) * 100;
+                            const displayMargin = Math.min(Math.max(rawMargin, -100), 100);
+                            return (
+                              <Badge className={cn(
+                                "text-[8px] font-black uppercase border",
+                                rawMargin > 40
+                                  ? "bg-green-500/10 text-green-500 border-green-500/20"
+                                  : "bg-yellow-500/10 text-yellow-500 border-yellow-500/20"
+                              )}>
+                                {displayMargin.toFixed(0)}% Margin
+                              </Badge>
+                            );
+                          })()}
                           <span className="text-[8px] text-muted mt-1 uppercase font-bold tracking-tighter">
                             Cost: ETB {item.cost_per_plate.toFixed(2)}
                           </span>

@@ -239,6 +239,9 @@ export const MenuEditorModal: React.FC<MenuEditorModalProps> = ({
 
         if (!bffErr && bffResult && !bffResult.error) {
           finalItem = bffResult.data || bffResult;
+          if (!finalItem || !finalItem.id) {
+            throw new Error("Edge Function returned success but missing item data");
+          }
           console.log("Edge Function Success:", finalItem);
         } else {
           // ATTEMPT 2: Direct Database Fallback (RLS-aware)
@@ -271,15 +274,18 @@ export const MenuEditorModal: React.FC<MenuEditorModalProps> = ({
 
         if (internalItem) {
           showToast("Dish updated", "success");
+          onSuccess();
         } else {
           if (finalItem && finalItem.id) {
             setInternalItem(finalItem);
+            showToast("Dish created! You can now map recipes.", "success");
+            setActiveTab('recipe');
+            onSuccess();
+          } else {
+            console.error("No finalItem after upsert. finalItem:", finalItem);
+            throw new Error("Persistence check failed: Item ID not found after save.");
           }
-          showToast("Dish created! You can now map recipes.", "success");
-          setActiveTab('recipe');
         }
-
-        onSuccess();
       } catch (err: any) {
         throw err;
       }
@@ -293,7 +299,8 @@ export const MenuEditorModal: React.FC<MenuEditorModalProps> = ({
 
   const hasItem = !!internalItem;
 
-  const marginPercent = price > 0 ? ((price - recipeCost) / price) * 100 : 0;
+  const rawMargin = price > 0 ? ((price - recipeCost) / price) * 100 : 0;
+  const marginPercent = Math.min(Math.max(rawMargin, -100), 100);
 
   return (
     <Dialog isOpen={isOpen} onClose={onClose} title={internalItem ? `Manage: ${internalItem.name}` : "Create New Dish"}>
