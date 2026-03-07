@@ -14,8 +14,8 @@ export const orderService = {
         *,
         waiter:profiles!orders_waiter_id_fkey (full_name),
         order_items (
-          id, quantity, price, created_at,
-          menu_item:menu (name)
+          id, quantity, price, created_at, special_instructions,
+          menu_item:menu (name, image_url)
         )
       `)
             .eq('branch_id', branchId)
@@ -143,6 +143,29 @@ export const orderService = {
         is_tip?: boolean;
     }): Promise<void> {
         const now = new Date().toISOString();
+
+        // 0. Duplicate Check
+        if (payment.reference && payment.method !== 'cash') {
+            const { data: existingPay } = await supabase
+                .from('order_payments')
+                .select('order_id')
+                .eq('reference', payment.reference)
+                .maybeSingle();
+
+            if (existingPay && existingPay.order_id !== order.id) {
+                throw new Error("Fraud Alert: This transaction reference has already been used!");
+            }
+
+            const { data: existingOrder } = await supabase
+                .from('orders')
+                .select('id')
+                .eq('transaction_reference', payment.reference)
+                .maybeSingle();
+
+            if (existingOrder && existingOrder.id !== order.id) {
+                throw new Error("Fraud Alert: This transaction reference has already been used!");
+            }
+        }
 
         // 1. Record the Payment in order_payments
         const { error: payErr } = await supabase
@@ -280,13 +303,31 @@ export const orderService = {
                 .eq('reference', paymentData.reference)
                 .maybeSingle();
 
-            if (existingPay) {
+            if (existingPay && existingPay.order_id !== order.id) {
                 await this.logPaymentAudit({
                     orderId: order.id,
                     reference: paymentData.reference,
                     method: paymentData.method,
                     status: 'fraud',
-                    details: { attempted_order_id: order.id, existing_order_id: existingPay.order_id }
+                    details: { attempted_order_id: order.id, existing_order_id: existingPay.order_id, found_in: 'order_payments' }
+                });
+                throw new Error("Fraud Alert: This transaction reference has already been used!");
+            }
+
+            // Also check orders table since full payments don't go to order_payments
+            const { data: existingOrder } = await supabase
+                .from('orders')
+                .select('id')
+                .eq('transaction_reference', paymentData.reference)
+                .maybeSingle();
+
+            if (existingOrder && existingOrder.id !== order.id) {
+                await this.logPaymentAudit({
+                    orderId: order.id,
+                    reference: paymentData.reference,
+                    method: paymentData.method,
+                    status: 'fraud',
+                    details: { attempted_order_id: order.id, existing_order_id: existingOrder.id, found_in: 'orders' }
                 });
                 throw new Error("Fraud Alert: This transaction reference has already been used!");
             }
@@ -471,8 +512,8 @@ export const orderService = {
             .select(`
                 *,
                 order_items (
-                    id, quantity, price, created_at,
-                    menu_item:menu (name)
+                    id, quantity, price, created_at, special_instructions,
+                    menu_item:menu (name, image_url)
                 )
             `)
             .eq('table_id', tableId)

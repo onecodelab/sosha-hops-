@@ -17,9 +17,11 @@ serve(async (req) => {
     try {
         const startTime = Date.now();
         const sbUrl = Deno.env.get('SUPABASE_URL') || '';
-        const sbKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || Deno.env.get('SERVICE_ROLE_KEY') || Deno.env.get('SUPABASE_ANON_KEY') || '';
+        // Ensure we always use the service role key for the main client to bypass RLS
+        const sbKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
 
         if (!sbUrl || !sbKey) {
+            console.error("Missing Service Role Key configuration");
             return new Response(JSON.stringify({ error: "Configuration Error", detail: "Missing Supabase credentials" }), { status: 500, headers: corsHeaders });
         }
 

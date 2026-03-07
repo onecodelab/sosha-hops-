@@ -47,7 +47,7 @@ const ManagerDashboard: React.FC = () => {
          const { data: allStaff } = await supabase.from('profiles').select('*').in('role', ['waiter', 'kitchen', 'manager', 'security']);
 
          const activeOrders = todayOrders || [];
-         const revenue = activeOrders.filter(o => o.status !== 'cancelled').reduce((sum, o) => sum + (o.total_amount || 0), 0);
+         const revenue = activeOrders.filter(o => ['closed', 'paid'].includes(o.status)).reduce((sum, o) => sum + (o.total_amount || 0), 0);
          // Issues now only tracks cancelled orders (operational_issues table was removed)
          const issuesCount = activeOrders.filter(o => o.status === 'cancelled').length;
 

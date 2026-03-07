@@ -25,9 +25,8 @@ interface BillModalProps {
 // Fix: Property 'env' does not exist on type 'ImportMeta'. Using process.env to align with provided environment guidelines.
 const BARO_API_KEY = import.meta.env.VITE_BARO_API_KEY || "baro_prod_key_8821";
 
-const BANK_CONFIG: Record<string, { receiver: string, label: string, placeholder: string, color: string, icon: any, endpoint: string }> = {
+const BANK_CONFIG: Record<string, { label: string, placeholder: string, color: string, icon: any, endpoint: string }> = {
   telebirr: {
-    receiver: "",
     label: "Telebirr",
     placeholder: "10-char ID (e.g. CL...)",
     color: "text-purple-400 border-purple-500/30 bg-purple-500/5",
@@ -35,7 +34,6 @@ const BANK_CONFIG: Record<string, { receiver: string, label: string, placeholder
     endpoint: "telebirr"
   },
   cbe: {
-    receiver: "02293007",
     label: "CBE",
     placeholder: "FT Reference...",
     color: "text-blue-400 border-blue-500/30 bg-blue-500/5",
@@ -43,7 +41,6 @@ const BANK_CONFIG: Record<string, { receiver: string, label: string, placeholder
     endpoint: "cbe"
   },
   dashen: {
-    receiver: "",
     label: "Dashen",
     placeholder: "Ref Number...",
     color: "text-emerald-400 border-emerald-500/30 bg-emerald-500/5",
@@ -51,7 +48,6 @@ const BANK_CONFIG: Record<string, { receiver: string, label: string, placeholder
     endpoint: "dashen"
   },
   abyssinia: {
-    receiver: "16408",
     label: "Abyssinia",
     placeholder: "BoA Reference...",
     color: "text-zinc-400 border-zinc-500/30 bg-zinc-500/5",
@@ -59,7 +55,6 @@ const BANK_CONFIG: Record<string, { receiver: string, label: string, placeholder
     endpoint: "abyssinia"
   },
   cbebirr: {
-    receiver: "",
     label: "CBE Birr",
     placeholder: "Receipt #",
     color: "text-orange-400 border-orange-500/30 bg-orange-500/5",
@@ -167,12 +162,17 @@ export const BillModal: React.FC<BillModalProps> = ({
   };
 
   const { data: bankSettings = [] } = useQuery({
-    queryKey: ['bank_settings'],
+    queryKey: ['bank_settings', profile?.organization_id],
     queryFn: async () => {
-      const { data, error } = await supabase.from('bank_settings').select('*');
+      if (!profile?.organization_id) return [];
+      const { data, error } = await supabase
+        .from('bank_settings')
+        .select('*')
+        .eq('organization_id', profile.organization_id);
       if (error) throw error;
       return data;
     },
+    enabled: !!profile?.organization_id,
     staleTime: 1000 * 60 * 5
   });
 
@@ -206,13 +206,37 @@ export const BillModal: React.FC<BillModalProps> = ({
 
   const getDynamicReceiver = (bank: string) => {
     const setting = bankSettings.find((s: any) => s.bank_key === bank);
-    return setting?.account_number || BANK_CONFIG[bank]?.receiver || "";
+    return setting?.account_number || "";
   };
 
   const verifyTransaction = async (targetRef?: string, targetBank?: string) => {
     const ref = (targetRef || refNumber).trim();
     const bank = targetBank || paymentMethod;
     if (!ref || bank === 'cash' || !order) return;
+
+    // Pre-check: Don't even start verification if we already have this ID in our system
+    // This prevents redundant API calls and gives immediate feedback
+    const { data: existingPay } = await supabase
+      .from('order_payments')
+      .select('order_id')
+      .eq('reference', ref)
+      .maybeSingle();
+
+    if (existingPay && existingPay.order_id !== order.id) {
+      showToast("Fraud Alert: This transaction reference has already been used!", "error");
+      return;
+    }
+
+    const { data: existingOrder } = await supabase
+      .from('orders')
+      .select('id')
+      .eq('transaction_reference', ref)
+      .maybeSingle();
+
+    if (existingOrder && existingOrder.id !== order.id) {
+      showToast("Fraud Alert: This transaction reference has already been used!", "error");
+      return;
+    }
 
     // Reset previous job state
     resetJob();
@@ -570,6 +594,7 @@ export const BillModal: React.FC<BillModalProps> = ({
           view === 'split' && (
             <SplitPaymentView
               order={order}
+              profile={profile}
               onBack={() => setView('bill')}
               onSuccess={() => {
                 setView('success');
@@ -713,8 +738,9 @@ export const BillModal: React.FC<BillModalProps> = ({
   );
 };
 
-function SplitPaymentView({ order, onBack, onSuccess }: {
+function SplitPaymentView({ order, profile, onBack, onSuccess }: {
   order: Order;
+  profile: any;
   onBack: () => void;
   onSuccess: () => void;
 }) {
@@ -731,12 +757,17 @@ function SplitPaymentView({ order, onBack, onSuccess }: {
 
   // Fetch bank settings
   const { data: bankSettings = [] } = useQuery({
-    queryKey: ['bank_settings'],
+    queryKey: ['bank_settings', profile?.organization_id],
     queryFn: async () => {
-      const { data, error } = await supabase.from('bank_settings').select('*');
+      if (!profile?.organization_id) return [];
+      const { data, error } = await supabase
+        .from('bank_settings')
+        .select('*')
+        .eq('organization_id', profile.organization_id);
       if (error) throw error;
       return data;
     },
+    enabled: !!profile?.organization_id,
     staleTime: 1000 * 60 * 5
   });
 

@@ -91,6 +91,47 @@ serve(async (req) => {
                 return new Response(JSON.stringify({ error: "Missing required fields (email, password, full_name)" }), { status: 400, headers: corsHeaders });
             }
 
+            // 2.0 Check if user already exists in ANY organization
+            const { data: existingProfile, error: searchError } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('email', email)
+                .maybeSingle();
+
+            if (searchError) {
+                console.error('Search Error:', searchError);
+            }
+
+            if (existingProfile) {
+                // If they belong to the SAME organization, we can just update/reactivate them
+                if (existingProfile.organization_id === organizationId) {
+                    const { error: updateError } = await supabase.from('profiles').update({
+                        full_name,
+                        role,
+                        home_branch_id: home_branch_id || null,
+                        base_salary: base_salary || null,
+                        pay_period: pay_period || 'monthly',
+                        status: 'active'
+                    }).eq('id', existingProfile.id);
+
+                    if (updateError) throw updateError;
+
+                    return new Response(JSON.stringify({
+                        success: true,
+                        message: "Existing staff account reactivated",
+                        user: { id: existingProfile.id, email: existingProfile.email }
+                    }), {
+                        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                        status: 200
+                    });
+                } else {
+                    // Conflict: Email belongs to another organization
+                    return new Response(JSON.stringify({
+                        error: "This email is already registered to another organization. Please use a different email."
+                    }), { status: 400, headers: corsHeaders });
+                }
+            }
+
             // 2.1 Create Auth User
             const { data: authData, error: authError } = await supabase.auth.admin.createUser({
                 email,
@@ -101,6 +142,10 @@ serve(async (req) => {
 
             if (authError) {
                 console.error('Auth Error:', authError);
+                // Even if profile wasn't found, Auth might have it (edge case)
+                if (authError.message.includes('already registered')) {
+                    return new Response(JSON.stringify({ error: "Email already registered in the system. Use another email or contact support." }), { status: 400, headers: corsHeaders });
+                }
                 return new Response(JSON.stringify({ error: authError.message }), { status: 400, headers: corsHeaders });
             }
 
@@ -121,8 +166,6 @@ serve(async (req) => {
 
             if (upsertError) {
                 console.error('Profile Upsert Error:', upsertError);
-                // We don't necessarily want to fail the whole thing if Auth user was created, 
-                // but for debugging let's report it.
                 return new Response(JSON.stringify({ error: `User created, but profile update failed: ${upsertError.message}` }), { status: 500, headers: corsHeaders });
             }
 

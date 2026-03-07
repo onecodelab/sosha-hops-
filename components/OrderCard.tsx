@@ -145,23 +145,35 @@ export const OrderCard: React.FC<OrderCardProps> = ({
       <div className="bg-muted/5 p-3 rounded-xl space-y-2 border border-border">
         {order.order_items?.map((item: any) => (
           <div key={item.id} className="flex flex-col border-b border-white/5 last:border-0 pb-2 last:pb-0">
-            <div className="flex justify-between items-start">
-              <div className="flex items-start gap-2 leading-tight">
-                <span className="text-primary font-black text-xs min-w-[18px] text-center bg-primary/10 rounded-sm">{item.quantity}x</span>
-                <span className="text-xs font-bold text-foreground/90">{item.menu_item?.name}</span>
-                {isNewItem(item) && (
-                  <span className="text-[8px] font-black text-cyan-400 bg-cyan-500/15 border border-cyan-500/30 px-1.5 py-0.5 rounded-full uppercase tracking-wider animate-pulse shadow-[0_0_8px_rgba(6,182,212,0.3)]">
-                    🆕 NEW
-                  </span>
+            <div className="flex items-start gap-3 w-full">
+              {/* Item Thumbnail */}
+              <div className="w-10 h-10 rounded-lg bg-background/50 border border-border flex items-center justify-center overflow-hidden shrink-0 shadow-inner group-hover:border-primary/20 transition-colors">
+                {item.menu_item?.image_url ? (
+                  <img src={item.menu_item.image_url} alt={item.menu_item?.name} className="w-full h-full object-cover" />
+                ) : (
+                  <Receipt className="w-4 h-4 text-muted/50" />
+                )}
+              </div>
+
+              <div className="flex flex-col flex-1 min-w-0">
+                <div className="flex items-start gap-2 leading-tight">
+                  <span className="text-primary font-black text-xs min-w-[20px] text-center bg-primary/10 border border-primary/20 rounded-md py-0.5">{item.quantity}x</span>
+                  <span className="text-xs font-bold text-foreground/90 truncate pt-0.5">{item.menu_item?.name}</span>
+                  {isNewItem(item) && (
+                    <span className="text-[8px] font-black text-cyan-400 bg-cyan-500/15 border border-cyan-500/30 px-1.5 py-0.5 rounded-full uppercase tracking-wider animate-pulse shadow-[0_0_8px_rgba(6,182,212,0.3)] shrink-0 mt-0.5">
+                      🆕 NEW
+                    </span>
+                  )}
+                </div>
+
+                {item.special_instructions && (
+                  <div className="mt-1.5 flex items-start gap-1.5 p-1.5 bg-yellow-500/5 rounded-lg border border-yellow-500/10">
+                    <MessageSquare className="w-3 h-3 text-yellow-500 shrink-0 mt-[2px]" />
+                    <p className="text-[10px] text-yellow-200/90 italic leading-snug break-words pr-1">{item.special_instructions.replace('[NEW]', '').trim()}</p>
+                  </div>
                 )}
               </div>
             </div>
-            {item.special_instructions && (
-              <div className="ml-6 mt-1 flex items-start gap-1.5 p-1.5 bg-yellow-500/5 rounded-lg border border-yellow-500/10">
-                <MessageSquare className="w-2.5 h-2.5 text-yellow-500 shrink-0 mt-0.5" />
-                <p className="text-[10px] text-yellow-200/90 italic leading-snug">{item.special_instructions.replace('[NEW]', '').trim()}</p>
-              </div>
-            )}
           </div>
         ))}
       </div>

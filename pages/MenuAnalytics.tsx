@@ -63,7 +63,7 @@ const MenuAnalytics: React.FC = () => {
           orders!inner (status, created_at)
         `)
         .gte('orders.created_at', startDate.toISOString())
-        .in('orders.status', ['closed', 'paid', 'served']);
+        .in('orders.status', ['closed', 'paid']);
 
       if (salesErr) throw salesErr;
 

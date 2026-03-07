@@ -20,7 +20,7 @@ import { orderService } from '../services/orderService';
 export const PaymentVerificationModal: React.FC<PaymentVerificationModalProps> = ({
   isOpen, onClose, orders, onPaymentSuccess
 }) => {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const [stage, setStage] = useState<'method' | 'processing' | 'success'>('method');
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash');
@@ -29,18 +29,23 @@ export const PaymentVerificationModal: React.FC<PaymentVerificationModalProps> =
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const { data: bankSettings = [] } = useQuery({
-    queryKey: ['bank_settings'],
+    queryKey: ['bank_settings', profile?.organization_id],
     queryFn: async () => {
-      const { data, error } = await supabase.from('bank_settings').select('*');
+      if (!profile?.organization_id) return [];
+      const { data, error } = await supabase
+        .from('bank_settings')
+        .select('*')
+        .eq('organization_id', profile.organization_id);
       if (error) throw error;
       return data;
     },
+    enabled: !!profile?.organization_id,
     staleTime: 1000 * 60 * 5
   });
 
   const getDynamicReceiver = (bank: string) => {
     const setting = bankSettings.find((s: any) => s.bank_key === bank);
-    return setting?.account_number || (bank === 'cbe' ? "1000302293007" : "");
+    return setting?.account_number || "";
   };
 
   useEffect(() => {

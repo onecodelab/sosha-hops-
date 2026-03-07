@@ -94,7 +94,7 @@ export const analyticsService = {
             const utilization = windowMins > 0 ? (totalDurationMins / windowMins) * 100 : 0;
 
             // B. Revenue
-            const totalRevenue = tableOrders.reduce((sum, o) => sum + (o.total_amount || 0), 0);
+            const totalRevenue = tableOrders.filter(o => ['closed', 'paid'].includes(o.status)).reduce((sum, o) => sum + (o.total_amount || 0), 0);
 
             // C. RPM (Revenue Per Minute)
             const safeDuration = totalDurationMins < 5 ? 5 : totalDurationMins; // Avoid div by zero

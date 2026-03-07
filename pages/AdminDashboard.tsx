@@ -59,7 +59,7 @@ const AdminDashboard: React.FC = () => {
             .select('total_amount')
             .eq('branch_id', activeBranchId)
             .gte('created_at', `${new Date().toISOString().split('T')[0]}T00:00:00`)
-            .in('status', ['closed', 'paid', 'served']);
+            .in('status', ['closed', 'paid']);
 
          const { data: active, error: activeErr } = await supabase
             .from('orders')

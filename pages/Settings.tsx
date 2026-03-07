@@ -249,45 +249,47 @@ const Settings: React.FC = () => {
                </Card>
 
                {/* Bank Configuration Card */}
-               <Card className="bg-[#1A1A1A] border-gray-800 rounded-[2.5rem] overflow-hidden">
-                  <div className="p-8 border-b border-gray-800">
+               <Card className="bg-[#1A1A1A] border-gray-800 rounded-[2.5rem] overflow-hidden relative group/bank">
+                  <div className="absolute inset-0 bg-blue-500/5 opacity-0 group-hover/bank:opacity-100 transition-opacity duration-500 blur-3xl pointer-events-none" />
+                  <div className="p-8 border-b border-gray-800 relative bg-black/20 backdrop-blur-sm">
                      <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-2xl bg-blue-500/10 flex items-center justify-center border border-blue-500/20">
+                        <div className="w-12 h-12 rounded-2xl bg-blue-500/10 flex items-center justify-center border border-blue-500/20 shadow-[0_0_20px_rgba(59,130,246,0.1)]">
                            <ShieldCheck className="w-6 h-6 text-blue-400" />
                         </div>
                         <div>
-                           <CardTitle className="text-white">Bank Configuration</CardTitle>
-                           <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mt-0.5">Verifier Suffix Management</p>
+                           <CardTitle className="text-white text-xl tracking-tight">Bank Configuration</CardTitle>
+                           <p className="text-[10px] font-black text-blue-500/60 uppercase tracking-widest mt-0.5">Secure Transaction Verification</p>
                         </div>
                      </div>
                   </div>
-                  <CardContent className="p-8">
-                     <BankSettingsSection isEditable={isOwnerOrAdmin} />
-                  </CardContent>
-               </Card>
-
-               {/* Bot Settings Card */}
-               <Card className="bg-[#1A1A1A] border-gray-800 rounded-[2.5rem] overflow-hidden">
-                  <div className="p-8 border-b border-gray-800">
-                     <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center border border-primary/20">
-                           <Zap className="w-6 h-6 text-primary" />
-                        </div>
-                        <div>
-                           <CardTitle className="text-white">AI Bot Configuration</CardTitle>
-                           <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mt-0.5">WhatsApp Chatbot Personality</p>
-                        </div>
-                     </div>
-                  </div>
-                  <CardContent className="p-8">
-                     <BotSettingsSection isEditable={isOwnerOrAdmin} organizationId={profile?.organization_id} />
+                  <CardContent className="p-8 relative">
+                     <BankSettingsSection isEditable={isOwnerOrAdmin} organizationId={profile?.organization_id} />
                   </CardContent>
                </Card>
             </div>
 
+            {/* Full Width AI Bot Configuration - More balanced layout */}
+            <Card className="bg-[#1A1A1A] border-gray-800 rounded-[2.5rem] overflow-hidden group/bot relative">
+               <div className="absolute -top-24 -right-24 w-64 h-64 bg-primary/5 rounded-full blur-3xl pointer-events-none group-hover:bg-primary/10 transition-all duration-700" />
+               <div className="p-8 border-b border-gray-800 relative bg-black/20 backdrop-blur-sm">
+                  <div className="flex items-center gap-4">
+                     <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center border border-primary/20 shadow-[0_0_20px_rgba(255,193,7,0.1)]">
+                        <Zap className="w-6 h-6 text-primary" />
+                     </div>
+                     <div>
+                        <CardTitle className="text-white text-xl tracking-tight">AI Bot Configuration</CardTitle>
+                        <p className="text-[10px] font-black text-primary/60 uppercase tracking-widest mt-0.5">WhatsApp Intelligent Personality</p>
+                     </div>
+                  </div>
+               </div>
+               <CardContent className="p-8">
+                  <BotSettingsSection isEditable={isOwnerOrAdmin} organizationId={profile?.organization_id} />
+               </CardContent>
+            </Card>
+
             {/* Organization & Subscription Section */}
             {isOwnerOrAdmin && (
-               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
                   <Card className="bg-[#1A1A1A] border-gray-800 rounded-[2.5rem] overflow-hidden">
                      <div className="p-8 border-b border-gray-800">
                         <div className="flex items-center gap-4">
@@ -379,23 +381,36 @@ const Settings: React.FC = () => {
    );
 };
 
-const BankSettingsSection: React.FC<{ isEditable: boolean }> = ({ isEditable }) => {
+const BankSettingsSection: React.FC<{ isEditable: boolean; organizationId?: string }> = ({ isEditable, organizationId }) => {
    const queryClient = useQueryClient();
    const [editingBank, setEditingBank] = useState<string | null>(null);
    const [newAccount, setNewAccount] = useState('');
+   const [isAddingNew, setIsAddingNew] = useState(false);
+   const [newBankKey, setNewBankKey] = useState('cbe');
+   const [newBankAccount, setNewBankAccount] = useState('');
 
    const { data: bankSettings = [], isLoading } = useQuery({
-      queryKey: ['bank_settings'],
+      queryKey: ['bank_settings', organizationId],
       queryFn: async () => {
-         const { data, error } = await supabase.from('bank_settings').select('*').order('bank_key', { ascending: true });
+         if (!organizationId) return [];
+         const { data, error } = await supabase
+            .from('bank_settings')
+            .select('*')
+            .eq('organization_id', organizationId)
+            .order('bank_key', { ascending: true });
          if (error) throw error;
          return data;
-      }
+      },
+      enabled: !!organizationId
    });
 
    const updateBankMutation = useMutation({
       mutationFn: async ({ bankKey, account }: { bankKey: string, account: string }) => {
-         const { error } = await supabase.from('bank_settings').update({ account_number: account }).eq('bank_key', bankKey);
+         const { error } = await supabase
+            .from('bank_settings')
+            .update({ account_number: account })
+            .eq('bank_key', bankKey)
+            .eq('organization_id', organizationId);
          if (error) throw error;
       },
       onSuccess: () => {
@@ -406,70 +421,210 @@ const BankSettingsSection: React.FC<{ isEditable: boolean }> = ({ isEditable }) 
       onError: (err: any) => showToast(err.message, "error")
    });
 
-   if (isLoading) return <div className="text-center py-4 text-zinc-600 animate-pulse text-[10px] font-black uppercase tracking-widest">Fetching profiles...</div>;
+   const createBankMutation = useMutation({
+      mutationFn: async () => {
+         if (!organizationId) throw new Error("Organization ID is missing");
+         if (!newBankAccount) throw new Error("Account number is required");
+         const { error } = await supabase
+            .from('bank_settings')
+            .insert({
+               organization_id: organizationId,
+               bank_key: newBankKey,
+               account_number: newBankAccount,
+               is_active: true
+            });
+         if (error) throw error;
+      },
+      onSuccess: () => {
+         showToast("Bank added successfully!", "success");
+         setIsAddingNew(false);
+         setNewBankAccount('');
+         queryClient.invalidateQueries({ queryKey: ['bank_settings'] });
+      },
+      onError: (err: any) => {
+         if (err.code === '23505') {
+            showToast("This bank is already configured for your organization.", "error");
+         } else {
+            showToast(err.message, "error");
+         }
+      }
+   });
+
+   const deleteBankMutation = useMutation({
+      mutationFn: async (bankKey: string) => {
+         const { error } = await supabase
+            .from('bank_settings')
+            .delete()
+            .eq('bank_key', bankKey)
+            .eq('organization_id', organizationId);
+         if (error) throw error;
+      },
+      onSuccess: () => {
+         showToast("Bank setting removed.", "success");
+         queryClient.invalidateQueries({ queryKey: ['bank_settings'] });
+      },
+      onError: (err: any) => showToast(err.message, "error")
+   });
+
+   if (isLoading) return (
+      <div className="flex flex-col items-center justify-center py-12 space-y-4">
+         <div className="w-12 h-12 rounded-full border-2 border-primary/20 border-t-primary animate-spin" />
+         <div className="text-zinc-600 text-[10px] font-black uppercase tracking-widest">Accessing Secured Protocols...</div>
+      </div>
+   );
 
    return (
-      <div className="space-y-4">
-         {bankSettings.map((bank: any) => (
-            <div key={bank.bank_key} className="p-4 bg-black/40 border border-white/5 rounded-2xl flex items-center justify-between group hover:border-primary/20 transition-all">
-               <div className="flex items-center gap-4 flex-1">
-                  <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center border transition-all",
-                     bank.bank_key === 'cbe' ? "bg-blue-500/10 border-blue-500/20 text-blue-400" :
-                        bank.bank_key === 'telebirr' ? "bg-purple-500/10 border-purple-500/20 text-purple-400" :
-                           "bg-white/5 border-white/10 text-zinc-400")}>
-                     <ShieldCheck className="w-5 h-5" />
+      <div className="space-y-6">
+         {isEditable && !isAddingNew && (
+            <button
+               onClick={() => setIsAddingNew(true)}
+               className="w-full p-4 border border-blue-500/20 bg-blue-500/5 hover:bg-blue-500/10 rounded-2xl flex items-center justify-center gap-2 text-blue-400 text-[10px] font-black uppercase tracking-widest transition-all group"
+            >
+               <Plus className="w-4 h-4 group-hover:scale-110 transition-transform" /> Add New Bank Account
+            </button>
+         )}
+
+         {isAddingNew && (
+            <div className="p-6 bg-black/40 border border-blue-500/30 rounded-3xl space-y-4 animate-in slide-in-from-top-2 duration-300">
+               <div className="flex items-center justify-between mb-2">
+                  <h4 className="text-[10px] font-black text-blue-400 uppercase tracking-widest">Configure Account</h4>
+                  <button onClick={() => setIsAddingNew(false)} className="text-gray-500 hover:text-white transition-colors">
+                     <X className="w-4 h-4" />
+                  </button>
+               </div>
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                     <label className="text-[10px] font-bold text-gray-500 uppercase ml-1">Bank Type</label>
+                     <select
+                        value={newBankKey}
+                        onChange={e => setNewBankKey(e.target.value)}
+                        className="w-full h-11 bg-black/60 border border-white/10 rounded-xl px-4 text-sm text-white focus:outline-none focus:border-blue-500/50 appearance-none bg-no-repeat bg-[right_1rem_center]"
+                        style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='white'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundSize: '1em' }}
+                     >
+                        <option value="cbe">Commercial Bank (CBE)</option>
+                        <option value="telebirr">Telebirr</option>
+                        <option value="abyssinia">Bank of Abyssinia</option>
+                        <option value="dashen">Dashen Bank</option>
+                        <option value="cbebirr">CBE Birr</option>
+                        <option value="awash">Awash Bank</option>
+                     </select>
                   </div>
-                  <div className="flex-1">
-                     <p className="text-sm font-bold text-white uppercase tracking-tight">{bank.bank_key}</p>
-                     {editingBank === bank.bank_key ? (
-                        <input
-                           value={newAccount}
-                           onChange={e => setNewAccount(e.target.value)}
-                           className="bg-black/60 border border-white/10 rounded-lg px-3 py-1 text-xs text-primary font-mono mt-1 w-full focus:border-primary/50 outline-none"
-                           placeholder="Account/Suffix ID"
-                           autoFocus
-                        />
-                     ) : (
-                        <p className="text-[10px] text-zinc-500 font-mono uppercase tracking-widest mt-0.5">
-                           Value: <span className="text-zinc-300">{bank.account_number || 'NOT SET'}</span>
-                        </p>
-                     )}
+                  <div className="space-y-1">
+                     <label className="text-[10px] font-bold text-gray-500 uppercase ml-1">Account / Suffix ID</label>
+                     <input
+                        value={newBankAccount}
+                        onChange={e => setNewBankAccount(e.target.value)}
+                        placeholder="Enter account number"
+                        className="w-full h-11 bg-black/60 border border-white/10 rounded-xl px-4 text-sm text-white focus:outline-none focus:border-blue-500/50 font-mono"
+                     />
                   </div>
                </div>
-
-               {isEditable && (
-                  <div className="ml-4">
-                     {editingBank === bank.bank_key ? (
-                        <div className="flex items-center gap-1">
-                           <button
-                              onClick={() => updateBankMutation.mutate({ bankKey: bank.bank_key, account: newAccount })}
-                              disabled={updateBankMutation.isPending}
-                              className="p-2 hover:bg-green-500/10 text-green-500 rounded-lg transition-colors"
-                           >
-                              <Check className="w-4 h-4" />
-                           </button>
-                           <button
-                              onClick={() => setEditingBank(null)}
-                              className="p-2 hover:bg-red-500/10 text-red-500 rounded-lg transition-colors"
-                           >
-                              <X className="w-4 h-4" />
-                           </button>
-                        </div>
-                     ) : (
-                        <button
-                           onClick={() => {
-                              setEditingBank(bank.bank_key);
-                              setNewAccount(bank.account_number);
-                           }}
-                           className="p-2 hover:bg-white/5 text-zinc-500 hover:text-white rounded-lg transition-colors opacity-0 group-hover:opacity-100"
-                        >
-                           <Edit2 className="w-3.5 h-3.5" />
-                        </button>
-                     )}
-                  </div>
-               )}
+               <Button
+                  onClick={() => createBankMutation.mutate()}
+                  disabled={createBankMutation.isPending}
+                  className="w-full bg-blue-500 hover:bg-blue-600 text-white font-black uppercase tracking-widest h-12 rounded-xl text-[10px]"
+               >
+                  {createBankMutation.isPending ? 'Provisioning...' : 'Authorize Bank Entry'}
+               </Button>
             </div>
-         ))}
+         )}
+
+         {bankSettings.length === 0 && !isAddingNew ? (
+            <div className="flex flex-col items-center justify-center py-12 text-center bg-black/20 rounded-[2rem] border border-white/5 border-dashed">
+               <div className="w-16 h-16 rounded-3xl bg-white/5 flex items-center justify-center border border-white/10 mb-4 opacity-20">
+                  <ShieldCheck className="w-8 h-8 text-white" />
+               </div>
+               <h5 className="text-sm font-bold text-gray-400 uppercase tracking-tight">No Bank Profiles Found</h5>
+               <p className="text-[10px] text-gray-600 font-black uppercase tracking-widest mt-1 max-w-[200px]">Bank-level transaction verification is currently offline</p>
+            </div>
+         ) : (
+            <div className="space-y-4">
+               {bankSettings.map((bank: any) => (
+                  <div key={bank.bank_key} className="relative group overflow-hidden">
+                     <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                     <div className="relative p-5 bg-black/40 border border-white/5 rounded-3xl flex items-center justify-between hover:border-blue-500/30 hover:scale-[1.01] transition-all duration-300">
+                        <div className="flex items-center gap-5 flex-1">
+                           <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center border transition-all duration-500 shadow-lg",
+                              bank.bank_key === 'cbe' ? "bg-blue-600/20 border-blue-500/30 text-blue-400 group-hover:shadow-blue-500/20" :
+                                 bank.bank_key === 'telebirr' ? "bg-purple-600/20 border-purple-500/30 text-purple-400 group-hover:shadow-purple-500/20" :
+                                    "bg-zinc-800/20 border-zinc-700/30 text-zinc-400")}>
+                              <CreditCard className="w-6 h-6" />
+                           </div>
+                           <div className="flex-1">
+                              <div className="flex items-center gap-2">
+                                 <p className="text-sm font-black text-white uppercase tracking-tighter italic">{bank.bank_key}</p>
+                                 <span className="px-2 py-0.5 bg-white/5 rounded-full text-[8px] font-black text-gray-500 uppercase tracking-widest border border-white/5">Authenticated</span>
+                              </div>
+                              {editingBank === bank.bank_key ? (
+                                 <div className="mt-3 relative">
+                                    <input
+                                       value={newAccount}
+                                       onChange={e => setNewAccount(e.target.value)}
+                                       className="bg-black/60 border border-white/10 rounded-xl px-4 py-2 text-sm text-primary font-mono w-full focus:border-primary/50 outline-none ring-1 ring-white/5"
+                                       placeholder="Enter Account or Suffix ID"
+                                       autoFocus
+                                    />
+                                 </div>
+                              ) : (
+                                 <div className="mt-1 flex items-center gap-2">
+                                    <span className="text-[10px] text-zinc-500 font-black uppercase tracking-widest">Entry:</span>
+                                    <span className="text-xs text-white font-mono bg-white/5 px-2 py-0.5 rounded-lg border border-white/5">
+                                       {bank.account_number || 'NULL_REFERENCE'}
+                                    </span>
+                                 </div>
+                              )}
+                           </div>
+                        </div>
+
+                        {isEditable && (
+                           <div className="ml-4 shrink-0 flex items-center gap-1">
+                              {editingBank === bank.bank_key ? (
+                                 <div className="flex items-center gap-2">
+                                    <button
+                                       onClick={() => updateBankMutation.mutate({ bankKey: bank.bank_key, account: newAccount })}
+                                       disabled={updateBankMutation.isPending}
+                                       className="p-3 bg-green-500/20 hover:bg-green-500/30 text-green-400 rounded-2xl transition-all border border-green-500/30"
+                                    >
+                                       <Check className="w-4 h-4" />
+                                    </button>
+                                    <button
+                                       onClick={() => setEditingBank(null)}
+                                       className="p-3 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-2xl transition-all border border-red-500/30"
+                                    >
+                                       <X className="w-4 h-4" />
+                                    </button>
+                                 </div>
+                              ) : (
+                                 <>
+                                    <button
+                                       onClick={() => {
+                                          setEditingBank(bank.bank_key);
+                                          setNewAccount(bank.account_number);
+                                       }}
+                                       className="p-3 bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-white rounded-2xl transition-all border border-white/10 opacity-0 group-hover:opacity-100 backdrop-blur-md"
+                                    >
+                                       <Edit2 className="w-4 h-4" />
+                                    </button>
+                                    <button
+                                       onClick={() => {
+                                          if (confirm(`Remove ${bank.bank_key} configuration?`)) {
+                                             deleteBankMutation.mutate(bank.bank_key);
+                                          }
+                                       }}
+                                       disabled={deleteBankMutation.isPending}
+                                       className="p-3 bg-red-500/5 hover:bg-red-500/20 text-red-500/40 hover:text-red-500 rounded-2xl transition-all border border-red-500/10 opacity-0 group-hover:opacity-100 backdrop-blur-md"
+                                    >
+                                       <Trash2 className="w-4 h-4" />
+                                    </button>
+                                 </>
+                              )}
+                           </div>
+                        )}
+                     </div>
+                  </div>
+               ))}
+            </div>
+         )}
       </div>
    );
 };

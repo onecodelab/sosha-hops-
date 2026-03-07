@@ -253,8 +253,29 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
       onClose();
     } catch (err: any) {
       console.error("Order Submission Failure Path:", err);
-      // Ensure we show the most specific error message possible
-      const displayMessage = err.message || "Order Deployment Protocol Failed";
+      let displayMessage = err.message || "Order Deployment Protocol Failed";
+
+      // Attempt to parse Edge Function custom error response
+      try {
+        if (err.context) {
+          const errText = await err.context.text();
+          console.error("RAW EDGE FUNCTION RESPONSE:", errText);
+          try {
+            const errBody = JSON.parse(errText);
+            if (errBody && errBody.error) {
+              displayMessage = errBody.detail ? `${errBody.error}: ${errBody.detail}` : errBody.error;
+            }
+          } catch {
+            // If not JSON, use the raw text if it's not empty and not HTML
+            if (errText && !errText.startsWith('<html')) {
+              displayMessage = "Edge Function Crash: " + errText.substring(0, 100);
+            }
+          }
+        }
+      } catch (parseErr) {
+        console.error("Failed to parse edge function error response", parseErr);
+      }
+
       showToast(displayMessage, 'error');
     } finally {
       setSubmitting(false);
@@ -378,9 +399,14 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
             {cart.map((item, idx) => (
               <div key={idx} className="flex flex-col gap-2 p-3 bg-muted/10 border border-border rounded-xl shadow-inner">
                 <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-bold text-foreground">{item.dish.name}</p>
-                    <p className="text-[10px] text-muted font-mono mt-0.5">ETB {item.dish.price * item.quantity}</p>
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-card border border-border flex items-center justify-center overflow-hidden shrink-0">
+                      {item.dish.image_url ? <img src={item.dish.image_url} className="w-full h-full object-cover" /> : <Utensils className="w-4 h-4 text-muted/50" />}
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-foreground">{item.dish.name}</p>
+                      <p className="text-[10px] text-muted font-mono mt-0.5">ETB {item.dish.price * item.quantity}</p>
+                    </div>
                   </div>
                   <div className="flex items-center gap-3 bg-card rounded-lg p-1 border border-border">
                     <button onClick={() => removeFromCart(item.dish.id)} className="w-6 h-6 flex items-center justify-center hover:bg-muted/10 rounded-md text-muted"><Minus className="w-3 h-3" /></button>
