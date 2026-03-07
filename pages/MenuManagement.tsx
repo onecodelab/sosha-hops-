@@ -235,6 +235,17 @@ const MenuManagement: React.FC = () => {
                               }
                             }
 
+                            // VERIFICATION: Check if the item is still in the base menu table
+                            const { data: stillExists } = await supabase
+                              .from('menu')
+                              .select('id')
+                              .eq('id', item.id)
+                              .maybeSingle();
+
+                            if (stillExists) {
+                              throw new Error("Deletion failed: Item record still detectable in catalog.");
+                            }
+
                             showToast("Menu Item Purged from Project", "success");
                             await refreshMenu();
                           } catch (err: any) {
@@ -260,14 +271,16 @@ const MenuManagement: React.FC = () => {
                       {item.cost_per_plate !== undefined && item.cost_per_plate > 0 && item.price > 0 ? (
                         <>
                           {(() => {
-                            const rawMargin = ((item.price - item.cost_per_plate) / item.price) * 100;
+                            const rawMargin = item.price > 0 ? ((item.price - item.cost_per_plate) / item.price) * 100 : 0;
                             const displayMargin = Math.min(Math.max(rawMargin, -100), 100);
                             return (
                               <Badge className={cn(
                                 "text-[8px] font-black uppercase border",
-                                rawMargin > 40
+                                displayMargin > 40
                                   ? "bg-green-500/10 text-green-500 border-green-500/20"
-                                  : "bg-yellow-500/10 text-yellow-500 border-yellow-500/20"
+                                  : displayMargin > 15
+                                    ? "bg-yellow-500/10 text-yellow-500 border-yellow-500/20"
+                                    : "bg-red-500/10 text-red-500 border-red-500/20"
                               )}>
                                 {displayMargin.toFixed(0)}% Margin
                               </Badge>

@@ -75,9 +75,21 @@ const AdminTableMap: React.FC = () => {
     try {
       const { data, error } = await supabase.from('tables').insert(newTable).select().single();
       if (error) throw error;
-      setTables([...tables, data]);
-      setSelectedId(data.id);
-      showToast(t('tableMap.addSuccess').replace('{num}', data.table_number));
+
+      // VERIFICATION: Confirm record existence
+      const { data: verifiedTable, error: verifyErr } = await supabase
+        .from('tables')
+        .select('*')
+        .eq('id', data.id)
+        .maybeSingle();
+
+      if (verifyErr || !verifiedTable) {
+        throw new Error("Persistence verification failed: Table was not found after creation.");
+      }
+
+      setTables([...tables, verifiedTable]);
+      setSelectedId(verifiedTable.id);
+      showToast(t('tableMap.addSuccess').replace('{num}', verifiedTable.table_number));
     } catch (err: any) {
       showToast(err.message, "error");
     } finally {

@@ -272,19 +272,26 @@ export const MenuEditorModal: React.FC<MenuEditorModalProps> = ({
           console.log("Direct DB Fallback Success:", finalItem);
         }
 
+        // 3. PERSISTENCE VERIFICATION: Explicitly check the DB for the new item
+        const { data: verifiedItem, error: verifyErr } = await supabase
+          .from('menu')
+          .select('*')
+          .eq('id', finalItem.id)
+          .maybeSingle();
+
+        if (verifyErr || !verifiedItem) {
+          console.error("Persistence Verification Failed:", verifyErr);
+          throw new Error("Persistence verification failed: Item could not be found in catalog after save.");
+        }
+
         if (internalItem) {
           showToast("Dish updated", "success");
           onSuccess();
         } else {
-          if (finalItem && finalItem.id) {
-            setInternalItem(finalItem);
-            showToast("Dish created! You can now map recipes.", "success");
-            setActiveTab('recipe');
-            onSuccess();
-          } else {
-            console.error("No finalItem after upsert. finalItem:", finalItem);
-            throw new Error("Persistence check failed: Item ID not found after save.");
-          }
+          setInternalItem(verifiedItem);
+          showToast("Dish created! You can now map recipes.", "success");
+          setActiveTab('recipe');
+          onSuccess();
         }
       } catch (err: any) {
         throw err;

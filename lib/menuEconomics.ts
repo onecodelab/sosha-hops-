@@ -128,6 +128,8 @@ export const checkDishAvailability = (ingredients: RecipeIngredient[]): {
  */
 export const calculateMargins = (price: number, cost: number) => {
     const margin = price - cost;
-    const marginPercent = price > 0 ? (margin / price) * 100 : 0;
+    const rawMarginPercent = price > 0 ? (margin / price) * 100 : 0;
+    // CLAMP: ensure UI doesn't show extreme values (matches view_menu_details)
+    const marginPercent = Math.min(Math.max(rawMarginPercent, -100), 100);
     return { margin, marginPercent };
 };

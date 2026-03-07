@@ -215,21 +215,23 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
         });
 
         if (rpcErr) {
-          // Try to parse the error context/message for better feedback
           console.error("RPC/Edge Invocation Error:", rpcErr);
 
-          let errorDetail = "Unknown Error";
+          let errorDetail = rpcErr.message || "Unknown Network Error";
 
-          // If Supabase functions.invoke returns an error, it often contains context
-          if (rpcErr.context) {
+          // HARDENING: Extract detailed error context from non-2xx responses
+          if (rpcErr.context && typeof rpcErr.context.json === 'function') {
             try {
               const body = await rpcErr.context.json();
-              errorDetail = body.error || body.message || rpcErr.message;
+              errorDetail = body.error || body.message || errorDetail;
+              if (body.step) errorDetail += ` (at ${body.step})`;
             } catch (e) {
-              errorDetail = rpcErr.message;
+              // Fallback to reading text if JSON fails
+              try {
+                const text = await rpcErr.context.text();
+                if (text) errorDetail = text.substring(0, 100);
+              } catch (inner) { }
             }
-          } else {
-            errorDetail = rpcErr.message;
           }
 
           throw new Error(`Cloud Protocol: ${errorDetail}`);

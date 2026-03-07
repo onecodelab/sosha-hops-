@@ -259,7 +259,12 @@ const Inventory: React.FC = () => {
           }).select('id').single();
 
         if (insertErr) throw insertErr;
-        targetIngredientId = newIng.id;
+
+        // VERIFICATION: confirm item exists
+        const { data: verifiedIng } = await supabase.from('ingredients').select('id').eq('id', newIng.id).maybeSingle();
+        if (!verifiedIng) throw new Error("Persistence failed: Master ingredient record not found after creation.");
+
+        targetIngredientId = verifiedIng.id;
       } else {
         // 1. Update Global Ingredient Definitions
         const selectedUnit = units.find(u => u.id === formData.unit_id);

@@ -199,9 +199,14 @@ serve(async (req) => {
             console.error('[CRITICAL] Menu Resolution Failed:', menuErr);
             throw new Error(`Menu retrieval failed: ${menuErr.message}`);
         }
-        if (!menuData || menuData.length === 0) {
-            console.error(`[ERROR] No menu items found for IDs: ${itemIds.join(', ')} in branch ${branch_id}`);
-            throw new Error(`Menu items not found. Ensure items belong to branch ${branch_id} or are global. (IDs: ${itemIds.join(', ')})`);
+
+        // HARDENING: Verify that all requested item IDs exist in the resolved menu data
+        const foundIds = new Set(menuData?.map(m => m.id) || []);
+        const missingIds = itemIds.filter(id => !foundIds.has(id));
+
+        if (missingIds.length > 0) {
+            console.error(`[ERROR] Catalog Mismatch: Requested items ${missingIds.join(', ')} not found in branch/global catalog.`);
+            throw new Error(`Catalog Mismatch: ${missingIds.length} item(s) (including ${missingIds[0]}) are missing from the active menu or belong to another organization.`);
         }
 
         currentStep = 'calculating_totals';
