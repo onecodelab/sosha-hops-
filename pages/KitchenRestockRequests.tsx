@@ -2,7 +2,7 @@
 import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../supabase';
-import { DashboardLayout } from '../components/DashboardLayout';
+import { useLayoutConfig } from '../contexts/LayoutContext';
 import { Card, CardContent, CardHeader, CardTitle, Input, Button, Badge, cn, showToast } from '../components/ui';
 import { Truck, Search, ShoppingBag, Send, Loader2, X, Clock, CheckCircle2, XCircle } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -150,8 +150,13 @@ const KitchenRestockRequests: React.FC = () => {
       return "text-green-500 border-green-500/30 bg-green-500/10";
    };
 
+   useLayoutConfig({
+      title: t('restock.title'),
+      subtitle: t('restock.subtitle')
+   });
+
    return (
-      <DashboardLayout title={t('restock.title')} subtitle={t('restock.subtitle')}>
+      <>
          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-in fade-in duration-500">
 
             {/* Left Column: Create Request Form */}
@@ -325,7 +330,7 @@ const KitchenRestockRequests: React.FC = () => {
             </div>
 
          </div>
-      </DashboardLayout>
+      </>
    );
 };
 

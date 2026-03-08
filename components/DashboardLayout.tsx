@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -12,11 +12,12 @@ import { Sidebar } from './Sidebar';
 import { Header } from './Header';
 import { RoleGuard } from './RoleGuard';
 import BaroMenubar from './BaroMenubar';
+import { useLayout } from '../contexts/LayoutContext';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
   title?: string;
-  subtitle?: string;
+  subtitle?: string | React.ReactNode;
   actions?: React.ReactNode;
   className?: string;
   isSidebarCollapsed?: boolean;
@@ -24,22 +25,37 @@ interface DashboardLayoutProps {
 }
 
 export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
-  children, title, subtitle, actions, className,
-  isSidebarCollapsed, onSidebarCollapseChange
+  children,
+  title,
+  subtitle,
+  actions,
+  className,
+  isSidebarCollapsed: propsIsSidebarCollapsed,
+  onSidebarCollapseChange: propsOnSidebarCollapseChange
 }) => {
   const { profile, signOut } = useAuth();
   const { t } = useLanguage();
   const navigate = useNavigate();
   const location = useLocation();
+  const { config } = useLayout();
+
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-
-  const [internalIsCollapsed, setInternalIsCollapsed] = useState(false);
-
-  const isCollapsed = isSidebarCollapsed !== undefined ? isSidebarCollapsed : internalIsCollapsed;
-  const setIsCollapsed = onSidebarCollapseChange || setInternalIsCollapsed;
-
   const [isProfileActive, setIsProfileActive] = useState(false);
-  const profileRef = React.useRef<HTMLButtonElement>(null);
+  const [localIsCollapsed, setLocalIsCollapsed] = useState(false);
+  const profileRef = useRef<HTMLDivElement>(null);
+
+  // Sync with context or props
+  const isCollapsed = propsIsSidebarCollapsed !== undefined ? propsIsSidebarCollapsed : config.isSidebarCollapsed !== undefined ? config.isSidebarCollapsed : localIsCollapsed;
+  const setIsCollapsed = (collapsed: boolean) => {
+    if (propsOnSidebarCollapseChange) propsOnSidebarCollapseChange(collapsed);
+    else if (config.onSidebarCollapseChange) config.onSidebarCollapseChange(collapsed);
+    else setLocalIsCollapsed(collapsed);
+  };
+
+  const activeTitle = title || config.title;
+  const activeSubtitle = subtitle || config.subtitle;
+  const activeActions = actions || config.actions;
+  const activeClassName = className || config.className;
 
   const handleLogout = async () => {
     await signOut();
@@ -49,21 +65,6 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   const role = profile?.role || 'owner';
   const mascotVariant: MascotVariant = (role as any) === 'admin' ? 'owner' : (role as MascotVariant);
   const displayName = profile?.full_name || profile?.name || profile?.email?.split('@')[0] || 'User';
-
-  const MobileNavItem = ({ icon: Icon, label, path, allowedRoles }: any) => (
-    <RoleGuard allowedRoles={allowedRoles} hideOnly>
-      <button
-        onClick={() => { navigate(path); setIsMobileMenuOpen(false); }}
-        className={cn(
-          "w-full flex items-center gap-4 px-6 py-4 rounded-2xl transition-all",
-          location.pathname === path ? "bg-primary text-black" : "text-gray-400"
-        )}
-      >
-        <Icon className="w-6 h-6" />
-        <span className="font-bold text-lg">{label}</span>
-      </button>
-    </RoleGuard>
-  );
 
   return (
     <div className="flex h-screen bg-background text-foreground overflow-hidden selection:bg-primary selection:text-black">
@@ -78,16 +79,12 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
         handleLogout={handleLogout}
       />
 
-      {/* Mobile Header with refined Baro style */}
-      <div className="md:hidden fixed top-0 left-0 right-0 h-16 bg-card/40 backdrop-blur-2xl border-b border-primary/30 z-[100] px-4 flex items-center justify-between overflow-hidden">
-        {/* Subtle Header Glow */}
+      {/* Mobile Header */}
+      <div className="md:hidden fixed top-0 left-0 right-0 h-16 bg-card/40 backdrop-blur-2xl border-b border-primary/30 z-[100] px-4 flex items-center justify-between">
         <div className="absolute -top-10 left-10 w-32 h-32 bg-primary/20 blur-[100px] rounded-full pointer-events-none" />
-
         <span className="font-black text-xs uppercase tracking-widest text-foreground/90 drop-shadow-md">
           Baro <span className="text-primary italic">OS</span>
         </span>
-
-        {/* New compact Mobile Menu Bar using Base UI */}
         <div className="transform scale-90 origin-right">
           <BaroMenubar />
         </div>
@@ -95,8 +92,8 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
 
       <main className="flex-1 flex flex-col h-full overflow-hidden relative z-10">
         <Header
-          title={title}
-          subtitle={subtitle}
+          title={activeTitle}
+          subtitle={activeSubtitle}
           profile={profile}
           displayName={displayName}
           role={role}
@@ -105,23 +102,23 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
           profileRef={profileRef}
           handleLogout={handleLogout}
         />
-        {actions && (
+        {activeActions && (
           <div className="flex-none px-8 py-4 bg-muted/10 border-b border-primary/30">
-            {actions}
+            {activeActions}
           </div>
         )}
 
-        <div className={cn("flex-1 overflow-y-auto p-4 md:p-6 relative custom-scrollbar", className)}>
+        <div className={cn("flex-1 overflow-y-auto p-4 md:p-6 relative custom-scrollbar", activeClassName)}>
           {children}
         </div>
       </main>
 
       <style>{`
-        .custom-scrollbar::-webkit-scrollbar { width: 4px; height: 4px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: var(--primary); opacity: 0.3; border-radius: 10px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: var(--primary); opacity: 0.5; }
-      `}</style>
+          .custom-scrollbar::-webkit-scrollbar { width: 4px; height: 4px; }
+          .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+          .custom-scrollbar::-webkit-scrollbar-thumb { background: var(--primary); opacity: 0.3; border-radius: 10px; }
+          .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: var(--primary); opacity: 0.5; }
+        `}</style>
     </div>
   );
 };

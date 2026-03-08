@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { DashboardLayout } from '../components/DashboardLayout';
+import { useLayoutConfig } from '../contexts/LayoutContext';
 import { Card, CardContent, CardHeader, CardTitle, Badge, Button, Input, showToast, cn, Dialog } from '../components/ui';
 import {
    Users, Award, Clock, Search, UserPlus,
@@ -14,7 +14,7 @@ import { useBranch } from '../contexts/BranchContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { StaffOrderHistory } from '../components/StaffOrderHistory';
 import { OrderDetailsModal } from '../components/OrderDetailsModal';
-import { Order } from '../types';
+import { Order, UserProfile } from '../types';
 
 interface PerformanceMetric {
    staff_id: string;
@@ -230,32 +230,34 @@ const AdminStaffPerformance: React.FC = () => {
    const isOwner = currentUserProfile?.role === 'owner';
    const rankedList = getRankedData();
 
-   return (
-      <DashboardLayout
-         title={t('staffPerformance.title')}
-         subtitle={t('staffPerformance.subtitle')}
-         actions={
-            <div className="flex items-center gap-2">
-               <div className="flex bg-primary/5 p-1 rounded-lg border border-primary/20">
-                  {(['today', '7d', '30d'] as const).map(range => (
-                     <button
-                        key={range}
-                        onClick={() => setTimeRange(range)}
-                        className={cn(
-                           "px-3 py-1.5 text-xs font-bold rounded-md transition-all uppercase tracking-wider",
-                           timeRange === range ? "bg-primary text-black" : "text-gray-400 hover:text-white"
-                        )}
-                     >
-                        {range === 'today' ? t('staffPerformance.today') : range === '7d' ? t('staffPerformance.days7') : t('staffPerformance.days30')}
-                     </button>
-                  ))}
-               </div>
-               <Button onClick={() => setIsInviteOpen(true)} className="bg-white text-black font-bold h-9">
-                  <UserPlus className="w-4 h-4 mr-2" /> {t('staffPerformance.addStaff')}
-               </Button>
+   useLayoutConfig({
+      title: t('staffPerformance.title'),
+      subtitle: t('staffPerformance.subtitle'),
+      actions: (
+         <div className="flex items-center gap-2">
+            <div className="flex bg-primary/5 p-1 rounded-lg border border-primary/20">
+               {(['today', '7d', '30d'] as const).map(range => (
+                  <button
+                     key={range}
+                     onClick={() => setTimeRange(range)}
+                     className={cn(
+                        "px-3 py-1.5 text-xs font-bold rounded-md transition-all uppercase tracking-wider",
+                        timeRange === range ? "bg-primary text-black" : "text-gray-400 hover:text-white"
+                     )}
+                  >
+                     {range === 'today' ? t('staffPerformance.today') : range === '7d' ? t('staffPerformance.days7') : t('staffPerformance.days30')}
+                  </button>
+               ))}
             </div>
-         }
-      >
+            <Button onClick={() => setIsInviteOpen(true)} className="bg-white text-black font-bold h-9">
+               <UserPlus className="w-4 h-4 mr-2" /> {t('staffPerformance.addStaff')}
+            </Button>
+         </div>
+      )
+   });
+
+   return (
+      <>
          <div className="space-y-6 animate-in fade-in duration-500">
 
             {/* Active Shifts Ticker */}
@@ -579,7 +581,7 @@ const AdminStaffPerformance: React.FC = () => {
                </div>
             </Dialog>
          </div>
-      </DashboardLayout>
+      </>
    );
 };
 

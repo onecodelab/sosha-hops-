@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
-import { DashboardLayout } from '../components/DashboardLayout';
+import { useLayoutConfig } from '../contexts/LayoutContext';
 import { useAuth } from '../AuthContext';
 import { useBranch } from '../contexts/BranchContext';
 import { supabase } from '../supabase';
@@ -142,34 +142,36 @@ const WaiterDashboard: React.FC = () => {
 
   const isLoading = ordersLoading || isSyncingTables;
 
+  useLayoutConfig({
+    title: "Waiter Station",
+    isSidebarCollapsed: isSidebarCollapsed,
+    onSidebarCollapseChange: setIsSidebarCollapsed,
+    subtitle: (
+      <span className="flex items-center gap-1.5 uppercase font-black tracking-widest text-[10px]">
+        <span className="text-zinc-500">Floor •</span>
+        <span className="text-primary italic">{profile?.full_name || 'Staff Member'}</span>
+      </span>
+    ),
+    actions: (
+      <div className="flex gap-3">
+        <Button
+          onClick={() => {
+            setSelectedTableData(null);
+            setAppendOrderId(null);
+            setIsSidebarCollapsed(true);
+            setIsCreateOpen(true);
+          }}
+          className="bg-primary hover:bg-primary/90 text-black h-10 px-6 font-black uppercase text-[10px] rounded-xl flex items-center gap-2 shadow-lg shadow-primary/20 hover:shadow-primary/40 transition-all hover:scale-[1.05] active:scale-[0.95]"
+        >
+          <PlusCircle className="w-4 h-4" /> New Order
+        </Button>
+        <Button onClick={refreshAll} variant="outline" size="icon" className="border-white/10 bg-white/5 hover:bg-white/10 h-10 w-10 text-white"><RefreshCw className={cn("h-4 w-4", isLoading && "animate-spin")} /></Button>
+      </div>
+    )
+  });
+
   return (
-    <DashboardLayout
-      title="Waiter Station"
-      isSidebarCollapsed={isSidebarCollapsed}
-      onSidebarCollapseChange={setIsSidebarCollapsed}
-      subtitle={
-        <span className="flex items-center gap-1.5 uppercase font-black tracking-widest text-[10px]">
-          <span className="text-zinc-500">Floor •</span>
-          <span className="text-primary italic">{profile?.full_name || 'Staff Member'}</span>
-        </span>
-      }
-      actions={
-        <div className="flex gap-3">
-          <Button
-            onClick={() => {
-              setSelectedTableData(null);
-              setAppendOrderId(null);
-              setIsSidebarCollapsed(true);
-              setIsCreateOpen(true);
-            }}
-            className="bg-primary hover:bg-primary/90 text-black h-10 px-6 font-black uppercase text-[10px] rounded-xl flex items-center gap-2 shadow-lg shadow-primary/20 hover:shadow-primary/40 transition-all hover:scale-[1.05] active:scale-[0.95]"
-          >
-            <PlusCircle className="w-4 h-4" /> New Order
-          </Button>
-          <Button onClick={refreshAll} variant="outline" size="icon" className="border-white/10 bg-white/5 hover:bg-white/10 h-10 w-10 text-white"><RefreshCw className={cn("h-4 w-4", isLoading && "animate-spin")} /></Button>
-        </div>
-      }
-    >
+    <>
       <motion.div
         initial="hidden"
         animate={isCreateOpen || isBillModalOpen || isPaymentOpen || isClaimModalOpen ? "modalOpen" : "show"}
@@ -343,7 +345,7 @@ const WaiterDashboard: React.FC = () => {
               hidden: { opacity: 0, y: 20 },
               show: { opacity: 1, y: 0 }
             }}
-            className="space-y-6"
+            className="space-y-6 col-span-full"
           >
             <div className="flex items-center justify-between px-2">
               <h3 className="text-sm font-black text-foreground uppercase tracking-widest flex items-center gap-3">
@@ -351,7 +353,7 @@ const WaiterDashboard: React.FC = () => {
               </h3>
               <Badge variant="outline" className="bg-orange-500/10 text-orange-500 border-orange-500/20 font-mono">{kitchenPipeline.length}</Badge>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
               {kitchenPipeline.map(order => <OrderCard key={order.id} order={order} role="waiter" onAction={handleOrderAction} />)}
               {kitchenPipeline.length === 0 && (
                 <div className="h-40 flex flex-col gap-2 items-center justify-center border border-dashed border-white/5 rounded-3xl opacity-20 text-[10px] font-black uppercase tracking-widest col-span-full">
@@ -368,7 +370,7 @@ const WaiterDashboard: React.FC = () => {
               hidden: { opacity: 0, y: 20 },
               show: { opacity: 1, y: 0 }
             }}
-            className="space-y-6"
+            className="space-y-6 col-span-full"
           >
             <div className="flex items-center justify-between px-2">
               <h3 className="text-sm font-black text-foreground uppercase tracking-widest flex items-center gap-3">
@@ -376,7 +378,7 @@ const WaiterDashboard: React.FC = () => {
               </h3>
               <Badge variant="outline" className="bg-green-500/10 text-green-500 border-green-500/20 font-mono">{billingQueue.length}</Badge>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
               {billingQueue.map(order => <OrderCard key={order.id} order={order} role="waiter" onAction={handleOrderAction} />)}
               {billingQueue.length === 0 && (
                 <div className="h-40 flex flex-col gap-2 items-center justify-center border border-dashed border-white/5 rounded-3xl opacity-20 text-[10px] font-black uppercase tracking-widest col-span-full">
@@ -449,7 +451,7 @@ const WaiterDashboard: React.FC = () => {
       />
       <FloatingPaymentButton count={billingQueue.filter(o => o.payment_status === 'pending').length} onClick={() => setIsPaymentOpen(true)} />
       <CreateOrderModal isOpen={isCreateOpen} onClose={() => { setIsCreateOpen(false); setSelectedTableData(null); setAppendOrderId(null); }} onOrderCreated={refreshAll} initialTableId={selectedTableData?.id} initialTableNo={selectedTableData?.number} appendOrderId={appendOrderId} />
-    </DashboardLayout>
+    </>
   );
 };
 

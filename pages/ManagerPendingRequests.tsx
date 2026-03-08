@@ -1,8 +1,7 @@
-
 import React from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../supabase';
-import { DashboardLayout } from '../components/DashboardLayout';
+import { useLayoutConfig } from '../contexts/LayoutContext';
 import { Card, CardContent, CardHeader, CardTitle, Button, Badge, cn, showToast } from '../components/ui';
 import { Truck, Check, X, Clock, AlertCircle } from 'lucide-react';
 import { useAuth } from '../AuthContext';
@@ -45,8 +44,13 @@ const ManagerPendingRequests: React.FC = () => {
       onError: (err: any) => showToast(err.message, 'error')
    });
 
+   useLayoutConfig({
+      title: "Supply Chain Oversight",
+      subtitle: "Approve or reject replenishment requests"
+   });
+
    return (
-      <DashboardLayout title="Supply Chain Oversight" subtitle="Approve or reject replenishment requests">
+      <>
          <Card className="bg-[#1A1A1A] border-gray-800 animate-in fade-in duration-500 overflow-hidden">
             <CardHeader className="bg-black/20 border-b border-gray-800 flex flex-row items-center justify-between py-4">
                <CardTitle className="text-white flex items-center gap-2">
@@ -109,7 +113,7 @@ const ManagerPendingRequests: React.FC = () => {
                </table>
             </CardContent>
          </Card>
-      </DashboardLayout>
+      </>
    );
 };
 

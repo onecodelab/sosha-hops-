@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../supabase';
-import { DashboardLayout } from '../components/DashboardLayout';
+import { useLayoutConfig } from '../contexts/LayoutContext';
 import { Card, CardContent, CardHeader, CardTitle, Input, Button, Badge, Dialog, showToast, cn } from '../components/ui';
 import { Truck, Calendar, PackageCheck, AlertCircle, FileText, CheckCircle2, ArrowRight } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -168,8 +168,13 @@ const ManagerReceiveGoods: React.FC = () => {
       onError: (err: any) => showToast(err.message, 'error')
    });
 
+   useLayoutConfig({
+      title: t('grn.title'),
+      subtitle: t('grn.subtitle')
+   });
+
    return (
-      <DashboardLayout title={t('grn.title')} subtitle={t('grn.subtitle')}>
+      <>
          <div className="space-y-6 animate-in fade-in duration-500">
 
             <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
@@ -362,7 +367,7 @@ const ManagerReceiveGoods: React.FC = () => {
             </Dialog>
 
          </div>
-      </DashboardLayout>
+      </>
    );
 };
 

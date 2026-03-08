@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '../supabase';
-import { DashboardLayout } from '../components/DashboardLayout';
+import { useLayoutConfig } from '../contexts/LayoutContext';
 import { Card, CardContent, CardHeader, CardTitle, Button, Input, Badge, cn } from '../components/ui';
 import {
     Search, FileText, Eye, Download, MoreVertical,
@@ -78,11 +78,13 @@ const WaiterOrders: React.FC = () => {
         return () => window.removeEventListener('click', handleClick);
     }, []);
 
+    useLayoutConfig({
+        title: "My Order Transactions",
+        subtitle: "Audit trail of orders served and payments processed"
+    });
+
     return (
-        <DashboardLayout
-            title="My Order Transactions"
-            subtitle="Audit trail of orders served and payments processed"
-        >
+        <>
             <div className="space-y-6 animate-in fade-in duration-500">
                 {/* Controls */}
                 <div className="flex flex-col lg:flex-row justify-between gap-6 items-center">
@@ -225,7 +227,7 @@ const WaiterOrders: React.FC = () => {
                 onClose={() => setSelectedOrder(null)}
                 order={selectedOrder}
             />
-        </DashboardLayout>
+        </>
     );
 };
 

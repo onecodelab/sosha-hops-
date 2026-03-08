@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { DashboardLayout } from '../components/DashboardLayout';
+import { useLayoutConfig } from '../contexts/LayoutContext';
 import { Card, CardContent, CardHeader, CardTitle, Button, showToast, cn } from '../components/ui';
 import { Database, RefreshCw, AlertTriangle, Package, CheckCircle2, FlaskConical, ShieldCheck, Zap, Plus, MapPin, Building2, Trash2, Edit2, X, Check, CreditCard, Sparkles } from 'lucide-react';
 import { supabase } from '../supabase';
@@ -106,8 +106,13 @@ const Settings: React.FC = () => {
 
    const isOwnerOrAdmin = profile?.role === 'owner' || profile?.role === 'admin';
 
+   useLayoutConfig({
+      title: "System Orchestration",
+      subtitle: "Core database maintenance and branch configuration"
+   });
+
    return (
-      <DashboardLayout title="System Orchestration" subtitle="Core database maintenance and branch configuration">
+      <>
          <div className="space-y-8 animate-in fade-in duration-700">
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -377,7 +382,7 @@ const Settings: React.FC = () => {
             </Card>
 
          </div>
-      </DashboardLayout>
+      </>
    );
 };
 

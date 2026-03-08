@@ -1,8 +1,7 @@
-
 import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../supabase';
-import { DashboardLayout } from '../components/DashboardLayout';
+import { useLayoutConfig } from '../contexts/LayoutContext';
 import { Card, CardContent, CardHeader, CardTitle, Input, Button, cn, showToast } from '../components/ui';
 import { Trash2, Search, AlertTriangle, Calendar, DollarSign, History, Check, X, Loader2, Info } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -170,8 +169,13 @@ const KitchenLogWaste: React.FC = () => {
 
    const wasteCategories: WasteCategory[] = ['spoiled', 'burnt', 'dropped', 'expired', 'overproduction', 'other'];
 
+   useLayoutConfig({
+      title: t('waste.title'),
+      subtitle: t('waste.subtitle')
+   });
+
    return (
-      <DashboardLayout title={t('waste.title')} subtitle={t('waste.subtitle')}>
+      <>
          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-in fade-in duration-500">
 
             {/* Left Column: Form */}
@@ -396,7 +400,7 @@ const KitchenLogWaste: React.FC = () => {
             </div>
 
          </div>
-      </DashboardLayout>
+      </>
    );
 };
 

@@ -1,6 +1,5 @@
-
 import React, { useState, useEffect } from 'react';
-import { DashboardLayout } from '../components/DashboardLayout';
+import { useLayoutConfig } from '../contexts/LayoutContext';
 import {
    BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
    PieChart, Pie, Cell
@@ -267,8 +266,13 @@ const OrdersTables: React.FC = () => {
       }
    };
 
+   useLayoutConfig({
+      title: t('ordersTables.title'),
+      subtitle: t('ordersTables.subtitle')
+   });
+
    return (
-      <DashboardLayout title={t('ordersTables.title')} subtitle={t('ordersTables.subtitle')}>
+      <>
          <div className="space-y-8 animate-in fade-in duration-700">
 
             {/* Header Controls */}
@@ -636,7 +640,7 @@ const OrdersTables: React.FC = () => {
             </div>
 
          </div>
-      </DashboardLayout>
+      </>
    );
 };
 

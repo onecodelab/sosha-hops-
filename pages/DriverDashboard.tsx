@@ -1,13 +1,15 @@
 import React from 'react';
-import { DashboardLayout } from '../components/DashboardLayout';
+import { useLayoutConfig } from '../contexts/LayoutContext';
 import { Truck } from 'lucide-react';
 
 const DriverDashboard: React.FC = () => {
+    useLayoutConfig({
+        title: "Dispatch Hub",
+        subtitle: "Driver operations portal"
+    });
+
     return (
-        <DashboardLayout
-            title="Dispatch Hub"
-            subtitle="Driver operations portal"
-        >
+        <>
             <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6 animate-in fade-in duration-700">
                 <div className="relative">
                     <div className="absolute inset-0 bg-primary/10 blur-[60px] rounded-full" />
@@ -20,7 +22,7 @@ const DriverDashboard: React.FC = () => {
                     <p className="text-muted text-sm font-medium">This module is currently under development.</p>
                 </div>
             </div>
-        </DashboardLayout>
+        </>
     );
 };
 

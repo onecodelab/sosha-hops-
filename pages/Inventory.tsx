@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { DashboardLayout } from '../components/DashboardLayout';
+import { useLayoutConfig } from '../contexts/LayoutContext';
 import { Card, CardContent, CardHeader, CardTitle, Button, Input, cn, showToast, Badge, Dialog } from '../components/ui';
 import {
   Search, RefreshCw, Edit3, Database, Scale,
@@ -426,8 +426,13 @@ const Inventory: React.FC = () => {
     if (current < min) return 'Low stock';
     return 'In stock';
   };
+  useLayoutConfig({
+    title: "Inventory Management",
+    subtitle: "Master Registry Control [FORCE_UI_v2.2]"
+  });
+
   return (
-    <DashboardLayout title="Inventory Management" subtitle="Master Registry Control [FORCE_UI_v2.2]">
+    <>
       <div className="space-y-6 animate-in fade-in duration-500">
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -781,7 +786,7 @@ const Inventory: React.FC = () => {
                   </div>
                   <div className="pt-2 md:pt-6 w-full md:w-auto">
                     <div className="bg-primary/10 border border-primary/30 rounded-2xl h-14 px-6 flex items-center justify-center gap-3 shadow-lg">
-                      <span className="text-[10px] font-black text-primary uppercase">1 {units.find(u => u.id === formData.unit_id)?.abbreviation || 'Unit'}</span>
+                      <span className="text-[10px] font-black text-primary uppercase">1 Piece / Unit</span>
                       <div className="w-3 h-[1px] bg-primary/30" />
                       <span className="text-xl font-black text-primary tracking-tighter">{formData.weight_per_unit}g/ml</span>
                     </div>
@@ -808,7 +813,7 @@ const Inventory: React.FC = () => {
           </div>
         </div>
       </Dialog>
-    </DashboardLayout>
+    </>
   );
 };
 

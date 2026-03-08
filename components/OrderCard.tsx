@@ -6,7 +6,7 @@ import { useAuth } from '../AuthContext';
 import { Clock, MessageSquare, PlusCircle, CheckCircle2, Loader2, Flag, Receipt, FileText, User, Zap, Truck } from 'lucide-react';
 
 import { orderService } from '../services/orderService';
-import { BaroLeafyCard } from './ElectricCard';
+import { BaroLeafyCard, BaroKitchenCard, BaroBillingCard } from './ElectricCard';
 
 interface OrderCardProps {
   order: Order;
@@ -247,18 +247,28 @@ export const OrderCard: React.FC<OrderCardProps> = ({
     </div>
   );
 
-  if (order.status === 'ready' && isWaiter) {
-    return (
-      <BaroLeafyCard
-        color="#A3E635"
-        badge="FRESH & READY"
-        className="h-full"
-      >
-        <div className="h-full">
-          {cardContent}
-        </div>
-      </BaroLeafyCard>
-    );
+  if (isWaiter) {
+    if (order.status === 'ready') {
+      return (
+        <BaroLeafyCard color="#A3E635" badge="FRESH & READY" className="h-full">
+          <div className="h-full">{cardContent}</div>
+        </BaroLeafyCard>
+      );
+    }
+    if (order.status === 'pending' || order.status === 'accepted' || order.status === 'preparing') {
+      return (
+        <BaroKitchenCard color="#F97316" badge="IN KITCHEN" className="h-full">
+          <div className="h-full">{cardContent}</div>
+        </BaroKitchenCard>
+      );
+    }
+    if (order.status === 'served' || order.status === 'paid') {
+      return (
+        <BaroBillingCard color="#3B82F6" badge={order.payment_status === 'paid' ? 'PAID' : 'BILLING'} className="h-full">
+          <div className="h-full">{cardContent}</div>
+        </BaroBillingCard>
+      );
+    }
   }
 
   return cardContent;

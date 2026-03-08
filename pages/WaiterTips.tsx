@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { DashboardLayout } from '../components/DashboardLayout';
+import { useLayoutConfig } from '../contexts/LayoutContext';
 import { useAuth } from '../AuthContext';
 import { supabase } from '../supabase';
 import { Card, CardHeader, CardContent, Badge, showToast } from '../components/ui';
@@ -62,30 +62,32 @@ const WaiterTips: React.FC = () => {
     const digitalTips = tips.filter(t => t.tip_type === 'digital').reduce((sum, t) => sum + t.amount, 0);
     const cashTips = tips.filter(t => t.tip_type === 'cash').reduce((sum, t) => sum + t.amount, 0);
 
-    return (
-        <DashboardLayout
-            title="My Tips & Gratuity"
-            subtitle="Track your earnings and tip history"
-            actions={
-                <div className="flex gap-2">
-                    <div className="flex bg-primary/5 p-1 rounded-lg border border-primary/20">
-                        {(['today', 'week', 'month'] as const).map(range => (
-                            <button
-                                key={range}
-                                onClick={() => setFilter(range)}
-                                className={`px-4 py-1.5 text-xs font-bold rounded-md transition-all uppercase tracking-wider ${filter === range ? "bg-primary text-black" : "text-gray-400 hover:text-white"
-                                    }`}
-                            >
-                                {range}
-                            </button>
-                        ))}
-                    </div>
-                    <button onClick={fetchTips} className="w-10 h-10 bg-white/5 border border-white/10 flex items-center justify-center rounded-xl hover:bg-white/10 transition-colors text-white">
-                        <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-                    </button>
+    useLayoutConfig({
+        title: "My Tips & Gratuity",
+        subtitle: "Track your earnings and tip history",
+        actions: (
+            <div className="flex gap-2">
+                <div className="flex bg-primary/5 p-1 rounded-lg border border-primary/20">
+                    {(['today', 'week', 'month'] as const).map(range => (
+                        <button
+                            key={range}
+                            onClick={() => setFilter(range)}
+                            className={`px-4 py-1.5 text-xs font-bold rounded-md transition-all uppercase tracking-wider ${filter === range ? "bg-primary text-black" : "text-gray-400 hover:text-white"
+                                }`}
+                        >
+                            {range}
+                        </button>
+                    ))}
                 </div>
-            }
-        >
+                <button onClick={fetchTips} className="w-10 h-10 bg-white/5 border border-white/10 flex items-center justify-center rounded-xl hover:bg-white/10 transition-colors text-white">
+                    <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                </button>
+            </div>
+        )
+    });
+
+    return (
+        <>
             <div className="space-y-6 animate-in fade-in duration-500">
 
                 {/* Overview Cards */}
@@ -176,7 +178,7 @@ const WaiterTips: React.FC = () => {
                 </Card>
 
             </div>
-        </DashboardLayout>
+        </>
     );
 };
 

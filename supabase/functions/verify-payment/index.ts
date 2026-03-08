@@ -64,16 +64,14 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: corsHeaders });
     }
 
-    // 2. Fetch User Profile for Organization Context
-    const { data: profile, error: profileErr } = await supabase
-      .from('profiles')
-      .select('organization_id, role')
-      .eq('id', user.id)
-      .single();
-
-    if (profileErr || !profile) {
-      return new Response(JSON.stringify({ error: 'User profile not found' }), { status: 403, headers: corsHeaders });
+    // 2. AUTHENTICATION & ISOLATION HARDENING
+    const organizationId = user.app_metadata?.organization_id;
+    if (!organizationId) {
+      console.error(`[AUTH_ERROR] User ${user.id} has no organization_id in app_metadata`);
+      return new Response(JSON.stringify({ error: 'Identity Error', detail: 'User is not bound to an organization' }), { status: 403, headers: corsHeaders });
     }
+
+    const userRole = (user.app_metadata?.role || 'authenticated').toLowerCase();
 
     const {
       transaction_id, // From Agent/Chatbot
@@ -148,7 +146,6 @@ serve(async (req) => {
     // ================================================================
     let order: any = null;
     let expectedAmount = amount;
-    let organizationId: string | null = null;
 
     if (order_id) {
       const { data: orderData, error: orderErr } = await supabase
@@ -170,7 +167,7 @@ serve(async (req) => {
         }
 
         // SACRED RULE: Tenant Isolation
-        if (orderData.organization_id !== profile.organization_id) {
+        if (orderData.organization_id !== organizationId) {
           return new Response(JSON.stringify({ error: "Tenant isolation violation" }), { status: 403, headers: corsHeaders });
         }
 
@@ -190,7 +187,6 @@ serve(async (req) => {
       }
 
       order = orderData;
-      organizationId = order.organization_id;
 
       // Block payment on already-settled orders
       if (['closed', 'cancelled'].includes(order.status) || order.payment_status === 'paid') {

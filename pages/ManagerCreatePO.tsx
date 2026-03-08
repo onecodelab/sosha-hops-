@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { supabase } from '../supabase';
-import { DashboardLayout } from '../components/DashboardLayout';
+import { useLayoutConfig } from '../contexts/LayoutContext';
 import { Card, CardContent, CardHeader, CardTitle, Input, Button, cn, showToast } from '../components/ui';
 import { Truck, Calendar, Plus, Trash2, Save, Send, ShoppingBag, DollarSign, Package } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -193,8 +193,13 @@ const ManagerCreatePO: React.FC = () => {
       onError: (err: any) => showToast(err.message, 'error')
    });
 
+   useLayoutConfig({
+      title: t('po.title'),
+      subtitle: t('po.subtitle')
+   });
+
    return (
-      <DashboardLayout title={t('po.title')} subtitle={t('po.subtitle')}>
+      <>
          <div className="space-y-6 animate-in fade-in duration-500 pb-20">
 
             {/* Header Section */}
@@ -340,7 +345,7 @@ const ManagerCreatePO: React.FC = () => {
             </div>
 
          </div>
-      </DashboardLayout>
+      </>
    );
 };
 

@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '../supabase';
-import { DashboardLayout } from '../components/DashboardLayout';
+import { useLayoutConfig } from '../contexts/LayoutContext';
 import { BaroCard } from '../components/BaroCard';
 import { Badge, Button, cn, showToast, Dialog, Input } from '../components/ui';
 import {
@@ -306,8 +306,13 @@ const TableStatus: React.FC = () => {
       fetchTableOrders(id);
    }, [fetchTableOrders]);
 
+   useLayoutConfig({
+      title: t('tableStatus.title'),
+      subtitle: isAnalyticsMode ? t('tableStatus.subtitleData') : t('tableStatus.subtitleLive')
+   });
+
    return (
-      <DashboardLayout title={t('tableStatus.title')} subtitle={isAnalyticsMode ? t('tableStatus.subtitleData') : t('tableStatus.subtitleLive')}>
+      <>
          <div className="space-y-6 animate-in fade-in duration-500 pb-20">
 
             <div className="flex flex-col md:flex-row justify-between items-center gap-6 bg-card/60 backdrop-blur-xl p-6 rounded-[2.5rem] border border-primary/20 shadow-2xl">
@@ -781,7 +786,7 @@ const TableStatus: React.FC = () => {
                </div>
             </div>
          </Dialog>
-      </DashboardLayout>
+      </>
    );
 };
 

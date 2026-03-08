@@ -1,11 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-const corsHeaders = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-    'Access-Control-Allow-Methods': 'POST, OPTIONS',
-};
+import { corsHeaders, resolveIdentity } from "../_shared/identity.ts";
 
 serve(async (req) => {
     if (req.method === 'OPTIONS') {
@@ -14,23 +9,30 @@ serve(async (req) => {
 
     try {
         const sbUrl = Deno.env.get('SUPABASE_URL')!;
-        const sbKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || Deno.env.get('SERVICE_ROLE_KEY')!;
+        const sbKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!; // Use service role for consistent lookup
         const supabase = createClient(sbUrl, sbKey);
 
-        const { branch_id } = await req.json();
-
-        if (!branch_id) {
-            return new Response(JSON.stringify({ error: "Missing branch_id" }), {
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-                status: 400,
-            });
+        // 1. Resolve Identity (Standard JWT or Signed Branch Token)
+        const identity = await resolveIdentity(req, supabase);
+        if (!identity) {
+            return new Response(JSON.stringify({ error: "Unauthorized", detail: "Invalid or missing token" }), { status: 401, headers: corsHeaders });
         }
 
-        // 1. Get branch details + organization
+        const { organizationId, branchId: tokenBranchId } = identity;
+
+        const payload = await req.json();
+        const branch_id = tokenBranchId || payload.branch_id;
+
+        if (!branch_id) {
+            return new Response(JSON.stringify({ error: "Missing branch_id" }), { status: 400, headers: corsHeaders });
+        }
+
+        // 2. Fetch Branch (with isolation check)
         const { data: branch, error: branchErr } = await supabase
             .from('branches')
-            .select('id, name, location, organization_id')
+            .select('*')
             .eq('id', branch_id)
+            .eq('organization_id', organizationId)
             .single();
 
         if (branchErr || !branch) {
@@ -38,6 +40,12 @@ serve(async (req) => {
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' },
                 status: 404,
             });
+        }
+
+        // SACRED RULE: Tenant Isolation
+        if (branch.organization_id !== organizationId) {
+            console.error(`[SECURITY ALERT] Tenant Mismatch! User Org: ${organizationId}, Branch Org: ${branch.organization_id}`);
+            return new Response(JSON.stringify({ error: "Tenant isolation violation" }), { status: 403, headers: corsHeaders });
         }
 
         // 2. Get active bank accounts for this organization

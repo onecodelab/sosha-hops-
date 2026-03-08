@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { DashboardLayout } from '../components/DashboardLayout';
+import { useLayoutConfig } from '../contexts/LayoutContext';
 import { Card, CardContent, CardHeader, CardTitle, Button, Input, showToast, cn } from '../components/ui';
 import {
   Square, Circle, Maximize2, Trash2, Save, Plus,
@@ -118,7 +118,7 @@ const AdminTableMap: React.FC = () => {
       }));
 
       if (tablesToSave.length === 0) {
-        showToast("No tables to save", "info");
+        showToast("No tables to save", "warning");
         return;
       }
 
@@ -137,22 +137,24 @@ const AdminTableMap: React.FC = () => {
 
   const selectedTable = tables.find(t => t.id === selectedId);
 
+  useLayoutConfig({
+    title: t('tableMap.title'),
+    subtitle: t('tableMap.subtitle'),
+    actions: (
+      <div className="flex gap-2">
+        <Button variant="outline" onClick={fetchTables} size="icon">
+          <RefreshCw className={cn("w-4 h-4", loading && "animate-spin")} />
+        </Button>
+        <Button onClick={handleSaveLayout} className="bg-primary text-black font-bold" disabled={saving}>
+          {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
+          {t('tableMap.saveLayout')}
+        </Button>
+      </div>
+    )
+  });
+
   return (
-    <DashboardLayout
-      title={t('tableMap.title')}
-      subtitle={t('tableMap.subtitle')}
-      actions={
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={fetchTables} size="icon">
-            <RefreshCw className={cn("w-4 h-4", loading && "animate-spin")} />
-          </Button>
-          <Button onClick={handleSaveLayout} className="bg-primary text-black font-bold" disabled={saving}>
-            {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
-            {t('tableMap.saveLayout')}
-          </Button>
-        </div>
-      }
-    >
+    <>
       <div className="grid grid-cols-1 xl:grid-cols-4 gap-8 animate-in fade-in duration-500">
 
         {/* Toolbar */}
@@ -322,7 +324,7 @@ const AdminTableMap: React.FC = () => {
         </div>
 
       </div>
-    </DashboardLayout>
+    </>
   );
 };
 

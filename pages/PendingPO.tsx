@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { DashboardLayout } from '../components/DashboardLayout';
+import { useLayoutConfig } from '../contexts/LayoutContext';
 import { Card, CardContent, CardHeader, CardTitle, Button, Input, Badge, cn, showToast } from '../components/ui';
 import { POApprovalBadge } from '../components/POApprovalBadge';
 import { PODetailView } from '../components/PODetailView';
@@ -76,11 +76,13 @@ const PendingPO: React.FC = () => {
         { value: 'approved', label: 'Arriving / Approved', count: arrivingCount },
     ];
 
+    useLayoutConfig({
+        title: isOwnerOrAdmin ? "PO Approvals" : "My Pending Orders",
+        subtitle: isOwnerOrAdmin ? "Review and approve purchase orders" : "Track your submitted orders"
+    });
+
     return (
-        <DashboardLayout
-            title={isOwnerOrAdmin ? "PO Approvals" : "My Pending Orders"}
-            subtitle={isOwnerOrAdmin ? "Review and approve purchase orders" : "Track your submitted orders"}
-        >
+        <>
             <div className="space-y-6 animate-in fade-in duration-500">
                 {/* ... (Stats Row is fine) ... */}
 
@@ -242,7 +244,7 @@ const PendingPO: React.FC = () => {
                     onClose={() => setSelectedPO(null)}
                 />
             )}
-        </DashboardLayout>
+        </>
     );
 };
 

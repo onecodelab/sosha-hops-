@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { DashboardLayout } from '../components/DashboardLayout';
+import { useLayoutConfig } from '../contexts/LayoutContext';
 import { supabase } from '../supabase';
 import { useMenu } from '../hooks/useMenu';
 import { calculateCostPerPlate, calculateMargins, RecipeIngredient } from '../lib/menuEconomics';
@@ -180,27 +180,29 @@ const MenuAnalytics: React.FC = () => {
     }, 0);
   }, [menuItems, analyticsData]);
 
+  useLayoutConfig({
+    title: "Truth Layer Analytics",
+    subtitle: "Objective performance evidence for your business",
+    actions: (
+      <div className="flex bg-muted/10 p-1.5 rounded-[1.25rem] border border-border backdrop-blur-md">
+        {(['7d', '30d', '90d'] as const).map((p) => (
+          <button
+            key={p}
+            onClick={() => setPeriod(p)}
+            className={cn(
+              "px-6 py-2.5 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all",
+              period === p ? "bg-primary text-black shadow-lg shadow-primary/20" : "text-muted hover:text-foreground hover:bg-muted/10"
+            )}
+          >
+            {p === '7d' ? '7 Days' : p === '30d' ? '30 Days' : '90 Days'}
+          </button>
+        ))}
+      </div>
+    )
+  });
+
   return (
-    <DashboardLayout
-      title="Truth Layer Analytics"
-      subtitle="Objective performance evidence for your business"
-      actions={
-        <div className="flex bg-muted/10 p-1.5 rounded-[1.25rem] border border-border backdrop-blur-md">
-          {(['7d', '30d', '90d'] as const).map((p) => (
-            <button
-              key={p}
-              onClick={() => setPeriod(p)}
-              className={cn(
-                "px-6 py-2.5 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all",
-                period === p ? "bg-primary text-black shadow-lg shadow-primary/20" : "text-muted hover:text-foreground hover:bg-muted/10"
-              )}
-            >
-              {p === '7d' ? '7 Days' : p === '30d' ? '30 Days' : '90 Days'}
-            </button>
-          ))}
-        </div>
-      }
-    >
+    <>
       <div className="space-y-10 pb-20 animate-in fade-in slide-in-from-bottom-5 duration-700">
 
         {/* Section 1: Best Seller Spotlight (Rolling Plate) - PRIORITIZED TOP */}
@@ -407,7 +409,7 @@ const MenuAnalytics: React.FC = () => {
         </div>
 
       </div>
-    </DashboardLayout>
+    </>
   );
 };
 

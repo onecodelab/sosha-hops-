@@ -1,8 +1,7 @@
-
 import React, { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '../supabase';
-import { DashboardLayout } from '../components/DashboardLayout';
+import { useLayoutConfig } from '../contexts/LayoutContext';
 import { Card, CardContent, CardHeader, CardTitle, Input, Button, Badge, cn } from '../components/ui';
 import { Search, Filter, ArrowUpDown, Package, AlertTriangle, CheckCircle2, AlertOctagon, RefreshCw, ShoppingBag } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -111,8 +110,13 @@ const KitchenStockView: React.FC = () => {
     );
   };
 
+  useLayoutConfig({
+    title: t('nav.stock'),
+    subtitle: "Manage kitchen inventory and supplies"
+  });
+
   return (
-    <DashboardLayout title={t('nav.stock')} subtitle="Manage kitchen inventory and supplies">
+    <>
       <div className="space-y-6 animate-in fade-in duration-500">
 
         {/* Controls */}
@@ -209,7 +213,7 @@ const KitchenStockView: React.FC = () => {
         </Card>
 
       </div>
-    </DashboardLayout>
+    </>
   );
 };
 

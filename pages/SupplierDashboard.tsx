@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../supabase';
-import { DashboardLayout } from '../components/DashboardLayout';
+import { useLayoutConfig } from '../contexts/LayoutContext';
 import { Card, CardContent, CardHeader, CardTitle, Button, Input, Badge, showToast, cn } from '../components/ui';
 import {
     Search, FileText, Truck, PackageCheck, Calendar,
@@ -103,11 +103,13 @@ const SupplierDashboard: React.FC = () => {
         updateStatus({ poId, status, notes });
     };
 
+    useLayoutConfig({
+        title: "Supplier Portal",
+        subtitle: "Manage your incoming procurement streams"
+    });
+
     return (
-        <DashboardLayout
-            title="Supplier Portal"
-            subtitle="Manage your incoming procurement streams"
-        >
+        <>
             <div className="space-y-8 animate-in fade-in duration-700">
                 {/* Stats Summary */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -377,7 +379,7 @@ const SupplierDashboard: React.FC = () => {
                     </div>
                 </div>
             )}
-        </DashboardLayout>
+        </>
     );
 };
 

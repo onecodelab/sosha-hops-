@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
-import { DashboardLayout } from '../components/DashboardLayout';
+import { useLayoutConfig } from '../contexts/LayoutContext';
 import { supabase } from '../supabase';
 import { useBranch } from '../contexts/BranchContext';
 import { Order } from '../types';
@@ -109,22 +109,26 @@ const KitchenDashboard: React.FC = () => {
    const acceptedOrders = useMemo(() => orders.filter(o => ['accepted', 'preparing'].includes(o.status)), [orders]);
    const preparedOrders = useMemo(() => orders.filter(o => o.status === 'ready'), [orders]);
 
+   useLayoutConfig({
+      title: "Kitchen Display",
+      subtitle: "Live Production Board",
+      actions: (
+         <div className="flex gap-2">
+            {error && (
+               <div className="flex items-center gap-2 bg-red-500/10 border border-red-500/20 px-4 py-2 rounded-xl text-red-500 text-[10px] font-black uppercase">
+                  <Terminal className="w-3 h-3" /> Schema Error: {error.slice(0, 30)}...
+               </div>
+            )}
+            <Button onClick={fetchOrders} variant="outline" size="sm" className="bg-white/5 border-white/10 h-10 px-4">
+               <RefreshCw className={cn("w-4 h-4 mr-2", isSyncing && "animate-spin")} />
+               Force Reload
+            </Button>
+         </div>
+      )
+   });
+
    return (
-      <DashboardLayout title="Kitchen Display" subtitle="Live Production Board"
-         actions={
-            <div className="flex gap-2">
-               {error && (
-                  <div className="flex items-center gap-2 bg-red-500/10 border border-red-500/20 px-4 py-2 rounded-xl text-red-500 text-[10px] font-black uppercase">
-                     <Terminal className="w-3 h-3" /> Schema Error: {error.slice(0, 30)}...
-                  </div>
-               )}
-               <Button onClick={fetchOrders} variant="outline" size="sm" className="bg-white/5 border-white/10 h-10 px-4">
-                  <RefreshCw className={cn("w-4 h-4 mr-2", isSyncing && "animate-spin")} />
-                  Force Reload
-               </Button>
-            </div>
-         }
-      >
+      <>
          <div className="space-y-6 animate-in fade-in duration-700 h-full flex flex-col">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 flex-1 min-h-0 pb-20">
                {/* INCOMING */}
@@ -203,7 +207,7 @@ const KitchenDashboard: React.FC = () => {
                </div>
             </div>
          </div>
-      </DashboardLayout>
+      </>
    );
 };
 

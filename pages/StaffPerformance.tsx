@@ -1,6 +1,5 @@
-
 import React, { useEffect, useState } from 'react';
-import { DashboardLayout } from '../components/DashboardLayout';
+import { useLayoutConfig } from '../contexts/LayoutContext';
 import {
    Users, UserCheck, Clock, TrendingUp, Zap,
    Search, Filter, Activity, Award, ShieldAlert, CreditCard, Timer, Loader2,
@@ -137,8 +136,13 @@ const StaffPerformance: React.FC = () => {
 
    const rankedList = getRankedData();
 
+   useLayoutConfig({
+      title: "Intelligence",
+      subtitle: "Real-time personnel throughput and service quality audits"
+   });
+
    return (
-      <DashboardLayout title="Intelligence" subtitle="Real-time personnel throughput and service quality audits">
+      <>
          <div className="space-y-10 animate-in fade-in duration-500">
 
             {/* Top Stats Bar */}
@@ -327,7 +331,7 @@ const StaffPerformance: React.FC = () => {
             onClose={() => setSelectedOrder(null)}
             order={selectedOrder}
          />
-      </DashboardLayout>
+      </>
    );
 };
 

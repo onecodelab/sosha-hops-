@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { DashboardLayout } from '../components/DashboardLayout';
+import { useLayoutConfig } from '../contexts/LayoutContext';
 import { Card, Button, Input, showToast, cn, Badge } from '../components/ui';
 import { Trash2, Search, DollarSign, Calendar, Filter, User, AlertTriangle, ArrowDownRight } from 'lucide-react';
 import { supabase } from '../supabase';
@@ -70,8 +70,13 @@ const ManagerWasteHistory: React.FC = () => {
         );
     };
 
+    useLayoutConfig({
+        title: "Waste Analytics",
+        subtitle: "Track Loss & Cost Impact"
+    });
+
     return (
-        <DashboardLayout title="Waste Analytics" subtitle="Track Loss & Cost Impact">
+        <>
             <div className="space-y-8 animate-in fade-in duration-500 pb-20">
                 {/* Top Stats - BARO STYLE */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -207,7 +212,7 @@ const ManagerWasteHistory: React.FC = () => {
                     </div>
                 </div>
             </div>
-        </DashboardLayout>
+        </>
     );
 };
 

@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { DashboardLayout } from '../components/DashboardLayout';
+import { useLayoutConfig } from '../contexts/LayoutContext';
 import { supabase } from '../supabase';
 import { useMenu } from '../hooks/useMenu';
 import { Card, CardContent, Badge, Button, Input, cn, showToast, Dialog } from '../components/ui';
@@ -96,11 +96,13 @@ const MenuManagement: React.FC = () => {
     });
   }, [menuItems, searchTerm, selectedCategory, user?.role]);
 
+  useLayoutConfig({
+    title: "Menu Architect",
+    subtitle: "Refine dish pricing and coordinate ingredient specifications"
+  });
+
   return (
-    <DashboardLayout
-      title="Menu Architect"
-      subtitle="Refine dish pricing and coordinate ingredient specifications"
-    >
+    <>
       <div className="space-y-6 animate-in fade-in duration-500 pb-20">
 
         {/* Navigation & Controls */}
@@ -313,7 +315,7 @@ const MenuManagement: React.FC = () => {
         onSuccess={() => { refreshMenu(); setIsEditorOpen(false); }}
         editingItem={editingItem}
       />
-    </DashboardLayout >
+    </>
   );
 };
 

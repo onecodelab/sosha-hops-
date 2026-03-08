@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { DashboardLayout } from '../components/DashboardLayout';
+import { useLayoutConfig } from '../contexts/LayoutContext';
 import { Card, CardContent, CardHeader, CardTitle, Button, Badge, showToast, cn } from '../components/ui';
 import {
     TrendingUp, AlertTriangle, Clock, DollarSign,
@@ -29,13 +29,13 @@ const AdminFloorAnalytics: React.FC = () => {
 
     if (!hasPermission('canViewAnalytics')) {
         return (
-            <DashboardLayout title={t('floorAnalytics.title')} subtitle={t('floorAnalytics.restricted')}>
+            <>
                 <div className="flex flex-col items-center justify-center h-[50vh] text-center p-8">
                     <ShieldAlert className="w-16 h-16 text-red-500 mb-4" />
                     <h2 className="text-2xl font-black text-white mb-2">{t('floorAnalytics.denied')}</h2>
                     <p className="text-zinc-400">{t('floorAnalytics.deniedDesc')}</p>
                 </div>
-            </DashboardLayout>
+            </>
         );
     }
 
@@ -48,18 +48,20 @@ const AdminFloorAnalytics: React.FC = () => {
     const topTables = [...(metrics || [])].sort((a, b) => b.score - a.score).slice(0, 3);
     const bottomTables = [...(metrics || [])].sort((a, b) => a.score - b.score).slice(0, 3);
 
+    useLayoutConfig({
+        title: t('floorAnalytics.title'),
+        subtitle: t('floorAnalytics.subtitle'),
+        actions: (
+            <div className="flex gap-2">
+                <Button variant="outline" onClick={() => refetch()} size="sm" className="gap-2">
+                    <RefreshCw className={cn("w-4 h-4", isLoading && "animate-spin")} /> {t('common.retry')}
+                </Button>
+            </div>
+        )
+    });
+
     return (
-        <DashboardLayout
-            title={t('floorAnalytics.title')}
-            subtitle={t('floorAnalytics.subtitle')}
-            actions={
-                <div className="flex gap-2">
-                    <Button variant="outline" onClick={() => refetch()} size="sm" className="gap-2">
-                        <RefreshCw className={cn("w-4 h-4", isLoading && "animate-spin")} /> {t('common.retry')}
-                    </Button>
-                </div>
-            }
-        >
+        <>
             <div className="space-y-8 animate-in fade-in duration-500 pb-20">
 
                 {/* 1. KPI Cards */}
@@ -192,18 +194,18 @@ const AdminFloorAnalytics: React.FC = () => {
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-3">
-                            {topTables.map((t, i) => (
-                                <div key={t.table_id} className="flex items-center justify-between p-3 bg-black/20 rounded-xl border border-white/5">
+                            {topTables.map((tableItem, i) => (
+                                <div key={tableItem.table_id} className="flex items-center justify-between p-3 bg-black/20 rounded-xl border border-white/5">
                                     <div className="flex items-center gap-4">
                                         <span className="text-xl font-black text-zinc-600 w-6">#{i + 1}</span>
                                         <div>
-                                            <p className="font-bold text-white text-sm">Table {t.table_number}</p>
-                                            <p className="text-[10px] text-zinc-500 uppercase">{t.zone}</p>
+                                            <p className="font-bold text-white text-sm">Table {tableItem.table_number}</p>
+                                            <p className="text-[10px] text-zinc-500 uppercase">{tableItem.zone}</p>
                                         </div>
                                     </div>
                                     <div className="text-right">
-                                        <p className="font-mono text-green-400 font-bold">{t('adminDashboard.etb')} {t.total_revenue.toLocaleString()}</p>
-                                        <p className="text-[10px] text-zinc-500">{t.total_sessions} {t('floorAnalytics.sessions')}</p>
+                                        <p className="font-mono text-green-400 font-bold">{t('adminDashboard.etb')} {tableItem.total_revenue.toLocaleString()}</p>
+                                        <p className="text-[10px] text-zinc-500">{tableItem.total_sessions} {t('floorAnalytics.sessions')}</p>
                                     </div>
                                 </div>
                             ))}
@@ -218,18 +220,18 @@ const AdminFloorAnalytics: React.FC = () => {
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-3">
-                            {bottomTables.map((t, i) => (
-                                <div key={t.table_id} className="flex items-center justify-between p-3 bg-black/20 rounded-xl border border-white/5">
+                            {bottomTables.map((tableItem, i) => (
+                                <div key={tableItem.table_id} className="flex items-center justify-between p-3 bg-black/20 rounded-xl border border-white/5">
                                     <div className="flex items-center gap-4">
                                         <div className="w-2 h-2 rounded-full bg-red-500" />
                                         <div>
-                                            <p className="font-bold text-white text-sm">Table {t.table_number}</p>
-                                            <p className="text-[10px] text-zinc-500 uppercase">{t.zone}</p>
+                                            <p className="font-bold text-white text-sm">Table {tableItem.table_number}</p>
+                                            <p className="text-[10px] text-zinc-500 uppercase">{tableItem.zone}</p>
                                         </div>
                                     </div>
                                     <div className="text-right">
-                                        <p className="font-mono text-red-400 font-bold">{t('floorAnalytics.score')}: {t.score}/100</p>
-                                        <p className="text-[10px] text-zinc-500">{t.dead_hours}h {t('floorAnalytics.idle')}</p>
+                                        <p className="font-mono text-red-400 font-bold">{t('floorAnalytics.score')}: {tableItem.score}/100</p>
+                                        <p className="text-[10px] text-zinc-500">{tableItem.dead_hours}h {t('floorAnalytics.idle')}</p>
                                     </div>
                                 </div>
                             ))}
@@ -238,7 +240,7 @@ const AdminFloorAnalytics: React.FC = () => {
                 </div>
 
             </div>
-        </DashboardLayout >
+        </>
     );
 };
 

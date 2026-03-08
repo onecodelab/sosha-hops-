@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../supabase';
-import { DashboardLayout } from '../components/DashboardLayout';
+import { useLayoutConfig } from '../contexts/LayoutContext';
 import { Card, CardContent, CardHeader, CardTitle, Button, Input, Badge, Dialog, showToast, cn } from '../components/ui';
 import { Plus, Search, FileText, Trash2, Eye, Download, MoreVertical, Truck, PackageCheck, Calendar, ShoppingBag, DollarSign, Package, Save, Send, CheckCircle, XCircle, RotateCcw, AlertCircle, CheckCircle2, ArrowRight, PlusCircle } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -444,20 +444,22 @@ const ManagerPurchaseOrders: React.FC = () => {
       return () => window.removeEventListener('click', handleClick);
    }, []);
 
+   useLayoutConfig({
+      title: t('po.listTitle'),
+      subtitle: t('po.listSubtitle'),
+      actions: !showForm ? (
+         <Button onClick={handleCreateNew} className="bg-primary text-black font-bold hover:bg-primary/90">
+            <Plus className="w-4 h-4 mr-2" /> {t('po.createButton')}
+         </Button>
+      ) : (
+         <Button variant="outline" onClick={() => setShowForm(false)} className="border-gray-700 hover:bg-gray-800">
+            Cancel
+         </Button>
+      )
+   });
+
    return (
-      <DashboardLayout title={t('po.listTitle')} subtitle={t('po.listSubtitle')}
-         actions={
-            !showForm ? (
-               <Button onClick={handleCreateNew} className="bg-primary text-black font-bold hover:bg-primary/90">
-                  <Plus className="w-4 h-4 mr-2" /> {t('po.createButton')}
-               </Button>
-            ) : (
-               <Button variant="outline" onClick={() => setShowForm(false)} className="border-gray-700 hover:bg-gray-800">
-                  Cancel
-               </Button>
-            )
-         }
-      >
+      <>
          <div className="space-y-6 animate-in fade-in duration-500">
             {showForm ? (
                <div className="space-y-6 pb-20">
@@ -1326,7 +1328,7 @@ const ManagerPurchaseOrders: React.FC = () => {
                </Dialog>
             )}
          </AnimatePresence>
-      </DashboardLayout>
+      </>
    );
 };
 

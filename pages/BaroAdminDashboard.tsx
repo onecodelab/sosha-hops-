@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { DashboardLayout } from '../components/DashboardLayout';
+import { useLayoutConfig } from '../contexts/LayoutContext';
 import { Button, cn, showToast, Badge } from '../components/ui';
 import { useAuth } from '../AuthContext';
 import { supabase } from '../supabase';
@@ -340,11 +340,13 @@ export const BaroAdminDashboard: React.FC = () => {
 
     const pendingCount = applications?.filter(a => a.status === 'pending').length || 0;
 
+    useLayoutConfig({
+        title: "Platform Administration",
+        subtitle: "Baro OS Multi-tenant Account Management"
+    });
+
     return (
-        <DashboardLayout
-            title="Platform Administration"
-            subtitle="Baro OS Multi-tenant Account Management"
-        >
+        <>
             <div className="max-w-6xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
 
                 {/* Main View Switcher */}
@@ -990,7 +992,7 @@ export const BaroAdminDashboard: React.FC = () => {
                     </div>
                 </div>
             )}
-        </DashboardLayout>
+        </>
     );
 };
 

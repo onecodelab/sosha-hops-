@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { DashboardLayout } from '../components/DashboardLayout';
+import { useLayoutConfig } from '../contexts/LayoutContext';
 import { Card, Button, Input, showToast, cn } from '../components/ui';
 import { Search, AlertTriangle, Trash2, CheckCircle2, Scale, Info } from 'lucide-react';
 import { supabase } from '../supabase';
@@ -190,8 +190,13 @@ const KitchenWaste: React.FC = () => {
     };
 
     // 3. Render
+    useLayoutConfig({
+        title: "Log Waste",
+        subtitle: "Inventory Incident Report"
+    });
+
     return (
-        <DashboardLayout title="Log Waste" subtitle="Inventory Incident Report">
+        <>
             <div className="max-w-2xl mx-auto space-y-6 animate-in fade-in duration-500">
 
                 {successMode ? (
@@ -346,7 +351,7 @@ const KitchenWaste: React.FC = () => {
                     </>
                 )}
             </div>
-        </DashboardLayout>
+        </>
     );
 };
 

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { DashboardLayout } from '../components/DashboardLayout';
+import { useLayoutConfig } from '../contexts/LayoutContext';
 import { supabase } from '../supabase';
 import { Card, CardHeader, CardContent, Badge, showToast, Button } from '../components/ui';
 import { DollarSign, RefreshCw, HandCoins, History, Users, Search } from 'lucide-react';
@@ -64,36 +64,37 @@ const AdminTipsAudit: React.FC = () => {
     const digitalTips = tips.filter(t => t.tip_type === 'digital').reduce((sum, t) => sum + t.amount, 0);
     const cashTips = tips.filter(t => t.tip_type === 'cash').reduce((sum, t) => sum + t.amount, 0);
 
-    // Filter for display
     const filteredTips = tips.filter(t =>
         (t.staff?.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) || '') ||
         (t.order?.order_number?.toLowerCase().includes(searchTerm.toLowerCase()) || '')
     );
 
-    return (
-        <DashboardLayout
-            title="Tips & Gratuity Audit"
-            subtitle="System-wide tip tracking and Staff earnings review"
-            actions={
-                <div className="flex gap-3">
-                    <div className="flex bg-primary/5 p-1 rounded-lg border border-primary/20">
-                        {(['today', 'week', 'month'] as const).map(range => (
-                            <button
-                                key={range}
-                                onClick={() => setFilter(range)}
-                                className={`px-4 py-1.5 text-[10px] font-black rounded-md transition-all uppercase tracking-[0.2em] ${filter === range ? "bg-primary text-black" : "text-gray-400 hover:text-white"
-                                    }`}
-                            >
-                                {range}
-                            </button>
-                        ))}
-                    </div>
-                    <Button onClick={fetchTips} variant="outline" size="icon" className="border-white/10 bg-white/5 hover:bg-white/10">
-                        <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-                    </Button>
+    useLayoutConfig({
+        title: "Tips & Gratuity Audit",
+        subtitle: "System-wide tip tracking and Staff earnings review",
+        actions: (
+            <div className="flex gap-3">
+                <div className="flex bg-primary/5 p-1 rounded-lg border border-primary/20">
+                    {(['today', 'week', 'month'] as const).map(range => (
+                        <button
+                            key={range}
+                            onClick={() => setFilter(range)}
+                            className={`px-4 py-1.5 text-[10px] font-black rounded-md transition-all uppercase tracking-[0.2em] ${filter === range ? "bg-primary text-black" : "text-gray-400 hover:text-white"
+                                }`}
+                        >
+                            {range}
+                        </button>
+                    ))}
                 </div>
-            }
-        >
+                <Button onClick={fetchTips} variant="outline" size="icon" className="border-white/10 bg-white/5 hover:bg-white/10">
+                    <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                </Button>
+            </div>
+        )
+    });
+
+    return (
+        <>
             <div className="space-y-6 animate-in fade-in duration-500">
 
                 {/* Overview Overview */}
@@ -201,7 +202,7 @@ const AdminTipsAudit: React.FC = () => {
                     </CardContent>
                 </Card>
             </div>
-        </DashboardLayout>
+        </>
     );
 };
 

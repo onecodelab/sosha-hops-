@@ -1,7 +1,7 @@
 
 import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { DashboardLayout } from '../components/DashboardLayout';
+import { useLayoutConfig } from '../contexts/LayoutContext';
 import { BaroCard, BaroCardTitle } from '../components/BaroCard';
 import {
    TrendingUp, Users, ShoppingBag, AlertTriangle,
@@ -251,8 +251,14 @@ const AdminDashboard: React.FC = () => {
       setIsDetailsModalOpen(true);
    };
 
+   useLayoutConfig({
+      title: t('adminDashboard.title'),
+      subtitle: t('adminDashboard.subtitle'),
+      className: "h-full md:h-screen md:overflow-hidden"
+   });
+
    return (
-      <DashboardLayout title={t('adminDashboard.title')} subtitle={t('adminDashboard.subtitle')} className="h-full md:h-screen md:overflow-hidden">
+      <>
          <div className="space-y-3 animate-in fade-in duration-500 h-full flex flex-col overflow-y-auto md:overflow-hidden">
 
             {/* Top Compact Metrics Bar */}
@@ -500,7 +506,7 @@ const AdminDashboard: React.FC = () => {
             onClose={() => setIsDetailsModalOpen(false)}
             order={selectedDetailsOrder}
          />
-      </DashboardLayout>
+      </>
    );
 };
 

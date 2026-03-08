@@ -208,44 +208,201 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
         }
       };
 
-      // 3. SECURE SUBMISSION via Edge Function
+      // 3. SECURE SUBMISSION via Edge Function (with Direct DB Fallback)
+      let orderPlaced = false;
+      let edgeFunctionError: string | null = null;
+
+      // --- ATTEMPT 1: Edge Function ---
       try {
         const { data: result, error: rpcErr } = await supabase.functions.invoke('place-order', {
           body: payload
         });
 
         if (rpcErr) {
-          // Try to parse the error context/message for better feedback
-          console.error("RPC Error:", rpcErr);
-          const errorDetail = rpcErr.message || "Connection failed";
-          throw new Error(`Edge Function: ${errorDetail}`);
+          console.error("RPC Error Object:", rpcErr);
+          // Extract the REAL error from the Edge Function response body
+          let realError = rpcErr.message || "Connection failed";
+          try {
+            if ((rpcErr as any).context) {
+              const errText = await (rpcErr as any).context.text();
+              console.error("RAW EDGE FUNCTION RESPONSE:", errText);
+              try {
+                const errBody = JSON.parse(errText);
+                if (errBody && errBody.error) {
+                  realError = errBody.detail ? `${errBody.error}: ${errBody.detail}` : errBody.error;
+                  if (errBody.step) realError += ` (at ${errBody.step})`;
+                }
+              } catch {
+                if (errText && !errText.startsWith('<html')) {
+                  realError = errText.substring(0, 200);
+                }
+              }
+            }
+          } catch (parseErr) {
+            console.error("Failed to parse edge function error context", parseErr);
+          }
+          edgeFunctionError = realError;
+          console.warn("Edge Function failed, will attempt direct DB fallback. Error:", realError);
+        } else {
+          // Parse result
+          let parsedResult = result;
+          if (typeof result === 'string') {
+            try { parsedResult = JSON.parse(result); } catch (e) { console.error("Failed to parse string response:", result); }
+          }
+
+          if (parsedResult && parsedResult.error) {
+            const msg = parsedResult.error || "Execution failed";
+            const stepMsg = parsedResult.step ? ` (at ${parsedResult.step})` : "";
+            edgeFunctionError = `${msg}${stepMsg}`;
+            console.warn("Edge Function returned logical error:", edgeFunctionError);
+          } else if (parsedResult && (parsedResult.success || parsedResult.order_id)) {
+            orderPlaced = true;
+          } else {
+            edgeFunctionError = "Unexpected response from server.";
+          }
+        }
+      } catch (invokeErr: any) {
+        console.warn("Edge Function unreachable, will attempt direct DB fallback:", invokeErr);
+        edgeFunctionError = invokeErr.message || "Edge Function unreachable";
+      }
+
+      // --- ATTEMPT 2: Direct Database Fallback ---
+      if (!orderPlaced && edgeFunctionError) {
+        console.warn(`[FALLBACK] Edge Function error: "${edgeFunctionError}". Attempting direct DB submission...`);
+
+        const orgId = profile?.organization_id;
+        if (!orgId) {
+          throw new Error("Missing Organization Identity. Please refresh your session.");
         }
 
-        // Extract response body in case invoke returns it poorly mapped
-        let parsedResult = result;
-        if (typeof result === 'string') {
-          try {
-            parsedResult = JSON.parse(result);
-          } catch (e) {
-            console.error("Failed to parse string response:", result);
+        const now = new Date().toISOString();
+
+        if (internalAppendId) {
+          // Append to existing order
+          const { data: existingOrder, error: fetchErr } = await supabase
+            .from('orders')
+            .select('total_amount, subtotal_amount, vat_amount')
+            .eq('id', internalAppendId)
+            .single();
+
+          if (fetchErr || !existingOrder) throw new Error("Could not find existing order to append to.");
+
+          const newTotal = Number(existingOrder.total_amount || 0) + (totalAmount * 1.15);
+          const newSubtotal = Number(existingOrder.subtotal_amount || 0) + totalAmount;
+          const newVat = Number(existingOrder.vat_amount || 0) + (totalAmount * 0.15);
+
+          const { error: updateErr } = await supabase
+            .from('orders')
+            .update({ total_amount: newTotal, subtotal_amount: newSubtotal, vat_amount: newVat, status: 'pending' })
+            .eq('id', internalAppendId);
+
+          if (updateErr) throw new Error(`Failed to update order: ${updateErr.message}`);
+
+          // Insert new items
+          const itemsPayload = cart.map(item => ({
+            order_id: internalAppendId,
+            organization_id: orgId,
+            menu_item_id: item.dish.id,
+            quantity: item.quantity,
+            price: item.dish.price,
+            special_instructions: item.notes ? `[NEW] ${item.notes}` : '[NEW]'
+          }));
+
+          const { error: itemsErr } = await supabase.from('order_items').insert(itemsPayload);
+          if (itemsErr) throw new Error(`Failed to insert order items: ${itemsErr.message}`);
+
+        } else {
+          // PRE-CHECK: Look for any existing active order on this table
+          // This prevents the unique_active_order_per_table constraint violation
+          const { data: existingActiveOrder } = await supabase
+            .from('orders')
+            .select('id, total_amount, subtotal_amount, vat_amount')
+            .eq('table_id', activeTableId)
+            .not('status', 'in', '("paid","closed","cancelled")')
+            .maybeSingle();
+
+          if (existingActiveOrder) {
+            // An active order already exists — append to it instead of creating a new one
+            console.log(`[FALLBACK] Found existing active order ${existingActiveOrder.id} on table ${tableNumber}. Appending items.`);
+            const newTotal = Number(existingActiveOrder.total_amount || 0) + (totalAmount * 1.15);
+            const newSubtotal = Number(existingActiveOrder.subtotal_amount || 0) + totalAmount;
+            const newVat = Number(existingActiveOrder.vat_amount || 0) + (totalAmount * 0.15);
+
+            const { error: updateErr } = await supabase
+              .from('orders')
+              .update({ total_amount: newTotal, subtotal_amount: newSubtotal, vat_amount: newVat, status: 'pending' })
+              .eq('id', existingActiveOrder.id);
+            if (updateErr) throw new Error(`Failed to update existing order: ${updateErr.message}`);
+
+            const itemsPayload = cart.map(item => ({
+              order_id: existingActiveOrder.id,
+              organization_id: orgId,
+              menu_item_id: item.dish.id,
+              quantity: item.quantity,
+              price: item.dish.price,
+              special_instructions: item.notes ? `[NEW] ${item.notes}` : '[NEW]'
+            }));
+            const { error: itemsErr } = await supabase.from('order_items').insert(itemsPayload);
+            if (itemsErr) throw new Error(`Failed to insert order items: ${itemsErr.message}`);
+
+          } else {
+            // No active order — safe to create a new one
+            const subtotal = totalAmount;
+            const vatAmount = Math.round((subtotal * 0.15) * 100) / 100;
+            const orderTotal = Math.round((subtotal + vatAmount) * 100) / 100;
+
+            const { data: newOrder, error: orderErr } = await supabase
+              .from('orders')
+              .insert({
+                customer_notes: customerNotes,
+                order_number: generateOrderNumber(),
+                branch_id: activeBranchId,
+                organization_id: orgId,
+                table_id: activeTableId,
+                table_number: tableNumber,
+                waiter_id: user?.id || null,
+                source: 'dine-in',
+                status: 'pending',
+                total_amount: orderTotal,
+                subtotal_amount: subtotal,
+                vat_amount: vatAmount,
+                vat_rate: 15
+              })
+              .select()
+              .single();
+
+            if (orderErr) throw new Error(`Order creation failed: ${orderErr.message}`);
+
+            // Insert order items
+            const itemsPayload = cart.map(item => ({
+              order_id: newOrder.id,
+              organization_id: orgId,
+              menu_item_id: item.dish.id,
+              quantity: item.quantity,
+              price: item.dish.price,
+              special_instructions: item.notes || null
+            }));
+
+            const { error: itemsErr } = await supabase.from('order_items').insert(itemsPayload);
+            if (itemsErr) throw new Error(`Failed to insert order items: ${itemsErr.message}`);
+
+            // Update table status
+            if (activeTableId) {
+              await supabase.from('tables').update({
+                status: 'occupied',
+                current_order_id: newOrder.id,
+                last_updated: now
+              }).eq('id', activeTableId);
+            }
           }
         }
 
-        if (parsedResult && parsedResult.error) {
-          console.error("Function returned logical error:", parsedResult);
-          const msg = parsedResult.error || "Execution failed";
-          const stepMsg = parsedResult.step ? ` (at ${parsedResult.step})` : "";
-          throw new Error(`${msg}${stepMsg}`);
-        }
+        console.log("[FALLBACK] Direct DB order submission successful.");
+        orderPlaced = true;
+      }
 
-        if (!parsedResult || (!parsedResult.success && !parsedResult.order_id)) {
-          throw new Error("Unexpected response from server.");
-        }
-      } catch (invokeErr: any) {
-        console.error("Order Submission Failure:", invokeErr);
-        // Extract inner error if it's a Supabase error wrapper
-        const message = invokeErr.message || "Failed to place order.";
-        throw new Error(message);
+      if (!orderPlaced) {
+        throw new Error("Order submission failed through all channels.");
       }
 
       showToast(internalAppendId ? `Appended to Table ${tableNumber}` : `New Order for Table ${tableNumber}`, "success");
@@ -253,29 +410,7 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
       onClose();
     } catch (err: any) {
       console.error("Order Submission Failure Path:", err);
-      let displayMessage = err.message || "Order Deployment Protocol Failed";
-
-      // Attempt to parse Edge Function custom error response
-      try {
-        if (err.context) {
-          const errText = await err.context.text();
-          console.error("RAW EDGE FUNCTION RESPONSE:", errText);
-          try {
-            const errBody = JSON.parse(errText);
-            if (errBody && errBody.error) {
-              displayMessage = errBody.detail ? `${errBody.error}: ${errBody.detail}` : errBody.error;
-            }
-          } catch {
-            // If not JSON, use the raw text if it's not empty and not HTML
-            if (errText && !errText.startsWith('<html')) {
-              displayMessage = "Edge Function Crash: " + errText.substring(0, 100);
-            }
-          }
-        }
-      } catch (parseErr) {
-        console.error("Failed to parse edge function error response", parseErr);
-      }
-
+      const displayMessage = err.message || "Order submission failed. Please try again.";
       showToast(displayMessage, 'error');
     } finally {
       setSubmitting(false);

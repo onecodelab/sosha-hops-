@@ -223,7 +223,7 @@ export const BillModal: React.FC<BillModalProps> = ({
       .maybeSingle();
 
     if (existingPay && existingPay.order_id !== order.id) {
-      showToast("Fraud Alert: This transaction reference has already been used!", "error");
+      showToast("This receipt has been used before. Please check the Transaction ID.", "error");
       return;
     }
 
@@ -234,7 +234,7 @@ export const BillModal: React.FC<BillModalProps> = ({
       .maybeSingle();
 
     if (existingOrder && existingOrder.id !== order.id) {
-      showToast("Fraud Alert: This transaction reference has already been used!", "error");
+      showToast("This receipt has been used before. Please check the Transaction ID.", "error");
       return;
     }
 

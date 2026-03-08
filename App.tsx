@@ -1,5 +1,5 @@
 import React, { useEffect, Suspense, lazy } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { AuthProvider } from './AuthContext';
 import { LanguageProvider } from './contexts/LanguageContext';
 import { BranchProvider } from './contexts/BranchContext';
@@ -56,6 +56,29 @@ import ProtectedRoute from './components/ProtectedRoute';
 import { BrandLoader } from './components/BrandLoader';
 import ScrollToTop from './components/ScrollToTop';
 import { DashboardLayout } from './components/DashboardLayout';
+import { LayoutProvider, useLayoutConfig } from './contexts/LayoutContext';
+
+interface AppWrapperProps {
+  children: React.ReactNode;
+  title?: string;
+  subtitle?: string | React.ReactNode;
+  actions?: React.ReactNode;
+  className?: string;
+}
+
+const DashboardLayoutWrapper: React.FC = () => {
+  return (
+    <DashboardLayout>
+      <Outlet />
+    </DashboardLayout>
+  );
+};
+
+// Custom wrapper for pages that need special layout props like OwnerCommandCenter
+const CustomAppWrapper: React.FC<AppWrapperProps> = ({ children, ...props }) => {
+  useLayoutConfig(props);
+  return <>{children}</>;
+};
 
 // Loading Placeholder
 const PageLoader = () => <BrandLoader />;
@@ -77,182 +100,186 @@ const App: React.FC = () => {
           <ScrollToTop />
           <AuthProvider>
             <BranchProvider>
-              <Suspense fallback={<PageLoader />}>
-                <Routes>
-                  {/* Public Marketing Layer */}
-                  <Route path="/" element={<Landing />} />
-                  <Route path="/book-demo" element={<BookDemo />} />
-                  <Route path="/pricing" element={<PricingPage />} />
-                  <Route path="/features" element={<Features />} />
+              <LayoutProvider>
+                <Suspense fallback={<PageLoader />}>
+                  <Routes>
+                    {/* Public Marketing Layer */}
+                    <Route path="/" element={<Landing />} />
+                    <Route path="/book-demo" element={<BookDemo />} />
+                    <Route path="/pricing" element={<PricingPage />} />
+                    <Route path="/features" element={<Features />} />
 
-                  {/* Auth Layer */}
-                  <Route path="/login" element={<Login />} />
-                  <Route path="/login/:role" element={<Login />} />
-                  <Route path="/signup" element={<SignUp />} />
-                  <Route path="/onboarding" element={<Onboarding />} />
+                    {/* Auth Layer */}
+                    <Route path="/login" element={<Login />} />
+                    <Route path="/login/:role" element={<Login />} />
+                    <Route path="/signup" element={<SignUp />} />
+                    <Route path="/onboarding" element={<Onboarding />} />
 
-                  {/* Protected App Layer */}
-                  <Route path="/app" element={<ProtectedRoute><AppDispatcher /></ProtectedRoute>} />
+                    {/* Protected App Layer */}
+                    <Route path="/app" element={<DashboardLayoutWrapper />}>
+                      <Route index element={<ProtectedRoute><AppDispatcher /></ProtectedRoute>} />
 
-                  <Route path="/app/admin" element={
-                    <ProtectedRoute allowedRoles={['owner', 'admin' as any, 'manager']}>
-                      <AdminDashboard />
-                    </ProtectedRoute>
-                  } />
+                      <Route path="admin" element={
+                        <ProtectedRoute allowedRoles={['owner', 'admin' as any, 'manager']}>
+                          <AdminDashboard />
+                        </ProtectedRoute>
+                      } />
 
-                  <Route path="/app/admin/menu" element={
-                    <ProtectedRoute allowedRoles={['owner', 'admin' as any, 'manager']}>
-                      <MenuManagement />
-                    </ProtectedRoute>
-                  } />
+                      <Route path="admin/menu" element={
+                        <ProtectedRoute allowedRoles={['owner', 'admin' as any, 'manager']}>
+                          <MenuManagement />
+                        </ProtectedRoute>
+                      } />
 
-                  <Route path="/app/tables" element={
-                    <ProtectedRoute allowedRoles={['owner', 'admin' as any, 'manager', 'waiter']}>
-                      <TableStatus />
-                    </ProtectedRoute>
-                  } />
+                      <Route path="tables" element={
+                        <ProtectedRoute allowedRoles={['owner', 'admin' as any, 'manager', 'waiter']}>
+                          <TableStatus />
+                        </ProtectedRoute>
+                      } />
 
-                  <Route path="/app/menu-analytics" element={
-                    <ProtectedRoute allowedRoles={['owner', 'admin' as any]}>
-                      <MenuAnalytics />
-                    </ProtectedRoute>
-                  } />
+                      <Route path="menu-analytics" element={
+                        <ProtectedRoute allowedRoles={['owner', 'admin' as any]}>
+                          <MenuAnalytics />
+                        </ProtectedRoute>
+                      } />
 
-                  <Route path="/app/inventory" element={
-                    <ProtectedRoute allowedRoles={['owner', 'manager', 'admin' as any]}>
-                      <Inventory />
-                    </ProtectedRoute>
-                  } />
+                      <Route path="inventory" element={
+                        <ProtectedRoute allowedRoles={['owner', 'manager', 'admin' as any]}>
+                          <Inventory />
+                        </ProtectedRoute>
+                      } />
 
-                  <Route path="/app/admin/staff-performance" element={<ProtectedRoute allowedRoles={['owner', 'admin']}><AdminStaffPerformance /></ProtectedRoute>} />
-                  <Route path="/app/admin/waste" element={<ProtectedRoute allowedRoles={['owner', 'admin', 'manager']}><ManagerWasteHistory /></ProtectedRoute>} />
-                  <Route path="/app/admin/table-map" element={
-                    <ProtectedRoute allowedRoles={['owner', 'admin' as any]}>
-                      <AdminTableMap />
-                    </ProtectedRoute>
-                  } />
+                      <Route path="admin/staff-performance" element={<ProtectedRoute allowedRoles={['owner', 'admin']}><AdminStaffPerformance /></ProtectedRoute>} />
+                      <Route path="admin/waste" element={<ProtectedRoute allowedRoles={['owner', 'admin', 'manager']}><ManagerWasteHistory /></ProtectedRoute>} />
+                      <Route path="admin/table-map" element={
+                        <ProtectedRoute allowedRoles={['owner', 'admin' as any]}>
+                          <AdminTableMap />
+                        </ProtectedRoute>
+                      } />
 
-                  <Route path="/app/staff-performance" element={
-                    <ProtectedRoute allowedRoles={['owner', 'manager', 'admin' as any]}>
-                      <StaffPerformance />
-                    </ProtectedRoute>
-                  } />
+                      <Route path="staff-performance" element={
+                        <ProtectedRoute allowedRoles={['owner', 'manager', 'admin' as any]}>
+                          <StaffPerformance />
+                        </ProtectedRoute>
+                      } />
 
-                  <Route path="/app/orders-tables" element={
-                    <ProtectedRoute allowedRoles={['owner', 'manager', 'admin' as any]}>
-                      <OrdersTables />
-                    </ProtectedRoute>
-                  } />
+                      <Route path="orders-tables" element={
+                        <ProtectedRoute allowedRoles={['owner', 'manager', 'admin' as any]}>
+                          <OrdersTables />
+                        </ProtectedRoute>
+                      } />
 
-                  <Route path="/app/manager" element={
-                    <ProtectedRoute allowedRoles={['manager', 'owner']}>
-                      <ManagerDashboard />
-                    </ProtectedRoute>
-                  } />
+                      <Route path="manager" element={
+                        <ProtectedRoute allowedRoles={['manager', 'owner']}>
+                          <ManagerDashboard />
+                        </ProtectedRoute>
+                      } />
 
-                  <Route path="/app/manager/pending-requests" element={
-                    <ProtectedRoute allowedRoles={['manager', 'owner']}>
-                      <ManagerPendingRequests />
-                    </ProtectedRoute>
-                  } />
+                      <Route path="manager/pending-requests" element={
+                        <ProtectedRoute allowedRoles={['manager', 'owner']}>
+                          <ManagerPendingRequests />
+                        </ProtectedRoute>
+                      } />
 
-                  <Route path="/app/po/list" element={
-                    <ProtectedRoute allowedRoles={['manager', 'owner']}>
-                      <ManagerPurchaseOrders />
-                    </ProtectedRoute>
-                  } />
+                      <Route path="po/list" element={
+                        <ProtectedRoute allowedRoles={['manager', 'owner']}>
+                          <ManagerPurchaseOrders />
+                        </ProtectedRoute>
+                      } />
 
-                  <Route path="/app/waiter" element={
-                    <ProtectedRoute allowedRoles={['waiter']}>
-                      <WaiterDashboard />
-                    </ProtectedRoute>
-                  } />
+                      <Route path="waiter" element={
+                        <ProtectedRoute allowedRoles={['waiter']}>
+                          <WaiterDashboard />
+                        </ProtectedRoute>
+                      } />
 
-                  <Route path="/app/waiter/orders" element={
-                    <ProtectedRoute allowedRoles={['waiter']}>
-                      <WaiterOrders />
-                    </ProtectedRoute>
-                  } />
+                      <Route path="waiter/orders" element={
+                        <ProtectedRoute allowedRoles={['waiter']}>
+                          <WaiterOrders />
+                        </ProtectedRoute>
+                      } />
 
-                  <Route path="/app/waiter/tips" element={
-                    <ProtectedRoute allowedRoles={['waiter']}>
-                      <WaiterTips />
-                    </ProtectedRoute>
-                  } />
+                      <Route path="waiter/tips" element={
+                        <ProtectedRoute allowedRoles={['waiter']}>
+                          <WaiterTips />
+                        </ProtectedRoute>
+                      } />
 
-                  <Route path="/app/kitchen" element={
-                    <ProtectedRoute allowedRoles={['kitchen', 'manager', 'owner']}>
-                      <KitchenDashboard />
-                    </ProtectedRoute>
-                  } />
+                      <Route path="kitchen" element={
+                        <ProtectedRoute allowedRoles={['kitchen', 'manager', 'owner']}>
+                          <KitchenDashboard />
+                        </ProtectedRoute>
+                      } />
 
-                  <Route path="/app/kitchen/stock" element={
-                    <ProtectedRoute allowedRoles={['kitchen', 'manager', 'owner']}>
-                      <KitchenStockView />
-                    </ProtectedRoute>
-                  } />
+                      <Route path="kitchen/stock" element={
+                        <ProtectedRoute allowedRoles={['kitchen', 'manager', 'owner']}>
+                          <KitchenStockView />
+                        </ProtectedRoute>
+                      } />
 
-                  <Route path="/app/kitchen/waste" element={
-                    <ProtectedRoute allowedRoles={['kitchen', 'manager', 'owner']}>
-                      <KitchenLogWaste />
-                    </ProtectedRoute>
-                  } />
+                      <Route path="kitchen/waste" element={
+                        <ProtectedRoute allowedRoles={['kitchen', 'manager', 'owner']}>
+                          <KitchenLogWaste />
+                        </ProtectedRoute>
+                      } />
 
-                  <Route path="/app/kitchen/restock" element={
-                    <ProtectedRoute allowedRoles={['kitchen', 'manager', 'owner']}>
-                      <KitchenRestockRequests />
-                    </ProtectedRoute>
-                  } />
+                      <Route path="kitchen/restock" element={
+                        <ProtectedRoute allowedRoles={['kitchen', 'manager', 'owner']}>
+                          <KitchenRestockRequests />
+                        </ProtectedRoute>
+                      } />
 
-                  <Route path="/app/admin/analytics" element={
-                    <ProtectedRoute allowedRoles={['owner', 'admin' as any]}>
-                      <AdminFloorAnalytics />
-                    </ProtectedRoute>
-                  } />
+                      <Route path="admin/analytics" element={
+                        <ProtectedRoute allowedRoles={['owner', 'admin' as any]}>
+                          <AdminFloorAnalytics />
+                        </ProtectedRoute>
+                      } />
 
-                  <Route path="/app/admin/tips" element={
-                    <ProtectedRoute allowedRoles={['owner', 'admin' as any]}>
-                      <AdminTipsAudit />
-                    </ProtectedRoute>
-                  } />
+                      <Route path="admin/tips" element={
+                        <ProtectedRoute allowedRoles={['owner', 'admin' as any]}>
+                          <AdminTipsAudit />
+                        </ProtectedRoute>
+                      } />
 
-                  <Route path="/app/settings" element={
-                    <ProtectedRoute allowedRoles={['owner', 'admin' as any]}>
-                      <Settings />
-                    </ProtectedRoute>
-                  } />
+                      <Route path="settings" element={
+                        <ProtectedRoute allowedRoles={['owner', 'admin' as any]}>
+                          <Settings />
+                        </ProtectedRoute>
+                      } />
 
-                  <Route path="/app/owner" element={
-                    <ProtectedRoute allowedRoles={['owner']}>
-                      <DashboardLayout className="p-0 overflow-hidden" title="Owner Command Center" subtitle="Intelligent Oversight">
-                        <OwnerCommandCenter />
-                      </DashboardLayout>
-                    </ProtectedRoute>
-                  } />
+                      <Route path="owner" element={
+                        <ProtectedRoute allowedRoles={['owner']}>
+                          <CustomAppWrapper className="p-0 overflow-hidden" title="Owner Command Center" subtitle="Intelligent Oversight">
+                            <OwnerCommandCenter />
+                          </CustomAppWrapper>
+                        </ProtectedRoute>
+                      } />
 
-                  <Route path="/app/baro-admin" element={
-                    <ProtectedRoute allowedRoles={['super_admin']}>
-                      <BaroAdminDashboard />
-                    </ProtectedRoute>
-                  } />
+                      <Route path="baro-admin" element={
+                        <ProtectedRoute allowedRoles={['super_admin']}>
+                          <BaroAdminDashboard />
+                        </ProtectedRoute>
+                      } />
 
-                  <Route path="/app/supplier/dashboard" element={
-                    <ProtectedRoute allowedRoles={['supplier']}>
-                      <SupplierDashboard />
-                    </ProtectedRoute>
-                  } />
+                      <Route path="supplier/dashboard" element={
+                        <ProtectedRoute allowedRoles={['supplier']}>
+                          <SupplierDashboard />
+                        </ProtectedRoute>
+                      } />
 
-                  <Route path="/app/driver/dashboard" element={
-                    <ProtectedRoute allowedRoles={['driver']}>
-                      <DriverDashboard />
-                    </ProtectedRoute>
-                  } />
+                      <Route path="driver/dashboard" element={
+                        <ProtectedRoute allowedRoles={['driver']}>
+                          <DriverDashboard />
+                        </ProtectedRoute>
+                      } />
+                    </Route>
 
-                  {/* Fallback */}
-                  <Route path="*" element={<Navigate to="/" replace />} />
-                </Routes>
-              </Suspense>
-              <ToastContainer />
+                    {/* Fallback */}
+                    <Route path="*" element={<Navigate to="/" replace />} />
+                  </Routes>
+                </Suspense>
+                <ToastContainer />
+              </LayoutProvider>
             </BranchProvider>
           </AuthProvider>
         </BrowserRouter>

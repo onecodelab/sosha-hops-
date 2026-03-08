@@ -1,7 +1,6 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../supabase';
-import { DashboardLayout } from '../components/DashboardLayout';
+import { useLayoutConfig } from '../contexts/LayoutContext';
 import { BaroCard, BaroCardTitle } from '../components/BaroCard';
 import { Badge, Button, cn, showToast } from '../components/ui';
 import {
@@ -34,9 +33,9 @@ const ManagerDashboard: React.FC = () => {
             *, 
             waiter:profiles!orders_waiter_id_fkey (full_name),
             order_items (
-              quantity, 
-              special_instructions,
-              menu_item:menu (name)
+               quantity, 
+               special_instructions,
+               menu_item:menu (name)
             )
           `)
             .gte('created_at', `${todayStr}T00:00:00`)
@@ -108,8 +107,13 @@ const ManagerDashboard: React.FC = () => {
    const liveActiveOrders = orders.filter(o => ['pending', 'accepted', 'preparing', 'ready'].includes(o.status));
    const unpaidServedOrders = orders.filter(o => o.status === 'served' && o.payment_status === 'unpaid');
 
+   useLayoutConfig({
+      title: "Ops Dashboard",
+      subtitle: "Daily operations and staff oversight"
+   });
+
    return (
-      <DashboardLayout title="Ops Dashboard" subtitle="Daily operations and staff oversight">
+      <>
          <div className="space-y-6">
             {/* Premium Multi-Theme KPI Grid */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-8">
@@ -226,8 +230,7 @@ const ManagerDashboard: React.FC = () => {
 
          <FloatingPaymentButton count={unpaidServedOrders.length} onClick={() => setIsPaymentOpen(true)} />
 
-
-      </DashboardLayout>
+      </>
    );
 };
 

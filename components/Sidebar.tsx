@@ -32,9 +32,19 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, setIsCollapsed, h
 
     const NavItem = ({ icon: Icon, label, path, allowedRoles }: any) => {
         const isActive = location.pathname === path;
+        const itemRef = React.useRef<HTMLButtonElement>(null);
+
+        React.useEffect(() => {
+            if (isActive && itemRef.current) {
+                // Ensure the active item is visible in the scrollable nav area
+                itemRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+        }, [isActive]);
+
         return (
             <RoleGuard allowedRoles={allowedRoles} hideOnly>
                 <button
+                    ref={itemRef}
                     onClick={() => navigate(path)}
                     className={cn(
                         "w-full flex items-center gap-4 px-4 py-3 rounded-2xl transition-all duration-300 group",
@@ -241,6 +251,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, setIsCollapsed, h
                 />
 
                 <NavItem
+                    icon={ShoppingCart}
+                    label={t('nav.purchaseOrders')}
+                    path="/app/po/list"
+                    allowedRoles={['owner', 'admin', 'manager']}
+                />
+
+                <NavItem
                     icon={Trash2}
                     label={t('nav.waste')}
                     path="/app/kitchen/waste"
@@ -253,12 +270,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, setIsCollapsed, h
                     allowedRoles={['kitchen']}
                 />
 
-                <NavItem
-                    icon={ShoppingCart}
-                    label={t('nav.purchaseOrders')}
-                    path="/app/po/list"
-                    allowedRoles={['owner', 'admin', 'manager']}
-                />
 
                 {/* Orders - Owner/Admin only */}
                 <NavItem
@@ -297,7 +308,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, setIsCollapsed, h
 
             <button
                 onClick={() => setIsCollapsed(!isCollapsed)}
-                className="absolute -right-3 top-24 w-6 h-6 bg-card border border-primary/30 rounded-full flex items-center justify-center text-muted hover:text-primary transition-colors shadow-lg z-30"
+                className="absolute right-2 top-20 w-7 h-7 bg-card border border-primary/30 rounded-full flex items-center justify-center text-muted hover:text-primary hover:border-primary transition-colors shadow-lg z-30"
             >
                 {isCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
             </button>
