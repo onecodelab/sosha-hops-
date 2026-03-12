@@ -10,36 +10,41 @@ import {
 import { Button, Card, Badge, cn } from '../components/ui';
 import { motion, AnimatePresence } from 'framer-motion';
 
-const BANK_CONFIG: Record<string, { label: string, color: string, icon: any, bgColor: string }> = {
+const BANK_CONFIG: Record<string, { label: string, color: string, icon: any, bgColor: string, scheme?: string }> = {
     telebirr: {
         label: "Telebirr",
         color: "text-purple-400",
         bgColor: "bg-purple-500/10",
-        icon: Smartphone
+        icon: Smartphone,
+        scheme: "telebirr://"
     },
     cbe: {
         label: "CBE",
         color: "text-blue-400",
         bgColor: "bg-blue-500/10",
-        icon: Landmark
+        icon: Landmark,
+        scheme: "cbe://"
     },
     dashen: {
         label: "Dashen",
         color: "text-emerald-400",
         bgColor: "bg-emerald-500/10",
-        icon: Landmark
+        icon: Landmark,
+        scheme: "amole://"
     },
     abyssinia: {
         label: "Abyssinia",
         color: "text-zinc-400",
         bgColor: "bg-zinc-500/10",
-        icon: Landmark
+        icon: Landmark,
+        scheme: "boa://"
     },
     cbebirr: {
         label: "CBE Birr",
         color: "text-orange-400",
         bgColor: "bg-orange-500/10",
-        icon: Coins
+        icon: Coins,
+        scheme: "cbebirr://"
     }
 };
 
@@ -52,11 +57,51 @@ export default function PublicPayment() {
     const [bankSettings, setBankSettings] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [coping, setCoping] = useState<string | null>(null);
+    const [txnRef, setTxnRef] = useState("");
+    const [submitting, setSubmitting] = useState(false);
+    const [submitted, setSubmitted] = useState(false);
 
     useEffect(() => {
         if (!orderId) return;
         fetchOrderDetails();
     }, [orderId]);
+
+    const handleCopy = (text: string, id: string) => {
+        navigator.clipboard.writeText(text);
+        setCoping(id);
+        setTimeout(() => setCoping(null), 2000);
+    };
+
+    const handlePay = (bank: any) => {
+        const config = BANK_CONFIG[bank.bank_key];
+        handleCopy(bank.account_number, bank.id);
+
+        // Attempt deep link after a short delay for clipboard
+        if (config?.scheme) {
+            setTimeout(() => {
+                window.location.href = config.scheme!;
+            }, 300);
+        }
+    };
+
+    const submitVerification = async () => {
+        if (!txnRef || !orderId || !order) return;
+        setSubmitting(true);
+        try {
+            const { error: payErr } = await supabase.from('payment_notifications').insert({
+                order_id: orderId,
+                transaction_ref: txnRef,
+                organization_id: order.organization_id
+            });
+            if (payErr) throw payErr;
+            setSubmitted(true);
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setSubmitting(false);
+        }
+    };
 
     const fetchOrderDetails = async () => {
         try {
@@ -216,13 +261,15 @@ export default function PublicPayment() {
                         <div className="grid gap-3">
                             {bankSettings.map((bank: any) => {
                                 const config = BANK_CONFIG[bank.bank_key] || { label: bank.bank_key, color: "text-white", icon: Landmark, bgColor: "bg-white/5" };
+                                const isCoping = coping === bank.id;
                                 return (
                                     <motion.div
                                         whileTap={{ scale: 0.98 }}
                                         key={bank.id}
+                                        onClick={() => handlePay(bank)}
                                         className={cn(
                                             "group p-5 rounded-[2rem] border border-white/5 bg-[#0D0D0D] hover:bg-[#151515] transition-all cursor-pointer relative overflow-hidden",
-                                            "hover:border-primary/20"
+                                            isCoping ? "border-primary/50" : "hover:border-primary/20"
                                         )}
                                     >
                                         <div className="flex items-center justify-between relative z-10">
@@ -230,22 +277,59 @@ export default function PublicPayment() {
                                                 <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center", config.bgColor)}>
                                                     <config.icon className={cn("w-6 h-6", config.color)} />
                                                 </div>
-                                                <div className="space-y-0.5">
-                                                    <h4 className="font-black text-sm uppercase tracking-tight">{config.label}</h4>
+                                                <div className="space-y-0.5 text-left">
+                                                    <div className="flex items-center gap-2">
+                                                        <h4 className="font-black text-sm uppercase tracking-tight">{config.label}</h4>
+                                                        {isCoping && <span className="text-[9px] font-black text-primary animate-pulse uppercase">COPIED ACCOUNT</span>}
+                                                    </div>
                                                     <p className="text-[11px] font-mono font-bold text-primary tracking-widest">{bank.account_number}</p>
-                                                    <p className="text-[9px] text-zinc-600 font-bold uppercase">{bank.account_name}</p>
+                                                    <p className="text-[9px] text-zinc-600 font-bold uppercase">{bank.account_name || 'Restaurant Account'}</p>
                                                 </div>
                                             </div>
-                                            <ArrowRight className="w-5 h-5 text-zinc-700 group-hover:text-primary transition-colors" />
+                                            <div className="bg-white/5 p-2 rounded-xl group-hover:bg-primary/10 transition-colors">
+                                                <ExternalLink className="w-4 h-4 text-zinc-700 group-hover:text-primary transition-colors" />
+                                            </div>
                                         </div>
                                     </motion.div>
                                 );
                             })}
                         </div>
 
+                        {/* Verification Flow */}
+                        <div className="bg-white/5 rounded-[2rem] p-6 space-y-4 border border-white/10">
+                            <div className="space-y-1">
+                                <h4 className="text-[10px] font-black text-white uppercase tracking-widest">Verify Your Payment</h4>
+                                <p className="text-[9px] text-zinc-500 font-bold uppercase">Enter your bank reference to notify the waiter</p>
+                            </div>
+
+                            {submitted ? (
+                                <div className="bg-green-500/10 border border-green-500/20 p-4 rounded-2xl flex items-center gap-3 text-green-500">
+                                    <CheckCircle2 className="w-5 h-5 flex-shrink-0" />
+                                    <span className="text-xs font-black uppercase tracking-tight">Notification sent! Waiter is checking.</span>
+                                </div>
+                            ) : (
+                                <div className="flex gap-2">
+                                    <input
+                                        type="text"
+                                        placeholder="Trans. Ref (e.g. 1AB2C3D...)"
+                                        className="flex-1 bg-black border border-white/10 rounded-xl px-4 py-3 text-xs font-mono focus:outline-none focus:border-primary transition-colors"
+                                        value={txnRef}
+                                        onChange={(e) => setTxnRef(e.target.value)}
+                                    />
+                                    <Button
+                                        onClick={submitVerification}
+                                        disabled={!txnRef || submitting}
+                                        className="bg-primary text-black font-black uppercase text-[10px] h-auto px-6"
+                                    >
+                                        {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : "SEND"}
+                                    </Button>
+                                </div>
+                            )}
+                        </div>
+
                         <p className="text-[9px] text-zinc-600 text-center font-bold px-6 leading-relaxed">
-                            Scan the QR code on your bill with your banking app or use the account numbers above.
-                            Notify your server after completing the transfer.
+                            Click a bank above to copy details and launch your app.
+                            Provide the reference number to speed up verification.
                         </p>
                     </div>
                 )}
