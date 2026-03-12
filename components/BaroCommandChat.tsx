@@ -7,7 +7,7 @@ import {
     Users, DollarSign, Clock, ShieldCheck, Bot, Send, Cpu,
     ChefHat, Store, Boxes, Brain
 } from 'lucide-react';
-import { cn, Badge } from './ui';
+import { cn, Badge, Button, showToast } from './ui';
 import { supabase } from '../supabase';
 import { useAuth } from '../AuthContext';
 import { useBranch } from '../contexts/BranchContext';
@@ -325,6 +325,10 @@ export const BaroCommandChat: React.FC = () => {
             timestamp: new Date(),
         };
         setMessages(prev => [...prev, userMsg]);
+
+        // Capture files for processing before clearing state
+        const attachedFiles = [...files];
+
         setInputValue('');
         setFiles([]);
         if (textareaRef.current) textareaRef.current.style.height = 'auto';
@@ -332,6 +336,21 @@ export const BaroCommandChat: React.FC = () => {
         setIsTyping(true);
 
         try {
+            // Convert files to base64 if any
+            const processedFiles = await Promise.all(attachedFiles.map(async (f) => {
+                return new Promise((resolve) => {
+                    const reader = new FileReader();
+                    reader.onloadend = () => {
+                        resolve({
+                            name: f.file.name,
+                            type: f.file.type,
+                            data: (reader.result as string).split(',')[1] // Get base64 part
+                        });
+                    };
+                    reader.readAsDataURL(f.file);
+                });
+            }));
+
             // Build context for the AI
             const branchContext = branchSnapshots.map(b =>
                 `Branch "${b.name}": Revenue ETB ${b.todayRevenue}, ${b.todayOrders} orders, ${b.avgMargin}% margin, ${b.lowStockItems} low stock items, Top dish: ${b.topDish}`
@@ -347,6 +366,7 @@ export const BaroCommandChat: React.FC = () => {
                         owner_name: ownerName,
                         branch_context: branchContext,
                         all_branches: true,
+                        attachments: processedFiles
                     }
                 }
             });
@@ -364,15 +384,65 @@ export const BaroCommandChat: React.FC = () => {
             setMessages(prev => [...prev, assistantMsg]);
         } catch (err: any) {
             console.error('Chat error:', err);
+
+            // Try to extract a more specific error message if available
+            let errorMessage = err.message || 'Unknown error';
+
+            // Supabase FunctionsHttpError often has context with more details
+            if (err.context && typeof err.context === 'object') {
+                try {
+                    const errorText = await err.context.text();
+                    if (errorText) {
+                        const parsedError = JSON.parse(errorText);
+                        errorMessage = parsedError.error || parsedError.message || errorMessage;
+                    }
+                } catch (e) {
+                    // Ignore parsing errors and stick with the original message
+                }
+            }
+
             const errorMsg: ChatMessage = {
                 id: Math.random().toString(36).substr(2, 9),
                 role: 'assistant',
-                content: `❌ Connection issue: ${err.message || 'Unknown error'}. The intelligence core may be offline. Please check your API configuration.`,
+                content: `❌ Error: ${errorMessage}. Please check your AI configuration or try again.`,
                 timestamp: new Date(),
             };
             setMessages(prev => [...prev, errorMsg]);
         } finally {
             setIsTyping(false);
+        }
+    };
+
+    const handleCreateProposal = async (content: string) => {
+        try {
+            // Extract JSON from content (it might be wrapped in text or backticks)
+            const jsonMatch = content.match(/\{[\s\S]*\}/);
+            if (!jsonMatch) {
+                showToast("No structured proposal data found in message.", "error");
+                return;
+            }
+
+            const proposalData = JSON.parse(jsonMatch[0]);
+
+            showToast("Generating formal proposal...", "success");
+
+            const { data, error } = await supabase.functions.invoke('master-intelligence', {
+                body: {
+                    action: 'create_proposal',
+                    organization_id: organizationId,
+                    branch_id: activeBranchId,
+                    payload: {
+                        proposal_data: proposalData
+                    }
+                }
+            });
+
+            if (error) throw error;
+
+            showToast("Proposal created successfully! View it in 'Agent Proposals' tab.", "success");
+        } catch (err: any) {
+            console.error('Proposal creation error:', err);
+            showToast(`Failed to create proposal: ${err.message}`, "error");
         }
     };
 
@@ -528,6 +598,24 @@ export const BaroCommandChat: React.FC = () => {
                                                 : "bg-[#111]/80 text-gray-200 rounded-tl-md border border-gray-800/50"
                                         )}>
                                             <div className="whitespace-pre-wrap">{msg.content}</div>
+
+                                            {/* Actionable Suggestion Detection */}
+                                            {!isTyping && msg.role === 'assistant' && msg.content.includes('{') && (
+                                                <div className="mt-4 pt-4 border-t border-white/5">
+                                                    <div className="flex items-center gap-2 mb-3">
+                                                        <Sparkles className="w-3 h-3 text-primary" />
+                                                        <span className="text-[10px] font-black text-primary uppercase tracking-widest">Actionable Intelligence</span>
+                                                    </div>
+                                                    <Button
+                                                        size="sm"
+                                                        className="w-full bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 h-9 rounded-xl text-[10px] font-black uppercase tracking-widest"
+                                                        onClick={() => handleCreateProposal(msg.content)}
+                                                    >
+                                                        Review & Create Proposal
+                                                    </Button>
+                                                </div>
+                                            )}
+
                                             <p className={cn(
                                                 "text-[9px] mt-2 font-mono uppercase tracking-widest",
                                                 msg.role === 'user' ? "text-gray-600 text-right" : "text-gray-600"

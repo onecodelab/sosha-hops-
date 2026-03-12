@@ -13,6 +13,7 @@ import { orderService } from '../services/orderService';
 import QRScanner from './QRScanner';
 import { AnimatedTicket } from './AnimatedTicket';
 import { usePaymentVerification } from '../hooks/usePaymentVerification';
+import { QRCodeSVG } from 'qrcode.react';
 
 interface BillModalProps {
   isOpen: boolean;
@@ -25,7 +26,7 @@ interface BillModalProps {
 // Fix: Property 'env' does not exist on type 'ImportMeta'. Using process.env to align with provided environment guidelines.
 const BARO_API_KEY = import.meta.env.VITE_BARO_API_KEY || "baro_prod_key_8821";
 
-const BANK_CONFIG: Record<string, { label: string, placeholder: string, color: string, icon: any, endpoint: string }> = {
+const BANK_CONFIG: Record<string, { label: string, placeholder: string, color: string, icon: any, endpoint: string, receiver?: string }> = {
   telebirr: {
     label: "Telebirr",
     placeholder: "10-char ID (e.g. CL...)",
@@ -442,7 +443,13 @@ export const BillModal: React.FC<BillModalProps> = ({
               <p className="text-center text-[9px] text-gray-400 my-2 font-mono">- - - - - - - - - - - - - - - - - - - -</p>
 
               {/* ERCA Footer */}
-              <div className="text-center space-y-1 mt-2 font-mono">
+              <div className="text-center space-y-1 mt-4 font-mono flex flex-col items-center">
+                <QRCodeSVG
+                  value={`${window.location.origin}/pay/${order.id}#TIN:0043819230|INV:ORD-${order.order_number || order.id.slice(0, 8)}|DATE:${new Date(order.created_at).toISOString()}|TOTAL:${order.total_amount}|VAT:${(order.total_amount - order.total_amount / 1.15).toFixed(2)}`}
+                  size={70}
+                  level="M"
+                  className="mb-2"
+                />
                 <span className="font-black text-[11px] tracking-wide">ERCA</span>
                 <p className="text-[9px] text-gray-500">FG{order.id.slice(0, 8).toUpperCase()}</p>
                 <p className="text-[9px] text-gray-400 mt-2 tracking-wider">Powered by Baro OS</p>
@@ -689,7 +696,13 @@ export const BillModal: React.FC<BillModalProps> = ({
                 <p className="text-center text-[9px] text-gray-400 my-2 font-mono">- - - - - - - - - - - - - - - - - - - -</p>
 
                 {/* ERCA Footer */}
-                <div className="text-center space-y-1 mt-2 font-mono">
+                <div className="text-center space-y-1 mt-4 font-mono flex flex-col items-center">
+                  <QRCodeSVG
+                    value={`${window.location.origin}/pay/${order.id}#TIN:0043819230|INV:ORD-${order.order_number || order.id.slice(0, 8)}|DATE:${new Date().toISOString()}|TOTAL:${order.total_amount}|VAT:${(order.total_amount - order.total_amount / 1.15).toFixed(2)}`}
+                    size={70}
+                    level="M"
+                    className="mb-2"
+                  />
                   <span className="font-black text-[11px] tracking-wide">ERCA</span>
                   <p className="text-[9px] text-gray-500">FG{order.id.slice(0, 8).toUpperCase()}</p>
                   <p className="text-[9px] text-gray-400 mt-2 tracking-wider">Powered by Baro OS</p>

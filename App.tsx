@@ -50,6 +50,7 @@ const AdminTipsAudit = lazy(() => import('./pages/AdminTipsAudit'));
 const BaroAdminDashboard = lazy(() => import('./pages/BaroAdminDashboard'));
 const SupplierDashboard = lazy(() => import('./pages/SupplierDashboard'));
 const DriverDashboard = lazy(() => import('./pages/DriverDashboard'));
+const PublicPayment = lazy(() => import('./pages/PublicPayment'));
 
 import { ChatWidget } from './components/ChatWidget';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -108,6 +109,7 @@ const App: React.FC = () => {
                     <Route path="/book-demo" element={<BookDemo />} />
                     <Route path="/pricing" element={<PricingPage />} />
                     <Route path="/features" element={<Features />} />
+                    <Route path="/pay/:orderId" element={<PublicPayment />} />
 
                     {/* Auth Layer */}
                     <Route path="/login" element={<Login />} />

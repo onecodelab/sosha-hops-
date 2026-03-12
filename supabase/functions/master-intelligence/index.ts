@@ -82,11 +82,18 @@ serve(async (req) => {
         // CONTEXT RETRIEVAL (The "Truth Backbone")
         // ------------------------------------------------------------------
         const fetchContext = async () => {
-            const context = { risks: [] as any[], low_margin_items: [] as any[], recent_events: [] as any[] };
+            const context = {
+                risks: [] as any[],
+                low_margin_items: [] as any[],
+                recent_events: [] as any[],
+                staff_performance: [] as any[],
+                financial_summary: {} as any
+            };
+
             try {
                 // 1. Inventory Risks
                 const { data: riskData, error: riskErr } = await supabase.from('view_inventory_risks').select('*').limit(5);
-                if (riskErr) console.warn('[MasterAgent] Risk view error (may not exist):', riskErr.message);
+                if (riskErr) console.warn('[MasterAgent] Risk view error:', riskErr.message);
                 context.risks = riskData || [];
             } catch (e) { console.warn('[MasterAgent] Risk fetch failed:', e); }
 
@@ -98,117 +105,202 @@ serve(async (req) => {
                         .eq('branch_id', validatedBranchId)
                         .order('margin_percent', { ascending: true })
                         .limit(5);
-                    if (menuErr) console.warn('[MasterAgent] Menu view error (may not exist):', menuErr.message);
+                    if (menuErr) console.warn('[MasterAgent] Menu view error:', menuErr.message);
                     context.low_margin_items = menuData || [];
                 }
             } catch (e) { console.warn('[MasterAgent] Menu fetch failed:', e); }
 
             try {
-                // 3. Recent Intelligence Events
+                // 3. Staff Performance (Top 3)
+                const { data: staffData, error: staffErr } = await supabase.from('staff_performance_daily')
+                    .select('staff_name, revenue_attributed, orders_completed')
+                    .eq('organization_id', resolvedOrganizationId)
+                    .order('revenue_attributed', { ascending: false })
+                    .limit(3);
+                if (staffErr) console.warn('[MasterAgent] Staff performance error:', staffErr.message);
+                context.staff_performance = staffData || [];
+            } catch (e) { console.warn('[MasterAgent] Staff fetch failed:', e); }
+
+            try {
+                // 4. Financial Summary (Today vs Yesterday)
+                const today = new Date().toISOString().split('T')[0];
+                const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+
+                const { data: todayOrders } = await supabase.from('orders')
+                    .select('total_amount')
+                    .eq('organization_id', resolvedOrganizationId)
+                    .gte('created_at', today)
+                    .not('status', 'eq', 'cancelled');
+
+                const { data: yesterdayOrders } = await supabase.from('orders')
+                    .select('total_amount')
+                    .eq('organization_id', resolvedOrganizationId)
+                    .gte('created_at', yesterday)
+                    .lt('created_at', today)
+                    .not('status', 'eq', 'cancelled');
+
+                context.financial_summary = {
+                    today_revenue: todayOrders?.reduce((sum, o) => sum + (o.total_amount || 0), 0) || 0,
+                    today_orders: todayOrders?.length || 0,
+                    yesterday_revenue: yesterdayOrders?.reduce((sum, o) => sum + (o.total_amount || 0), 0) || 0,
+                    yesterday_orders: yesterdayOrders?.length || 0
+                };
+            } catch (e) { console.warn('[MasterAgent] Financial summary failed:', e); }
+
+            try {
+                // 5. Recent Intelligence Events
                 const { data: eventsData, error: eventsErr } = await supabase.from('intelligence_events')
                     .select('*')
                     .eq('organization_id', resolvedOrganizationId)
                     .order('created_at', { ascending: false })
                     .limit(3);
-                if (eventsErr) console.warn('[MasterAgent] Events error (may not exist):', eventsErr.message);
+                if (eventsErr) console.warn('[MasterAgent] Events error:', eventsErr.message);
                 context.recent_events = eventsData || [];
             } catch (e) { console.warn('[MasterAgent] Events fetch failed:', e); }
 
-            console.log('[MasterAgent] Context loaded:', JSON.stringify({ risks: context.risks.length, menu: context.low_margin_items.length, events: context.recent_events.length }));
+            console.log('[MasterAgent] Context loaded:', JSON.stringify({
+                risks: context.risks.length,
+                menu: context.low_margin_items.length,
+                staff: context.staff_performance.length,
+                financials: !!context.financial_summary
+            }));
             return context;
         };
 
-        if (action === 'proactive_analyze') {
-            const { event_type, data } = payload;
-            console.log(`[MasterAgent] Proactively analyzing ${event_type}...`);
+        if (action === 'proactive_analyze' || action === 'chat') {
+            const isChat = action === 'chat';
+            const { question, owner_name, branch_context, all_branches, event_type, data: eventData, attachments } = payload || {};
+
+            console.log(`[MasterAgent] ${isChat ? 'Chat' : 'Analyzing'}: ${isChat ? question : event_type}. Attachments: ${attachments?.length || 0}`);
 
             const context = await fetchContext();
 
-            const geminiApiKey = Deno.env.get('GEMINI_API_KEY');
-            const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
-
-            const systemPrompt = "You are the Baro Master Agent. Analyze the event in the context of the business 'Truth' provided and suggest a proposal.";
-            const promptStr = `Event: ${event_type}. Payload: ${JSON.stringify(data)}. Global Context: ${JSON.stringify(context)}. Suggest a proposal.`;
-
-            let aiResponseText = "";
-
-            if (geminiApiKey) {
-                const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        contents: [{ parts: [{ text: `System Instructions:\n${systemPrompt}\n\nTask:\n${promptStr}` }] }]
-                    })
-                });
-                if (!response.ok) throw new Error(`Gemini API Error: ${await response.text()}`);
-                const result = await response.json();
-                aiResponseText = result.candidates[0].content.parts[0].text;
-            } else if (openAIApiKey) {
-                const response = await fetch("https://api.openai.com/v1/chat/completions", {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        "Authorization": `Bearer ${openAIApiKey}`
-                    },
-                    body: JSON.stringify({
-                        model: "gpt-4o-mini",
-                        messages: [
-                            { role: "system", content: systemPrompt },
-                            { role: "user", content: promptStr }
-                        ]
-                    })
-                });
-                if (!response.ok) throw new Error(`OpenAI API Error: ${await response.text()}`);
-                const result = await response.json();
-                aiResponseText = result.choices[0].message.content;
-            } else {
-                throw new Error("No AI API key configured! Please add GEMINI_API_KEY or OPENAI_API_KEY to your Supabase secrets.");
-            }
-
-            return new Response(JSON.stringify({ success: true, suggestion: aiResponseText }), {
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-                status: 200,
-            });
-
-        } else if (action === 'chat') {
-            const { question, owner_name, branch_context, all_branches } = payload;
-            console.log(`[MasterAgent] Chat: ${question}`);
-
-            // Always inject the "Truth" into the chat context
-            const context = await fetchContext();
-
+            const openRouterApiKey = Deno.env.get('OPENROUTER_API_KEY');
             const geminiApiKey = Deno.env.get('GEMINI_API_KEY');
             const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
 
             const systemPrompt = `You are Baro Intelligence, a top-tier Restaurant Operations AI Assistant answering directly to the owner, ${owner_name || 'Amir'}.
             
 Your traits:
-- Professional, analytical, proactive, and concise. You sound like a direct business advisor helping an owner run their restaurants.
-- Use markdown formatting. Use bold text for key metrics.
-- Do not make up data! Answer ONLY based on the LIVE BUSINESS TRUTH provided.
-- You have oversight of ${all_branches ? "all branches" : "this specific branch"}.
+- Professional, analytical, proactive, and concise.
+- Use markdown for communication. Use bold for metrics.
+- DO NOT MAKE UP DATA. Use ONLY the LIVE BUSINESS TRUTH.
 
-${branch_context ? `BRANCH SNAPSHOT OVERVIEW:\n${branch_context}\n` : ""}
+PROPOSAL GENERATION:
+If you identify an optimization (e.g., restocking, waste reduction, staff shift change), include a structured JSON block at the end of your message.
+Format:
+{
+  "proposal_type": "procurement" | "waste" | "schedule" | "policy_change" | "pricing",
+  "reasoning": "Quick explanation for the owner",
+  "confidence": 0.0-1.0,
+  "impact_score": 0.0-1.0,
+  "risk_financial": 0.0-1.0,
+  "risk_fraud": 0.0-1.0,
+  "risk_operational": 0.0-1.0,
+  "risk_reputational": 0.0-1.0,
+  "opt_profit": 0.0-1.0,
+  "opt_staff_fatigue": 0.0-1.0,
+  "opt_customer_satisfaction": 0.0-1.0,
+  "opt_resilience": 0.0-1.0,
+  "data": { ...type specific data... }
+}
 
 LIVE BUSINESS TRUTH DATA:
+Financials: Today ETB ${context.financial_summary.today_revenue} (${context.financial_summary.today_orders} orders) vs Yesterday ETB ${context.financial_summary.yesterday_revenue}.
 Inventory Risks: ${JSON.stringify(context.risks)}
 Low Margins: ${JSON.stringify(context.low_margin_items)}
+Top Staff Performance: ${JSON.stringify(context.staff_performance)}
 Recent Events: ${JSON.stringify(context.recent_events)}`;
+
+            const promptStr = isChat ? question : `Event: ${event_type}. Payload: ${JSON.stringify(eventData)}. Global Context: ${JSON.stringify(context)}. Suggest a proposal.`;
 
             let aiResponseText = "";
 
-            if (geminiApiKey) {
-                const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`, {
+            if (openRouterApiKey) {
+                console.log('[MasterAgent] Using OpenRouter...');
+                const messages: any[] = [
+                    { role: "system", content: systemPrompt }
+                ];
+
+                const userContent: any[] = [{ type: "text", text: promptStr }];
+
+                if (attachments && attachments.length > 0) {
+                    attachments.forEach((att: any) => {
+                        if (att.type.startsWith('image/')) {
+                            userContent.push({
+                                type: "image_url",
+                                image_url: { url: `data:${att.type};base64,${att.data}` }
+                            });
+                        }
+                    });
+                }
+
+                messages.push({ role: "user", content: userContent });
+
+                const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${openRouterApiKey}`,
+                        "X-Title": "Baro Intelligence Hub"
+                    },
+                    body: JSON.stringify({
+                        model: "nvidia/llama-nemotron-embed-vl-1b-v2:free",
+                        messages: messages
+                    })
+                });
+                if (!response.ok) throw new Error(`OpenRouter API Error: ${await response.text()}`);
+                const result = await response.json();
+                aiResponseText = result.choices[0].message.content;
+            } else if (geminiApiKey) {
+                console.log('[MasterAgent] Using Gemini...');
+                const contents: any[] = [];
+                const parts: any[] = [{ text: `System Context:\n${systemPrompt}\n\nTask:\n${promptStr}` }];
+
+                if (attachments && attachments.length > 0) {
+                    attachments.forEach((att: any) => {
+                        if (att.type.startsWith('image/')) {
+                            parts.push({
+                                inline_data: {
+                                    mime_type: att.type,
+                                    data: att.data
+                                }
+                            });
+                        }
+                    });
+                }
+
+                contents.push({ parts });
+
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        contents: [{ parts: [{ text: `System Context:\n${systemPrompt}\n\nOwner's Prompt: ${question}` }] }]
-                    })
+                    body: JSON.stringify({ contents })
                 });
                 if (!response.ok) throw new Error(`Gemini API Error: ${await response.text()}`);
                 const result = await response.json();
                 aiResponseText = result.candidates[0].content.parts[0].text;
             } else if (openAIApiKey) {
+                console.log('[MasterAgent] Using OpenAI...');
+                const messages: any[] = [
+                    { role: "system", content: systemPrompt }
+                ];
+
+                const userContent: any[] = [{ type: "text", text: promptStr }];
+
+                if (attachments && attachments.length > 0) {
+                    attachments.forEach((att: any) => {
+                        if (att.type.startsWith('image/')) {
+                            userContent.push({
+                                type: "image_url",
+                                image_url: { url: `data:${att.type};base64,${att.data}` }
+                            });
+                        }
+                    });
+                }
+
+                messages.push({ role: "user", content: userContent });
+
                 const response = await fetch("https://api.openai.com/v1/chat/completions", {
                     method: "POST",
                     headers: {
@@ -217,20 +309,40 @@ Recent Events: ${JSON.stringify(context.recent_events)}`;
                     },
                     body: JSON.stringify({
                         model: "gpt-4o-mini",
-                        messages: [
-                            { role: "system", content: systemPrompt },
-                            { role: "user", content: question }
-                        ]
+                        messages: messages
                     })
                 });
                 if (!response.ok) throw new Error(`OpenAI API Error: ${await response.text()}`);
                 const result = await response.json();
                 aiResponseText = result.choices[0].message.content;
             } else {
-                throw new Error("No AI API key configured! Please add GEMINI_API_KEY or OPENAI_API_KEY to your Supabase edge function secrets.");
+                throw new Error("No AI API key configured! Please add OPENROUTER_API_KEY, GEMINI_API_KEY, or OPENAI_API_KEY to your Supabase secrets.");
             }
 
-            return new Response(JSON.stringify({ text: aiResponseText }), {
+            return new Response(JSON.stringify(isChat ? { text: aiResponseText } : { success: true, suggestion: aiResponseText }), {
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                status: 200,
+            });
+        } else if (action === 'create_proposal') {
+            const { proposal_data } = payload;
+            console.log(`[MasterAgent] Creating proposal: ${proposal_data.proposal_type}`);
+
+            const { data, error: insertErr } = await supabase
+                .from('proposals')
+                .insert([{
+                    ...proposal_data,
+                    organization_id: resolvedOrganizationId,
+                    branch_id: validatedBranchId || proposal_data.branch_id,
+                    actor_type: 'agent',
+                    actor_id: 'master-intelligence',
+                    status: 'pending'
+                }])
+                .select()
+                .single();
+
+            if (insertErr) throw insertErr;
+
+            return new Response(JSON.stringify({ success: true, proposal: data }), {
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' },
                 status: 200,
             });
@@ -239,10 +351,12 @@ Recent Events: ${JSON.stringify(context.recent_events)}`;
         throw new Error("Invalid action provided");
 
     } catch (error: any) {
-        console.error('[MasterAgent] CRITICAL ERROR:', error.message, error.stack);
+        console.error('[MasterAgent] CRITICAL ERROR:', error.message);
         return new Response(JSON.stringify({ error: error.message }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             status: 400,
         });
     }
 })
+
+

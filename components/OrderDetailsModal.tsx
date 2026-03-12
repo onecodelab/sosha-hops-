@@ -5,6 +5,7 @@ import { supabase } from '../supabase';
 import { Printer, X } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../AuthContext';
+import { QRCodeSVG } from 'qrcode.react';
 
 interface OrderDetailsModalProps {
     isOpen: boolean;
@@ -212,7 +213,13 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ isOpen, on
                     <p className="text-center text-[9px] text-gray-400 my-2">{DASHED}</p>
 
                     {/* ERCA Footer */}
-                    <div className="text-center space-y-1 mt-2">
+                    <div className="text-center space-y-1 mt-4 flex flex-col items-center">
+                        <QRCodeSVG
+                            value={`${window.location.origin}/pay/${order.id}#TIN:0043819230|INV:ORD-${order.order_number || order.id.slice(0, 8)}|DATE:${new Date(order.created_at).toISOString()}|TOTAL:${total}|VAT:${vat}`}
+                            size={70}
+                            level="M"
+                            className="mb-2"
+                        />
                         <div className="flex items-center justify-center gap-2">
                             <span className="font-black text-[11px] tracking-wide">ERCA</span>
                         </div>

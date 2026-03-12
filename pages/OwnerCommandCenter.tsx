@@ -171,7 +171,7 @@ const OwnerCommandCenter: React.FC = () => {
             </header>
 
             {/* ─── CONTENT AREA ─── */}
-            <div className="flex-1 min-h-0 relative p-4 md:p-6 lg:p-8 bg-gradient-to-br from-[#0a0a0a] via-[#050505] to-[#080808]">
+            <div className="flex-1 min-h-0 relative p-4 md:p-6 lg:p-8 bg-gradient-to-br from-[#0a0a0a] via-[#050505] to-[#080808] flex flex-col">
                 <AnimatePresence mode="wait">
                     {view === 'intelligence' ? (
                         <motion.div
@@ -180,7 +180,7 @@ const OwnerCommandCenter: React.FC = () => {
                             animate={{ opacity: 1, scale: 1 }}
                             exit={{ opacity: 0, scale: 0.98 }}
                             transition={{ duration: 0.3, ease: [0.2, 0, 0, 1] }}
-                            className="h-full bg-[#0a0a0a] border border-gray-800/50 rounded-2xl overflow-hidden shadow-2xl"
+                            className="flex-1 min-h-0 w-full bg-[#0a0a0a] border border-gray-800/50 rounded-2xl overflow-hidden shadow-2xl flex flex-col"
                         >
                             <BaroCommandChat />
                         </motion.div>
