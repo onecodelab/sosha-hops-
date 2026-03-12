@@ -6,6 +6,7 @@ import { Printer, X } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../AuthContext';
 import { QRCodeSVG } from 'qrcode.react';
+import { buildMerchantQR, BANK_EMV_CONFIG } from '../lib/emvqr';
 
 interface OrderDetailsModalProps {
     isOpen: boolean;
@@ -19,6 +20,7 @@ const SOLID = '—————————————————————�
 export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ isOpen, onClose, order }) => {
     const { user, profile } = useAuth();
     const [customerName, setCustomerName] = useState<string>('Walk-in');
+    const [selectedPayBank, setSelectedPayBank] = useState(0);
 
     // Fetch the organization name for the receipt header
     const { data: orgData } = useQuery({
@@ -47,6 +49,21 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ isOpen, on
         staleTime: 1000 * 60 * 30
     });
     const locationName = branchData?.name || 'Main Branch';
+
+    // Fetch active bank settings for payment QR
+    const { data: activeBanks = [] } = useQuery({
+        queryKey: ['bank_settings_active_odm', profile?.organization_id],
+        queryFn: async () => {
+            if (!profile?.organization_id) return [];
+            const { data } = await supabase
+                .from('bank_settings')
+                .select('*')
+                .eq('organization_id', profile.organization_id)
+                .eq('is_active', true);
+            return (data || []).filter((b: any) => b.account_number && b.account_number.trim() !== '');
+        },
+        enabled: !!profile?.organization_id,
+    });
 
     useEffect(() => {
         if (!order || !isOpen) return;
@@ -212,19 +229,58 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ isOpen, on
 
                     <p className="text-center text-[9px] text-gray-400 my-2">{DASHED}</p>
 
-                    {/* ERCA Footer */}
-                    <div className="text-center space-y-1 mt-4 flex flex-col items-center">
-                        <QRCodeSVG
-                            value={`${window.location.origin}/pay/${order.id}#TIN:0043819230|INV:ORD-${order.order_number || order.id.slice(0, 8)}|DATE:${new Date(order.created_at).toISOString()}|TOTAL:${total}|VAT:${vat}`}
-                            size={70}
-                            level="M"
-                            className="mb-2"
-                        />
-                        <div className="flex items-center justify-center gap-2">
-                            <span className="font-black text-[11px] tracking-wide">ERCA</span>
+                    {/* ERCA & Payment QR Footer */}
+                    <div className="mt-4 flex flex-col items-center">
+                        <div className="flex items-start justify-center gap-4">
+                            {/* ERCA Fiscal QR */}
+                            <div className="text-center flex flex-col items-center">
+                                <QRCodeSVG
+                                    value={`TIN:0043819230|INV:ORD-${order.order_number || order.id.slice(0, 8)}|DATE:${new Date(order.created_at).toISOString()}|TOTAL:${total}|VAT:${vat}`}
+                                    size={60}
+                                    level="M"
+                                    className="mb-1"
+                                />
+                                <span className="font-black text-[9px] tracking-wide">ERCA</span>
+                            </div>
+
+                            {/* Payment QR (per bank) */}
+                            {activeBanks.length > 0 && (
+                                <div className="text-center flex flex-col items-center">
+                                    <QRCodeSVG
+                                        value={buildMerchantQR({
+                                            bankKey: activeBanks[selectedPayBank]?.bank_key,
+                                            accountNumber: activeBanks[selectedPayBank]?.account_number,
+                                            merchantName: restaurantName,
+                                            amount: total,
+                                        })}
+                                        size={60}
+                                        level="M"
+                                        className="mb-1"
+                                    />
+                                    {/* Bank Tabs */}
+                                    <div className="flex gap-1 mt-1">
+                                        {activeBanks.map((b: any, i: number) => {
+                                            const emvCfg = BANK_EMV_CONFIG[b.bank_key];
+                                            return (
+                                                <button key={b.id}
+                                                    onClick={() => setSelectedPayBank(i)}
+                                                    className={cn(
+                                                        "px-1.5 py-0.5 rounded text-[7px] font-black uppercase transition-all",
+                                                        i === selectedPayBank
+                                                            ? "bg-black text-white"
+                                                            : "bg-gray-200 text-gray-500 hover:bg-gray-300"
+                                                    )}
+                                                >
+                                                    {emvCfg?.label || b.bank_key}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            )}
                         </div>
-                        <p className="text-[9px] text-gray-500 font-mono">FG{order.id.slice(0, 8).toUpperCase()}</p>
-                        <p className="text-[9px] text-gray-400 mt-2 tracking-wider">Powered by Baro OS</p>
+                        <p className="text-[9px] text-gray-500 font-mono mt-2">FG{order.id.slice(0, 8).toUpperCase()}</p>
+                        <p className="text-[9px] text-gray-400 mt-1 tracking-wider">Powered by Baro OS</p>
                     </div>
                 </div>
 

@@ -196,7 +196,7 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
         items: cart.map(item => ({
           menu_item_id: item.dish.id,
           quantity: item.quantity,
-          price: item.dish.price,
+          unit_price: item.dish.price,
           notes: item.notes
         })),
         order_details: {
@@ -384,7 +384,12 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
             }));
 
             const { error: itemsErr } = await supabase.from('order_items').insert(itemsPayload);
-            if (itemsErr) throw new Error(`Failed to insert order items: ${itemsErr.message}`);
+            if (itemsErr) {
+              // Rollback: delete the ghost order to prevent orders without items
+              console.error(`[FALLBACK] Items insert failed, rolling back order ${newOrder.id}. IDs used:`, itemsPayload.map(i => i.menu_item_id));
+              await supabase.from('orders').delete().eq('id', newOrder.id);
+              throw new Error(`Failed to insert order items: ${itemsErr.message}`);
+            }
 
             // Update table status
             if (activeTableId) {
