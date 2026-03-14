@@ -73,36 +73,42 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
         <BackgroundMascots variant={mascotVariant} />
       </div>
 
-      <Sidebar
-        isCollapsed={isCollapsed}
-        setIsCollapsed={setIsCollapsed}
-        handleLogout={handleLogout}
-      />
-
-      {/* Mobile Header */}
-      <div className="md:hidden fixed top-0 left-0 right-0 h-16 bg-card/40 backdrop-blur-2xl border-b border-primary/30 z-[100] px-4 flex items-center justify-between">
-        <div className="absolute -top-10 left-10 w-32 h-32 bg-primary/20 blur-[100px] rounded-full pointer-events-none" />
-        <span className="font-black text-xs uppercase tracking-widest text-foreground/90 drop-shadow-md">
-          Baro <span className="text-primary italic">OS</span>
-        </span>
-        <div className="transform scale-90 origin-right">
-          <BaroMenubar />
-        </div>
-      </div>
-
-      <main className="flex-1 flex flex-col h-full overflow-hidden relative z-10">
-        <Header
-          title={activeTitle}
-          subtitle={activeSubtitle}
-          profile={profile}
-          displayName={displayName}
-          role={role}
-          isProfileActive={isProfileActive}
-          setIsProfileActive={setIsProfileActive}
-          profileRef={profileRef}
+      {!config.fullScreen && (
+        <Sidebar
+          isCollapsed={isCollapsed}
+          setIsCollapsed={setIsCollapsed}
           handleLogout={handleLogout}
         />
-        {activeActions && (
+      )}
+
+      {/* Mobile Header */}
+      {!config.fullScreen && (
+        <div className="md:hidden fixed top-0 left-0 right-0 h-16 bg-card/40 backdrop-blur-2xl border-b border-primary/30 z-[100] px-4 flex items-center justify-between">
+          <div className="absolute -top-10 left-10 w-32 h-32 bg-primary/20 blur-[100px] rounded-full pointer-events-none" />
+          <span className="font-black text-xs uppercase tracking-widest text-foreground/90 drop-shadow-md">
+            Baro <span className="text-primary italic">OS</span>
+          </span>
+          <div className="transform scale-90 origin-right">
+            <BaroMenubar />
+          </div>
+        </div>
+      )}
+
+      <main className="flex-1 flex flex-col h-full overflow-hidden relative z-10">
+        {!config.fullScreen && (
+          <Header
+            title={activeTitle}
+            subtitle={activeSubtitle}
+            profile={profile}
+            displayName={displayName}
+            role={role}
+            isProfileActive={isProfileActive}
+            setIsProfileActive={setIsProfileActive}
+            profileRef={profileRef}
+            handleLogout={handleLogout}
+          />
+        )}
+        {!config.fullScreen && activeActions && (
           <div className="flex-none px-8 py-4 bg-muted/10 border-b border-primary/30">
             {activeActions}
           </div>

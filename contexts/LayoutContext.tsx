@@ -7,6 +7,7 @@ interface LayoutConfig {
     className?: string;
     isSidebarCollapsed?: boolean;
     onSidebarCollapseChange?: (collapsed: boolean) => void;
+    fullScreen?: boolean;
 }
 
 interface LayoutContextType {
@@ -47,7 +48,7 @@ export const useLayoutConfig = (config: LayoutConfig) => {
 
     // Create a stable primitive key from config values for dependency tracking.
     // Only primitive string changes will cause the effect to re-run.
-    const configKey = `${config.title || ''}::${typeof config.subtitle === 'string' ? config.subtitle : ''}::${config.className || ''}::${config.isSidebarCollapsed ?? ''}`;
+    const configKey = `${config.title || ''}::${typeof config.subtitle === 'string' ? config.subtitle : ''}::${config.className || ''}::${config.isSidebarCollapsed ?? ''}::${config.fullScreen ?? ''}`;
 
     useEffect(() => {
         setConfigRef.current(configRef.current);

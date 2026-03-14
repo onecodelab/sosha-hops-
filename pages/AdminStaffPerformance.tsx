@@ -117,7 +117,7 @@ const AdminStaffPerformance: React.FC = () => {
                   id,
                   quantity,
                   price,
-                  menu_item:menu (name)
+                  menu_item:menu!menu_item_id (name)
                )
             `)
             .eq('waiter_id', staffId)

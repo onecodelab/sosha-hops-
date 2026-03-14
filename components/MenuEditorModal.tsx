@@ -9,6 +9,7 @@ import { RoleGuard } from './RoleGuard';
 import { useRoleAccess } from '../hooks/useRoleAccess';
 import { useAuth } from '../AuthContext';
 import { useBranch } from '../contexts/BranchContext';
+import { calculateIngredientCost } from '../lib/menuEconomics';
 
 interface MenuEditorModalProps {
   isOpen: boolean;
@@ -81,17 +82,23 @@ export const MenuEditorModal: React.FC<MenuEditorModalProps> = ({
 
   const fetchRecipeCost = async (itemId: string) => {
     try {
+      // 1. Fetch Units Registry for Precise Calculation
+      const { data: units } = await supabase.from('units').select('*');
+      
+      // 2. Fetch Recipe
       const { data: recipe } = await supabase.from('recipes').select('id').eq('menu_item_id', itemId).maybeSingle();
       if (!recipe) return;
 
+      // 3. Fetch Detailed Ingredients for HEALING
       const { data: ingredients } = await supabase
         .from('recipe_ingredients')
-        .select('quantity_needed, ingredient:ingredients(cost_per_unit)')
+        .select('*, ingredient:ingredients(cost_per_unit, weight_per_unit, unit_id, unit_type, units(*))')
         .eq('recipe_id', recipe.id);
 
       if (ingredients) {
+        // Apply Universal Healer logic
         const cost = ingredients.reduce((sum: number, m: any) =>
-          sum + (m.quantity_needed * (m.ingredient?.cost_per_unit || 0)), 0
+          sum + calculateIngredientCost(m, units || []), 0
         );
         setRecipeCost(cost);
       }

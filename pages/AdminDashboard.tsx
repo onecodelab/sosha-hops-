@@ -70,7 +70,7 @@ const AdminDashboard: React.FC = () => {
             id,
             quantity, 
             price,
-            menu_item:menu (name)
+            menu_item:menu!menu_item_id (name)
           )
         `)
             .eq('branch_id', activeBranchId)
@@ -114,7 +114,7 @@ const AdminDashboard: React.FC = () => {
                 quantity,
                 price,
                 special_instructions,
-                menu_item:menu (name)
+                menu_item:menu!menu_item_id (name)
              )
           `;
 
@@ -126,7 +126,7 @@ const AdminDashboard: React.FC = () => {
                 quantity,
                 price,
                 special_instructions,
-                menu_item:menu (name)
+                menu_item:menu!menu_item_id (name)
              )
           `;
 

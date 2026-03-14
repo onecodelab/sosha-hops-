@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../supabase';
 import { MenuDish, Ingredient } from '../types';
-import { calculateCostPerPlate, checkDishAvailability, RecipeIngredient } from '../lib/menuEconomics';
+import { calculateCostPerPlate, checkDishAvailability, RecipeIngredient, calculateIngredientCost } from '../lib/menuEconomics';
 import { useBranch } from '../contexts/BranchContext';
 
 export const useMenu = (filterAvailable = false) => {
@@ -13,24 +13,42 @@ export const useMenu = (filterAvailable = false) => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      // Switched to 'view_menu_details' for Single Source of Truth
-      let query = supabase
-        .from('view_menu_details')
-        .select('*');
-
+      // 1. Fetch Menu Details (Broken View)
+      let query = supabase.from('view_menu_details').select('*');
       if (activeBranchId) {
         query = query.or(`branch_id.eq.${activeBranchId},branch_id.is.null`);
       }
-
-      const { data, error } = await query.order('name', { ascending: true });
-
+      const { data: rawItems, error } = await query.order('name', { ascending: true });
       if (error) throw error;
 
-      // Type assertion as 'view_menu_details' matches MenuDish structure + extra fields
-      const items = (data || []) as MenuDish[];
+      // 2. Fetch Recipe Context for HEALING (Fail-safe for broken views)
+      const { data: recipes } = await supabase
+        .from('recipe_ingredients')
+        .select('*, ingredient:ingredients(cost_per_unit, weight_per_unit, unit_id, unit_type, units(*))');
+
+      const { data: unitsRegistry } = await supabase.from('units').select('*');
+
+      // 3. Apply Client-Side Cost Healing
+      const items = (rawItems || []).map(item => {
+        const itemRecipe = recipes?.filter(r => r.recipe_id === item.recipe_id);
+        
+        if (itemRecipe && itemRecipe.length > 0) {
+          // Rule: Client-calculated cost is the absolute source of truth.
+          const healedCost = itemRecipe.reduce((sum, ri) => sum + calculateIngredientCost(ri, unitsRegistry || []), 0);
+          
+          console.log(`[UniversalHealer] Applied accurate cost to ${item.name}: ETB ${healedCost}`);
+          
+          return { 
+            ...item, 
+            cost_per_plate: healedCost,
+            margin: item.price - healedCost,
+            margin_percent: item.price > 0 ? ((item.price - healedCost) / item.price) * 100 : 0
+          };
+        }
+        return item as MenuDish;
+      });
 
       setMenuItems(items);
-
       const cats = Array.from(new Set(items.map(i => i.category))).sort();
       setCategories(cats);
     } catch (err) {

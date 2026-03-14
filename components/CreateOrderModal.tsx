@@ -415,7 +415,13 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
       onClose();
     } catch (err: any) {
       console.error("Order Submission Failure Path:", err);
-      const displayMessage = err.message || "Order submission failed. Please try again.";
+      let displayMessage = err.message || "Order submission failed. Please try again.";
+      
+      // Detect legacy inventory constraint violation and show a clear message
+      if (displayMessage.includes('qty_non_negative') || displayMessage.includes('check constraint')) {
+        displayMessage = "Insufficient ingredient stock for one or more items. Please ask a manager to update inventory levels.";
+      }
+      
       showToast(displayMessage, 'error');
     } finally {
       setSubmitting(false);

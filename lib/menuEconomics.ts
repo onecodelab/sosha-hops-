@@ -57,13 +57,24 @@ export const getConversionFactor = (
         return Number(weightPerUnit) / Number(from.base_factor || 1);
     }
 
-    const fStr = from.abbreviation?.toLowerCase();
-    const tStr = to.abbreviation?.toLowerCase();
+    const fStr = from.abbreviation?.toLowerCase() || '';
+    const tStr = to.abbreviation?.toLowerCase() || '';
 
-    if (fStr === 'kg' && tStr === 'g') return 0.001;
-    if (fStr === 'g' && tStr === 'kg') return 1000;
-    if (fStr === 'l' && tStr === 'ml') return 0.001;
-    if (fStr === 'ml' && tStr === 'l') return 1000;
+    // Normalize Aliases
+    const isKg = (s: string) => ['kg', 'kilogram', 'kilo', 'kgs'].includes(s);
+    const isG = (s: string) => ['g', 'gram', 'grams', 'mg'].includes(s);
+    const isL = (s: string) => ['l', 'liter', 'litre', 'liters'].includes(s);
+    const isMl = (s: string) => ['ml', 'milliliter', 'millilitre'].includes(s);
+    const isCount = (s: string) => ['pcs', 'pc', 'piece', 'unit', 'slice', 'portion'].includes(s);
+
+    if (isKg(fStr) && isG(tStr)) return 0.001;
+    if (isG(fStr) && isKg(tStr)) return 1000;
+    if (isL(fStr) && isMl(tStr)) return 0.001;
+    if (isMl(fStr) && isL(tStr)) return 1000;
+    
+    // Cross-Type Fallbacks (Approximate or based on weight)
+    if (isCount(tStr) && isKg(fStr)) return weightPerUnit / 1000;
+    if (isKg(fStr) && isCount(tStr)) return 1000 / weightPerUnit;
 
     return 1;
 };

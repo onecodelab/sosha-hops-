@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../supabase';
@@ -26,7 +26,9 @@ import {
     BarChart3,
     ArrowLeft,
     Home,
-    LayoutDashboard
+    LayoutDashboard,
+    Maximize,
+    Minimize
 } from 'lucide-react';
 import { Proposal, BusinessAuditLog, GovernancePolicy } from '../types';
 import { useBranch } from '../contexts/BranchContext';
@@ -40,6 +42,45 @@ const OwnerCommandCenter: React.FC = () => {
     const queryClient = useQueryClient();
     const [view, setView] = useState<'intelligence' | 'proposals' | 'audit' | 'governance'>('intelligence');
     const [searchTerm, setSearchTerm] = useState('');
+    const [isFullscreen, setIsFullscreen] = useState(false);
+
+    useEffect(() => {
+        const handleFullscreenChange = () => {
+            setIsFullscreen(!!document.fullscreenElement);
+        };
+        document.addEventListener('fullscreenchange', handleFullscreenChange);
+        
+        // Attempt automatic fullscreen on mount (Browser policies may block this if no prior user gesture)
+        const enterFullscreen = async () => {
+            try {
+                if (!document.fullscreenElement) {
+                    await document.documentElement.requestFullscreen();
+                }
+            } catch (err) {
+                console.log("Auto-fullscreen on mount prevented by browser policy", err);
+            }
+        };
+        
+        // Small delay to ensure component is fully mounted
+        const timeout = setTimeout(enterFullscreen, 100);
+
+        return () => {
+            document.removeEventListener('fullscreenchange', handleFullscreenChange);
+            clearTimeout(timeout);
+        };
+    }, []);
+
+    const toggleFullscreen = async () => {
+        try {
+            if (!document.fullscreenElement) {
+                await document.documentElement.requestFullscreen();
+            } else {
+                await document.exitFullscreen();
+            }
+        } catch (err) {
+            console.error("Fullscreen toggle failed:", err);
+        }
+    };
 
     // 1. Fetch Proposals
     const { data: proposals, isLoading: proposalsLoading } = useQuery({
@@ -120,7 +161,7 @@ const OwnerCommandCenter: React.FC = () => {
     ];
 
     return (
-        <div className="flex-1 min-h-0 bg-[#0a0a0a] flex flex-col animate-in fade-in duration-700">
+        <div className="h-full min-h-0 bg-[#0a0a0a] flex flex-col animate-in fade-in duration-700">
             {/* ─── CUSTOM FULL-SCREEN HEADER ─── */}
             <header className="flex-none px-4 md:px-8 py-4 flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-gray-800/50 bg-[#0d0d0d]/90 backdrop-blur-md z-10 w-full relative">
                 <div className="absolute inset-0 bg-gradient-to-b from-primary/5 to-transparent pointer-events-none" />
@@ -131,6 +172,9 @@ const OwnerCommandCenter: React.FC = () => {
                         </Button>
                         <Button variant="ghost" size="icon" onClick={() => navigate('/app/admin')} className="rounded-full hover:bg-white/10 text-gray-400 hover:text-white transition-colors bg-[#111] border border-gray-800/50 shadow-sm shadow-black/50" title="Return to Dashboard">
                             <LayoutDashboard className="w-5 h-5" />
+                        </Button>
+                        <Button variant="ghost" size="icon" onClick={toggleFullscreen} className="rounded-full hover:bg-white/10 text-gray-400 hover:text-white transition-colors bg-[#111] border border-gray-800/50 shadow-sm shadow-black/50" title={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}>
+                            {isFullscreen ? <Minimize className="w-5 h-5" /> : <Maximize className="w-5 h-5" />}
                         </Button>
                     </div>
                     <div>
@@ -171,7 +215,7 @@ const OwnerCommandCenter: React.FC = () => {
             </header>
 
             {/* ─── CONTENT AREA ─── */}
-            <div className="flex-1 min-h-0 relative p-4 md:p-6 lg:p-8 bg-gradient-to-br from-[#0a0a0a] via-[#050505] to-[#080808] flex flex-col">
+            <div className="flex-1 min-h-0 relative p-4 md:p-6 lg:p-8 lg:pb-6 bg-gradient-to-br from-[#0a0a0a] via-[#050505] to-[#080808] flex flex-col">
                 <AnimatePresence mode="wait">
                     {view === 'intelligence' ? (
                         <motion.div

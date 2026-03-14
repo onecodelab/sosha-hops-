@@ -35,7 +35,7 @@ const ManagerDashboard: React.FC = () => {
             order_items (
                quantity, 
                special_instructions,
-               menu_item:menu (name)
+               menu_item:menu!menu_item_id (name)
             )
           `)
             .gte('created_at', `${todayStr}T00:00:00`)

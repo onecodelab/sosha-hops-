@@ -61,7 +61,7 @@ serve(async (req) => {
                 organization_id,
                 items:order_items(
                     quantity,
-                    menu_item:menu(name)
+                    menu_item:menu!menu_item_id(name)
                 )
             `);
 

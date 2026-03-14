@@ -27,9 +27,9 @@ FROM
 CROSS JOIN
   branches b
 LEFT JOIN 
-  view_recipe_costs c ON m.id = c.menu_item_id AND b.id = c.branch_id
+  view_recipe_costs c ON m.id = c.menu_item_id
 LEFT JOIN 
-  view_menu_availability a ON m.id = a.menu_item_id AND b.id = a.branch_id;
+  view_menu_availability a ON m.id = a.menu_item_id;
 
 -- Reload schema
 NOTIFY pgrst, 'reload schema';

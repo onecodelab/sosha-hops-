@@ -37,7 +37,7 @@ const WaiterOrders: React.FC = () => {
                   quantity,
                   price,
                   special_instructions,
-                  menu_item:menu (name)
+                  menu_item:menu!menu_item_id (name)
                )
             `)
                 .eq('waiter_id', user.id)

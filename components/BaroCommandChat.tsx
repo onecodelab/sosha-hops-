@@ -11,6 +11,7 @@ import { cn, Badge, Button, showToast } from './ui';
 import { supabase } from '../supabase';
 import { useAuth } from '../AuthContext';
 import { useBranch } from '../contexts/BranchContext';
+import { DisplayCards } from './ui/display-cards';
 
 /* ─── TYPES ─── */
 interface ChatMessage {
@@ -190,6 +191,39 @@ export const BaroCommandChat: React.FC = () => {
             scrollRef.current.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
         }
     }, [messages, isTyping]);
+
+    // Fetch chat history on mount
+    useEffect(() => {
+        const loadHistory = async () => {
+            if (!profile?.id) return;
+            try {
+                const { data, error } = await supabase
+                    .from('chat_memory')
+                    .select('*')
+                    .eq('user_id', profile.id)
+                    .order('created_at', { ascending: true })
+                    .limit(50);
+
+                if (error) throw error;
+
+                if (data && data.length > 0) {
+                    const mappedMessages: ChatMessage[] = data.map(m => ({
+                        id: m.id,
+                        role: m.role as any,
+                        content: m.content,
+                        timestamp: new Date(m.created_at),
+                        metadata: m.metadata
+                    }));
+                    setMessages(mappedMessages);
+                    setHasInteracted(true);
+                }
+            } catch (err) {
+                console.error('Failed to load chat history:', err);
+            }
+        };
+
+        loadHistory();
+    }, [profile?.id]);
 
     // Fetch branch snapshots on mount
     useEffect(() => {
@@ -597,24 +631,46 @@ export const BaroCommandChat: React.FC = () => {
                                                 ? "bg-white/5 text-white rounded-tr-md border border-white/10"
                                                 : "bg-[#111]/80 text-gray-200 rounded-tl-md border border-gray-800/50"
                                         )}>
-                                            <div className="whitespace-pre-wrap">{msg.content}</div>
+                                            <div className="whitespace-pre-wrap">
+                                                {(() => {
+                                                    let processedContent = msg.content;
+                                                    let elements: React.ReactNode[] = [];
+                                                    
+                                                    // 1. Extract Cards JSON
+                                                    try {
+                                                        const cardsMatch = processedContent.match(/```json\s*(\{[\s\S]*\"cards\"[\s\S]*\})\s*```|(\{[\s\S]*\"cards\"[\s\S]*\})/);
+                                                        if (cardsMatch) {
+                                                            const jsonStr = cardsMatch[1] || cardsMatch[2];
+                                                            const data = JSON.parse(jsonStr);
+                                                            if (data.cards && Array.isArray(data.cards)) {
+                                                                elements.push(
+                                                                    <div key="cards" className="my-6">
+                                                                        <DisplayCards cards={data.cards} />
+                                                                    </div>
+                                                                );
+                                                                processedContent = processedContent.replace(cardsMatch[0], '').trim();
+                                                            }
+                                                        }
+                                                    } catch (e) { }
 
-                                            {/* Actionable Suggestion Detection */}
-                                            {!isTyping && msg.role === 'assistant' && msg.content.includes('{') && (
-                                                <div className="mt-4 pt-4 border-t border-white/5">
-                                                    <div className="flex items-center gap-2 mb-3">
-                                                        <Sparkles className="w-3 h-3 text-primary" />
-                                                        <span className="text-[10px] font-black text-primary uppercase tracking-widest">Actionable Intelligence</span>
-                                                    </div>
-                                                    <Button
-                                                        size="sm"
-                                                        className="w-full bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 h-9 rounded-xl text-[10px] font-black uppercase tracking-widest"
-                                                        onClick={() => handleCreateProposal(msg.content)}
-                                                    >
-                                                        Review & Create Proposal
-                                                    </Button>
-                                                </div>
-                                            )}
+                                                    // 2. Extract Proposal JSON (to hide it from the chat text string)
+                                                    try {
+                                                        const proposalMatch = processedContent.match(/```json\s*(\{[\s\S]*\"proposal_type\"[\s\S]*\})\s*```|(\{[\s\S]*\"proposal_type\"[\s\S]*\})/);
+                                                        if (proposalMatch) {
+                                                            processedContent = processedContent.replace(proposalMatch[0], '').trim();
+                                                        }
+                                                    } catch (e) { }
+
+                                                    return (
+                                                        <>
+                                                            {processedContent}
+                                                            {elements}
+                                                        </>
+                                                    );
+                                                })()}
+                                            </div>
+
+                                            {/* Actionable Suggestion Detection removed by user request */}
 
                                             <p className={cn(
                                                 "text-[9px] mt-2 font-mono uppercase tracking-widest",
@@ -651,8 +707,8 @@ export const BaroCommandChat: React.FC = () => {
             </div>
 
             {/* ─── INPUT AREA (Pinned Bottom) ─── */}
-            <div className="flex-none px-4 md:px-8 pb-4 pt-2">
-                <div className="max-w-4xl mx-auto">
+            <div className="flex-none px-4 md:px-8 pb-2 pt-2">
+                <div className="max-w-4xl mx-auto relative">
                     <div className={cn(
                         "relative flex flex-col rounded-2xl border transition-all duration-200 cursor-text",
                         "bg-[#0d0d0d] border-gray-800/60",
@@ -750,7 +806,7 @@ export const BaroCommandChat: React.FC = () => {
                         }}
                     />
 
-                    <p className="text-center text-[10px] text-gray-600 mt-3 font-mono">
+                    <p className="absolute -bottom-6 left-0 right-0 text-center text-[10px] text-gray-600 font-mono">
                         AI-powered insights from your restaurant data • Baro Intelligence v2026.1
                     </p>
                 </div>

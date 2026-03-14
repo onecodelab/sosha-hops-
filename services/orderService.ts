@@ -15,7 +15,7 @@ export const orderService = {
         waiter:profiles!orders_waiter_id_fkey (full_name),
         order_items (
           id, quantity, price, created_at, special_instructions,
-          menu_item:menu (name, image_url)
+          menu_item:menu!menu_item_id (name, image_url)
         )
       `)
             .eq('branch_id', branchId)
@@ -513,7 +513,7 @@ export const orderService = {
                 *,
                 order_items (
                     id, quantity, price, created_at, special_instructions,
-                    menu_item:menu (name, image_url)
+                    menu_item:menu!menu_item_id (name, image_url)
                 )
             `)
             .eq('table_id', tableId)

@@ -64,6 +64,7 @@ interface AppWrapperProps {
   subtitle?: string | React.ReactNode;
   actions?: React.ReactNode;
   className?: string;
+  fullScreen?: boolean;
 }
 
 const DashboardLayoutWrapper: React.FC = () => {
@@ -249,7 +250,7 @@ const App: React.FC = () => {
 
                       <Route path="owner" element={
                         <ProtectedRoute allowedRoles={['owner']}>
-                          <CustomAppWrapper className="p-0 overflow-hidden" title="Owner Command Center" subtitle="Intelligent Oversight">
+                          <CustomAppWrapper className="p-0 overflow-hidden" title="Owner Command Center" subtitle="Intelligent Oversight" fullScreen={true}>
                             <OwnerCommandCenter />
                           </CustomAppWrapper>
                         </ProtectedRoute>

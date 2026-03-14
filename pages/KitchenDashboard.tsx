@@ -47,7 +47,7 @@ const KitchenDashboard: React.FC = () => {
                   price,
                   special_instructions,
                   created_at,
-                  menu_item:menu (name)
+                  menu_item:menu!menu_item_id (name)
                )
             `)
             .eq('branch_id', activeBranchId)

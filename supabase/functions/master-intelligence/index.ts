@@ -166,12 +166,32 @@ serve(async (req) => {
             }));
             return context;
         };
-
         if (action === 'proactive_analyze' || action === 'chat') {
             const isChat = action === 'chat';
             const { question, owner_name, branch_context, all_branches, event_type, data: eventData, attachments } = payload || {};
 
             console.log(`[MasterAgent] ${isChat ? 'Chat' : 'Analyzing'}: ${isChat ? question : event_type}. Attachments: ${attachments?.length || 0}`);
+
+            // ------------------------------------------------------------------
+            // MEMORY RETRIEVAL (The "Brain's Recalls")
+            // ------------------------------------------------------------------
+            let history = [];
+            if (isChat && user.id) {
+                try {
+                    const { data: historyData } = await supabase
+                        .from('chat_memory')
+                        .select('role, content')
+                        .eq('user_id', user.id)
+                        .order('created_at', { ascending: false })
+                        .limit(10);
+                    
+                    if (historyData) {
+                        history = historyData.reverse();
+                    }
+                } catch (e) {
+                    console.warn('[MasterAgent] History fetch failed:', e);
+                }
+            }
 
             const context = await fetchContext();
 
@@ -185,6 +205,27 @@ Your traits:
 - Professional, analytical, proactive, and concise.
 - Use markdown for communication. Use bold for metrics.
 - DO NOT MAKE UP DATA. Use ONLY the LIVE BUSINESS TRUTH.
+- ALWAYS try to respond with sleek, modern UI components when summarizing data or presenting metrics.
+
+MEMORY:
+You have access to the last few messages in this conversation. Use them for context.
+
+MODULAR ACTIONS (FUNCTION CALLING):
+If the user wants to take a specific action, you can suggest it. We are moving towards native functions.
+Supported actions: 'manage_menu', 'manage_inventory', 'manage_staff', 'manage_po', 'manage_floor'.
+Instead of just talking, you can output a "TRIGGER_ACTION" JSON block if the user's intent is clear.
+
+UI CAROUSEL GENERATION:
+Whenever you are presenting metrics, highlighting risks, or summarizing financial data, you MUST include a JSON block in your markdown response to render a modern UI carousel of cards.
+Format it EXACTLY like this (ensure it is valid JSON):
+{
+  "cards": [
+    { "title": "Revenue", "description": "ETB 4500 Today", "icon": "dollar-sign", "date": "Live" },
+    { "title": "Alert", "description": "Low stock on Tomatoes", "icon": "alert-triangle", "date": "Critical" },
+    { "title": "Performance", "description": "Kitchen efficiency up", "icon": "trending-up", "date": "Last 1h" }
+  ]
+}
+Supported icons: 'trending-up', 'alert-triangle', 'cpu', 'dollar-sign', 'sparkles'.
 
 PROPOSAL GENERATION:
 If you identify an optimization (e.g., restocking, waste reduction, staff shift change), include a structured JSON block at the end of your message.
@@ -216,27 +257,32 @@ Recent Events: ${JSON.stringify(context.recent_events)}`;
 
             let aiResponseText = "";
 
+            // Prepare messages with history
+            const messages: any[] = [
+                { role: "system", content: systemPrompt },
+                ...history,
+                { role: "user", content: promptStr }
+            ];
+
+            // Re-format user content for vision support if needed
+            const lastMsgContent: any[] = [{ type: "text", text: promptStr }];
+            if (attachments && attachments.length > 0) {
+                attachments.forEach((att: any) => {
+                    if (att.type.startsWith('image/')) {
+                        lastMsgContent.push({
+                            type: "image_url",
+                            image_url: { url: `data:${att.type};base64,${att.data}` }
+                        });
+                    }
+                });
+            }
+            // Update the last message item if there are attachments
+            if (attachments && attachments.length > 0) {
+                messages[messages.length - 1].content = lastMsgContent;
+            }
+
             if (openRouterApiKey) {
                 console.log('[MasterAgent] Using OpenRouter...');
-                const messages: any[] = [
-                    { role: "system", content: systemPrompt }
-                ];
-
-                const userContent: any[] = [{ type: "text", text: promptStr }];
-
-                if (attachments && attachments.length > 0) {
-                    attachments.forEach((att: any) => {
-                        if (att.type.startsWith('image/')) {
-                            userContent.push({
-                                type: "image_url",
-                                image_url: { url: `data:${att.type};base64,${att.data}` }
-                            });
-                        }
-                    });
-                }
-
-                messages.push({ role: "user", content: userContent });
-
                 const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
                     method: "POST",
                     headers: {
@@ -245,7 +291,7 @@ Recent Events: ${JSON.stringify(context.recent_events)}`;
                         "X-Title": "Baro Intelligence Hub"
                     },
                     body: JSON.stringify({
-                        model: "nvidia/llama-nemotron-embed-vl-1b-v2:free",
+                        model: "openrouter/hunter-alpha",
                         messages: messages
                     })
                 });
@@ -254,53 +300,25 @@ Recent Events: ${JSON.stringify(context.recent_events)}`;
                 aiResponseText = result.choices[0].message.content;
             } else if (geminiApiKey) {
                 console.log('[MasterAgent] Using Gemini...');
-                const contents: any[] = [];
-                const parts: any[] = [{ text: `System Context:\n${systemPrompt}\n\nTask:\n${promptStr}` }];
-
-                if (attachments && attachments.length > 0) {
-                    attachments.forEach((att: any) => {
-                        if (att.type.startsWith('image/')) {
-                            parts.push({
-                                inline_data: {
-                                    mime_type: att.type,
-                                    data: att.data
-                                }
-                            });
-                        }
-                    });
-                }
-
-                contents.push({ parts });
+                // Simplified conversion for Gemini to keep history
+                const contents = messages.filter(m => m.role !== 'system').map(m => ({
+                    role: m.role === 'assistant' ? 'model' : 'user',
+                    parts: Array.isArray(m.content) ? m.content.map((c: any) => c.text ? { text: c.text } : { inline_data: { mime_type: "image/jpeg", data: c.image_url?.url?.split(',')[1] } }) : [{ text: m.content }]
+                }));
 
                 const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ contents })
+                    body: JSON.stringify({ 
+                        system_instruction: { parts: [{ text: systemPrompt }] },
+                        contents 
+                    })
                 });
                 if (!response.ok) throw new Error(`Gemini API Error: ${await response.text()}`);
                 const result = await response.json();
                 aiResponseText = result.candidates[0].content.parts[0].text;
             } else if (openAIApiKey) {
                 console.log('[MasterAgent] Using OpenAI...');
-                const messages: any[] = [
-                    { role: "system", content: systemPrompt }
-                ];
-
-                const userContent: any[] = [{ type: "text", text: promptStr }];
-
-                if (attachments && attachments.length > 0) {
-                    attachments.forEach((att: any) => {
-                        if (att.type.startsWith('image/')) {
-                            userContent.push({
-                                type: "image_url",
-                                image_url: { url: `data:${att.type};base64,${att.data}` }
-                            });
-                        }
-                    });
-                }
-
-                messages.push({ role: "user", content: userContent });
-
                 const response = await fetch("https://api.openai.com/v1/chat/completions", {
                     method: "POST",
                     headers: {
@@ -317,6 +335,20 @@ Recent Events: ${JSON.stringify(context.recent_events)}`;
                 aiResponseText = result.choices[0].message.content;
             } else {
                 throw new Error("No AI API key configured! Please add OPENROUTER_API_KEY, GEMINI_API_KEY, or OPENAI_API_KEY to your Supabase secrets.");
+            }
+
+            // ------------------------------------------------------------------
+            // MEMORY STORAGE (The "Hard Drive")
+            // ------------------------------------------------------------------
+            if (isChat && user.id) {
+                try {
+                    await supabase.from('chat_memory').insert([
+                        { user_id: user.id, organization_id: resolvedOrganizationId, branch_id: validatedBranchId, role: 'user', content: promptStr },
+                        { user_id: user.id, organization_id: resolvedOrganizationId, branch_id: validatedBranchId, role: 'assistant', content: aiResponseText }
+                    ]);
+                } catch (e) {
+                    console.warn('[MasterAgent] Memory write failed:', e);
+                }
             }
 
             return new Response(JSON.stringify(isChat ? { text: aiResponseText } : { success: true, suggestion: aiResponseText }), {
@@ -357,6 +389,6 @@ Recent Events: ${JSON.stringify(context.recent_events)}`;
             status: 400,
         });
     }
-})
+});
 
 

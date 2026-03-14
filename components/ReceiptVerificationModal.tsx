@@ -39,7 +39,7 @@ export const ReceiptVerificationModal: React.FC<ReceiptVerificationModalProps> =
           order_items (
             quantity,
             price,
-            menu_item:menu (name, category)
+            menu_item:menu!menu_item_id (name, category)
           )
         `)
         .eq('id', idToVerify)
