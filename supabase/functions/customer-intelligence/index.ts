@@ -278,7 +278,7 @@ serve(async (req) => {
                 .single();
 
             if (orgData?.chatbot_system_prompt?.trim()) {
-                systemPrompt = orgData.chatbot_system_prompt;
+                systemPrompt += `\n\n## CUSTOM RESTAURANT INSTRUCTIONS\n${orgData.chatbot_system_prompt}`;
             }
 
             const activeTable = table_number || "Unknown";
