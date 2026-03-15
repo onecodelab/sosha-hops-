@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MessageCircle, X, Send, Loader2, Sparkles, ArrowUp } from 'lucide-react';
+import { MessageCircle, X, Send, Loader2, Sparkles, ArrowUp, UtensilsCrossed, TrendingUp, DollarSign } from 'lucide-react';
 import { cn } from './ui';
+import { DisplayCards } from './ui/display-cards';
 import { supabase } from '../supabase';
 import { useAuth } from '../AuthContext';
 import { useBranch } from '../contexts/BranchContext';
@@ -178,9 +179,18 @@ export const ChatWidget: React.FC = () => {
                         {/* Messages */}
                         <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-3">
                             {messages.length === 0 && (
-                                <div className="h-full flex flex-col items-center justify-center text-center opacity-50">
+                                <div className="h-full flex flex-col items-center justify-center text-center">
+                                    <div className="mb-8 opacity-20 hover:opacity-100 transition-opacity">
+                                        <DisplayCards
+                                            cards={[
+                                                { title: "Featured Dish", description: "Try our Signature Burger", icon: "trending-up" },
+                                                { title: "Special Offer", description: "20% off all drinks today", icon: "dollar-sign" },
+                                                { title: "Freshly Made", description: "Our chef's daily special", icon: <UtensilsCrossed className="size-4" /> }
+                                            ]}
+                                        />
+                                    </div>
                                     <Sparkles className="w-8 h-8 text-emerald-500/50 mb-3" />
-                                    <p className="text-xs text-gray-500 max-w-[200px]">
+                                    <p className="text-xs text-gray-500 max-w-[200px] opacity-50">
                                         Hi! Ask me about our menu, place an order, or get your bill.
                                     </p>
                                 </div>
