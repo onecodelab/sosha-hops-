@@ -146,39 +146,36 @@ const TOOL_DEFINITIONS = [
 ];
 
 // ─── DEFAULT SYSTEM PROMPT ───
-const DEFAULT_SYSTEM_PROMPT = `You are a smart, friendly restaurant assistant. You help customers browse the menu, place orders, track their food, and handle payments.
+const DEFAULT_SYSTEM_PROMPT = `You are a smart, friendly restaurant assistant. You help customers browse the menu, place orders, track their food, and handle payments.`;
 
+const RICH_UI_INSTRUCTIONS = `
 ## RICH UI CAPABILITIES
-You can trigger interactive UI elements by including a JSON block at the end of your response.
+You can trigger interactive UI elements by including a JSON block at the end of your response. Use either \`\`\`json { ... } \`\`\` or [UI_CONTEXT: { ... }].
+
 Supported elements:
-- "buttons": Array of { label, prompt } (e.g., [{"label": "🍔 Main Dishes", "prompt": "Show me main dishes"}])
-- "tracking": { "status": "placed" | "preparing" | "ready" | "delivered" }
-- "pills": Array of strings (e.g., ["Burgers", "Pizza", "Drinks"])
+- "buttons": Array of { label, prompt }. Use icons and support multiple languages (e.g., [{"label": "🍔 Main Dishes", "prompt": "Show me main dishes"}, {"label": "መኑ አሳየኝ", "prompt": "Show me the menu"}]).
+- "tracking": { "status": "placed" | "preparing" | "ready" | "delivered" } (Use when user asks "where is my food?")
+- "pills": Array of strings for quick category filters.
 - "splitter": { "total": number } (Use when customer asks to split the bill)
 - "rating": { "type": "stars" } (Use after an order is delivered or meal finished)
 
 Example:
 Here is our menu!
-\`\`\`json
-{
-  "buttons": [{"label": "🥤 Drinks", "prompt": "Show me drinks"}],
-  "pills": ["Main Dishes", "Desserts", "Specialty"]
-}
-\`\`\`
+[UI_CONTEXT: {"buttons": [{"label": "🥤 Drinks", "prompt": "Show me drinks"}], "pills": ["Main Dishes", "Desserts"]}]
 
 ## YOUR RULES
 1. ALWAYS use the 'get_menu' tool when a customer asks about food, menu, or what's available. NEVER guess menu items.
-2. Check the CONTEXT below for the 'Table Number'. If it is 'Unknown', you MUST ask the customer for their table number before placing an order. If it is already known, do not ask; proceed with the known table number.
-3. When a customer shares their name, phone, or mentions any food preference or allergy, IMMEDIATELY call 'update_customer_profile' to remember it.
-4. If they want to add more items to an existing order, use 'update_order' instead of 'place_order'.
-5. When asked for the bill or how to pay, call 'get_branch_info' to get payment methods, then 'get_order_status' to get the total.
+2. Check the CONTEXT below for the 'Table Number'. If it is 'Unknown', you MUST ask the customer for their table number before placing an order.
+3. When a customer shares their name, phone, or mentions any food preference, call 'update_customer_profile'.
+4. If they want to add more items to an existing order, use 'update_order'.
+5. When asked for the bill, call 'get_branch_info' then 'get_order_status'. Always use the "splitter" UI if they ask to split.
 6. When they share a payment reference number, call 'verify_payment'.
-7. Be warm, helpful, and concise. Use emojis sparingly but naturally.
-8. If the customer asks for the menu, fetch it and CLASSIFY items by their Category (e.g. Burger, Drinks, Mains, etc.).
-9. Format menu items clearly with names, prices (e.g. ETB 500) and descriptions.
-10. If you find multiple menu items, they will be displayed as a beautiful carousel to the user.
-11. Use 'search_knowledge' if the customer asks about things like 'Do you allow pets?', 'Is there parking?', or 'What is the history of this place?'.
-12. Always confirm the order before placing it.`;
+7. Be warm, helpful, and concise. Use emojis naturally.
+8. Support Amharic and Arabic for quick buttons if the user speaks those languages.
+   - Amharic: መኑ አሳየኝ (Show Menu), ሂሳብ ስንት ነው? (How much is the bill?)
+   - Arabic: أرني القائمة (Show Menu), كم الحساب؟ (How much is the bill?)
+9. Format menu items clearly with names and prices (e.g. ETB 500).
+10. Always confirm the order before placing it.`;
 
 // ─── MCP TOOL EXECUTOR ───
 async function executeMcpTool(
@@ -272,7 +269,8 @@ serve(async (req) => {
         }
 
         // ── STEP 1: Load System Prompt ──
-        let systemPrompt = DEFAULT_SYSTEM_PROMPT;
+        let basePrompt = DEFAULT_SYSTEM_PROMPT;
+        let orgName = "Unknown";
         try {
             const { data: orgData } = await supabase
                 .from("organizations")
@@ -281,19 +279,23 @@ serve(async (req) => {
                 .single();
 
             if (orgData?.chatbot_system_prompt?.trim()) {
-                systemPrompt = orgData.chatbot_system_prompt;
+                basePrompt = orgData.chatbot_system_prompt;
             }
+            orgName = orgData?.name || "Unknown";
+        } catch (e) {
+            console.warn("[CustomerAgent] Org config load failed:", e);
+        }
 
-            const activeTable = table_number || "Unknown";
-            systemPrompt += `\n\n## CONTEXT
-- Restaurant: ${orgData?.name || "Unknown"}
+        const activeTable = table_number || "Unknown";
+        const systemPrompt = `${basePrompt}
+${RICH_UI_INSTRUCTIONS}
+
+## CONTEXT
+- Restaurant: ${orgName}
 - Branch ID: ${branchId}
 - Table Number: ${activeTable}
 - Session ID: ${session_id}
 - Date: ${new Date().toLocaleDateString()}`;
-        } catch (e) {
-            console.warn("[CustomerAgent] Org config load failed:", e);
-        }
 
         // ── STEP 2: Load Customer Profile ──
         let customerContext = "";
@@ -501,13 +503,16 @@ serve(async (req) => {
         // ── STEP 5: Extract Metadata & Cleanup Response ──
         let richMetadata: any = {};
 
-        // Extract JSON from response if present
-        const jsonMatch = finalResponse.match(/```json\n([\s\S]*?)\n```/) || finalResponse.match(/{[\s\S]*?}/);
+        // Extract JSON from response if present (supports ```json, [UI_CONTEXT:], or raw {})
+        const extractionRegex = /\[UI_CONTEXT:\s*(\{[\s\S]*?\})\]|```json\n([\s\S]*?)\n```|(\{[\s\S]*?\}(?=\s*$))/;
+        const jsonMatch = finalResponse.match(extractionRegex);
+
         if (jsonMatch) {
             try {
-                const extracted = JSON.parse(jsonMatch[1] || jsonMatch[0]);
+                const jsonString = jsonMatch[1] || jsonMatch[2] || jsonMatch[3];
+                const extracted = JSON.parse(jsonString);
                 richMetadata = { ...extracted };
-                // Remove JSON from final text display
+                // Remove the match from final text display
                 finalResponse = finalResponse.replace(jsonMatch[0], "").trim();
             } catch (e) {
                 console.warn("[CustomerAgent] Metadata parse failed:", e);

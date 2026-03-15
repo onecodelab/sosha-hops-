@@ -179,19 +179,40 @@ export const ChatWidget: React.FC = () => {
                         {/* Messages */}
                         <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-3">
                             {messages.length === 0 && (
-                                <div className="h-full flex flex-col items-center justify-center text-center">
-                                    <div className="mb-8 opacity-20 hover:opacity-100 transition-opacity">
+                                <div className="h-full flex flex-col items-center justify-center text-center py-10">
+                                    <div className="mb-12 scale-[0.85] md:scale-90 transition-transform hover:scale-100 duration-700">
                                         <DisplayCards
                                             cards={[
-                                                { title: "Featured Dish", description: "Try our Signature Burger", icon: "trending-up" },
-                                                { title: "Special Offer", description: "20% off all drinks today", icon: "dollar-sign" },
-                                                { title: "Freshly Made", description: "Our chef's daily special", icon: <UtensilsCrossed className="size-4" /> }
+                                                {
+                                                    title: "Featured Dish",
+                                                    description: "Chef's Signature Burger",
+                                                    icon: "trending-up",
+                                                    date: "Hot 🔥"
+                                                },
+                                                {
+                                                    title: "Special Offer",
+                                                    description: "20% off all drinks today",
+                                                    icon: "dollar-sign",
+                                                    date: "Limited Time"
+                                                },
+                                                {
+                                                    title: "Fast Tracking",
+                                                    description: "Real-time order status",
+                                                    icon: <Sparkles className="size-4 text-emerald-500" />,
+                                                    date: "Live"
+                                                }
                                             ]}
                                         />
                                     </div>
-                                    <Sparkles className="w-8 h-8 text-emerald-500/50 mb-3" />
-                                    <p className="text-xs text-gray-500 max-w-[200px] opacity-50">
-                                        Hi! Ask me about our menu, place an order, or get your bill.
+                                    <div className="relative">
+                                        <div className="absolute inset-0 bg-emerald-500/10 blur-xl rounded-full" />
+                                        <Sparkles className="w-8 h-8 text-emerald-500 mb-3 relative z-10 animate-pulse" />
+                                    </div>
+                                    <p className="text-[11px] font-black uppercase tracking-[0.2em] text-emerald-500/60 mb-1">
+                                        Baro AI Assistant
+                                    </p>
+                                    <p className="text-xs text-gray-500 max-w-[240px] leading-relaxed">
+                                        Hi! I can help you browse the menu, track orders, or handle your bill in real-time.
                                     </p>
                                 </div>
                             )}
@@ -205,10 +226,10 @@ export const ChatWidget: React.FC = () => {
                                     )}
                                 >
                                     <div className={cn(
-                                        "px-3 py-2 rounded-xl text-xs leading-relaxed",
+                                        "px-4 py-3 rounded-2xl text-[13px] leading-relaxed shadow-lg",
                                         msg.role === 'user'
-                                            ? "bg-amber-500 text-black rounded-tr-sm"
-                                            : "bg-[#1a1a1a] text-gray-300 rounded-tl-sm border border-white/[0.06]"
+                                            ? "bg-gradient-to-br from-amber-400 to-amber-600 text-black rounded-tr-md font-medium"
+                                            : "bg-[#1a1a1a] text-gray-200 rounded-tl-md border border-white/[0.08]"
                                     )}>
                                         <div className="whitespace-pre-wrap">{msg.content}</div>
                                     </div>
