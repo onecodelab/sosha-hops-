@@ -503,19 +503,65 @@ ${RICH_UI_INSTRUCTIONS}
         // ── STEP 5: Extract Metadata & Cleanup Response ──
         let richMetadata: any = {};
 
-        // Extract JSON from response if present (supports ```json, [UI_CONTEXT:], or raw {})
-        const extractionRegex = /\[UI_CONTEXT:\s*(\{[\s\S]*?\})\]|```json\n([\s\S]*?)\n```|(\{[\s\S]*?\}(?=\s*$))/;
-        const jsonMatch = finalResponse.match(extractionRegex);
+        // Enhanced extraction: Find all potential JSON blocks
+        // 1. [UI_CONTEXT: ...] pattern
+        // 2. ```json ... ``` pattern
+        // 3. Trailing { ... } pattern
+        const uiContextRegex = /\[UI_CONTEXT:\s*([\s\S]*)\s*\]/g;
+        const codeBlockRegex = /```json\n([\s\S]*?)\n```/g;
+        const trailingJsonRegex = /(\{[\s\S]*?\})(?=\s*$)/;
 
-        if (jsonMatch) {
+        let match;
+
+        // Extract from [UI_CONTEXT: ...]
+        while ((match = uiContextRegex.exec(finalResponse)) !== null) {
             try {
-                const jsonString = jsonMatch[1] || jsonMatch[2] || jsonMatch[3];
-                const extracted = JSON.parse(jsonString);
-                richMetadata = { ...extracted };
-                // Remove the match from final text display
-                finalResponse = finalResponse.replace(jsonMatch[0], "").trim();
+                const content = match[1].trim();
+                const extracted = JSON.parse(content);
+                richMetadata = { ...richMetadata, ...extracted };
             } catch (e) {
-                console.warn("[CustomerAgent] Metadata parse failed:", e);
+                console.warn("[CustomerAgent] [UI_CONTEXT] parse failed:", e.message);
+            }
+        }
+
+        // Extract from code blocks
+        while ((match = codeBlockRegex.exec(finalResponse)) !== null) {
+            try {
+                const extracted = JSON.parse(match[1]);
+                richMetadata = { ...richMetadata, ...extracted };
+            } catch (e) {
+                console.warn("[CustomerAgent] [CodeBlock] parse failed:", e);
+            }
+        }
+
+        // Extract trailing if nothing else matched yet
+        if (Object.keys(richMetadata).length === 0) {
+            match = finalResponse.match(trailingJsonRegex);
+            if (match) {
+                try {
+                    const extracted = JSON.parse(match[1]);
+                    richMetadata = { ...richMetadata, ...extracted };
+                } catch (e) {
+                    // Fail silently for trailing as it might just be text ending with }
+                }
+            }
+        }
+
+        // Cleanup: Remove all UI markers from the finalResponse
+        finalResponse = finalResponse
+            .replace(uiContextRegex, "")
+            .replace(codeBlockRegex, "")
+            .trim();
+
+        // If we extracted trailing JSON and it was at the very end, remove it too
+        if (Object.keys(richMetadata).length > 0) {
+            const lastTrailingMatch = finalResponse.match(trailingJsonRegex);
+            if (lastTrailingMatch && finalResponse.endsWith(lastTrailingMatch[0])) {
+                // Only remove if it looks like the JSON we extracted
+                try {
+                    JSON.parse(lastTrailingMatch[0]);
+                    finalResponse = finalResponse.replace(trailingJsonRegex, "").trim();
+                } catch {}
             }
         }
 
