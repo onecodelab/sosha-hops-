@@ -13,6 +13,7 @@ const Landing = lazy(() => import('./pages/Landing'));
 const BookDemo = lazy(() => import('./pages/Pricing'));
 const PricingPage = lazy(() => import('./pages/PricingPage'));
 const Features = lazy(() => import('./pages/Features'));
+const CustomerChatPage = lazy(() => import('./pages/CustomerChatPage'));
 
 // Auth Pages
 const Login = lazy(() => import('./pages/Login'));
@@ -109,6 +110,7 @@ const App: React.FC = () => {
                     <Route path="/book-demo" element={<BookDemo />} />
                     <Route path="/pricing" element={<PricingPage />} />
                     <Route path="/features" element={<Features />} />
+                    <Route path="/order-chat/:branchId/:tableNumber" element={<CustomerChatPage />} />
 
                     {/* Auth Layer */}
                     <Route path="/login" element={<Login />} />

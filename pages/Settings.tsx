@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLayoutConfig } from '../contexts/LayoutContext';
 import { Card, CardContent, CardHeader, CardTitle, Button, showToast, cn } from '../components/ui';
 import { Database, RefreshCw, AlertTriangle, Package, CheckCircle2, FlaskConical, ShieldCheck, Zap, Plus, MapPin, Building2, Trash2, Edit2, X, Check, CreditCard, Sparkles } from 'lucide-react';
@@ -186,7 +186,7 @@ const Settings: React.FC = () => {
                                        />
                                     </div>
                                  ) : (
-                                    <div className="flex items-center gap-4">
+                                    <div className="flex items-center justify-between flex-wrap gap-4">
                                        <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center border border-white/10 group-hover:bg-primary/10 group-hover:border-primary/20 transition-all">
                                           <MapPin className="w-5 h-5 text-gray-500 group-hover:text-primary" />
                                        </div>
@@ -257,7 +257,7 @@ const Settings: React.FC = () => {
                <Card className="bg-[#1A1A1A] border-gray-800 rounded-[2.5rem] overflow-hidden relative group/bank">
                   <div className="absolute inset-0 bg-blue-500/5 opacity-0 group-hover/bank:opacity-100 transition-opacity duration-500 blur-3xl pointer-events-none" />
                   <div className="p-8 border-b border-gray-800 relative bg-black/20 backdrop-blur-sm">
-                     <div className="flex items-center gap-4">
+                     <div className="flex items-center justify-between flex-wrap gap-4">
                         <div className="w-12 h-12 rounded-2xl bg-blue-500/10 flex items-center justify-center border border-blue-500/20 shadow-[0_0_20px_rgba(59,130,246,0.1)]">
                            <ShieldCheck className="w-6 h-6 text-blue-400" />
                         </div>
@@ -273,7 +273,7 @@ const Settings: React.FC = () => {
                </Card>
             </div>
 
-            {/* Full Width AI Bot Configuration - More balanced layout */}
+            {/* Full Width Customer AI Agent - More balanced layout */}
             <Card className="bg-[#1A1A1A] border-gray-800 rounded-[2.5rem] overflow-hidden group/bot relative">
                <div className="absolute -top-24 -right-24 w-64 h-64 bg-primary/5 rounded-full blur-3xl pointer-events-none group-hover:bg-primary/10 transition-all duration-700" />
                <div className="p-8 border-b border-gray-800 relative bg-black/20 backdrop-blur-sm">
@@ -282,9 +282,20 @@ const Settings: React.FC = () => {
                         <Zap className="w-6 h-6 text-primary" />
                      </div>
                      <div>
-                        <CardTitle className="text-white text-xl tracking-tight">AI Bot Configuration</CardTitle>
-                        <p className="text-[10px] font-black text-primary/60 uppercase tracking-widest mt-0.5">WhatsApp Intelligent Personality</p>
+                        <CardTitle className="text-white text-xl tracking-tight">Customer AI Agent</CardTitle>
+                        <p className="text-[10px] font-black text-primary/60 uppercase tracking-widest mt-0.5">Full System Prompt Control</p>
                      </div>
+                     {branches.length > 0 && (
+                        <a
+                           href={`/order-chat/${branches[0].id}/T1`}
+                           target="_blank"
+                           rel="noopener noreferrer"
+                           className="flex items-center gap-2 px-5 py-2.5 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 rounded-full hover:bg-emerald-500/20 hover:scale-105 transition-all text-[10px] font-black uppercase tracking-widest"
+                        >
+                           <Sparkles className="w-3.5 h-3.5" />
+                           Test Chatbot
+                        </a>
+                     )}
                   </div>
                </div>
                <CardContent className="p-8">
@@ -637,117 +648,123 @@ const BankSettingsSection: React.FC<{ isEditable: boolean; organizationId?: stri
 const BotSettingsSection: React.FC<{ isEditable: boolean; organizationId?: string }> = ({ isEditable, organizationId }) => {
    const queryClient = useQueryClient();
    const [isSaving, setIsSaving] = useState(false);
-   const [formData, setFormData] = useState({
-      bot_name: 'Selam',
-      tone: 'friendly and casual',
-      default_language: 'auto',
-      system_prompt: ''
-   });
+   const [systemPrompt, setSystemPrompt] = useState('');
+   const [charCount, setCharCount] = useState(0);
 
-   const { data: botSettings, isLoading } = useQuery({
-      queryKey: ['bot_settings', organizationId],
+   const DEFAULT_PROMPT = `You are a smart, friendly restaurant assistant. You help customers browse the menu, place orders, track their food, and handle payments.
+
+## YOUR RULES
+1. ALWAYS use the 'get_menu' tool when a customer asks about food, menu, or what's available. NEVER guess menu items.
+2. Check the CONTEXT below for the 'Table Number'. If it is 'Unknown', you MUST ask the customer for their table number before placing an order. If it is already known, do not ask; proceed with the known table number.
+3. When a customer shares their name, phone, or mentions any food preference or allergy, IMMEDIATELY call 'update_customer_profile' to remember it.
+4. If they want to add more items to an existing order, use 'update_order' instead of 'place_order'.
+5. When asked for the bill or how to pay, call 'get_branch_info' to get payment methods, then 'get_order_status' to get the total.
+6. When they share a payment reference number, call 'verify_payment'.
+7. Be warm, helpful, and concise. Use emojis sparingly but naturally.
+8. Format menu items clearly with names and prices.
+9. Always confirm the order before placing it.`;
+
+   // Load existing prompt from organizations table
+   const { data: orgData, isLoading } = useQuery({
+      queryKey: ['chatbot_system_prompt', organizationId],
       queryFn: async () => {
          if (!organizationId) return null;
          const { data, error } = await supabase
-            .from('bot_settings')
-            .select('*')
-            .eq('organization_id', organizationId)
-            .maybeSingle();
+            .from('organizations')
+            .select('chatbot_system_prompt')
+            .eq('id', organizationId)
+            .single();
          if (error) throw error;
-         if (data) {
-            setFormData({
-               bot_name: data.bot_name,
-               tone: data.tone,
-               default_language: data.default_language,
-               system_prompt: data.system_prompt || ''
-            });
-         }
          return data;
       },
       enabled: !!organizationId
    });
 
+   // Initialize state when data arrives
+   useEffect(() => {
+      if (orgData) {
+         const prompt = orgData.chatbot_system_prompt || '';
+         setSystemPrompt(prompt);
+         setCharCount(prompt.length);
+      }
+   }, [orgData]);
+
    const saveMutation = useMutation({
       mutationFn: async () => {
-         if (!organizationId) throw new Error("Organization ID is missing");
+         if (!organizationId) throw new Error("Organization ID is missing.");
          setIsSaving(true);
          const { error } = await supabase
-            .from('bot_settings')
-            .upsert({
-               organization_id: organizationId,
-               ...formData,
-               updated_at: new Date().toISOString()
-            }, { onConflict: 'organization_id' });
-
+            .from('organizations')
+            .update({ chatbot_system_prompt: systemPrompt })
+            .eq('id', organizationId);
          if (error) throw error;
       },
       onSuccess: () => {
-         showToast("Bot settings saved successfully!", "success");
-         queryClient.invalidateQueries({ queryKey: ['bot_settings'] });
+         showToast("System Prompt saved! Your chatbot will use this immediately.", "success");
+         queryClient.invalidateQueries({ queryKey: ['chatbot_system_prompt'] });
       },
       onError: (err: any) => showToast(err.message, "error"),
       onSettled: () => setIsSaving(false)
    });
 
-   if (isLoading) return <div className="text-center py-4 text-zinc-600 animate-pulse text-[10px] font-black uppercase tracking-widest">Initialising AI...</div>;
+   if (isLoading) return <div className="text-center py-4 text-zinc-600 animate-pulse text-[10px] font-black uppercase tracking-widest">Loading AI Configuration...</div>;
 
    return (
       <div className="space-y-6">
-         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-1">
-               <label className="text-[10px] font-bold text-gray-500 uppercase ml-1">Bot Identity Name</label>
-               <input
-                  value={formData.bot_name}
-                  onChange={e => setFormData({ ...formData, bot_name: e.target.value })}
-                  disabled={!isEditable}
-                  placeholder="e.g. Selam"
-                  className="w-full h-11 bg-black/40 border border-white/5 rounded-xl px-4 text-sm text-white focus:outline-none focus:border-primary/50"
-               />
-            </div>
-            <div className="space-y-1">
-               <label className="text-[10px] font-bold text-gray-500 uppercase ml-1">Tone & Personality</label>
-               <select
-                  value={formData.tone}
-                  onChange={e => setFormData({ ...formData, tone: e.target.value as any })}
-                  disabled={!isEditable}
-                  className="w-full h-11 bg-black/40 border border-white/5 rounded-xl px-4 text-sm text-white focus:outline-none focus:border-primary/50 appearance-none bg-no-repeat bg-[right_1rem_center]"
-                  style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='white'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundSize: '1em' }}
-               >
-                  <option value="friendly and casual">Friendly & Casual</option>
-                  <option value="professional">Professional</option>
-                  <option value="fun and witty">Fun & Witty</option>
-               </select>
-            </div>
+         {/* Info Banner */}
+         <div className="p-4 bg-primary/5 border border-primary/20 rounded-2xl">
+            <p className="text-[10px] text-primary/80 font-bold uppercase tracking-widest mb-1">Full Control Mode</p>
+            <p className="text-xs text-gray-400 leading-relaxed">
+               This is the <span className="text-white font-bold">complete instruction set</span> your customer chatbot follows. 
+               Edit it to change how the bot behaves, what it says, and how it uses tools like menu search, ordering, and payments.
+            </p>
          </div>
 
-         <div className="space-y-1">
-            <label className="text-[10px] font-bold text-gray-500 uppercase ml-1">Default Communication Language</label>
-            <select
-               value={formData.default_language}
-               onChange={e => setFormData({ ...formData, default_language: e.target.value as any })}
-               disabled={!isEditable}
-               className="w-full h-11 bg-black/40 border border-white/5 rounded-xl px-4 text-sm text-white focus:outline-none focus:border-primary/50 appearance-none bg-no-repeat bg-[right_1rem_center]"
-               style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='white'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundSize: '1em' }}
-            >
-               <option value="auto">Auto-Detect (Amharic/English)</option>
-               <option value="english">English Only</option>
-               <option value="amharic">Amharic (አማርኛ)</option>
-            </select>
-         </div>
-
-         <div className="space-y-1">
-            <div className="flex justify-between items-center mb-1">
-               <label className="text-[10px] font-bold text-gray-500 uppercase ml-1">System Instructions / Prompt</label>
-               <span className="text-[8px] font-black text-primary/40 uppercase tracking-tighter italic">Deep Intelligence Override</span>
+         {/* System Prompt Editor */}
+         <div className="space-y-2">
+            <div className="flex justify-between items-center">
+               <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">System Prompt</label>
+               <div className="flex items-center gap-3">
+                  <span className="text-[9px] text-gray-600 font-mono">{charCount} chars</span>
+                  {systemPrompt !== DEFAULT_PROMPT && (
+                     <button
+                        onClick={() => {
+                           setSystemPrompt(DEFAULT_PROMPT);
+                           setCharCount(DEFAULT_PROMPT.length);
+                        }}
+                        className="text-[9px] text-primary/60 hover:text-primary font-bold uppercase tracking-wider transition-colors"
+                     >
+                        Reset to Default
+                     </button>
+                  )}
+               </div>
             </div>
             <textarea
-               value={formData.system_prompt}
-               onChange={e => setFormData({ ...formData, system_prompt: e.target.value })}
+               value={systemPrompt}
+               onChange={e => {
+                  setSystemPrompt(e.target.value);
+                  setCharCount(e.target.value.length);
+               }}
                disabled={!isEditable}
-               rows={4}
-               placeholder="Describe how the bot should behave, restaurant rules, etc..."
-               className="w-full bg-black/40 border border-white/5 rounded-2xl p-4 text-xs text-zinc-300 focus:outline-none focus:border-primary/50 resize-none font-mono"
+               rows={16}
+               placeholder={DEFAULT_PROMPT}
+               className="w-full bg-black/60 border border-white/10 rounded-2xl p-5 text-xs text-gray-200 focus:outline-none focus:border-primary/40 focus:shadow-[0_0_30px_rgba(255,184,0,0.05)] resize-y font-mono leading-relaxed min-h-[300px] transition-all"
             />
+         </div>
+
+         {/* Available Tools Reference */}
+         <div className="p-4 bg-white/[0.02] border border-white/5 rounded-2xl">
+            <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-3">Available Tools (Reference)</p>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+               {['get_menu', 'place_order', 'update_order', 'get_order_status', 'verify_payment', 'get_branch_info', 'update_customer_profile'].map(tool => (
+                  <div key={tool} className="px-3 py-2 bg-black/40 border border-white/5 rounded-xl">
+                     <code className="text-[10px] text-emerald-400 font-mono">{tool}</code>
+                  </div>
+               ))}
+            </div>
+            <p className="text-[9px] text-gray-600 mt-3 leading-relaxed">
+               These tools are automatically available to the chatbot. Reference them in your prompt to control when and how the bot uses them.
+            </p>
          </div>
 
          {isEditable && (
@@ -757,11 +774,12 @@ const BotSettingsSection: React.FC<{ isEditable: boolean; organizationId?: strin
                className="w-full bg-primary text-black font-black uppercase tracking-tighter h-12 rounded-xl"
             >
                <RefreshCw className={cn("w-4 h-4 mr-2", isSaving && "animate-spin")} />
-               {isSaving ? 'Encrypting Logic...' : 'Synchronize Bot Settings'}
+               {isSaving ? 'Deploying...' : 'Deploy System Prompt'}
             </Button>
          )}
       </div>
    );
 };
+
 
 export default Settings;

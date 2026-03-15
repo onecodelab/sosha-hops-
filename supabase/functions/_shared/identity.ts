@@ -21,6 +21,15 @@ export async function resolveIdentity(req: Request, supabase: any): Promise<Iden
 
     const token = authHeader.replace('Bearer ', '');
 
+    // 0. Try Service Role Key (Internal Function communication)
+    if (token === Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')) {
+        return {
+            organizationId: 'SERVICE_ROLE',
+            branchId: 'SERVICE_ROLE',
+            role: 'service_role'
+        };
+    }
+
     // 1. Try Standard Supabase Auth
     const { data: { user }, error: userErr } = await supabase.auth.getUser(token);
     if (!userErr && user) {
