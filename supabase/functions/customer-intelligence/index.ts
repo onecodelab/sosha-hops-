@@ -146,39 +146,36 @@ const TOOL_DEFINITIONS = [
 ];
 
 // ─── DEFAULT SYSTEM PROMPT ───
-const DEFAULT_SYSTEM_PROMPT = `You are a smart, friendly restaurant assistant. You help customers browse the menu, place orders, track their food, and handle payments.
+const DEFAULT_SYSTEM_PROMPT = `You are a POLITE, PROFESSIONAL, AND HELPFUL restaurant assistant. Your goal is to make ordering fast, visual, and pleasant.
 
-## RICH UI CAPABILITIES
-You can trigger interactive UI elements by including a JSON block at the end of your response.
-Supported elements:
-- "buttons": Array of { label, prompt } (e.g., [{"label": "🍔 Main Dishes", "prompt": "Show me main dishes"}])
+## PROFESSIONALISM PROTOCOL
+1. **No Slang**: DO NOT use words like "YOOO", "bestie", "naurrr", or "slap". Maintain a respectful, warm, and professional tone at all times.
+2. **Never Hallucinate Menu Items**: If 'get_menu' returns empty or fails, politely inform the customer and suggest speaking to a waiter. DO NOT offer specific categories (like drinks or desserts) unless you have confirmed they exist.
+3. **Be Proactive**: Don't just wait; offer to show the menu or current specials immediately upon greeting.
+4. **Lead with Visuals**: For every greeting or menu query, you MUST return a 'metadata' block with 'buttons' and ideally trigger 'get_menu'.
+5. **Fast Checkout**: Once they add items, show a "🧾 View Bill" or "💳 Pay Now" button.
+
+## RICH UI SPECIFICATION (Include in your JSON block)
+Include a JSON block at the end of your response for metadata.
+- "buttons": Array of { label, prompt } (Pulsing 1-tap fast actions)
 - "tracking": { "status": "placed" | "preparing" | "ready" | "delivered" }
-- "pills": Array of strings (e.g., ["Burgers", "Pizza", "Drinks"])
-- "splitter": { "total": number } (Use when customer asks to split the bill)
-- "rating": { "type": "stars" } (Use after an order is delivered or meal finished)
+- "pills": Array of strings (Category filters based ONLY on the actual menu)
+- "splitter": { "total": number }
+- "rating": { "type": "stars" }
 
 Example:
-Here is our menu!
 \`\`\`json
 {
-  "buttons": [{"label": "🥤 Drinks", "prompt": "Show me drinks"}],
-  "pills": ["Main Dishes", "Desserts", "Specialty"]
+  "buttons": [{"label": "📖 Show Full Menu", "prompt": "Show me the menu"}],
+  "pills": ["Show All"]
 }
 \`\`\`
 
 ## YOUR RULES
-1. ALWAYS use the 'get_menu' tool when a customer asks about food, menu, or what's available. NEVER guess menu items.
-2. Check the CONTEXT below for the 'Table Number'. If it is 'Unknown', you MUST ask the customer for their table number before placing an order. If it is already known, do not ask; proceed with the known table number.
-3. When a customer shares their name, phone, or mentions any food preference or allergy, IMMEDIATELY call 'update_customer_profile' to remember it.
-4. If they want to add more items to an existing order, use 'update_order' instead of 'place_order'.
-5. When asked for the bill or how to pay, call 'get_branch_info' to get payment methods, then 'get_order_status' to get the total.
-6. When they share a payment reference number, call 'verify_payment'.
-7. Be warm, helpful, and concise. Use emojis sparingly but naturally.
-8. If the customer asks for the menu, fetch it and CLASSIFY items by their Category (e.g. Burger, Drinks, Mains, etc.).
-9. Format menu items clearly with names, prices (e.g. ETB 500) and descriptions.
-10. If you find multiple menu items, they will be displayed as a beautiful carousel to the user.
-11. Use 'search_knowledge' if the customer asks about things like 'Do you allow pets?', 'Is there parking?', or 'What is the history of this place?'.
-12. Always confirm the order before placing it.`;
+1. ALWAYS use the 'get_menu' tool for food/menu queries.
+2. If Table Number is 'Unknown', ask for it before placing an order.
+3. Be visual-first. Format menu items clearly with prices.
+4. Support Amharic and Arabic if you detect the script.`;
 
 // ─── MCP TOOL EXECUTOR ───
 async function executeMcpTool(
@@ -333,13 +330,17 @@ serve(async (req) => {
         try {
             const { data: historyData } = await supabase
                 .from("customer_chats")
-                .select("role, content")
+                .select("role, content, metadata")
                 .eq("session_id", session_id)
                 .order("created_at", { ascending: false })
                 .limit(20);
 
             if (historyData) {
-                history = historyData.reverse();
+                // Map history and include metadata text for LLM context
+                history = historyData.reverse().map(h => ({
+                    role: h.role,
+                    content: h.role === 'assistant' && h.metadata ? `${h.content}\n[UI_CONTEXT: ${JSON.stringify(h.metadata)}]` : h.content
+                }));
             }
         } catch (e) {
             console.warn("[CustomerAgent] History load failed:", e);
@@ -350,6 +351,20 @@ serve(async (req) => {
             ...history,
             { role: "user", content: message },
         ];
+
+        // ── PROACTIVE GREETING TRIGGER ──
+        const isGreeting = (msg: string) => {
+            const lower = msg.toLowerCase().trim();
+            const greetings = ['hey', 'hello', 'hi', 'start', 'menu', 'hola', 'yo'];
+            return greetings.includes(lower) || lower.length < 3;
+        };
+
+        if (history.length <= 1 && isGreeting(message)) {
+            messages.push({ 
+                role: "system", 
+                content: "CRITICAL: First interaction. You MUST be proactive. CALL 'get_menu' NOW to show the menu. Also provide buttons for 'View Full Menu'." 
+            });
+        }
 
         // ── STEP 4: Agentic Reasoning Loop ──
         const openRouterKey = Deno.env.get("OPENROUTER_API_KEY");
@@ -501,35 +516,55 @@ serve(async (req) => {
         // ── STEP 5: Extract Metadata & Cleanup Response ──
         let richMetadata: any = {};
 
-        // Extract JSON from response if present
-        const jsonMatch = finalResponse.match(/```json\n([\s\S]*?)\n```/) || finalResponse.match(/{[\s\S]*?}/);
+        // Robust JSON Extraction
+        const jsonRegex = /```json\s*(\{[\s\S]*?\})\s*```|(\{[\s\S]*?\"(buttons|tracking|pills|splitter|rating)\"[\s\S]*?\})/;
+        const jsonMatch = finalResponse.match(jsonRegex);
+        
         if (jsonMatch) {
             try {
-                const extracted = JSON.parse(jsonMatch[1] || jsonMatch[0]);
+                const jsonStr = jsonMatch[1] || jsonMatch[0];
+                const extracted = JSON.parse(jsonStr);
                 richMetadata = { ...extracted };
-                // Remove JSON from final text display
+                // Remove JSON from text
                 finalResponse = finalResponse.replace(jsonMatch[0], "").trim();
             } catch (e) {
                 console.warn("[CustomerAgent] Metadata parse failed:", e);
             }
         }
 
-        // Auto-Injection Fallbacks
+        // ── PROACTIVE FALLBACKS ──
         if (!richMetadata.buttons && !richMetadata.tracking) {
             const lowerResp = finalResponse.toLowerCase();
-            if (lowerResp.includes("menu") || lowerResp.includes("welcome")) {
+            if (attachments?.type === 'menu' || lowerResp.includes("menu") || lowerResp.includes("welcome")) {
                 richMetadata.buttons = [
-                    { label: "🍔 Main Dishes", prompt: "Show me the main dishes" },
-                    { label: "🥤 Drinks", prompt: "Show me the drinks menu" }
+                    { label: "📖 View Full Menu", prompt: "Show me the entire menu" },
+                    { label: "🥘 Chef's Specials", prompt: "What do you recommend?" }
                 ];
-            } else if (lowerResp.includes("order") && lowerResp.includes("status")) {
+            } else if (lowerResp.includes("order") || lowerResp.includes("status")) {
                 richMetadata.buttons = [
-                    { label: "📍 Track Order", prompt: "Check my order status" }
+                    { label: "📍 Track Order", prompt: "Check my order status" },
+                    { label: "➕ Add More", prompt: "I want to add more food" }
+                ];
+            } else if (lowerResp.includes("bill") || lowerResp.includes("pay")) {
+                richMetadata.buttons = [
+                    { label: "➗ Split Bill", prompt: "How can I split the bill?" },
+                    { label: "💳 Pay Total", prompt: "I want to pay the bill" }
+                ];
+            } else {
+                 // Universal Proactive Buttons
+                 richMetadata.buttons = [
+                    { label: "📖 View Menu", prompt: "Show me the menu" },
+                    { label: "🥘 Chef's Specials", prompt: "What do you recommend?" }
                 ];
             }
         }
 
-        // Merge with tool attachments (like menu items)
+        // Ensure finalResponse is never empty
+        if (!finalResponse.trim()) {
+            finalResponse = attachments ? "I've pulled up the menu for you below!" : "How can I assist you with your order today?";
+        }
+
+        // Merge with tool attachments
         if (attachments) {
             richMetadata.attachments = attachments;
         }
@@ -557,7 +592,11 @@ serve(async (req) => {
             console.error("[CustomerAgent] History save failed:", e);
         }
 
-        return new Response(JSON.stringify({ text: finalResponse, metadata: richMetadata }), {
+        return new Response(JSON.stringify({ 
+            text: finalResponse, 
+            response: finalResponse, // Backward compatibility
+            metadata: richMetadata 
+        }), {
             headers: { ...corsHeaders, "Content-Type": "application/json" },
             status: 200,
         });
