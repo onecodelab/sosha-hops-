@@ -3,7 +3,8 @@ import { useParams, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     Send, Loader2, UtensilsCrossed, ArrowUp, ShoppingBag,
-    Receipt, CreditCard, MessageCircle, Sparkles, X, ChevronDown
+    Receipt, CreditCard, MessageCircle, Sparkles, X, ChevronDown,
+    CheckCircle2, Timer, ChefHat, PackageCheck, Star, Users
 } from 'lucide-react';
 import { cn, showToast } from '../components/ui';
 import { supabase } from '../supabase';
@@ -17,6 +18,13 @@ interface ChatMessage {
     attachments?: {
         type: 'menu';
         data: any[];
+    };
+    metadata?: {
+        buttons?: { label: string; prompt: string }[];
+        tracking?: { status: 'placed' | 'preparing' | 'ready' | 'delivered' };
+        pills?: string[];
+        splitter?: { total: number };
+        rating?: { type: 'stars' };
     };
 }
 
@@ -133,6 +141,164 @@ const MenuCarousel: React.FC<{ items: MenuItem[]; onSelect: (name: string) => vo
     );
 };
 
+/* ─── RICH UI COMPONENTS ─── */
+const ActionButtons: React.FC<{ buttons: { label: string; prompt: string }[]; onAction: (p: string) => void }> = ({ buttons, onAction }) => (
+    <div className="flex flex-wrap gap-2 mt-3">
+        {buttons.map((btn, i) => (
+            <motion.button
+                key={i}
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => onAction(btn.prompt)}
+                className="px-4 py-2 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-bold hover:bg-emerald-500/20 transition-all animate-pulse"
+                style={{ animationDuration: '3s' }}
+            >
+                {btn.label}
+            </motion.button>
+        ))}
+    </div>
+);
+
+const TrackingWidget: React.FC<{ status: 'placed' | 'preparing' | 'ready' | 'delivered' }> = ({ status }) => {
+    const stages = [
+        { key: 'placed', label: 'Placed', icon: <Timer className="w-4 h-4" /> },
+        { key: 'preparing', label: 'Preparing', icon: <ChefHat className="w-4 h-4" /> },
+        { key: 'ready', label: 'Ready', icon: <CheckCircle2 className="w-4 h-4" /> },
+        { key: 'delivered', label: 'Delivered', icon: <PackageCheck className="w-4 h-4" /> },
+    ];
+
+    const currentIndex = stages.findIndex(s => s.key === status);
+
+    return (
+        <div className="mt-4 p-4 rounded-2xl bg-[#111] border border-white/[0.08] w-full max-w-sm">
+            <div className="flex justify-between items-center mb-6">
+                <span className="text-[10px] font-black uppercase tracking-widest text-emerald-500">Order Status</span>
+                <span className="text-[10px] font-mono text-gray-500">Ref: #ORD-9281</span>
+            </div>
+
+            <div className="relative flex justify-between">
+                {/* Progress Line */}
+                <div className="absolute top-4 left-0 w-full h-[2px] bg-white/5 z-0" />
+                <div
+                    className="absolute top-4 left-0 h-[2px] bg-emerald-500 z-0 transition-all duration-1000"
+                    style={{ width: `${(currentIndex / (stages.length - 1)) * 100}%` }}
+                />
+
+                {stages.map((stage, i) => {
+                    const isActive = i <= currentIndex;
+                    const isCurrent = i === currentIndex;
+                    return (
+                        <div key={stage.key} className="relative z-10 flex flex-col items-center gap-2">
+                            <div className={cn(
+                                "w-8 h-8 rounded-full flex items-center justify-center transition-all duration-500",
+                                isCurrent ? "bg-emerald-500 text-black scale-110 shadow-[0_0_15px_rgba(16,185,129,0.4)]" :
+                                isActive ? "bg-emerald-500/20 text-emerald-400" : "bg-[#1a1a1a] text-gray-600"
+                            )}>
+                                {stage.icon}
+                            </div>
+                            <span className={cn(
+                                "text-[8px] font-bold uppercase tracking-tighter transition-colors",
+                                isActive ? "text-white" : "text-gray-600"
+                            )}>
+                                {stage.label}
+                            </span>
+                        </div>
+                    );
+                })}
+            </div>
+        </div>
+    );
+};
+
+const CategoryPills: React.FC<{ pills: string[]; onSelect: (p: string) => void }> = ({ pills, onSelect }) => (
+    <div className="flex gap-2 mt-3 overflow-x-auto no-scrollbar pb-1">
+        {pills.map((pill, i) => (
+            <button
+                key={i}
+                onClick={() => onSelect(`Show me ${pill}`)}
+                className="flex-none px-3 py-1 rounded-md bg-white/5 border border-white/10 text-[10px] font-mono uppercase tracking-widest text-gray-400 hover:text-white hover:border-white/30 transition-all"
+            >
+                {pill}
+            </button>
+        ))}
+    </div>
+);
+
+const BillSplitter: React.FC<{ total: number }> = ({ total }) => {
+    const [people, setPeople] = useState(2);
+    return (
+        <div className="mt-4 p-5 rounded-3xl bg-gradient-to-br from-amber-500/10 to-amber-600/5 border border-amber-500/20 w-full max-w-xs">
+            <div className="flex items-center gap-2 mb-4">
+                <Users className="w-4 h-4 text-amber-500" />
+                <span className="text-[10px] font-black uppercase tracking-widest text-amber-500">Bill Splitter</span>
+            </div>
+
+            <div className="space-y-4">
+                <div className="flex justify-between items-end">
+                    <div>
+                        <p className="text-[10px] text-gray-500 uppercase mb-1">Total Bill</p>
+                        <p className="text-xl font-bold">ETB {total.toLocaleString()}</p>
+                    </div>
+                    <div className="text-right">
+                        <p className="text-[10px] text-gray-500 uppercase mb-1">Each Pays</p>
+                        <p className="text-xl font-bold text-amber-500">ETB {Math.round(total / people).toLocaleString()}</p>
+                    </div>
+                </div>
+
+                <div className="pt-4 border-t border-white/5">
+                    <div className="flex justify-between items-center mb-2">
+                        <span className="text-xs text-gray-400">Number of People</span>
+                        <span className="text-lg font-bold text-white">{people}</span>
+                    </div>
+                    <input
+                        type="range" min="2" max="12" step="1"
+                        value={people} onChange={(e) => setPeople(parseInt(e.target.value))}
+                        className="w-full accent-amber-500 bg-white/10 rounded-lg appearance-none h-1.5"
+                    />
+                </div>
+            </div>
+        </div>
+    );
+};
+
+const StarRating: React.FC = () => {
+    const [rating, setRating] = useState(0);
+    const [hover, setHover] = useState(0);
+    const [submitted, setSubmitted] = useState(false);
+
+    if (submitted) return (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mt-3 text-xs text-emerald-400 font-bold flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4" /> Thanks for your feedback!
+        </motion.div>
+    );
+
+    return (
+        <div className="mt-4 p-4 rounded-2xl bg-[#111] border border-white/[0.08] inline-block">
+            <p className="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-3 text-center">Rate your experience</p>
+            <div className="flex gap-2">
+                {[1, 2, 3, 4, 5].map((star) => (
+                    <button
+                        key={star}
+                        onMouseEnter={() => setHover(star)}
+                        onMouseLeave={() => setHover(0)}
+                        onClick={() => { setRating(star); setTimeout(() => setSubmitted(true), 1000); }}
+                        className="transition-transform active:scale-90"
+                    >
+                        <Star
+                            className={cn(
+                                "w-6 h-6 transition-colors",
+                                (hover || rating) >= star ? "fill-amber-500 text-amber-500" : "text-gray-700"
+                            )}
+                        />
+                    </button>
+                ))}
+            </div>
+        </div>
+    );
+};
+
 /* ─── MESSAGE BUBBLE ─── */
 const MessageBubble: React.FC<{ msg: ChatMessage; onQuickAction: (p: string) => void }> = ({ msg, onQuickAction }) => {
     const isUser = msg.role === 'user';
@@ -165,6 +331,12 @@ const MessageBubble: React.FC<{ msg: ChatMessage; onQuickAction: (p: string) => 
                         : "bg-[#1a1a1a] text-gray-200 rounded-tl-md border border-white/[0.06]"
                 )}>
                     <div className="whitespace-pre-wrap">{msg.content}</div>
+
+                    {/* Inline Pills */}
+                    {msg.metadata?.pills && (
+                        <CategoryPills pills={msg.metadata.pills} onSelect={onQuickAction} />
+                    )}
+
                     <p className={cn(
                         "text-[9px] mt-1.5 opacity-50",
                         isUser ? "text-black/60 text-right" : "text-gray-500"
@@ -174,9 +346,27 @@ const MessageBubble: React.FC<{ msg: ChatMessage; onQuickAction: (p: string) => 
                 </div>
             </motion.div>
 
+            {/* Rich Metadata Section */}
+            {!isUser && msg.metadata && (
+                <div className="w-full max-w-[90%] pl-9 space-y-2">
+                    {msg.metadata.tracking && (
+                        <TrackingWidget status={msg.metadata.tracking.status} />
+                    )}
+                    {msg.metadata.splitter && (
+                        <BillSplitter total={msg.metadata.splitter.total} />
+                    )}
+                    {msg.metadata.rating && (
+                        <StarRating />
+                    )}
+                    {msg.metadata.buttons && (
+                        <ActionButtons buttons={msg.metadata.buttons} onAction={onQuickAction} />
+                    )}
+                </div>
+            )}
+
             {/* Attachments Section */}
             {msg.attachments?.type === 'menu' && (
-                <div className="w-full max-w-[95%]">
+                <div className="w-full max-w-[95%] pl-9">
                     <MenuCarousel items={msg.attachments.data} onSelect={onQuickAction} />
                 </div>
             )}
@@ -236,6 +426,8 @@ const CustomerChatPage: React.FC = () => {
                             role: m.role as any,
                             content: m.content,
                             timestamp: new Date(m.created_at),
+                            metadata: m.metadata,
+                            attachments: m.metadata?.attachments
                         }));
                     setMessages(mapped);
                     setHasInteracted(true);
@@ -297,7 +489,8 @@ const CustomerChatPage: React.FC = () => {
                 role: 'assistant',
                 content: responseText,
                 timestamp: new Date(),
-                attachments: data?.attachments
+                metadata: data?.metadata,
+                attachments: data?.metadata?.attachments
             };
             setMessages(prev => [...prev, assistantMsg]);
         } catch (err: any) {

@@ -148,6 +148,24 @@ const TOOL_DEFINITIONS = [
 // ─── DEFAULT SYSTEM PROMPT ───
 const DEFAULT_SYSTEM_PROMPT = `You are a smart, friendly restaurant assistant. You help customers browse the menu, place orders, track their food, and handle payments.
 
+## RICH UI CAPABILITIES
+You can trigger interactive UI elements by including a JSON block at the end of your response.
+Supported elements:
+- "buttons": Array of { label, prompt } (e.g., [{"label": "🍔 Main Dishes", "prompt": "Show me main dishes"}])
+- "tracking": { "status": "placed" | "preparing" | "ready" | "delivered" }
+- "pills": Array of strings (e.g., ["Burgers", "Pizza", "Drinks"])
+- "splitter": { "total": number } (Use when customer asks to split the bill)
+- "rating": { "type": "stars" } (Use after an order is delivered or meal finished)
+
+Example:
+Here is our menu!
+\`\`\`json
+{
+  "buttons": [{"label": "🥤 Drinks", "prompt": "Show me drinks"}],
+  "pills": ["Main Dishes", "Desserts", "Specialty"]
+}
+\`\`\`
+
 ## YOUR RULES
 1. ALWAYS use the 'get_menu' tool when a customer asks about food, menu, or what's available. NEVER guess menu items.
 2. Check the CONTEXT below for the 'Table Number'. If it is 'Unknown', you MUST ask the customer for their table number before placing an order. If it is already known, do not ask; proceed with the known table number.
@@ -480,15 +498,66 @@ serve(async (req) => {
             break;
         }
 
-        // ── STEP 5: Save History ──
+        // ── STEP 5: Extract Metadata & Cleanup Response ──
+        let richMetadata: any = {};
+
+        // Extract JSON from response if present
+        const jsonMatch = finalResponse.match(/```json\n([\s\S]*?)\n```/) || finalResponse.match(/{[\s\S]*?}/);
+        if (jsonMatch) {
+            try {
+                const extracted = JSON.parse(jsonMatch[1] || jsonMatch[0]);
+                richMetadata = { ...extracted };
+                // Remove JSON from final text display
+                finalResponse = finalResponse.replace(jsonMatch[0], "").trim();
+            } catch (e) {
+                console.warn("[CustomerAgent] Metadata parse failed:", e);
+            }
+        }
+
+        // Auto-Injection Fallbacks
+        if (!richMetadata.buttons && !richMetadata.tracking) {
+            const lowerResp = finalResponse.toLowerCase();
+            if (lowerResp.includes("menu") || lowerResp.includes("welcome")) {
+                richMetadata.buttons = [
+                    { label: "🍔 Main Dishes", prompt: "Show me the main dishes" },
+                    { label: "🥤 Drinks", prompt: "Show me the drinks menu" }
+                ];
+            } else if (lowerResp.includes("order") && lowerResp.includes("status")) {
+                richMetadata.buttons = [
+                    { label: "📍 Track Order", prompt: "Check my order status" }
+                ];
+            }
+        }
+
+        // Merge with tool attachments (like menu items)
+        if (attachments) {
+            richMetadata.attachments = attachments;
+        }
+
+        // ── STEP 6: Save History ──
         try {
             await supabase.from("customer_chats").insert([
-                { session_id, organization_id: organizationId, branch_id: branchId, role: "user", content: message },
-                { session_id, organization_id: organizationId, branch_id: branchId, role: "assistant", content: finalResponse },
+                {
+                    session_id,
+                    organization_id: organizationId,
+                    branch_id: branchId,
+                    role: "user",
+                    content: message
+                },
+                {
+                    session_id,
+                    organization_id: organizationId,
+                    branch_id: branchId,
+                    role: "assistant",
+                    content: finalResponse,
+                    metadata: richMetadata
+                },
             ]);
-        } catch {}
+        } catch (e) {
+            console.error("[CustomerAgent] History save failed:", e);
+        }
 
-        return new Response(JSON.stringify({ text: finalResponse, attachments }), {
+        return new Response(JSON.stringify({ text: finalResponse, metadata: richMetadata }), {
             headers: { ...corsHeaders, "Content-Type": "application/json" },
             status: 200,
         });
