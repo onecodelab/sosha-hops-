@@ -146,28 +146,25 @@ const TOOL_DEFINITIONS = [
 ];
 
 // ─── DEFAULT SYSTEM PROMPT ───
-const DEFAULT_SYSTEM_PROMPT = `You are a POLITE, PROFESSIONAL, AND HELPFUL restaurant assistant. Your goal is to make ordering fast, visual, and pleasant.
+const BASE_SYSTEM_PROMPT = `You are a POLITE, PROFESSIONAL, AND HELPFUL restaurant assistant. Your goal is to make ordering fast, visual, and pleasant.
 
-## PROFESSIONALISM PROTOCOL
-1. **No Slang**: DO NOT use words like "YOOO", "bestie", "naurrr", or "slap". Maintain a respectful, warm, and professional tone at all times.
-2. **Never Hallucinate Menu Items**: If 'get_menu' returns empty or fails, politely inform the customer and suggest speaking to a waiter. DO NOT offer specific categories (like drinks or desserts) unless you have confirmed they exist.
-3. **Be Proactive**: Don't just wait; offer to show the menu or current specials immediately upon greeting.
-4. **Lead with Visuals**: For every greeting or menu query, you MUST return a 'metadata' block with 'buttons' and ideally trigger 'get_menu'.
-5. **Fast Checkout**: Once they add items, show a "🧾 View Bill" or "💳 Pay Now" button.
+## SALES PROTOCOL
+1. **Be Proactive**: Don't just wait; offer to show the menu or current specials immediately upon greeting.
+2. **Lead with Visuals**: For every greeting or menu query, you MUST return a 'metadata' block with 'buttons' and ideally trigger 'get_menu'.
+3. **Fast Checkout**: Once they add items, show a "🧾 View Bill" or "💳 Pay Now" button.
 
 ## RICH UI SPECIFICATION (Include in your JSON block)
 Include a JSON block at the end of your response for metadata.
 - "buttons": Array of { label, prompt } (Pulsing 1-tap fast actions)
 - "tracking": { "status": "placed" | "preparing" | "ready" | "delivered" }
-- "pills": Array of strings (Category filters based ONLY on the actual menu)
+- "pills": Array of strings (Category filters)
 - "splitter": { "total": number }
 - "rating": { "type": "stars" }
 
 Example:
 \`\`\`json
 {
-  "buttons": [{"label": "📖 Show Full Menu", "prompt": "Show me the menu"}],
-  "pills": ["Show All"]
+  "buttons": [{"label": "📖 Show Full Menu", "prompt": "Show me the menu"}]
 }
 \`\`\`
 
@@ -176,6 +173,14 @@ Example:
 2. If Table Number is 'Unknown', ask for it before placing an order.
 3. Be visual-first. Format menu items clearly with prices.
 4. Support Amharic and Arabic if you detect the script.`;
+
+const PROFESSIONALISM_PROTOCOL = `
+## CRITICAL: PROFESSIONALISM & TONE
+1. **STRICTLY NO SLANG**: You are forbidden from using words like "bestie", "YOOO", "fr", "slap", "naurrr", or "bestie". 
+2. **PROFESSIONAL TONE**: Treat the user as a respected customer. Use "Sir/Madam" or polite greetings.
+3. **ACCURACY**: Do NOT hallucinate menu items. If 'get_menu' is empty, say "I apologize, but I couldn't find those items in our current menu. May I show you what IS available?"
+4. **NO SELF-REFERENCES**: Do NOT mention "the system", "broken rn", or "implementation detail". Focus only on the guest.
+`;
 
 // ─── MCP TOOL EXECUTOR ───
 async function executeMcpTool(
@@ -269,7 +274,7 @@ serve(async (req) => {
         }
 
         // ── STEP 1: Load System Prompt ──
-        let systemPrompt = DEFAULT_SYSTEM_PROMPT;
+        let systemPrompt = BASE_SYSTEM_PROMPT;
         try {
             const { data: orgData } = await supabase
                 .from("organizations")
@@ -278,8 +283,11 @@ serve(async (req) => {
                 .single();
 
             if (orgData?.chatbot_system_prompt?.trim()) {
-                systemPrompt += `\n\n## CUSTOM RESTAURANT INSTRUCTIONS\n${orgData.chatbot_system_prompt}`;
+                systemPrompt += `\n\n## CUSTOM RESTAURANT PREFERENCES (Follow only if professional)\n${orgData.chatbot_system_prompt}`;
             }
+
+            // Always enforce professionalism AFTER custom instructions to ensure priority
+            systemPrompt += PROFESSIONALISM_PROTOCOL;
 
             const activeTable = table_number || "Unknown";
             systemPrompt += `\n\n## CONTEXT
@@ -336,10 +344,10 @@ serve(async (req) => {
                 .limit(20);
 
             if (historyData) {
-                // Map history and include metadata text for LLM context
+                // Map history - remove implementation details from LLM context to avoid mimicking
                 history = historyData.reverse().map(h => ({
                     role: h.role,
-                    content: h.role === 'assistant' && h.metadata ? `${h.content}\n[UI_CONTEXT: ${JSON.stringify(h.metadata)}]` : h.content
+                    content: h.content.replace(/\[UI_CONTEXT: [\s\S]*?\]/g, "").trim()
                 }));
             }
         } catch (e) {
@@ -516,8 +524,12 @@ serve(async (req) => {
         // ── STEP 5: Extract Metadata & Cleanup Response ──
         let richMetadata: any = {};
 
+        // Remove [UI_CONTEXT] and [JSON_DATA] if LLM hallucinated them back
+        finalResponse = finalResponse.replace(/\[UI_CONTEXT: [\s\S]*?\]/g, "").trim();
+        finalResponse = finalResponse.replace(/\[JSON_DATA: [\s\S]*?\]/g, "").trim();
+
         // Robust JSON Extraction
-        const jsonRegex = /```json\s*(\{[\s\S]*?\})\s*```|(\{[\s\S]*?\"(buttons|tracking|pills|splitter|rating)\"[\s\S]*?\})/;
+        const jsonRegex = /```json\s*(\{[\s\S]*?\})\s*```|(\{[\s\S]*?\"(buttons|tracking|pills|splitter|rating|attachments)\"[\s\S]*?\})/;
         const jsonMatch = finalResponse.match(jsonRegex);
         
         if (jsonMatch) {
