@@ -1,6 +1,10 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MessageCircle, X, Send, Loader2, Sparkles, ArrowUp, UtensilsCrossed, TrendingUp, DollarSign } from 'lucide-react';
+import {
+    MessageCircle, X, Send, Loader2, Sparkles, ArrowUp,
+    UtensilsCrossed, TrendingUp, DollarSign, Timer, ChefHat,
+    CheckCircle2, PackageCheck, Users, Star
+} from 'lucide-react';
 import { cn } from './ui';
 import { DisplayCards } from './ui/display-cards';
 import { supabase } from '../supabase';
@@ -12,6 +16,17 @@ interface ChatMessage {
     role: 'user' | 'assistant';
     content: string;
     timestamp: Date;
+    metadata?: {
+        buttons?: { label: string; prompt: string }[];
+        tracking?: { status: 'placed' | 'preparing' | 'ready' | 'delivered' };
+        pills?: string[];
+        splitter?: { total: number };
+        rating?: { type: 'stars' };
+    };
+    attachments?: {
+        type: 'menu';
+        data: any[];
+    };
 }
 
 const getSessionId = (): string => {
@@ -22,6 +37,107 @@ const getSessionId = (): string => {
         localStorage.setItem(key, sid);
     }
     return sid;
+};
+
+/* ─── RICH UI COMPONENTS (Mirrored from CustomerChatPage) ─── */
+const ActionButtons: React.FC<{ buttons: { label: string; prompt: string }[]; onAction: (p: string) => void }> = ({ buttons, onAction }) => (
+    <div className="flex flex-wrap gap-2 mt-2">
+        {buttons.map((btn, i) => (
+            <motion.button
+                key={i}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.1 }}
+                whileHover={{ scale: 1.05, backgroundColor: "rgba(16, 185, 129, 0.15)" }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => onAction(btn.prompt)}
+                className="px-4 py-2 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] font-black uppercase tracking-wider hover:border-emerald-500/40 transition-all flex items-center gap-2 shadow-lg group relative overflow-hidden"
+            >
+                <div className="absolute inset-0 bg-emerald-500/5 animate-pulse" style={{ animationDuration: '2s' }} />
+                <span className="relative z-10">{btn.label}</span>
+                <Sparkles className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+            </motion.button>
+        ))}
+    </div>
+);
+
+const TrackingWidget: React.FC<{ status: 'placed' | 'preparing' | 'ready' | 'delivered' }> = ({ status }) => {
+    const stages = [
+        { key: 'placed', label: 'Placed', icon: <Timer className="w-3 h-3" /> },
+        { key: 'preparing', label: 'Prep', icon: <ChefHat className="w-3 h-3" /> },
+        { key: 'ready', label: 'Ready', icon: <CheckCircle2 className="w-3 h-3" /> },
+        { key: 'delivered', label: 'Done', icon: <PackageCheck className="w-3 h-3" /> },
+    ];
+    const currentIndex = stages.findIndex(s => s.key === status);
+
+    return (
+        <div className="mt-2 p-3 rounded-xl bg-white/5 border border-white/[0.08] w-full">
+            <div className="flex justify-between items-center mb-4">
+                <span className="text-[9px] font-black uppercase tracking-widest text-emerald-500">Live Status</span>
+            </div>
+            <div className="relative flex justify-between">
+                <div className="absolute top-3 left-0 w-full h-[1px] bg-white/5" />
+                <div className="absolute top-3 left-0 h-[1px] bg-emerald-500 transition-all duration-1000" style={{ width: `${(currentIndex / (stages.length - 1)) * 100}%` }} />
+                {stages.map((stage, i) => (
+                    <div key={stage.key} className="relative z-10 flex flex-col items-center gap-1">
+                        <div className={cn(
+                            "w-6 h-6 rounded-full flex items-center justify-center transition-all",
+                            i === currentIndex ? "bg-emerald-500 text-black scale-110 shadow-[0_0_10px_rgba(16,185,129,0.4)]" :
+                            i < currentIndex ? "bg-emerald-500/20 text-emerald-400" : "bg-[#1a1a1a] text-gray-600"
+                        )}>
+                            {stage.icon}
+                        </div>
+                        <span className={cn("text-[7px] font-bold uppercase", i <= currentIndex ? "text-white" : "text-gray-600")}>{stage.label}</span>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+};
+
+const BillSplitter: React.FC<{ total: number }> = ({ total }) => {
+    const [people, setPeople] = useState(2);
+    return (
+        <div className="mt-2 p-3 rounded-xl bg-amber-500/5 border border-amber-500/10 w-full">
+            <div className="flex items-center gap-2 mb-2">
+                <Users className="w-3 h-3 text-amber-500" />
+                <span className="text-[9px] font-black uppercase tracking-widest text-amber-500">Splitter</span>
+            </div>
+            <div className="flex justify-between items-end mb-3">
+                <div>
+                    <p className="text-[8px] text-gray-500 uppercase">Total</p>
+                    <p className="text-sm font-bold">ETB {total.toLocaleString()}</p>
+                </div>
+                <div className="text-right">
+                    <p className="text-[8px] text-gray-500 uppercase">Each</p>
+                    <p className="text-sm font-bold text-amber-500">ETB {Math.round(total / people).toLocaleString()}</p>
+                </div>
+            </div>
+            <input
+                type="range" min="2" max="10"
+                value={people} onChange={(e) => setPeople(parseInt(e.target.value))}
+                className="w-full accent-amber-500 bg-white/10 rounded-lg appearance-none h-1"
+            />
+        </div>
+    );
+};
+
+const StarRating: React.FC = () => {
+    const [rating, setRating] = useState(0);
+    const [submitted, setSubmitted] = useState(false);
+    if (submitted) return <div className="mt-2 text-[10px] text-emerald-400 font-bold">Thanks for rating!</div>;
+
+    return (
+        <div className="mt-2 p-3 rounded-xl bg-white/5 border border-white/[0.08] inline-block">
+            <div className="flex gap-1.5">
+                {[1, 2, 3, 4, 5].map((s) => (
+                    <button key={s} onClick={() => { setRating(s); setTimeout(() => setSubmitted(true), 800); }}>
+                        <Star className={cn("w-4 h-4 transition-colors", rating >= s ? "fill-amber-500 text-amber-500" : "text-gray-700")} />
+                    </button>
+                ))}
+            </div>
+        </div>
+    );
 };
 
 export const ChatWidget: React.FC = () => {
@@ -78,6 +194,8 @@ export const ChatWidget: React.FC = () => {
                         role: m.role,
                         content: m.content,
                         timestamp: new Date(m.created_at),
+                        metadata: m.metadata,
+                        attachments: m.metadata?.attachments
                     })));
                 }
             } catch (e) {
@@ -119,6 +237,8 @@ export const ChatWidget: React.FC = () => {
                 role: 'assistant',
                 content: data?.text || '⚠️ No response.',
                 timestamp: new Date(),
+                metadata: data?.metadata,
+                attachments: data?.metadata?.attachments
             };
             setMessages(prev => [...prev, assistantMsg]);
         } catch (err: any) {
@@ -179,19 +299,40 @@ export const ChatWidget: React.FC = () => {
                         {/* Messages */}
                         <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-3">
                             {messages.length === 0 && (
-                                <div className="h-full flex flex-col items-center justify-center text-center">
-                                    <div className="mb-8 opacity-20 hover:opacity-100 transition-opacity">
+                                <div className="h-full flex flex-col items-center justify-center text-center py-10">
+                                    <div className="mb-12 scale-[0.85] md:scale-90 transition-transform hover:scale-100 duration-700">
                                         <DisplayCards
                                             cards={[
-                                                { title: "Featured Dish", description: "Try our Signature Burger", icon: "trending-up" },
-                                                { title: "Special Offer", description: "20% off all drinks today", icon: "dollar-sign" },
-                                                { title: "Freshly Made", description: "Our chef's daily special", icon: <UtensilsCrossed className="size-4" /> }
+                                                {
+                                                    title: "Featured Dish",
+                                                    description: "Chef's Signature Burger",
+                                                    icon: "trending-up",
+                                                    date: "Hot 🔥"
+                                                },
+                                                {
+                                                    title: "Special Offer",
+                                                    description: "20% off all drinks today",
+                                                    icon: "dollar-sign",
+                                                    date: "Limited Time"
+                                                },
+                                                {
+                                                    title: "Fast Tracking",
+                                                    description: "Real-time order status",
+                                                    icon: <Sparkles className="size-4 text-emerald-500" />,
+                                                    date: "Live"
+                                                }
                                             ]}
                                         />
                                     </div>
-                                    <Sparkles className="w-8 h-8 text-emerald-500/50 mb-3" />
-                                    <p className="text-xs text-gray-500 max-w-[200px] opacity-50">
-                                        Hi! Ask me about our menu, place an order, or get your bill.
+                                    <div className="relative">
+                                        <div className="absolute inset-0 bg-emerald-500/10 blur-xl rounded-full" />
+                                        <Sparkles className="w-8 h-8 text-emerald-500 mb-3 relative z-10 animate-pulse" />
+                                    </div>
+                                    <p className="text-[11px] font-black uppercase tracking-[0.2em] text-emerald-500/60 mb-1">
+                                        Baro AI Assistant
+                                    </p>
+                                    <p className="text-xs text-gray-500 max-w-[240px] leading-relaxed">
+                                        Hi! I can help you browse the menu, track orders, or handle your bill in real-time.
                                     </p>
                                 </div>
                             )}
@@ -200,18 +341,32 @@ export const ChatWidget: React.FC = () => {
                                 <div
                                     key={msg.id}
                                     className={cn(
-                                        "flex gap-2 max-w-[85%]",
-                                        msg.role === 'user' ? "ml-auto flex-row-reverse" : ""
+                                        "flex flex-col gap-2",
+                                        msg.role === 'user' ? "items-end" : "items-start"
                                     )}
                                 >
                                     <div className={cn(
-                                        "px-3 py-2 rounded-xl text-xs leading-relaxed",
-                                        msg.role === 'user'
-                                            ? "bg-amber-500 text-black rounded-tr-sm"
-                                            : "bg-[#1a1a1a] text-gray-300 rounded-tl-sm border border-white/[0.06]"
+                                        "flex gap-2 max-w-[88%]",
+                                        msg.role === 'user' ? "flex-row-reverse" : ""
                                     )}>
-                                        <div className="whitespace-pre-wrap">{msg.content}</div>
+                                        <div className={cn(
+                                            "px-4 py-3 rounded-2xl text-[13px] leading-relaxed shadow-lg",
+                                            msg.role === 'user'
+                                                ? "bg-gradient-to-br from-amber-400 to-amber-600 text-black rounded-tr-md font-medium"
+                                                : "bg-[#1a1a1a] text-gray-200 rounded-tl-md border border-white/[0.08]"
+                                        )}>
+                                            <div className="whitespace-pre-wrap">{msg.content}</div>
+                                        </div>
                                     </div>
+
+                                    {! (msg.role === 'user') && msg.metadata && (
+                                        <div className="w-full pl-2 space-y-1">
+                                            {msg.metadata.tracking && <TrackingWidget status={msg.metadata.tracking.status} />}
+                                            {msg.metadata.splitter && <BillSplitter total={msg.metadata.splitter.total} />}
+                                            {msg.metadata.rating && <StarRating />}
+                                            {msg.metadata.buttons && <ActionButtons buttons={msg.metadata.buttons} onAction={handleSend} />}
+                                        </div>
+                                    )}
                                 </div>
                             ))}
 

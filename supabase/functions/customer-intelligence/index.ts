@@ -146,41 +146,44 @@ const TOOL_DEFINITIONS = [
 ];
 
 // ─── DEFAULT SYSTEM PROMPT ───
-const BASE_SYSTEM_PROMPT = `You are a POLITE, PROFESSIONAL, AND HELPFUL restaurant assistant. Your goal is to make ordering fast, visual, and pleasant.
+const DEFAULT_SYSTEM_PROMPT = `You are a polite, professional, and helpful restaurant assistant. You help customers browse the menu, place orders, track their food, and handle payments.`;
 
-## SALES PROTOCOL
-1. **Be Proactive**: Don't just wait; offer to show the menu or current specials immediately upon greeting.
-2. **Lead with Visuals**: For every greeting or menu query, you MUST return a 'metadata' block with 'buttons' and ideally trigger 'get_menu'.
-3. **Fast Checkout**: Once they add items, show a "🧾 View Bill" or "💳 Pay Now" button.
+const RICH_UI_INSTRUCTIONS = `
+## RICH UI CAPABILITIES
+You can trigger interactive UI elements by including a JSON block at the end of your response. Use either \`\`\`json { ... } \`\`\` or [UI_CONTEXT: { ... }].
 
-## RICH UI SPECIFICATION (Include in your JSON block)
-Include a JSON block at the end of your response for metadata.
-- "buttons": Array of { label, prompt } (Pulsing 1-tap fast actions)
-- "tracking": { "status": "placed" | "preparing" | "ready" | "delivered" }
-- "pills": Array of strings (Category filters)
-- "splitter": { "total": number }
-- "rating": { "type": "stars" }
+Supported elements:
+- "buttons": Array of { label, prompt }. Use icons and support multiple languages (e.g., [{"label": "🍔 Main Dishes", "prompt": "Show me main dishes"}, {"label": "መኑ አሳየኝ", "prompt": "Show me the menu"}]).
+- "tracking": { "status": "placed" | "preparing" | "ready" | "delivered" } (Use when user asks "where is my food?")
+- "pills": Array of strings for quick category filters.
+- "splitter": { "total": number } (Use when customer asks to split the bill)
+- "rating": { "type": "stars" } (Use after an order is delivered or meal finished)
 
 Example:
-\`\`\`json
-{
-  "buttons": [{"label": "📖 Show Full Menu", "prompt": "Show me the menu"}]
-}
-\`\`\`
+Here is our menu!
+[UI_CONTEXT: {"buttons": [{"label": "🥤 Drinks", "prompt": "Show me drinks"}], "pills": ["Main Dishes", "Desserts"]}]
 
 ## YOUR RULES
-1. ALWAYS use the 'get_menu' tool for food/menu queries.
-2. If Table Number is 'Unknown', ask for it before placing an order.
-3. Be visual-first. Format menu items clearly with prices.
-4. Support Amharic and Arabic if you detect the script.`;
+1. ALWAYS use the 'get_menu' tool when a customer asks about food, menu, or what's available. NEVER guess menu items.
+2. Check the CONTEXT below for the 'Table Number'. If it is 'Unknown', you MUST ask the customer for their table number before placing an order.
+3. When a customer shares their name, phone, or mentions any food preference, call 'update_customer_profile'.
+4. If they want to add more items to an existing order, use 'update_order'.
+5. When asked for the bill, call 'get_branch_info' then 'get_order_status'. Always use the "splitter" UI if they ask to split.
+6. When they share a payment reference number, call 'verify_payment'.
+7. Be warm, helpful, and concise. Use emojis naturally.
+8. Support Amharic and Arabic for quick buttons if the user speaks those languages.
+   - Amharic: መኑ አሳየኝ (Show Menu), ሂሳብ ስንት ነው? (How much is the bill?)
+   - Arabic: أرني القائمة (Show Menu), كم الحساب؟ (How much is the bill?)
+9. Format menu items clearly with names and prices (e.g. ETB 500).
+10. Always confirm the order before placing it.
+11. If 'get_menu' returns empty or fails, politely say "I apologize, our digital menu is loading. Let me try again" and retry. Do NOT make up menu items.`;
 
 const PROFESSIONALISM_PROTOCOL = `
 ## CRITICAL: PROFESSIONALISM & TONE
-1. **STRICTLY NO SLANG**: You are forbidden from using words like "bestie", "YOOO", "fr", "slap", "naurrr", or "bestie". 
-2. **PROFESSIONAL TONE**: Treat the user as a respected customer. Use "Sir/Madam" or polite greetings.
-3. **ACCURACY**: Do NOT hallucinate menu items. If 'get_menu' is empty, say "I apologize, but I couldn't find those items in our current menu. May I show you what IS available?"
-4. **NO SELF-REFERENCES**: Do NOT mention "the system", "broken rn", or "implementation detail". Focus only on the guest.
-`;
+1. **NO SLANG**: You are FORBIDDEN from using words like "bestie", "YOOO", "fr", "slap", "naurrr", "rn". 
+2. **PROFESSIONAL TONE**: Treat the customer with respect. Use polite greetings like "Welcome" or "Good evening".
+3. **ACCURACY**: Do NOT hallucinate menu items. Only show items returned by the 'get_menu' tool.
+4. **NO SYSTEM TALK**: Never say "the system is broken" or "technical difficulties". Just retry or offer alternatives gracefully.`;
 
 // ─── MCP TOOL EXECUTOR ───
 async function executeMcpTool(
@@ -274,7 +277,8 @@ serve(async (req) => {
         }
 
         // ── STEP 1: Load System Prompt ──
-        let systemPrompt = BASE_SYSTEM_PROMPT;
+        let basePrompt = DEFAULT_SYSTEM_PROMPT;
+        let orgName = "Unknown";
         try {
             const { data: orgData } = await supabase
                 .from("organizations")
@@ -283,22 +287,24 @@ serve(async (req) => {
                 .single();
 
             if (orgData?.chatbot_system_prompt?.trim()) {
-                systemPrompt += `\n\n## CUSTOM RESTAURANT PREFERENCES (Follow only if professional)\n${orgData.chatbot_system_prompt}`;
+                basePrompt = orgData.chatbot_system_prompt;
             }
+            orgName = orgData?.name || "Unknown";
+        } catch (e) {
+            console.warn("[CustomerAgent] Org config load failed:", e);
+        }
 
-            // Always enforce professionalism AFTER custom instructions to ensure priority
-            systemPrompt += PROFESSIONALISM_PROTOCOL;
+        const activeTable = table_number || "Unknown";
+        let systemPrompt = `${basePrompt}
+${RICH_UI_INSTRUCTIONS}
+${PROFESSIONALISM_PROTOCOL}
 
-            const activeTable = table_number || "Unknown";
-            systemPrompt += `\n\n## CONTEXT
-- Restaurant: ${orgData?.name || "Unknown"}
+## CONTEXT
+- Restaurant: ${orgName}
 - Branch ID: ${branchId}
 - Table Number: ${activeTable}
 - Session ID: ${session_id}
 - Date: ${new Date().toLocaleDateString()}`;
-        } catch (e) {
-            console.warn("[CustomerAgent] Org config load failed:", e);
-        }
 
         // ── STEP 2: Load Customer Profile ──
         let customerContext = "";
@@ -338,16 +344,16 @@ serve(async (req) => {
         try {
             const { data: historyData } = await supabase
                 .from("customer_chats")
-                .select("role, content, metadata")
+                .select("role, content")
                 .eq("session_id", session_id)
                 .order("created_at", { ascending: false })
                 .limit(20);
 
             if (historyData) {
-                // Map history - remove implementation details from LLM context to avoid mimicking
+                // Strip UI markers from history to prevent LLM mimicking
                 history = historyData.reverse().map(h => ({
                     role: h.role,
-                    content: h.content.replace(/\[UI_CONTEXT: [\s\S]*?\]/g, "").trim()
+                    content: (h.content || '').replace(/\[UI_CONTEXT:[\s\S]*?\]/g, '').trim()
                 }));
             }
         } catch (e) {
@@ -363,14 +369,14 @@ serve(async (req) => {
         // ── PROACTIVE GREETING TRIGGER ──
         const isGreeting = (msg: string) => {
             const lower = msg.toLowerCase().trim();
-            const greetings = ['hey', 'hello', 'hi', 'start', 'menu', 'hola', 'yo'];
+            const greetings = ['hey', 'hello', 'hi', 'start', 'menu', 'hola', 'yo', 'show me the menu'];
             return greetings.includes(lower) || lower.length < 3;
         };
 
         if (history.length <= 1 && isGreeting(message)) {
             messages.push({ 
                 role: "system", 
-                content: "CRITICAL: First interaction. You MUST be proactive. CALL 'get_menu' NOW to show the menu. Also provide buttons for 'View Full Menu'." 
+                content: "CRITICAL: This is the customer's first message. You MUST call 'get_menu' NOW to show the menu. Also provide buttons for browsing categories." 
             });
         }
 
@@ -524,27 +530,69 @@ serve(async (req) => {
         // ── STEP 5: Extract Metadata & Cleanup Response ──
         let richMetadata: any = {};
 
-        // Remove [UI_CONTEXT] and [JSON_DATA] if LLM hallucinated them back
-        finalResponse = finalResponse.replace(/\[UI_CONTEXT: [\s\S]*?\]/g, "").trim();
-        finalResponse = finalResponse.replace(/\[JSON_DATA: [\s\S]*?\]/g, "").trim();
+        // Enhanced extraction: Find all potential JSON blocks
+        // 1. [UI_CONTEXT: ...] pattern
+        // 2. ```json ... ``` pattern
+        // 3. Trailing { ... } pattern
+        const uiContextRegex = /\[UI_CONTEXT:\s*([\s\S]*)\s*\]/g;
+        const codeBlockRegex = /```json\n([\s\S]*?)\n```/g;
+        const trailingJsonRegex = /(\{[\s\S]*?\})(?=\s*$)/;
 
-        // Robust JSON Extraction
-        const jsonRegex = /```json\s*(\{[\s\S]*?\})\s*```|(\{[\s\S]*?\"(buttons|tracking|pills|splitter|rating|attachments)\"[\s\S]*?\})/;
-        const jsonMatch = finalResponse.match(jsonRegex);
-        
-        if (jsonMatch) {
+        let match;
+
+        // Extract from [UI_CONTEXT: ...]
+        while ((match = uiContextRegex.exec(finalResponse)) !== null) {
             try {
-                const jsonStr = jsonMatch[1] || jsonMatch[0];
-                const extracted = JSON.parse(jsonStr);
-                richMetadata = { ...extracted };
-                // Remove JSON from text
-                finalResponse = finalResponse.replace(jsonMatch[0], "").trim();
+                const content = match[1].trim();
+                const extracted = JSON.parse(content);
+                richMetadata = { ...richMetadata, ...extracted };
             } catch (e) {
-                console.warn("[CustomerAgent] Metadata parse failed:", e);
+                console.warn("[CustomerAgent] [UI_CONTEXT] parse failed:", e.message);
             }
         }
 
-        // ── PROACTIVE FALLBACKS ──
+        // Extract from code blocks
+        while ((match = codeBlockRegex.exec(finalResponse)) !== null) {
+            try {
+                const extracted = JSON.parse(match[1]);
+                richMetadata = { ...richMetadata, ...extracted };
+            } catch (e) {
+                console.warn("[CustomerAgent] [CodeBlock] parse failed:", e);
+            }
+        }
+
+        // Extract trailing if nothing else matched yet
+        if (Object.keys(richMetadata).length === 0) {
+            match = finalResponse.match(trailingJsonRegex);
+            if (match) {
+                try {
+                    const extracted = JSON.parse(match[1]);
+                    richMetadata = { ...richMetadata, ...extracted };
+                } catch (e) {
+                    // Fail silently for trailing as it might just be text ending with }
+                }
+            }
+        }
+
+        // Cleanup: Remove all UI markers from the finalResponse
+        finalResponse = finalResponse
+            .replace(uiContextRegex, "")
+            .replace(codeBlockRegex, "")
+            .trim();
+
+        // If we extracted trailing JSON and it was at the very end, remove it too
+        if (Object.keys(richMetadata).length > 0) {
+            const lastTrailingMatch = finalResponse.match(trailingJsonRegex);
+            if (lastTrailingMatch && finalResponse.endsWith(lastTrailingMatch[0])) {
+                // Only remove if it looks like the JSON we extracted
+                try {
+                    JSON.parse(lastTrailingMatch[0]);
+                    finalResponse = finalResponse.replace(trailingJsonRegex, "").trim();
+                } catch {}
+            }
+        }
+
+        // Auto-Injection Fallbacks
         if (!richMetadata.buttons && !richMetadata.tracking) {
             const lowerResp = finalResponse.toLowerCase();
             if (attachments?.type === 'menu' || lowerResp.includes("menu") || lowerResp.includes("welcome")) {
@@ -563,8 +611,7 @@ serve(async (req) => {
                     { label: "💳 Pay Total", prompt: "I want to pay the bill" }
                 ];
             } else {
-                 // Universal Proactive Buttons
-                 richMetadata.buttons = [
+                richMetadata.buttons = [
                     { label: "📖 View Menu", prompt: "Show me the menu" },
                     { label: "🥘 Chef's Specials", prompt: "What do you recommend?" }
                 ];
@@ -573,10 +620,10 @@ serve(async (req) => {
 
         // Ensure finalResponse is never empty
         if (!finalResponse.trim()) {
-            finalResponse = attachments ? "I've pulled up the menu for you below!" : "How can I assist you with your order today?";
+            finalResponse = attachments ? "Here's what we have for you!" : "How may I assist you today?";
         }
 
-        // Merge with tool attachments
+        // Merge with tool attachments (like menu items)
         if (attachments) {
             richMetadata.attachments = attachments;
         }
@@ -606,7 +653,7 @@ serve(async (req) => {
 
         return new Response(JSON.stringify({ 
             text: finalResponse, 
-            response: finalResponse, // Backward compatibility
+            response: finalResponse,
             metadata: richMetadata 
         }), {
             headers: { ...corsHeaders, "Content-Type": "application/json" },
