@@ -538,7 +538,7 @@ ${PROFESSIONALISM_PROTOCOL}
         if ((history.length <= 1 && isGreeting(message)) || message.toLowerCase() === 'init_chat') {
             messages.push({ 
                 role: "system", 
-                content: `CRITICAL: First message must be 'Welcome to BOLE MICHEAL! 🌟' and ask for their table number. Immediately call 'get_menu' for ${timeOfDay} items. feature the Happy Hour deal.` 
+                content: `CRITICAL: First message must be 'Welcome to ${orgName}! 🌟' and ask for their table number. NEVER show the menu until you have the table number.`
             });
         }
 

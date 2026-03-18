@@ -135,7 +135,23 @@ serve(async (req) => {
                     throw new Error("Items array is required and cannot be empty.");
                 }
 
-                // Fetch menu prices from view to ensure they exist for this branch
+                if (!table_number) {
+                    throw new Error("table_number is required to place an order.");
+                }
+
+                // 1. Resolve Table ID from Table Number
+                const { data: tableData, error: tableErr } = await supabase
+                    .from('tables')
+                    .select('id')
+                    .eq('table_number', table_number)
+                    .eq('branch_id', targetBranch)
+                    .eq('organization_id', organizationId)
+                    .maybeSingle();
+
+                if (tableErr) throw tableErr;
+                if (!tableData) throw new Error(`Table number ${table_number} not found in this branch.`);
+
+                // 2. Fetch menu prices from view to ensure they exist for this branch and org
                 const itemIds = items.map((i: any) => i.menu_item_id);
                 const { data: menuData, error: menuErr } = await supabase
                     .from('view_menu_details')
@@ -147,65 +163,36 @@ serve(async (req) => {
                 if (menuErr) throw menuErr;
                 if (!menuData || menuData.length === 0) throw new Error("No valid menu items found.");
 
-                // Tenant isolation check
-                const foreign = menuData.filter(m => m.organization_id !== organizationId);
-                if (foreign.length > 0) throw new Error("Tenant isolation violation: cross-org menu access.");
-
-                let subtotal = 0;
+                // 3. Prepare items for atomic RPC
                 const orderItems = items.map((item: any) => {
                     const match = menuData.find(m => m.id === item.menu_item_id);
                     if (!match) throw new Error(`Menu item ${item.menu_item_id} not found.`);
                     const price = Number(match.price) || 0;
-                    subtotal += price * (item.quantity || 1);
                     return {
                         menu_item_id: item.menu_item_id,
                         quantity: item.quantity || 1,
-                        price,
-                        special_instructions: item.notes || '',
-                        organization_id: organizationId,
+                        unit_price: price,
+                        notes: item.notes || '',
                     };
                 });
 
-                const vatRate = 0.15;
-                const vatAmount = Math.round(subtotal * vatRate * 100) / 100;
-                const totalAmount = Math.round((subtotal + vatAmount) * 100) / 100;
-                const orderNumber = `BOT-${Date.now().toString(36).toUpperCase()}`;
-
-                const { data: order, error: orderErr } = await supabase
-                    .from('orders')
-                    .insert({
-                        organization_id: organizationId,
-                        branch_id: targetBranch,
-                        table_number: table_number || null,
-                        customer_phone: customer_phone || null,
-                        status: 'pending',
-                        payment_status: 'unpaid',
+                // 4. Call Atomic Order RPC (Handles Inventory & Analytics)
+                const { data: rpcResult, error: rpcErr } = await supabase.rpc('place_order_atomic', {
+                    p_branch_id: targetBranch,
+                    p_items: orderItems,
+                    p_order_details: {
+                        table_id: tableData.id,
                         source: 'chatbot',
-                        total_amount: totalAmount,
-                        subtotal_amount: subtotal,
-                        vat_amount: vatAmount,
-                        vat_rate: 15,
-                        order_number: orderNumber,
-                    })
-                    .select()
-                    .single();
+                        customer_phone: customer_phone || null
+                    }
+                });
 
-                if (orderErr) throw orderErr;
-
-                const itemsPayload = orderItems.map((i: any) => ({
-                    ...i,
-                    order_id: order.id,
-                }));
-
-                const { error: itemsErr } = await supabase.from('order_items').insert(itemsPayload);
-                if (itemsErr) throw itemsErr;
+                if (rpcErr) throw rpcErr;
+                if (!rpcResult?.success) throw new Error(rpcResult?.error || "Order placement failed.");
 
                 result = {
-                    order_id: order.id,
-                    order_number: orderNumber,
-                    total_amount: totalAmount,
-                    subtotal: subtotal,
-                    vat: vatAmount,
+                    order_id: rpcResult.order_id,
+                    total_amount: rpcResult.total_amount,
                     items_count: orderItems.length,
                     status: 'pending',
                 };
