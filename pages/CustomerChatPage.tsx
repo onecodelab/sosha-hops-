@@ -490,10 +490,10 @@ const CustomerChatPage: React.FC = () => {
     const { t } = useLanguage();
 
     const QUICK_PROMPTS = [
-        { label: t('nav.menuManagement') || 'Show Menu', icon: <UtensilsCrossed className="w-3.5 h-3.5" />, prompt: 'Show me the menu please' },
-        { label: t('nav.orders') || 'My Order', icon: <ShoppingBag className="w-3.5 h-3.5" />, prompt: "What's the status of my order?" },
-        { label: t('nav.receiveGoods') || 'Get Bill', icon: <Receipt className="w-3.5 h-3.5" />, prompt: 'I would like the bill please' },
-        { label: t('nav.myStation') || 'Payment', icon: <CreditCard className="w-3.5 h-3.5" />, prompt: 'How can I pay?' },
+        { label: '✨ Best Offers', icon: <Sparkles className="w-3.5 h-3.5" />, prompt: 'Show me the best offers' },
+        { label: '🍹 Drinks', icon: <UtensilsCrossed className="w-3.5 h-3.5" />, prompt: 'Show me the drinks menu' },
+        { label: '☕ Coffee', icon: <ChefHat className="w-4 h-4" />, prompt: 'I would like to see the coffee options' },
+        { label: '🍕 Food Menu', icon: <ShoppingBag className="w-3.5 h-3.5" />, prompt: 'Show me the food menu' },
     ];
 
     const { branchId, tableNumber } = useParams<{ branchId: string; tableNumber: string }>();

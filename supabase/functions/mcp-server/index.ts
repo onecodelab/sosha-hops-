@@ -594,7 +594,21 @@ serve(async (req) => {
                 break;
             }
 
-            default:
+            // ─── TOOL 12: LIST TABLES (for verification) ───
+            case 'list_tables': {
+                const { data: tables, error: tablesErr } = await supabase
+                    .from('tables')
+                    .select('table_number')
+                    .eq('branch_id', branchId)
+                    .eq('organization_id', organizationId);
+
+                if (tablesErr) throw tablesErr;
+                result = {
+                    tables: tables.map((t: any) => t.table_number),
+                    count: tables.length
+                };
+                break;
+            }
                 return new Response(JSON.stringify({ error: "Unknown tool", tool }), { status: 400, headers: corsHeaders });
         }
 

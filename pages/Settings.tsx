@@ -287,13 +287,13 @@ const Settings: React.FC = () => {
                      </div>
                      {branches.length > 0 && (
                         <a
-                           href={`/order-chat/${branches[0].id}/T1`}
+                           href={`/order-chat/${branches[0].id}/UNKNOWN`}
                            target="_blank"
                            rel="noopener noreferrer"
                            className="flex items-center gap-2 px-5 py-2.5 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 rounded-full hover:bg-emerald-500/20 hover:scale-105 transition-all text-[10px] font-black uppercase tracking-widest"
                         >
                            <Sparkles className="w-3.5 h-3.5" />
-                           Test Chatbot
+                           Test Chatbot (Guest)
                         </a>
                      )}
                   </div>

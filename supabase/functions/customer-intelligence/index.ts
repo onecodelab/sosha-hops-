@@ -178,63 +178,58 @@ const TOOL_DEFINITIONS = [
             },
         },
     },
+    {
+        type: "function",
+        function: {
+            name: "list_tables",
+            description: "Get a list of all valid table numbers/names in the restaurant floor map. Use this to verify if a customer's table exists.",
+            parameters: {
+                type: "object",
+                properties: {},
+            },
+        },
+    },
 ];
 
 // ─── DEFAULT SYSTEM PROMPT ───
-const DEFAULT_SYSTEM_PROMPT = `You are a polite, professional, and helpful restaurant assistant. You help customers browse the menu, place orders, track their food, and handle payments.`;
+const DEFAULT_SYSTEM_PROMPT = `You are a smart, professional restaurant assistant for the restaurant mentioned in the CONTEXT.
+
+## STRICT ONBOARDING FLOW (MANDATORY)
+1. **GREETING**: Start by warmly greeting the customer.
+2. **TABLE VERIFICATION**: Immediately after greeting, you MUST ask: "Could you please tell me your table number? 😊"
+    - DO NOT show the menu or take orders until the table is verified.
+3. **VALIDATION**: Once the user provides a table number, call 'list_tables' to see if it exists in the floor map.
+    - If it's a MATCH: Confirm it (e.g. "Great! You're at Table C1. How can I help you today?") and unlock all other tools.
+    - If it's NOT in the list: Politely explain that you couldn't find that table and ask them to double-check the number on their table card.
+    - DO NOT hallucinate. Only valid numbers from 'list_tables' are allowed.
+4. **UNLOCK**: Only after verification can you use 'get_menu', 'place_order', or 'update_order'.
+
+## OPERATIONAL RULES
+1. **NO TEXT MENUS**: NEVER list food items or prices in plain text. ALWAYS use 'get_menu' to show the visual carousel.
+2. **ORDER FLOW**: Once an order is placed, tell the customer: "Order sent for approval! 📡 A waiter will confirm it shortly so the kitchen can start cooking."
+3. **UPSELL**: If they order a main course, ask if they'd like a drink and show the drinks menu.
+4. **CONTEXT**: Use the Restaurant name and Branch ID from the auto-injected CONTEXT below.
+
+## RESPONSE STYLE
+- Keep messages short and clean.
+- Do not use markdown styling like **bold** or *italics*.
+- Use emojis naturally but sparingly.`;
 
 const RICH_UI_INSTRUCTIONS = `
 ## RICH UI CAPABILITIES
-You can trigger interactive UI elements by including a JSON block at the end of your response. Use either \`\`\`json { ... } \`\`\` or [UI_CONTEXT: { ... }].
+Include a JSON block at the end of your response for interactive elements.
+Example: \`\`\`json { "buttons": [{"label": "🍴 View Menu", "prompt": "Show me the menu"}] } \`\`\`
 
-Supported elements:
-- "buttons": Array of { label, prompt }.
-- "tracking": { "status": "placed" | "preparing" | "ready" | "delivered" }
-- "pills": Array of strings for quick category filters.
-- "splitter": { "total": number }
-- "rating": { "type": "stars" }
-
-## STRICT UI RULES - READ CAREFULLY
-1. **NO TEXT MENUS**: You are FORBIDDEN from typing menu items, prices, or categories in markdown text. NEVER use bullet points or bold text to list food.
-2. **CAROUSEL ONLY**: Every time you want to show a menu or items, you MUST ONLY use the 'get_menu' or 'get_top_performing_items' tool.
-3. **SHORT RESPONSES**: Your text response should only be a short greeting like: "Here is our menu! 🍽️" or "Check out our specials below."
-4. **COMPACT SUMMARY**: When an item is added, ONLY send a short confirmation: "Added Item Name! ✅ Your total is now ETB Total." (Do NOT use brackets [] or parentheses () around names/prices). Followed by buttons: [{"label": "🛒 View Cart", "prompt": "Show my cart"}, {"label": "🥤 Add Drinks/Sides", "prompt": "Show me drinks and sides"}].
-5. **CONTEXTUAL QUICK REPLIES**: Always provide interactive buttons based on the user's current flow:
-   - *Discovery Phase*: [{"label": "🍔 View Menu", "prompt": "Show me the menu"}, {"label": "🤩 What's Popular?", "prompt": "Show me popular items"}]
-   - *Selection Phase*: [{"label": "🥗 Categories", "prompt": "Show me categories"}, {"label": "🛒 View Cart", "prompt": "Show my cart"}]
-   - *Post-Placement*: [{"label": "📡 Track My Order", "prompt": "Where is my food?"}, {"label": "➕ Add More", "prompt": "Show menu"}, {"label": "🧾 Request Bill", "prompt": "Show my bill"}]
-
-## YOUR RULES
-1. **TABLE VERIFICATION**: You MUST call 'get_tables' at initialization. If the Table Number from CONTEXT does not match any 'table_number' in the list (e.g., if you see "#C1" but user is on "T1"), you MUST ask: "Welcome! I see you're starting an order, but I couldn't find your table on our map. Could you double-check the number on your table card? 😊"
-2. **NO FORMATTING**: You are FORBIDDEN from using markdown characters like asterisks (*), underscores (_), or parentheses () to style your text. Keep all text plain and clean.
-3. ALWAYS use the 'get_menu' tool when a customer asks about food. NEVER guess menu items.
-4. Call 'update_customer_profile' when you learn something new about the customer.
-5. ORDER WORKFLOW: After calling 'place_order', explain that it is "Sent for Approval" and that a "Waiter will confirm it shortly". NEVER say it is already in the kitchen.
-6. Drink Pairings: As soon as a user adds a 'Main Course' (Burger, Steak, Fish), your next message MUST be: "Great choice! 🥩 Would you like a drink to go with that?" followed IMMEDIATELY by calling 'get_menu' with category="Drinks".
-7. Deal of the Day: Always mention the "Happy Hour" deal in your first greeting.`;
+Supported: "buttons" (label, prompt), "tracking" (status), "pills" (categories).
+`;
 
 const PROFESSIONALISM_PROTOCOL = `
-## CRITICAL: PROFESSIONALISM & TONE
-1. **NO SLANG**: Absolutely NO "bestie", "YOOO", "fr", etc.
-2. **NO TEXT LISTS**: NEVER list menu items in text format. Do not use Markdown tables or bullet point lists for items. Let the Menu Carousel handle all the visuals.
-3. **NO MARKDOWN**: Never use asterisks (*), underscores (_), brackets ([]), or parentheses (()) for formatting or emphasis. Style should be 100% plain text.
-4. **CONCISENESS**: Keep messages extremely short.
-
-## CONVERSATION FLOW PROTOCOL (MANDATORY)
-1. **STEP 1: WELCOME & PROACTIVE MENU**
-   - First interaction: Greet the customer warmly (e.g., "Welcome to [Restaurant Name]! 🌟") and ask for their table number. Use the Restaurant name provided in the CONTEXT section.
-   - CALL 'get_tables' to verify the table context immediately.
-   - IMMEDIATELY call 'get_menu' for the time-based category (Breakfast/Lunch/Dinner) as per CONTEXT. Do not wait for them to ask.
-   - Mention the "Happy Hour" Deal of the Day.
-2. **STEP 2: ADDING ITEMS & PAIRINGS**
-   - When an item is added, send the COMPACT SUMMARY and total.
-   - If it's a main course, IMMEDIATELY ask about drinks and call 'get_menu(category="Drinks")'.
-3. **STEP 3: ORDER CONFIRMATION & APPROVAL**
-   - After 'place_order', say: "Order sent for approval! 📡 A waiter will confirm it shortly so the kitchen can start cooking."
-   - Provide the "Track My Order" quick reply button.
-   - Provide a COMPACT text summary of active items only when confirming the final order (NO PRICES/LISTS in text).
-   - Use UI_CONTEXT buttons for "Confirm Order".
+## TONE & VOICE
+- Professional, helpful, and welcoming.
+- No slang or overly casual language.
+- Every response should be concise.
 `;
+
 
 // ─── MCP TOOL EXECUTOR ───
 async function executeMcpTool(
@@ -351,6 +346,7 @@ serve(async (req) => {
         return new Response("ok", { headers: corsHeaders });
     }
 
+    let globalTimeout: any;
     try {
         const sbUrl = Deno.env.get("SUPABASE_URL")!;
         const sbServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -367,9 +363,9 @@ serve(async (req) => {
 
         // External timeout for the entire reasoning process (25s to stay under Edge limit)
         const globalController = new AbortController();
-        const globalTimeout = setTimeout(() => globalController.abort(), 25000);
 
         try {
+            globalTimeout = setTimeout(() => globalController.abort(), 25000);
             // Fallback for Guests or Service Role
             if (organizationId === 'SERVICE_ROLE' || !organizationId) {
                 organizationId = organization_id || organizationId;
@@ -397,6 +393,9 @@ serve(async (req) => {
                     { status: 401, headers: corsHeaders }
                 );
             }
+        } catch (e) {
+            console.warn("[CustomerAgent] Identity resolution error:", e);
+        }
 
         if (!message || !session_id) {
             clearTimeout(globalTimeout);
@@ -794,12 +793,15 @@ ${PROFESSIONALISM_PROTOCOL}
             // If it's a greeting or table request, provide minimal buttons
             if (lowerResp.includes("welcome") || lowerResp.includes("table number")) {
                 richMetadata.buttons = [
-                    { label: "❓ Where is my table?", prompt: "Where can I find my table number?" }
+                    { label: "✨ Best Offers", prompt: "Show me the best offers" },
+                    { label: "🍹 Drinks", prompt: "Show me the drinks menu" },
+                    { label: "☕ Coffee", prompt: "I'd like to see the coffee options" }
                 ];
             } else if (attachments?.type === 'menu' || lowerResp.includes("menu") || lowerResp.includes("set")) {
                 richMetadata.buttons = [
                     { label: "📖 View Full Menu", prompt: "Show me the entire menu" },
-                    { label: "🥘 Chef's Specials", prompt: "What do you recommend?" }
+                    { label: "🤩 What's Popular?", "prompt": "Show me popular items" },
+                    { label: "🛒 View Cart", prompt: "Show my cart" }
                 ];
             } else if (lowerResp.includes("order") || lowerResp.includes("status")) {
                 richMetadata.buttons = [
@@ -813,8 +815,9 @@ ${PROFESSIONALISM_PROTOCOL}
                 ];
             } else {
                 richMetadata.buttons = [
-                    { label: "📖 View Menu", prompt: "Show me the menu" },
-                    { label: "🥘 Chef's Specials", prompt: "What do you recommend?" }
+                    { label: "✨ Best Offers", prompt: "Show me the best offers" },
+                    { label: "🍕 Food Menu", prompt: "Show me the menu" },
+                    { label: "🍹 Drinks", prompt: "Show me the drinks menu" }
                 ];
             }
         }
