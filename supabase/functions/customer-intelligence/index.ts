@@ -399,6 +399,7 @@ serve(async (req) => {
             }
 
         if (!message || !session_id) {
+            clearTimeout(globalTimeout);
             return new Response(
                 JSON.stringify({ error: "message and session_id are required" }),
                 { status: 400, headers: corsHeaders }
@@ -861,17 +862,16 @@ ${PROFESSIONALISM_PROTOCOL}
             headers: { ...corsHeaders, "Content-Type": "application/json" },
             status: 200,
         });
-        } catch (innerError: any) {
-            console.error("[CustomerAgent] Inner Error:", innerError.message);
-            throw innerError; // Rethrow to let the main catch handle it
-        }
+
     } catch (error: any) {
+        if (typeof globalTimeout !== 'undefined') clearTimeout(globalTimeout);
+        console.error("[CustomerAgent] Global Error:", error.message);
         return new Response(JSON.stringify({ 
             text: "I'm having a bit of trouble reaching my knowledge right now. Could you please try again in a moment? 🍽️",
             error: error.message 
         }), {
             headers: { ...corsHeaders, "Content-Type": "application/json" },
-            status: 200, // Return 200 with error text to show in UI
+            status: 200, 
         });
     }
 });
