@@ -568,7 +568,7 @@ ${PROFESSIONALISM_PROTOCOL}
                             "Authorization": `Bearer ${openRouterKey}`,
                         },
                         body: JSON.stringify({
-                            model: "google/gemini-2.0-flash-001",
+                            model: "openrouter/hunter-alpha",
                             messages,
                             tools: availableTools,
                             tool_choice: "auto",
@@ -861,7 +861,10 @@ ${PROFESSIONALISM_PROTOCOL}
             headers: { ...corsHeaders, "Content-Type": "application/json" },
             status: 200,
         });
-
+        } catch (innerError: any) {
+            console.error("[CustomerAgent] Inner Error:", innerError.message);
+            throw innerError; // Rethrow to let the main catch handle it
+        }
     } catch (error: any) {
         return new Response(JSON.stringify({ 
             text: "I'm having a bit of trouble reaching my knowledge right now. Could you please try again in a moment? 🍽️",
