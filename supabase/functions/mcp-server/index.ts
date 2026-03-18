@@ -128,86 +128,87 @@ serve(async (req) => {
 
             // ─── TOOL 2: PLACE ORDER ───
             case 'place_order': {
-                const { items, table_number, customer_phone, session_id } = params;
+                const { items, table_number, customer_phone } = params;
                 const targetBranch = branchId || params.branch_id;
 
                 if (!items || !Array.isArray(items) || items.length === 0) {
                     throw new Error("Items array is required and cannot be empty.");
                 }
 
-                // Fetch menu prices from view to ensure they exist for this branch
+                if (!table_number) {
+                    throw new Error("Table number is required to place an order.");
+                }
+
+                // 1. Resolve Table Number to Table ID
+                const { data: tableData, error: tableErr } = await supabase
+                    .from('tables')
+                    .select('id, table_number')
+                    .eq('branch_id', targetBranch)
+                    .eq('table_number', table_number)
+                    .maybeSingle();
+
+                if (tableErr) throw tableErr;
+                if (!tableData) {
+                    throw new Error(`Table "${table_number}" was not found on our map. Please double-check the number.`);
+                }
+
+                // 2. Fetch menu prices and validate items exist for this branch
                 const itemIds = items.map((i: any) => i.menu_item_id);
                 const { data: menuData, error: menuErr } = await supabase
                     .from('view_menu_details')
-                    .select('id, name, price, organization_id')
+                    .select('id, price')
                     .in('id', itemIds)
                     .eq('organization_id', organizationId)
                     .eq('branch_id', targetBranch);
 
                 if (menuErr) throw menuErr;
-                if (!menuData || menuData.length === 0) throw new Error("No valid menu items found.");
+                if (!menuData || menuData.length === 0) {
+                    throw new Error("None of the items selected are available at this branch.");
+                }
 
-                // Tenant isolation check
-                const foreign = menuData.filter(m => m.organization_id !== organizationId);
-                if (foreign.length > 0) throw new Error("Tenant isolation violation: cross-org menu access.");
-
-                let subtotal = 0;
-                const orderItems = items.map((item: any) => {
+                // 3. Format items for atomic RPC
+                const atomicItems = items.map((item: any) => {
                     const match = menuData.find(m => m.id === item.menu_item_id);
-                    if (!match) throw new Error(`Menu item ${item.menu_item_id} not found.`);
-                    const price = Number(match.price) || 0;
-                    subtotal += price * (item.quantity || 1);
+                    if (!match) throw new Error(`Menu item ${item.menu_item_id} is currently unavailable.`);
+
                     return {
                         menu_item_id: item.menu_item_id,
-                        quantity: item.quantity || 1,
-                        price,
-                        special_instructions: item.notes || '',
-                        organization_id: organizationId,
+                        quantity: Number(item.quantity) || 1,
+                        unit_price: Number(match.price) || 0,
+                        notes: item.notes || ''
                     };
                 });
 
-                const vatRate = 0.15;
-                const vatAmount = Math.round(subtotal * vatRate * 100) / 100;
-                const totalAmount = Math.round((subtotal + vatAmount) * 100) / 100;
-                const orderNumber = `BOT-${Date.now().toString(36).toUpperCase()}`;
+                // 4. Execute Atomic Order Placement
+                // We use the service role key. To bypass strict RLS that depends on JWT claims,
+                // we set the local session variable for organization_id.
+                // Note: We use raw Postgres via RPC to set the session variable.
+                await supabase.rpc('set_config', { name: 'request.jwt.claim.organization_id', value: organizationId });
 
-                const { data: order, error: orderErr } = await supabase
-                    .from('orders')
-                    .insert({
-                        organization_id: organizationId,
-                        branch_id: targetBranch,
-                        table_number: table_number || null,
-                        customer_phone: customer_phone || null,
-                        status: 'pending',
-                        payment_status: 'unpaid',
+                const { data: atomicResult, error: atomicErr } = await supabase.rpc('place_order_atomic', {
+                    p_branch_id: targetBranch,
+                    p_items: atomicItems,
+                    p_order_details: {
+                        table_id: tableData.id,
                         source: 'chatbot',
-                        total_amount: totalAmount,
-                        subtotal_amount: subtotal,
-                        vat_amount: vatAmount,
-                        vat_rate: 15,
-                        order_number: orderNumber,
-                    })
-                    .select()
-                    .single();
+                        customer_phone: customer_phone || null
+                    }
+                });
 
-                if (orderErr) throw orderErr;
+                if (atomicErr) {
+                    console.error("[MCP-ORDER-ATOMIC] Error:", atomicErr);
+                    throw new Error(atomicErr.message || "Order placement failed due to a system error.");
+                }
 
-                const itemsPayload = orderItems.map((i: any) => ({
-                    ...i,
-                    order_id: order.id,
-                }));
-
-                const { error: itemsErr } = await supabase.from('order_items').insert(itemsPayload);
-                if (itemsErr) throw itemsErr;
+                if (!atomicResult?.success) {
+                    throw new Error(atomicResult?.error || "Order placement failed.");
+                }
 
                 result = {
-                    order_id: order.id,
-                    order_number: orderNumber,
-                    total_amount: totalAmount,
-                    subtotal: subtotal,
-                    vat: vatAmount,
-                    items_count: orderItems.length,
+                    order_id: atomicResult.order_id,
+                    total_amount: atomicResult.total_amount,
                     status: 'pending',
+                    message: "Order placed successfully! A waiter will confirm it shortly."
                 };
                 break;
             }

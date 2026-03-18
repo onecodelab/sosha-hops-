@@ -205,7 +205,11 @@ Supported elements:
    - *Post-Placement*: [{"label": "📡 Track My Order", "prompt": "Where is my food?"}, {"label": "➕ Add More", "prompt": "Show menu"}, {"label": "🧾 Request Bill", "prompt": "Show my bill"}]
 
 ## YOUR RULES
-1. **TABLE VERIFICATION**: You MUST call 'get_tables' at initialization. If the Table Number from CONTEXT does not match any 'table_number' in the list (e.g., if you see "#C1" but user is on "T1"), you MUST ask: "Welcome! I see you're starting an order, but I couldn't find your table on our map. Could you double-check the number on your table card? 😊"
+1. **STRICT TABLE VERIFICATION**: You MUST call 'get_tables' at initialization.
+   - You are FORBIDDEN from placing an order for a table that does not exist in the 'get_tables' result.
+   - If the user provides a table number (e.g. "C10"), you MUST first verify it against the list from 'get_tables'.
+   - If it matches, proceed. If NOT, you MUST say: "I couldn't find Table [Number] on our map. Could you please double-check the number on your table card? 🔍"
+   - NEVER use a placeholder like "Table Unknown" or "Guest" for an order if the user has specified a number that isn't verified.
 2. **NO FORMATTING**: You are FORBIDDEN from using markdown characters like asterisks (*), underscores (_), or parentheses () to style your text. Keep all text plain and clean.
 3. ALWAYS use the 'get_menu' tool when a customer asks about food. NEVER guess menu items.
 4. Call 'update_customer_profile' when you learn something new about the customer.
@@ -316,8 +320,8 @@ async function executeMcpTool(
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
-                "apikey": Deno.env.get("SUPABASE_ANON_KEY")!,
-                "Authorization": `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")!}`,
+                "apikey": Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+                "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!}`,
             },
             body: JSON.stringify(requestBody),
             signal: controller.signal,
@@ -532,14 +536,14 @@ ${PROFESSIONALISM_PROTOCOL}
         // ── PROACTIVE GREETING TRIGGER ──
         const isGreeting = (msg: string) => {
             const lower = msg.toLowerCase().trim();
-            const greetings = ['hey', 'hello', 'hi', 'start', 'menu', 'hola', 'yo', 'show me the menu', 'get started'];
+            const greetings = ['hey', 'hello', 'hi', 'start', 'menu', 'hola', 'yo', 'show me the menu', 'get started', 'init_chat'];
             return greetings.includes(lower) || lower.length < 3;
         };
 
-        if ((history.length <= 1 && isGreeting(message)) || message.toLowerCase() === 'init_chat') {
+        if (history.length <= 1 && isGreeting(message)) {
             messages.push({ 
                 role: "system", 
-                content: `CRITICAL: First message must be 'Welcome to BOLE MICHEAL! 🌟' and ask for their table number. Immediately call 'get_menu' for ${timeOfDay} items. feature the Happy Hour deal.` 
+                content: `CRITICAL: First message must be 'Welcome to ${orgName}! 🌟' and ask for their table number. IMMEDIATELY call 'get_tables' to verify the environment and 'get_menu' for ${timeOfDay} items. Mention the Happy Hour deal.`
             });
         }
 
