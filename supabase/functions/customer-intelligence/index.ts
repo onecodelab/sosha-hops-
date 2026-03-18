@@ -234,6 +234,11 @@ const PROFESSIONALISM_PROTOCOL = `
    - Provide the "Track My Order" quick reply button.
    - Provide a COMPACT text summary of active items only when confirming the final order (NO PRICES/LISTS in text).
    - Use UI_CONTEXT buttons for "Confirm Order".
+
+## ORDER FLOW (MANDATORY)
+1. **TABLE NUMBER**: You MUST ask for the table number BEFORE anything else.
+2. **MENU SELECTION**: After the table is set, show the menu and let the customer select items.
+3. **WAITER APPROVAL**: Once 'place_order' is called, inform the customer that a waiter must approve the order before it reaches the kitchen.
 `;
 
 // ─── MCP TOOL EXECUTOR ───
@@ -539,7 +544,7 @@ ${PROFESSIONALISM_PROTOCOL}
         if ((history.length <= 1 && isGreeting(message)) || message.toLowerCase() === 'init_chat') {
             messages.push({ 
                 role: "system", 
-                content: `CRITICAL: First message must be 'Welcome to BOLE MICHEAL! 🌟' and ask for their table number. Immediately call 'get_menu' for ${timeOfDay} items. feature the Happy Hour deal.` 
+                content: `CRITICAL: First message must be 'Welcome to ${orgName}! 🌟' and ask for their table number. NEVER show the menu until you have the table number.`
             });
         }
 
