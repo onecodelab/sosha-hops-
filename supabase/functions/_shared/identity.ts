@@ -17,18 +17,20 @@ export interface IdentityContext {
 
 export async function resolveIdentity(req: Request, supabase: any): Promise<IdentityContext | null> {
     const authHeader = req.headers.get('Authorization');
-    if (!authHeader) return null;
+    const internalToken = req.headers.get('X-Internal-Token');
 
-    const token = authHeader.replace('Bearer ', '');
-
-    // 0. Try Service Role Key (Internal Function communication)
-    if (token === Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')) {
+    // 0. Try Internal Token or Service Role Key
+    if (internalToken === SYSTEM_SECRET || 
+        (authHeader && authHeader.replace('Bearer ', '') === Deno.env.get('SUPABASE_SERVICE_ROLE_KEY'))) {
         return {
             organizationId: 'SERVICE_ROLE',
             branchId: 'SERVICE_ROLE',
             role: 'service_role'
         };
     }
+
+    if (!authHeader) return null;
+    const token = authHeader.replace('Bearer ', '');
 
     // 1. Try Standard Supabase Auth
     const { data: { user }, error: userErr } = await supabase.auth.getUser(token);

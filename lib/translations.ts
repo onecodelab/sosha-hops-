@@ -1,5 +1,5 @@
 
-export type Language = 'en' | 'am' | 'om' | 'ti' | 'af';
+export type Language = 'en' | 'am' | 'om' | 'ti' | 'af' | 'ar';
 
 export const translations = {
   en: {
@@ -23,7 +23,8 @@ export const translations = {
       edit: "Edit",
       delete: "Delete",
       activeStation: "Active Station",
-      myProfile: "My Profile"
+      myProfile: "My Profile",
+      online: "Online"
     },
     roles: {
       owner: "Owner",
@@ -623,7 +624,8 @@ export const translations = {
       edit: "አስተካክል",
       delete: "ሰርዝ",
       activeStation: "ገባሪ ስራ",
-      myProfile: "የእኔ መገለጫ"
+      myProfile: "የእኔ መገለጫ",
+      online: "መስመር ላይ"
     },
     roles: {
       owner: "ባለቤት",
@@ -1223,7 +1225,8 @@ export const translations = {
       edit: "Sirreessi",
       delete: "Haqi",
       activeStation: "Bakka Hojii",
-      myProfile: "Eenyummeessaa Koo"
+      myProfile: "Eenyummeessaa Koo",
+      online: "Onlaayinii"
     },
     roles: {
       owner: "Abbaa Qabeenyaa",
@@ -1769,7 +1772,8 @@ export const translations = {
       edit: "ኣስተኻኽል",
       delete: "ደምስስ",
       activeStation: "ገባሪ ስራ",
-      myProfile: "ናተይ መለለዪ"
+      myProfile: "ናተይ መለለዪ",
+      online: "ኣብ መስመር"
     },
     roles: {
       owner: "ወናኒ",
@@ -2315,7 +2319,8 @@ export const translations = {
       edit: "Wax ka beddel",
       delete: "Tirtir",
       activeStation: "Active Station",
-      myProfile: "Yi Profile"
+      myProfile: "Yi Profile",
+      online: "Onlayn"
     },
     roles: {
       owner: "Milkiile",
@@ -2840,6 +2845,70 @@ export const translations = {
       architecture: "Architecture",
       status: "Status",
       copyright: "© 2026 Baro. Established in the Baro River Basin."
+    }
+  },
+  ar: {
+    common: {
+      search: "بحث...",
+      notifications: "إخطارات",
+      revenue: "إيرادات",
+      needHelp: "هل تحتاج مساعدة؟",
+      contactSupport: "اتصل بالدعم",
+      logout: "تسجيل الخروج",
+      profile: "الملف الشخصي",
+      today: "اليوم",
+      loading: "تحميل...",
+      retry: "إعادة المحاولة",
+      back: "الخلف",
+      verify: "التحقق",
+      cancel: "إلغاء",
+      confirm: "تأكيد",
+      close: "إغلاق",
+      save: "حفظ التغييرات",
+      edit: "تعديل",
+      delete: "حذف",
+      activeStation: "المحطة النشطة",
+      myProfile: "ملفي الشخصي",
+      online: "متصل"
+    },
+    roles: {
+      owner: "مالك",
+      manager: "مدير",
+      waiter: "نادل",
+      kitchen: "مطبخ",
+      admin: "أدمن",
+      security: "أمن"
+    },
+    nav: {
+      dashboard: "لوحة القيادة",
+      overview: "نظرة عامة",
+      menuAnalytics: "تحليلات القائمة",
+      menuManagement: "إدارة القائمة",
+      inventory: "المخزون",
+      staffPerf: "أداء الموظفين",
+      tableMap: "خريطة الطاولات",
+      opsDashboard: "لوحة العمليات",
+      staff: "الموظفين",
+      orders: "الطلبات",
+      myStation: "محطتي",
+      kds: "شاشة المطبخ",
+      pantry: "المخزن",
+      settings: "الإعدادات",
+      stock: "عرض المخزون",
+      waste: "تسجيل الفاقد",
+      restock: "طلبات إعادة التعبئة",
+      pendingRequests: "طلبات معلقة",
+      createPO: "إنشاء أمر شراء",
+      receiveGoods: "استلام البضائع",
+      purchaseOrders: "أوامر الشراء",
+      adminHome: "بيت الإدارة",
+      ownerCommand: "مركز القيادة",
+      myOrderTransaction: "طلباتي",
+      myTipsGratuity: "نصائحي",
+      kitchenBoard: "لوحة المطبخ",
+      floorLiveMap: "خريطة حية",
+      tipsAudit: "تدقيق النصائح",
+      wasteAnalytics: "تحليلات الفاقد"
     }
   }
 };

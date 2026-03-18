@@ -13,6 +13,7 @@ export const LanguageSwitcher: React.FC = () => {
   const languages: { code: Language; label: string; native: string }[] = [
     { code: 'en', label: 'English', native: 'English' },
     { code: 'am', label: 'Amharic', native: 'አማርኛ' },
+    { code: 'ar', label: 'Arabic', native: 'العربية' },
     { code: 'om', label: 'Afaan Oromo', native: 'Afaan Oromo' },
     { code: 'ti', label: 'Tigrinya', native: 'ትግርኛ' },
     { code: 'af', label: 'Afar', native: 'Qafar' },

@@ -51,7 +51,7 @@ const ActionButtons: React.FC<{ buttons: { label: string; prompt: string }[]; on
                 whileHover={{ scale: 1.05, backgroundColor: "rgba(16, 185, 129, 0.15)" }}
                 whileTap={{ scale: 0.95 }}
                 onClick={() => onAction(btn.prompt)}
-                className="px-4 py-2 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] font-black uppercase tracking-wider hover:border-emerald-500/40 transition-all flex items-center gap-2 shadow-lg group relative overflow-hidden"
+                className="px-4 py-2 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] font-black uppercase tracking-wider hover:border-emerald-500/40 transition-all flex items-center gap-2 group relative overflow-hidden"
             >
                 <div className="absolute inset-0 bg-emerald-500/5 animate-pulse" style={{ animationDuration: '2s' }} />
                 <span className="relative z-10">{btn.label}</span>
@@ -82,7 +82,7 @@ const TrackingWidget: React.FC<{ status: 'placed' | 'preparing' | 'ready' | 'del
                     <div key={stage.key} className="relative z-10 flex flex-col items-center gap-1">
                         <div className={cn(
                             "w-6 h-6 rounded-full flex items-center justify-center transition-all",
-                            i === currentIndex ? "bg-emerald-500 text-black scale-110 shadow-[0_0_10px_rgba(16,185,129,0.4)]" :
+                            i === currentIndex ? "bg-emerald-500 text-black scale-110 shadow-none" :
                             i < currentIndex ? "bg-emerald-500/20 text-emerald-400" : "bg-[#1a1a1a] text-gray-600"
                         )}>
                             {stage.icon}
@@ -263,7 +263,7 @@ export const ChatWidget: React.FC = () => {
                         animate={{ scale: 1, opacity: 1 }}
                         exit={{ scale: 0, opacity: 0 }}
                         onClick={() => setIsOpen(true)}
-                        className="fixed bottom-5 right-5 z-50 w-14 h-14 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 text-black shadow-xl shadow-amber-500/30 flex items-center justify-center hover:scale-110 active:scale-95 transition-transform"
+                        className="fixed bottom-5 right-5 z-50 w-14 h-14 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 text-black flex items-center justify-center hover:scale-110 active:scale-95 transition-transform"
                     >
                         <MessageCircle className="w-6 h-6" />
                     </motion.button>
@@ -278,7 +278,7 @@ export const ChatWidget: React.FC = () => {
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: 20, scale: 0.95 }}
                         transition={{ duration: 0.25, ease: [0.2, 0, 0, 1] }}
-                        className="fixed bottom-5 right-5 z-50 w-[360px] h-[520px] md:w-[400px] md:h-[560px] bg-[#0a0a0a] border border-white/[0.08] rounded-2xl shadow-2xl shadow-black/60 flex flex-col overflow-hidden"
+                        className="fixed bottom-5 right-5 z-50 w-[360px] h-[520px] md:w-[400px] md:h-[560px] bg-[#0a0a0a] border border-white/[0.08] rounded-2xl flex flex-col overflow-hidden"
                     >
                         {/* Header */}
                         <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.06] bg-black/40">
@@ -350,7 +350,7 @@ export const ChatWidget: React.FC = () => {
                                         msg.role === 'user' ? "flex-row-reverse" : ""
                                     )}>
                                         <div className={cn(
-                                            "px-4 py-3 rounded-2xl text-[13px] leading-relaxed shadow-lg",
+                                            "px-4 py-3 rounded-2xl text-[13px] leading-relaxed",
                                             msg.role === 'user'
                                                 ? "bg-gradient-to-br from-amber-400 to-amber-600 text-black rounded-tr-md font-medium"
                                                 : "bg-[#1a1a1a] text-gray-200 rounded-tl-md border border-white/[0.08]"

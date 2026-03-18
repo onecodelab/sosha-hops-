@@ -38,25 +38,91 @@ serve(async (req) => {
         let result: any;
 
         switch (tool) {
+            // ─── TOOL: GET CATEGORIES ───
+            case 'get_categories': {
+                const targetBranch = branchId || params?.branch_id;
+                let dbQuery = supabase
+                    .from('view_menu_details')
+                    .select('category')
+                    .eq('organization_id', organizationId);
+                
+                if (targetBranch) {
+                    dbQuery = dbQuery.eq('branch_id', targetBranch);
+                }
+
+                const { data, error } = await dbQuery;
+                if (error) throw error;
+
+                const categories = [...new Set(data?.map(i => i.category).filter(Boolean))];
+                result = { categories };
+                break;
+            }
+
+            // ─── TOOL: GET TOP PERFORMING ITEMS ───
+            case 'get_top_performing_items': {
+                const targetBranch = branchId || params?.branch_id;
+                let dbQuery = supabase
+                    .from('view_menu_details')
+                    .select('id, name, price, category, image_url, description, is_available')
+                    .eq('organization_id', organizationId)
+                    .eq('is_available', true);
+
+                if (targetBranch) {
+                    dbQuery = dbQuery.eq('branch_id', targetBranch);
+                }
+
+                // For now, we'll pick items with high demand or just the top 6 if popularity data isn't explicit
+                // In a real scenario, we might join with order_items to count sales
+                const { data, error } = await dbQuery.limit(10);
+                if (error) throw error;
+
+                // Simple shuffle or just take first 6
+                result = { items: data?.slice(0, 6) || [] };
+                break;
+            }
+
             // ─── TOOL 1: GET MENU ───
             case 'get_menu': {
                 const queryStr = params?.query || '';
                 const catStr = params?.category || '';
                 const targetBranch = branchId || params?.branch_id;
 
+                console.log(`[MCP-MENU] Searching for: query="${queryStr}", cat="${catStr}", branch="${targetBranch}"`);
+
+                // DEBUG: Querying base menu table directly
+                console.log(`[MCP-MENU] Searching for: query="${queryStr}", cat="${catStr}", branch="${targetBranch}"`);
+
+                // DEBUG: Querying ALL items in DB
+                const { data: allItems } = await supabase.from('menu').select('id, organization_id').limit(5);
+
                 let dbQuery = supabase
                     .from('view_menu_details')
                     .select('id, name, price, category, image_url, is_available, description')
-                    .eq('organization_id', organizationId)
-                    .eq('is_available', true);
+                    .eq('organization_id', organizationId);
 
-                if (targetBranch) dbQuery = dbQuery.eq('branch_id', targetBranch);
+                if (targetBranch) {
+                    dbQuery = dbQuery.eq('branch_id', targetBranch);
+                }
+
                 if (catStr) dbQuery = dbQuery.ilike('category', `%${catStr}%`);
                 if (queryStr) dbQuery = dbQuery.ilike('name', `%${queryStr}%`);
 
-                const { data: menuData, error: menuErr } = await dbQuery.limit(20);
+                let { data: menuData, error: menuErr } = await dbQuery.limit(20);
                 if (menuErr) throw menuErr;
-                result = { items: menuData };
+
+                const items = menuData || [];
+
+                console.log(`[MCP-MENU] Found ${items.length} items.`);
+                result = { 
+                    items,
+                    debug: {
+                        org_passed: organizationId,
+                        branch_passed: targetBranch,
+                        count: items.length,
+                        total_items_in_db_head: allItems?.map(i => `${i.id.substring(0,8)} (org: ${i.organization_id.substring(0,8)})`),
+                        params: params
+                    }
+                };
                 break;
             }
 
@@ -69,13 +135,14 @@ serve(async (req) => {
                     throw new Error("Items array is required and cannot be empty.");
                 }
 
-                // Fetch menu prices
+                // Fetch menu prices from view to ensure they exist for this branch
                 const itemIds = items.map((i: any) => i.menu_item_id);
                 const { data: menuData, error: menuErr } = await supabase
-                    .from('menu')
+                    .from('view_menu_details')
                     .select('id, name, price, organization_id')
                     .in('id', itemIds)
-                    .eq('organization_id', organizationId);
+                    .eq('organization_id', organizationId)
+                    .eq('branch_id', targetBranch);
 
                 if (menuErr) throw menuErr;
                 if (!menuData || menuData.length === 0) throw new Error("No valid menu items found.");
@@ -460,6 +527,70 @@ serve(async (req) => {
 
                 if (error) throw error;
                 result = { events: data };
+                break;
+            }
+
+            // ─── TOOL 12: GET TABLES ───
+            case 'get_tables': {
+                const targetBranch = branchId || params?.branch_id;
+                const { data, error } = await supabase
+                    .from('tables')
+                    .select('id, table_number, pos_x, pos_y')
+                    .eq('organization_id', organizationId)
+                    .eq('branch_id', targetBranch);
+
+                if (error) throw error;
+                result = { tables: data || [] };
+                break;
+            }
+
+            // ─── TOOL 13: VERIFY NFC TAP ───
+            case 'verify_nfc_tap': {
+                const { token, table_number, session_id } = params;
+                const targetBranch = branchId || params.branch_id;
+
+                if (!token || !table_number) {
+                    throw new Error("token and table_number are required for NFC verification.");
+                }
+
+                // 1. Check if token matches the table
+                const { data: tableData, error: tableErr } = await supabase
+                    .from('tables')
+                    .select('id, status, active_session')
+                    .eq('table_number', table_number)
+                    .eq('verification_token', token)
+                    .eq('organization_id', organizationId)
+                    .eq('branch_id', targetBranch)
+                    .single();
+
+                if (tableErr || !tableData) {
+                    console.error("[NFC] Invalid token or table not found:", tableErr);
+                    result = { success: false, reason: "Invalid verification token." };
+                    break;
+                }
+
+                // 2. Set table to Occupied if it isn't already, and update active_session
+                let currentSession = tableData.active_session || { seated_at: new Date().toISOString(), sessions: [] };
+                
+                // Add this new session_id if it's not already in the array (Multi-player mode)
+                if (!currentSession.sessions) currentSession.sessions = [];
+                if (!currentSession.sessions.includes(session_id)) {
+                    currentSession.sessions.push(session_id);
+                }
+
+                const { error: updateErr } = await supabase
+                    .from('tables')
+                    .update({ 
+                        status: 'occupied',
+                        active_session: currentSession
+                    })
+                    .eq('id', tableData.id);
+
+                if (updateErr) {
+                    console.error("[NFC] Failed to update table occupancy:", updateErr);
+                }
+
+                result = { success: true, table_id: tableData.id };
                 break;
             }
 
