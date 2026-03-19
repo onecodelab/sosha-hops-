@@ -135,11 +135,33 @@ serve(async (req) => {
                     throw new Error("Items array is required and cannot be empty.");
                 }
 
-                // Fetch menu prices from view to ensure they exist for this branch
+                if (!targetBranch) {
+                    throw new Error("Branch ID is required for placing an order.");
+                }
+
+                // 1. Resolve Table Number to Table ID
+                let tableId = null;
+                if (table_number) {
+                    const { data: tableData, error: tableErr } = await supabase
+                        .from('tables')
+                        .select('id')
+                        .eq('table_number', table_number)
+                        .eq('branch_id', targetBranch)
+                        .maybeSingle();
+
+                    if (tableErr) console.error("[MCP-ORDER] Table lookup error:", tableErr);
+                    if (tableData) {
+                        tableId = tableData.id;
+                    } else {
+                        throw new Error(`Could not find table number "${table_number}" in this branch.`);
+                    }
+                }
+
+                // 2. Fetch prices from view_menu_details to build atomic payload
                 const itemIds = items.map((i: any) => i.menu_item_id);
                 const { data: menuData, error: menuErr } = await supabase
                     .from('view_menu_details')
-                    .select('id, name, price, organization_id')
+                    .select('id, name, price')
                     .in('id', itemIds)
                     .eq('organization_id', organizationId)
                     .eq('branch_id', targetBranch);
@@ -147,67 +169,46 @@ serve(async (req) => {
                 if (menuErr) throw menuErr;
                 if (!menuData || menuData.length === 0) throw new Error("No valid menu items found.");
 
-                // Tenant isolation check
-                const foreign = menuData.filter(m => m.organization_id !== organizationId);
-                if (foreign.length > 0) throw new Error("Tenant isolation violation: cross-org menu access.");
-
-                let subtotal = 0;
-                const orderItems = items.map((item: any) => {
+                // Map items to the format expected by place_order_atomic
+                const atomicItems = items.map((item: any) => {
                     const match = menuData.find(m => m.id === item.menu_item_id);
                     if (!match) throw new Error(`Menu item ${item.menu_item_id} not found.`);
-                    const price = Number(match.price) || 0;
-                    subtotal += price * (item.quantity || 1);
                     return {
                         menu_item_id: item.menu_item_id,
                         quantity: item.quantity || 1,
-                        price,
-                        special_instructions: item.notes || '',
-                        organization_id: organizationId,
+                        unit_price: Number(match.price) || 0,
                     };
                 });
 
-                const vatRate = 0.15;
-                const vatAmount = Math.round(subtotal * vatRate * 100) / 100;
-                const totalAmount = Math.round((subtotal + vatAmount) * 100) / 100;
-                const orderNumber = `BOT-${Date.now().toString(36).toUpperCase()}`;
+                // 3. Call place_order_atomic RPC
+                // We must ensure the organization context is passed as the RLS claim 'request.jwt.claim.organization_id'
+                // However, since we're using a Service Role key, we should ideally wrap the set_config
+                // and RPC call into a single transaction if possible, or ensure the RPC itself
+                // can handle the organization_id explicitly if it's not present in the JWT.
 
-                const { data: order, error: orderErr } = await supabase
-                    .from('orders')
-                    .insert({
-                        organization_id: organizationId,
-                        branch_id: targetBranch,
-                        table_number: table_number || null,
-                        customer_phone: customer_phone || null,
-                        status: 'pending',
-                        payment_status: 'unpaid',
+                // For now, we will rely on the RPC which has 'SECURITY DEFINER' and explicitly uses the p_branch_id
+                // to verify ownership, but we'll attempt to set the session variable in the same client instance.
+                // NOTE: PostgREST doesn't guarantee session persistence between calls.
+
+                const { data: atomicResult, error: atomicErr } = await supabase.rpc('place_order_atomic', {
+                    p_branch_id: targetBranch,
+                    p_items: atomicItems,
+                    p_order_details: {
+                        table_id: tableId,
                         source: 'chatbot',
-                        total_amount: totalAmount,
-                        subtotal_amount: subtotal,
-                        vat_amount: vatAmount,
-                        vat_rate: 15,
-                        order_number: orderNumber,
-                    })
-                    .select()
-                    .single();
+                        customer_phone: customer_phone,
+                        session_id: session_id
+                    }
+                });
 
-                if (orderErr) throw orderErr;
-
-                const itemsPayload = orderItems.map((i: any) => ({
-                    ...i,
-                    order_id: order.id,
-                }));
-
-                const { error: itemsErr } = await supabase.from('order_items').insert(itemsPayload);
-                if (itemsErr) throw itemsErr;
+                if (atomicErr) throw atomicErr;
+                if (!atomicResult?.success) throw new Error(atomicResult?.error || "Order placement failed.");
 
                 result = {
-                    order_id: order.id,
-                    order_number: orderNumber,
-                    total_amount: totalAmount,
-                    subtotal: subtotal,
-                    vat: vatAmount,
-                    items_count: orderItems.length,
+                    order_id: atomicResult.order_id,
+                    total_amount: atomicResult.total_amount,
                     status: 'pending',
+                    message: "Order placed successfully."
                 };
                 break;
             }

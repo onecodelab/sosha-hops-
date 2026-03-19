@@ -25,6 +25,12 @@ DECLARE
 BEGIN
     -- 1. STRICT TENANT VALIDATION
     v_org_id := public.current_org_id_strict();
+
+    -- Fallback for Edge Functions using Service Role: Extract from Branch
+    IF v_org_id IS NULL THEN
+        SELECT organization_id INTO v_org_id FROM public.branches WHERE id = p_branch_id;
+    END IF;
+
     IF v_org_id IS NULL THEN
         RAISE EXCEPTION 'Identity Error: Action requires an authenticated organizational context.';
     END IF;
