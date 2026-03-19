@@ -8,12 +8,12 @@ const TOOL_DEFINITIONS = [
         type: "function",
         function: {
             name: "get_menu",
-            description: "Get the restaurant's menu items. Use when the customer asks 'what's for food', 'show menu', or 'what do you have'.",
+            description: "Get the restaurant's menu items. Call with NO parameters to show the full menu. Only use 'category' for specific sub-categories like 'Drinks', 'burgers', 'fish'. Do NOT pass generic terms like 'food' or 'menu' as category.",
             parameters: {
                 type: "object",
                 properties: {
-                    query: { type: "string", description: "Search for specific menu items" },
-                    category: { type: "string", description: "Filter by category (e.g. 'burger', 'drinks')" },
+                    query: { type: "string", description: "Search for a specific menu item by name" },
+                    category: { type: "string", description: "Filter by a SPECIFIC category like 'Drinks', 'burgers', 'fish', 'Breakfast'. Leave empty to show all items." },
                 },
             },
         },
@@ -22,7 +22,7 @@ const TOOL_DEFINITIONS = [
         type: "function",
         function: {
             name: "place_order",
-            description: "Place a new order for the customer. ALWAYS confirm items and get a TABLE NUMBER first.",
+            description: "Place a new order for the customer. ALWAYS confirm items and get a TABLE NUMBER first. Use either 'menu_item_id' (UUID from get_menu) or 'name' (exact item name) for each item.",
             parameters: {
                 type: "object",
                 properties: {
@@ -31,7 +31,8 @@ const TOOL_DEFINITIONS = [
                         items: {
                             type: "object",
                             properties: {
-                                menu_item_id: { type: "string" },
+                                menu_item_id: { type: "string", description: "The UUID of the menu item (from get_menu results)" },
+                                name: { type: "string", description: "The exact name of the menu item (used if menu_item_id is not available)" },
                                 quantity: { type: "number" },
                                 notes: { type: "string" },
                             },
@@ -199,7 +200,9 @@ const DEFAULT_SYSTEM_PROMPT = `You are a smart, professional restaurant assistan
 2. **TABLE VERIFICATION**: Immediately after greeting, you MUST ask: "Could you please tell me your table number? 😊"
     - DO NOT show the menu or take orders until the table is verified.
 3. **VALIDATION**: Once the user provides a table number, call 'list_tables' to see if it exists in the floor map.
-    - If it's a MATCH: Confirm it exactly as follows: "Got it! You're at Table [Number]! ✅ Great to have you here! 🎉 Now, what can I get you tonight? Check out our menu:" 
+    - MATCHING LOGIC: Be flexible. Ignore prefixes like '#' and be case-insensitive (e.g., 'c15' matches '#C15').
+    - If it's a MATCH: Confirm it explicitly as follows: "Recognized Table #X! I'm ready to help you order. 🦄"
+    - If it's NOT a match: Reply with the exact table numbers returned from the tool (e.g., "I couldn't find table c15. I only see: [insert actual, real table numbers from tool output]. Which one are you at?")
     - ACTION: Immediately after matching, you MUST call 'get_menu' (with no query) to show the visual carousel.
     - If it's NOT in the list: Politely explain that you couldn't find that table and ask them to double-check the number on their table card.
     - DO NOT hallucinate. Only valid numbers from 'list_tables' are allowed.
@@ -234,9 +237,9 @@ Supported elements:
 3. **SHORT RESPONSES**: Your text response should only be a short greeting like: "Here is our menu! 🍽️" or "Check out our specials below."
 4. **COMPACT SUMMARY**: When an item is added, ONLY send a short confirmation: "Added Item Name! ✅ Your total is now ETB Total." (Do NOT use brackets [] or parentheses () around names/prices). Followed by buttons: [{"label": "🛒 View Cart", "prompt": "Show my cart"}, {"label": "🥤 Add Drinks/Sides", "prompt": "Show me drinks and sides"}].
 5. **CONTEXTUAL QUICK REPLIES**: Always provide interactive buttons based on the user's current flow:
-   - *Discovery Phase*: [{"label": "🍔 View Menu", "prompt": "Show me the menu"}, {"label": "🤩 What's Popular?", "prompt": "Show me popular items"}]
-   - *Selection Phase*: [{"label": "🥗 Categories", "prompt": "Show me categories"}, {"label": "🛒 View Cart", "prompt": "Show my cart"}]
-   - *Post-Placement*: [{"label": "📡 Track My Order", "prompt": "Where is my food?"}, {"label": "➕ Add More", "prompt": "Show menu"}, {"label": "🧾 Request Bill", "prompt": "Show my bill"}]
+   - *Discovery Phase*: [{"label": "🍔 Food Menu", "prompt": "Show me the menu"}, {"label": "🥤 Drinks & Sides", "prompt": "Show me drinks and sides"}, {"label": "🤩 What's Popular?", "prompt": "Show me popular items"}]
+   - *Selection Phase*: [{"label": "🚀 Confirm Order", "prompt": "Confirm my order and send it to the kitchen"}, {"label": "🥗 Add Starters", "prompt": "Show me starters"}, {"label": "🛒 View Cart", "prompt": "Show my cart"}]
+   - *Post-Placement*: [{"label": "📡 Track My Order", "prompt": "Where is my food?"}, {"label": "➕ Add Main Course", "prompt": "Show menu"}, {"label": "➕ Add Drinks", "prompt": "Show me drinks"}, {"label": "🧾 Request Bill", "prompt": "Show my bill"}]
 
 ## YOUR RULES
 1. **TABLE VERIFICATION**: You MUST call 'get_tables' at initialization and whenever the table context is unclear. If the Table Number from CONTEXT does not match any 'table_number' in the list (e.g., if you see "#C1" but user is on "T1"), you MUST ask: "Welcome! I see you're starting an order, but I couldn't find your table on our map. Could you double-check the number on your table card? 😊"
@@ -246,7 +249,10 @@ Supported elements:
 4. Call 'update_customer_profile' when you learn something new about the customer.
 5. ORDER WORKFLOW: After calling 'place_order', explain that it is "Sent for Approval" and that a "Waiter will confirm it shortly". NEVER say it is already in the kitchen.
 6. Drink Pairings: As soon as a user adds a 'Main Course' (Burger, Steak, Fish), your next message MUST be: "Great choice! 🥩 Would you like a drink to go with that?" followed IMMEDIATELY by calling 'get_menu' with category="Drinks".
-7. Deal of the Day: Always mention the "Happy Hour" deal in your first greeting.`;
+7. Deal of the Day: Always mention the "Happy Hour" deal in your first greeting.
+8. DECISION BUTTONS: Every time you suggest an action (like viewing a menu or confirming an order), you MUST include the corresponding interactive button from the RICH UI CAPABILITIES.
+9. PROACTIVE CONFIRMATION: Once a user has added items to their cart, your VERY NEXT message MUST include the "🚀 Confirm Order" button.
+`;
 
 const PROFESSIONALISM_PROTOCOL = `
 ## TONE & VOICE
@@ -270,10 +276,17 @@ async function executeMcpTool(
     // ─── LOCAL TOOL 1: GET MENU (Bypass Network Fallback) ───
     if (toolName === "get_menu") {
         const queryStr = toolParams?.query || "";
-        const catStr = toolParams?.category || "";
+        let catStr = toolParams?.category || "";
         const targetBranch = branchId || toolParams?.branch_id;
 
-        console.log(`[MCP-LOCAL-MENU] Org: ${organizationId}, Branch: ${targetBranch}`);
+        // Ignore overly generic category filters that would return 0 results
+        const genericTerms = ["food", "menu", "all", "everything", "items", "dishes"];
+        if (genericTerms.includes(catStr.toLowerCase().trim())) {
+            console.log(`[MCP-LOCAL-MENU] Ignoring generic category filter: "${catStr}"`);
+            catStr = "";
+        }
+
+        console.log(`[MCP-LOCAL-MENU] Org: ${organizationId}, Branch: ${targetBranch}, Category: "${catStr}", Query: "${queryStr}"`);
 
         let dbQuery = supabase
             .from("view_menu_details")
@@ -295,7 +308,24 @@ async function executeMcpTool(
 
         const items = menuData || [];
         console.log(`[MCP-LOCAL-MENU] Found ${items.length} items.`);
+        
+        // If category filter returned 0 results, retry without category
+        if (items.length === 0 && catStr) {
+            console.log(`[MCP-LOCAL-MENU] Category "${catStr}" returned 0 items. Retrying without category filter...`);
+            let retryQuery = supabase
+                .from("view_menu_details")
+                .select("id, name, price, category, image_url, is_available, description")
+                .eq("organization_id", organizationId);
+            if (targetBranch) retryQuery = retryQuery.eq("branch_id", targetBranch);
+            if (queryStr) retryQuery = retryQuery.ilike("name", `%${queryStr}%`);
+            const { data: retryData } = await retryQuery.limit(20);
+            const retryItems = retryData || [];
+            console.log(`[MCP-LOCAL-MENU] Retry found ${retryItems.length} items.`);
+            return { items: retryItems };
+        }
+
         return { items };
+
     }
 
     // ─── EXTERNAL TOOLS (Everything Else) ───
@@ -312,7 +342,9 @@ async function executeMcpTool(
         },
     };
 
-    console.log(`[MCP-CALL] Tool: ${toolName}, Org: ${organizationId}, Branch: ${branchId}, Params:`, JSON.stringify(requestBody.params));
+    console.log(`[MCP-DEBUG] Preparing Tool: ${toolName}`);
+    console.log(`[MCP-DEBUG] Resolved Org: ${organizationId}, Branch: ${branchId}`);
+    console.log(`[MCP-DEBUG] Tool Params:`, JSON.stringify(toolParams));
 
     // Call the mcp-server function internally with a timeout
     const controller = new AbortController();
@@ -322,8 +354,9 @@ async function executeMcpTool(
         const response = await fetch(`${sbUrl}/functions/v1/mcp-server`, {
             method: "POST",
             headers: {
+                "apikey": Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+                "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
                 "Content-Type": "application/json",
-                "apikey": Deno.env.get("SUPABASE_ANON_KEY")!,
                 "X-Internal-Token": "baro-os-branch-secure-2026",
             },
             body: JSON.stringify(requestBody),
@@ -585,7 +618,7 @@ ${DEFAULT_SYSTEM_PROMPT}
                             "Authorization": `Bearer ${openRouterKey}`,
                         },
                         body: JSON.stringify({
-                            model: "openrouter/hunter-alpha",
+                            model: "arcee-ai/trinity-large-preview:free",
                             messages,
                             tools: availableTools,
                             tool_choice: "auto",

@@ -20,20 +20,23 @@ serve(async (req) => {
         const { tool, params } = body;
 
         // 2. Tenant & Auth Resolution
-        // For 'get_menu', we allow requests without a JWT if organization_id is in params
-        // This is safe because it's public menu data.
-        let organizationId = identityOrg === 'SERVICE_ROLE' ? params?.organization_id : identityOrg;
-        let branchId = identityBranch === 'SERVICE_ROLE' ? params?.branch_id : identityBranch;
+        const reqOrgId = params?.organization_id || body.organization_id;
+        const reqBranchId = params?.branch_id || body.branch_id;
+        let organizationId = identityOrg && identityOrg !== 'SERVICE_ROLE' ? identityOrg : reqOrgId;
+        let branchId = identityBranch && identityBranch !== 'SERVICE_ROLE' ? identityBranch : reqBranchId;
 
         if (!organizationId && tool === 'get_menu') {
             organizationId = params?.organization_id;
         }
 
         if (!organizationId) {
+            console.error(`[MCP-ERROR] Unauthorized: Missing organizationId. Tool: ${tool}, Params:`, JSON.stringify(params));
             return new Response(JSON.stringify({ error: "Unauthorized", detail: "Invalid token or missing organization context" }), { status: 401, headers: corsHeaders });
         }
 
-        console.log(`[MCP] Tool: ${tool}, Org: ${organizationId}, Branch: ${branchId}`);
+        console.log(`[MCP-DEBUG] Executing Tool: ${tool}`);
+        console.log(`[MCP-DEBUG] Resolved Org: ${organizationId}, Branch: ${branchId}`);
+        console.log(`[MCP-DEBUG] Params:`, JSON.stringify(params));
 
         let result: any;
 
@@ -157,8 +160,41 @@ serve(async (req) => {
                     }
                 }
 
-                // 2. Fetch prices from view_menu_details to build atomic payload
-                const itemIds = items.map((i: any) => i.menu_item_id);
+                // 2. Resolve items - accept both menu_item_id (UUID) and name
+                // First, resolve any items that only have a name (no UUID)
+                const resolvedItems: any[] = [];
+                for (const item of items) {
+                    if (item.menu_item_id && item.menu_item_id.length > 10) {
+                        // Looks like a UUID, use directly
+                        resolvedItems.push(item);
+                    } else if (item.name) {
+                        // Resolve name to UUID
+                        const { data: found } = await supabase
+                            .from('view_menu_details')
+                            .select('id, name, price')
+                            .eq('organization_id', organizationId)
+                            .eq('branch_id', targetBranch)
+                            .ilike('name', `%${item.name}%`)
+                            .limit(1)
+                            .maybeSingle();
+                        
+                        if (found) {
+                            console.log(`[MCP-ORDER] Resolved "${item.name}" -> ${found.id} (${found.name})`);
+                            resolvedItems.push({ ...item, menu_item_id: found.id });
+                        } else {
+                            console.error(`[MCP-ORDER] Could not resolve item by name: "${item.name}"`);
+                            throw new Error(`Could not find menu item "${item.name}". Please check the menu and try again.`);
+                        }
+                    } else if (item.menu_item_id) {
+                        // Short ID or other format, try name lookup as fallback
+                        resolvedItems.push(item);
+                    } else {
+                        throw new Error(`Item is missing both menu_item_id and name.`);
+                    }
+                }
+
+                // 3. Fetch prices from view_menu_details to build atomic payload
+                const itemIds = resolvedItems.map((i: any) => i.menu_item_id);
                 const { data: menuData, error: menuErr } = await supabase
                     .from('view_menu_details')
                     .select('id, name, price')
@@ -167,12 +203,12 @@ serve(async (req) => {
                     .eq('branch_id', targetBranch);
 
                 if (menuErr) throw menuErr;
-                if (!menuData || menuData.length === 0) throw new Error("No valid menu items found.");
+                if (!menuData || menuData.length === 0) throw new Error("No valid menu items found for the given IDs.");
 
-                // 3. Map items to the format expected by place_order_atomic
-                const atomicItems = items.map((item: any) => {
+                // 4. Map items to the format expected by place_order_atomic
+                const atomicItems = resolvedItems.map((item: any) => {
                     const match = menuData.find(m => m.id === item.menu_item_id);
-                    if (!match) throw new Error(`Menu item ${item.menu_item_id} not found.`);
+                    if (!match) throw new Error(`Menu item ${item.menu_item_id} not found in this branch.`);
                     return {
                         menu_item_id: item.menu_item_id,
                         quantity: item.quantity || 1,
@@ -537,7 +573,6 @@ serve(async (req) => {
                 const { data, error } = await supabase
                     .from('tables')
                     .select('id, table_number, pos_x, pos_y')
-                    .eq('organization_id', organizationId)
                     .eq('branch_id', targetBranch);
 
                 if (error) throw error;
@@ -557,10 +592,8 @@ serve(async (req) => {
                 // 1. Check if token matches the table
                 const { data: tableData, error: tableErr } = await supabase
                     .from('tables')
-                    .select('id, status, active_session')
+                    .select('*')
                     .eq('table_number', table_number)
-                    .eq('verification_token', token)
-                    .eq('organization_id', organizationId)
                     .eq('branch_id', targetBranch)
                     .single();
 
@@ -597,19 +630,33 @@ serve(async (req) => {
 
             // ─── TOOL 12: LIST TABLES (for verification) ───
             case 'list_tables': {
-                const { data: tables, error: tablesErr } = await supabase
+                const targetBranch = branchId || params?.branch_id;
+                const targetOrg = organizationId || params?.organization_id;
+                
+                if (!targetBranch) throw new Error("branch_id is required to list tables.");
+
+                let query = supabase
                     .from('tables')
                     .select('table_number')
-                    .eq('branch_id', branchId)
-                    .eq('organization_id', organizationId);
+                    .eq('branch_id', targetBranch);
 
-                if (tablesErr) throw tablesErr;
+                const { data: tables, error: tablesErr } = await query;
+
+                if (tablesErr) {
+                    throw new Error(`Database Error listing tables: ${tablesErr.message}`);
+                }
+                
+                const tableNumbers = (tables || []).map((t: any) => t.table_number);
+                console.log(`[MCP-LIST-TABLES] Found ${tableNumbers.length} tables for branch ${branchId}`);
+                
                 result = {
-                    tables: tables.map((t: any) => t.table_number),
-                    count: tables.length
+                    tables: tableNumbers,
+                    count: tableNumbers.length,
+                    message: tableNumbers.length === 0 ? "No tables found in this branch." : "Success"
                 };
                 break;
             }
+            default:
                 return new Response(JSON.stringify({ error: "Unknown tool", tool }), { status: 400, headers: corsHeaders });
         }
 
