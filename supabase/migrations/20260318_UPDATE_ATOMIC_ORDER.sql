@@ -1,10 +1,11 @@
--- PHASE 2: Atomic Integrity - Transactional Order Flow
--- This migration introduces the place_order_atomic RPC to ensure orders and inventory are linked.
+-- 20260318_UPDATE_ATOMIC_ORDER.sql
+-- Redefine place_order_atomic to support explicit p_organization_id for Service Role calls.
 
 CREATE OR REPLACE FUNCTION public.place_order_atomic(
     p_branch_id UUID,
-    p_items JSONB, -- Array of {menu_item_id: UUID, quantity: NUMERIC, unit_price: NUMERIC}
-    p_order_details JSONB -- {table_id?, waiter_id?, source?, telegram_id?}
+    p_items JSONB, -- Array of {menu_item_id: UUID, quantity: NUMERIC, unit_price: NUMERIC, notes?: TEXT}
+    p_order_details JSONB, -- {table_id?, waiter_id?, source?, telegram_id?, customer_phone?}
+    p_organization_id UUID DEFAULT NULL -- Explicit ID for AI/Service calls
 )
 RETURNS JSONB
 LANGUAGE plpgsql
@@ -17,20 +18,16 @@ DECLARE
     v_menu_item_id UUID;
     v_qty NUMERIC;
     v_price NUMERIC;
+    v_notes TEXT;
     v_recipe_id UUID;
     v_ing_rec RECORD;
     v_total_amount NUMERIC := 0;
     v_user_id UUID;
     v_session_id UUID;
 BEGIN
-    -- 1. STRICT TENANT VALIDATION
-    v_org_id := public.current_org_id_strict();
-
-    -- Fallback for Edge Functions using Service Role: Extract from Branch
-    IF v_org_id IS NULL THEN
-        SELECT organization_id INTO v_org_id FROM public.branches WHERE id = p_branch_id;
-    END IF;
-
+    -- 1. RESOLVE ORG ID (Explicit or from JWT)
+    v_org_id := COALESCE(p_organization_id, public.current_org_id_strict());
+    
     IF v_org_id IS NULL THEN
         RAISE EXCEPTION 'Identity Error: Action requires an authenticated organizational context.';
     END IF;
@@ -39,10 +36,10 @@ BEGIN
 
     -- 2. BRANCH VALIDATION
     IF NOT EXISTS (
-        SELECT 1 FROM public.branches 
+        SELECT 1 FROM public.branches
         WHERE id = p_branch_id AND organization_id = v_org_id
     ) THEN
-        RAISE EXCEPTION 'Isolation Error: Branch does not belong to your organization.';
+        RAISE EXCEPTION 'Isolation Error: Branch does not belong to the resolved organization.';
     END IF;
 
     -- 3. CALCULATE TOTAL & VALIDATE ITEMS
@@ -58,7 +55,7 @@ BEGIN
         END IF;
 
         -- Find or Create Session
-        SELECT id INTO v_session_id FROM public.table_sessions 
+        SELECT id INTO v_session_id FROM public.table_sessions
         WHERE table_id = (p_order_details->>'table_id')::UUID AND is_active = true LIMIT 1;
 
         IF v_session_id IS NULL THEN
@@ -68,7 +65,7 @@ BEGIN
         END IF;
 
         -- Update Table Status
-        UPDATE public.tables SET 
+        UPDATE public.tables SET
             status = 'occupied',
             last_updated = NOW()
         WHERE id = (p_order_details->>'table_id')::UUID;
@@ -81,6 +78,7 @@ BEGIN
         table_id,
         waiter_id,
         telegram_id,
+        customer_phone,
         source,
         status,
         payment_status,
@@ -93,6 +91,7 @@ BEGIN
         (p_order_details->>'table_id')::UUID,
         COALESCE((p_order_details->>'waiter_id')::UUID, v_user_id),
         (p_order_details->>'telegram_id'),
+        (p_order_details->>'customer_phone'),
         COALESCE(p_order_details->>'source', 'dine_in'),
         'pending',
         'pending',
@@ -106,6 +105,7 @@ BEGIN
         v_menu_item_id := (v_item->>'menu_item_id')::UUID;
         v_qty := (v_item->>'quantity')::NUMERIC;
         v_price := (v_item->>'unit_price')::NUMERIC;
+        v_notes := v_item->>'notes';
 
         -- A. Insert Order Item
         INSERT INTO public.order_items (
@@ -113,23 +113,25 @@ BEGIN
             order_id,
             menu_item_id,
             quantity,
-            price
+            price,
+            special_instructions
         ) VALUES (
             v_org_id,
             v_order_id,
             v_menu_item_id,
             v_qty,
-            v_price
+            v_price,
+            v_notes
         );
 
         -- B. Resolve Recipe
-        SELECT id INTO v_recipe_id FROM public.recipes 
+        SELECT id INTO v_recipe_id FROM public.recipes
         WHERE menu_item_id = v_menu_item_id AND organization_id = v_org_id;
 
         -- C. Deduct Stock if Recipe exists
         IF v_recipe_id IS NOT NULL THEN
-            FOR v_ing_rec IN 
-                SELECT 
+            FOR v_ing_rec IN
+                SELECT
                     ri.ingredient_id,
                     ri.quantity_needed,
                     public.get_unit_conversion_factor(i.unit_type, ri.unit_type, i.weight_per_unit) as conversion_factor
@@ -139,11 +141,11 @@ BEGIN
             LOOP
                 -- Deduct from branch_inventory
                 UPDATE public.branch_inventory
-                SET 
+                SET
                     current_stock = current_stock - (v_ing_rec.quantity_needed * v_qty * v_ing_rec.conversion_factor),
                     last_updated = NOW()
-                WHERE 
-                    branch_id = p_branch_id 
+                WHERE
+                    branch_id = p_branch_id
                     AND ingredient_id = v_ing_rec.ingredient_id
                     AND organization_id = v_org_id;
 
@@ -190,5 +192,3 @@ EXCEPTION
         );
 END;
 $$;
-
-COMMENT ON FUNCTION public.place_order_atomic(UUID, JSONB, JSONB) IS 'Atomically creates an order and deducts inventory stock ensuring transactional integrity.';

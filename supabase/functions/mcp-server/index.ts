@@ -135,27 +135,33 @@ serve(async (req) => {
                     throw new Error("Items array is required and cannot be empty.");
                 }
 
-                if (!table_number) {
-                    throw new Error("table_number is required to place an order.");
+                if (!targetBranch) {
+                    throw new Error("Branch ID is required for placing an order.");
                 }
 
-                // 1. Resolve Table ID from Table Number
-                const { data: tableData, error: tableErr } = await supabase
-                    .from('tables')
-                    .select('id')
-                    .eq('table_number', table_number)
-                    .eq('branch_id', targetBranch)
-                    .eq('organization_id', organizationId)
-                    .maybeSingle();
+                // 1. Resolve Table Number to Table ID
+                let tableId = null;
+                if (table_number) {
+                    const { data: tableData, error: tableErr } = await supabase
+                        .from('tables')
+                        .select('id')
+                        .eq('table_number', table_number)
+                        .eq('branch_id', targetBranch)
+                        .maybeSingle();
 
-                if (tableErr) throw tableErr;
-                if (!tableData) throw new Error(`Table number ${table_number} not found in this branch.`);
+                    if (tableErr) console.error("[MCP-ORDER] Table lookup error:", tableErr);
+                    if (tableData) {
+                        tableId = tableData.id;
+                    } else {
+                        throw new Error(`Could not find table number "${table_number}" in this branch.`);
+                    }
+                }
 
-                // 2. Fetch menu prices from view to ensure they exist for this branch and org
+                // 2. Fetch prices from view_menu_details to build atomic payload
                 const itemIds = items.map((i: any) => i.menu_item_id);
                 const { data: menuData, error: menuErr } = await supabase
                     .from('view_menu_details')
-                    .select('id, name, price, organization_id')
+                    .select('id, name, price')
                     .in('id', itemIds)
                     .eq('organization_id', organizationId)
                     .eq('branch_id', targetBranch);
@@ -163,38 +169,46 @@ serve(async (req) => {
                 if (menuErr) throw menuErr;
                 if (!menuData || menuData.length === 0) throw new Error("No valid menu items found.");
 
-                // 3. Prepare items for atomic RPC
-                const orderItems = items.map((item: any) => {
+                // 3. Map items to the format expected by place_order_atomic
+                const atomicItems = items.map((item: any) => {
                     const match = menuData.find(m => m.id === item.menu_item_id);
                     if (!match) throw new Error(`Menu item ${item.menu_item_id} not found.`);
-                    const price = Number(match.price) || 0;
                     return {
                         menu_item_id: item.menu_item_id,
                         quantity: item.quantity || 1,
-                        unit_price: price,
-                        notes: item.notes || '',
+                        unit_price: Number(match.price) || 0,
                     };
                 });
 
-                // 4. Call Atomic Order RPC (Handles Inventory & Analytics)
-                const { data: rpcResult, error: rpcErr } = await supabase.rpc('place_order_atomic', {
+                // 4. Call place_order_atomic RPC
+                // We must ensure the organization context is passed as the RLS claim 'request.jwt.claim.organization_id'
+                // However, since we're using a Service Role key, we should ideally wrap the set_config
+                // and RPC call into a single transaction if possible, or ensure the RPC itself
+                // can handle the organization_id explicitly if it's not present in the JWT.
+
+                // For now, we will rely on the RPC which has 'SECURITY DEFINER' and explicitly uses the p_branch_id
+                // to verify ownership, but we'll attempt to set the session variable in the same client instance.
+                // NOTE: PostgREST doesn't guarantee session persistence between calls.
+
+                const { data: atomicResult, error: atomicErr } = await supabase.rpc('place_order_atomic', {
                     p_branch_id: targetBranch,
-                    p_items: orderItems,
+                    p_items: atomicItems,
                     p_order_details: {
-                        table_id: tableData.id,
+                        table_id: tableId,
                         source: 'chatbot',
-                        customer_phone: customer_phone || null
+                        customer_phone: customer_phone,
+                        session_id: session_id
                     }
                 });
 
-                if (rpcErr) throw rpcErr;
-                if (!rpcResult?.success) throw new Error(rpcResult?.error || "Order placement failed.");
+                if (atomicErr) throw atomicErr;
+                if (!atomicResult?.success) throw new Error(atomicResult?.error || "Order placement failed.");
 
                 result = {
-                    order_id: rpcResult.order_id,
-                    total_amount: rpcResult.total_amount,
-                    items_count: orderItems.length,
+                    order_id: atomicResult.order_id,
+                    total_amount: atomicResult.total_amount,
                     status: 'pending',
+                    message: "Order placed successfully."
                 };
                 break;
             }
