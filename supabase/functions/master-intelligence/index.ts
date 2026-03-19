@@ -33,7 +33,7 @@ async function runReasoningLoop(
                     "X-Title": "Baro Intelligence Hub"
                 },
                 body: JSON.stringify({
-                    model: "openrouter/hunter-alpha",
+                    model: "arcee-ai/trinity-large-preview:free",
                     messages: currentMessages,
                     tools: [
                         { type: "function", function: { name: "get_financial_summary", description: "Get revenue and order summary for today vs yesterday." } },
