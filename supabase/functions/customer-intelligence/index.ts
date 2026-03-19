@@ -570,7 +570,7 @@ ${PROFESSIONALISM_PROTOCOL}
                             "Authorization": `Bearer ${openRouterKey}`,
                         },
                         body: JSON.stringify({
-                            model: "openrouter/hunter-alpha",
+                            model: "arcee-ai/trinity-large-preview:free",
                             messages,
                             tools: availableTools,
                             tool_choice: "auto",
