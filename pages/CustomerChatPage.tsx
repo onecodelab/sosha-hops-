@@ -357,7 +357,11 @@ const MessageBubble: React.FC<{ msg: ChatMessage; onQuickAction: (p: string) => 
                         : "bg-card text-foreground rounded-tl-md border border-border"
                 )}>
                     <div className="whitespace-pre-wrap">
-                        {msg.content.replace(/[\*_\[\]\(\)]/g, '')}
+                        {msg.content
+                            .replace(/^\|.*\|$/gm, '') // Remove markdown table rows
+                            .replace(/^[*-] .*(?:ETB|Birr|Price).*$/gmi, '') // Remove bulleted menu items
+                            .replace(/[\*_\[\]\(\)]/g, '') // Remove markdown special chars
+                            .trim()}
                     </div>
 
                     {/* Inline Pills */}
@@ -872,13 +876,17 @@ const CustomerChatPage: React.FC = () => {
 
             <div className="flex-none px-4 pb-6 pt-2 safe-area-bottom bg-background z-50">
                 <div className="max-w-2xl mx-auto">
-                    {dynamicPrompts.length > 0 && (
-                        <div className="flex gap-2 overflow-x-auto no-scrollbar mb-4">
+                    {dynamicPrompts.length > 0 && !messages[messages.length - 1]?.metadata?.buttons && (
+                        <div className={cn(
+                            "flex gap-2 overflow-x-auto no-scrollbar mb-4 transition-opacity duration-300",
+                            (!hasInteracted || isTyping) ? "opacity-50 pointer-events-none" : "opacity-100"
+                        )}>
                             {dynamicPrompts.map((action, i) => (
                                 <button
                                     key={i}
+                                    disabled={!hasInteracted || isTyping}
                                     onClick={() => handleSend(action.prompt)}
-                                    className="flex-none px-4 py-2 rounded-full bg-lime-500/10 border border-lime-500/20 text-lime-600 dark:text-lime-400 text-[10px] font-bold uppercase tracking-wider hover:bg-lime-500/20 transition-all whitespace-nowrap flex items-center gap-2"
+                                    className="flex-none px-4 py-2 rounded-full bg-lime-500/10 border border-lime-500/20 text-lime-600 dark:text-lime-400 text-[10px] font-bold uppercase tracking-wider hover:bg-lime-500/20 transition-all whitespace-nowrap flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
                                     {action.icon}
                                     {action.label}
@@ -897,17 +905,18 @@ const CustomerChatPage: React.FC = () => {
                             value={inputValue}
                             onChange={e => setInputValue(e.target.value)}
                             onKeyDown={handleKeyDown}
-                            placeholder={t('common.search') || "Ask me anything..."}
-                            className="flex-1 bg-transparent border-0 outline-none text-foreground text-sm placeholder:text-muted-foreground resize-none overflow-hidden px-5 py-4 leading-relaxed"
+                            disabled={!hasInteracted || isTyping}
+                            placeholder={!hasInteracted ? "Waiting for assistant..." : (t('common.search') || "Ask me anything...")}
+                            className="flex-1 bg-transparent border-0 outline-none text-foreground text-sm placeholder:text-muted-foreground resize-none overflow-hidden px-5 py-4 leading-relaxed disabled:opacity-50 disabled:cursor-not-allowed"
                             rows={1}
                             style={{ minHeight: '1.5em', maxHeight: '120px' }}
                         />
                         <button
                             onClick={() => handleSend()}
-                            disabled={!hasContent || isTyping}
+                            disabled={!hasContent || isTyping || !hasInteracted}
                             className={cn(
                                 "m-2 p-2.5 rounded-2xl transition-all duration-500 flex-shrink-0",
-                                hasContent && !isTyping
+                                hasContent && !isTyping && hasInteracted
                                     ? "bg-[#84CC16] text-white hover:bg-lime-500 hover:scale-105 active:scale-95 shadow-lg shadow-lime-500/20"
                                     : "bg-muted/10 text-muted-foreground cursor-not-allowed"
                             )}

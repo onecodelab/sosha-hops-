@@ -199,13 +199,14 @@ const DEFAULT_SYSTEM_PROMPT = `You are a smart, professional restaurant assistan
 2. **TABLE VERIFICATION**: Immediately after greeting, you MUST ask: "Could you please tell me your table number? 😊"
     - DO NOT show the menu or take orders until the table is verified.
 3. **VALIDATION**: Once the user provides a table number, call 'list_tables' to see if it exists in the floor map.
-    - If it's a MATCH: Confirm it (e.g. "Great! You're at Table C1. How can I help you today?") and unlock all other tools.
+    - If it's a MATCH: Confirm it exactly as follows: "Got it! You're at Table [Number]! ✅ Great to have you here! 🎉 Now, what can I get you tonight? Check out our menu:" 
+    - ACTION: Immediately after matching, you MUST call 'get_menu' (with no query) to show the visual carousel.
     - If it's NOT in the list: Politely explain that you couldn't find that table and ask them to double-check the number on their table card.
     - DO NOT hallucinate. Only valid numbers from 'list_tables' are allowed.
 4. **UNLOCK**: Only after verification can you use 'get_menu', 'place_order', or 'update_order'.
 
 ## OPERATIONAL RULES
-1. **NO TEXT MENUS**: NEVER list food items or prices in plain text. ALWAYS use 'get_menu' to show the visual carousel.
+1. **NO TEXT MENUS**: NEVER list food items, descriptions, or prices in plain text. ALWAYS use 'get_menu' to show the visual carousel. Your text response should only ever be an invitation to look at the carousel (e.g. "Check out our delicious options below!").
 2. **ORDER FLOW**: Once an order is placed, tell the customer: "Order sent for approval! 📡 A waiter will confirm it shortly so the kitchen can start cooking."
 3. **UPSELL**: If they order a main course, ask if they'd like a drink and show the drinks menu.
 4. **CONTEXT**: Use the Restaurant name and Branch ID from the auto-injected CONTEXT below.
@@ -269,21 +270,8 @@ async function executeMcpTool(
         }
 
         const items = menuData || [];
-
-        // Inject Promo/Deal card
-        const promoItem = {
-            id: "promo-deal",
-            name: "🔥 Happy Hour: 20% OFF",
-            price: 0,
-            category: "Deal",
-            image_url: "https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?auto=format&fit=crop&w=800&q=80",
-            is_available: true,
-            description: "20% off all appetizers until 6 PM! Click to see appetizers.",
-            demand_status: "HOT DEAL"
-        };
-
-        console.log(`[MCP-LOCAL-MENU] Found ${items.length} items. Injecting promo.`);
-        return { items: [promoItem, ...items] };
+        console.log(`[MCP-LOCAL-MENU] Found ${items.length} items.`);
+        return { items };
     }
 
     // ─── EXTERNAL TOOLS (Everything Else) ───
@@ -312,7 +300,7 @@ async function executeMcpTool(
             headers: {
                 "Content-Type": "application/json",
                 "apikey": Deno.env.get("SUPABASE_ANON_KEY")!,
-                "Authorization": `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")!}`,
+                "X-Internal-Token": "baro-os-branch-secure-2026",
             },
             body: JSON.stringify(requestBody),
             signal: controller.signal,
@@ -405,8 +393,8 @@ serve(async (req) => {
             );
         }
 
-        // ── STEP 1: Load System Prompt ──
-        let basePrompt = DEFAULT_SYSTEM_PROMPT;
+        // ── STEP 1: Load Organization Context ──
+        let orgPrompt = "";
         let orgName = organization_name || "Unknown";
         try {
             const { data: orgData } = await supabase
@@ -416,7 +404,7 @@ serve(async (req) => {
                 .single();
 
             if (orgData?.chatbot_system_prompt?.trim()) {
-                basePrompt = orgData.chatbot_system_prompt;
+                orgPrompt = `\n\n## HISTORICAL CONTEXT (MAY BE OUTDATED)\n${orgData.chatbot_system_prompt}\n\n`;
             }
             if (orgData?.name) orgName = orgData.name;
         } catch (e) {
@@ -426,11 +414,9 @@ serve(async (req) => {
         const activeBranchName = branch_name || "Unknown";
         const activeTable = table_number || "Unknown";
         
-        // Setup proactive variables
-        const now = new Date();
-        const hour = now.getHours();
         let timeOfDay = "Evening";
         let timeBasedMenuContext = "Display a 'Dinner & Drinks' carousel highlighting signature entrees and cocktails.";
+        const hour = new Date().getHours();
         if (hour >= 6 && hour < 11) {
             timeOfDay = "Morning";
             timeBasedMenuContext = "Display a 'Breakfast Specials' carousel featuring coffee, pastries, and light meals.";
@@ -438,23 +424,30 @@ serve(async (req) => {
             timeOfDay = "Afternoon";
             timeBasedMenuContext = "Display a 'Lunch Deals' carousel with quick-serve items and combos.";
         }
-        const promoDeal = "Happy Hour: 20% off all appetizers! Call 'get_menu' for appetizers to show the Deal of the Day carousel.";
 
-        let systemPrompt = `${basePrompt}
-${RICH_UI_INSTRUCTIONS}
+        // ── STEP 2: Construct Final System Prompt (STRICTEST RULES LAST) ──
+        let systemPrompt = `You are the digital assistant for ${orgName}.
+${orgPrompt}
+
 ${PROFESSIONALISM_PROTOCOL}
 
-## CONTEXT
+## CURRENT SESSION CONTEXT
 - Restaurant: ${orgName}
 - Branch: ${activeBranchName}
-- Table Number: ${activeTable}
+- Table (Claimed): ${activeTable}
 - Session ID: ${session_id}
-- Date: ${now.toLocaleDateString()}
-- Current Time: ${now.toLocaleTimeString()} (${timeOfDay})
+- Local Time: ${new Date().toLocaleTimeString()} (${timeOfDay})
 
-## PROACTIVE FEATURES REQUIRED
-- **Time of Day (${timeOfDay})**: ${timeBasedMenuContext}
-- **Deal of the Day**: ${promoDeal}`;
+${DEFAULT_SYSTEM_PROMPT}
+
+## HARD_RESET & FINAL INSTRUCTIONS (CRITICAL)
+- **NO ITEM NAMES**: Your response MUST NOT contain any food names, category names, or prices (e.g., "Burger", "Drinks", "100 ETB").
+- **NO TEXT LISTS**: NEVER use tables, lists, or bullets to describe the menu.
+- **GREETING ONLY**: Your text response should ONLY ever be a warm greeting or a confirmation (e.g., "Got it! You're at Table 5! ✅ Great to have you here! 🎉 Check out our menu:").
+- **CAROUSEL IS AUTOMATIC**: The pictures and menu details are handled by a separate UI component that displays automatically when you call 'get_menu'. DO NOT try to describe them.
+- **ONBOARDING**: Even if context shows a Table Number, you MUST ask the user to confirm it: "Welcome! To make sure I have the right spot, could you please confirm your table number? 😊"
+- **MATCH GREETING**: When confirmed, use ONLY: "Got it! You're at Table [Number]! ✅ Great to have you here! 🎉 Now, what can I get you tonight? Check out our menu:"
+`;
 
         // ── STEP 2: Load Customer Profile ──
         let customerContext = "";
@@ -672,7 +665,8 @@ ${PROFESSIONALISM_PROTOCOL}
                 }
             } catch (err: any) {
                 console.error("[CustomerAgent] LLM Call Error:", err.message);
-                finalResponse = "I'm having a bit of trouble reaching my knowledge right now. Could you please try again in a moment? 🍽️";
+                // Return a slightly more detailed error in dev/testing if possible, or just the fallback
+                finalResponse = `I'm having a bit of trouble reaching my knowledge right now (Error: ${err.message}). Could you please try again in a moment? 🍽️`;
                 break;
             }
 
@@ -795,12 +789,13 @@ ${PROFESSIONALISM_PROTOCOL}
                 richMetadata.buttons = [
                     { label: "✨ Best Offers", prompt: "Show me the best offers" },
                     { label: "🍹 Drinks", prompt: "Show me the drinks menu" },
-                    { label: "☕ Coffee", prompt: "I'd like to see the coffee options" }
+                    { label: "🍕 Food Menu", prompt: "Show me the food menu" }
                 ];
             } else if (attachments?.type === 'menu' || lowerResp.includes("menu") || lowerResp.includes("set")) {
                 richMetadata.buttons = [
-                    { label: "📖 View Full Menu", prompt: "Show me the entire menu" },
-                    { label: "🤩 What's Popular?", "prompt": "Show me popular items" },
+                    { label: "🤩 What's Popular?", prompt: "Show me popular items" },
+                    { label: "🍹 Cold Drinks", prompt: "Show me drinks" },
+                    { label: "☕ Coffee", prompt: "I'd like coffee" },
                     { label: "🛒 View Cart", prompt: "Show my cart" }
                 ];
             } else if (lowerResp.includes("order") || lowerResp.includes("status")) {
