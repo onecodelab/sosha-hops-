@@ -722,6 +722,16 @@ ${DEFAULT_SYSTEM_PROMPT}
                 }
             } catch (err: any) {
                 console.error("[CustomerAgent] LLM Call Error:", err.message);
+                if (attachments?.type === 'menu') {
+                    finalResponse = "Here's what we have for you!";
+                    break;
+                }
+
+                if (richMetadata.top_performing_items || richMetadata.categories) {
+                    finalResponse = "Here are a few great options to explore.";
+                    break;
+                }
+
                 // Return a slightly more detailed error in dev/testing if possible, or just the fallback
                 finalResponse = `I'm having a bit of trouble reaching my knowledge right now (Error: ${err.message}). Could you please try again in a moment? 🍽️`;
                 break;
