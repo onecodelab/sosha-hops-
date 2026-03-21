@@ -1,12 +1,10 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 export const corsHeaders = {
-    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Origin': Deno.env.get('ALLOWED_ORIGIN') ?? '*',
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
     'Content-Type': 'application/json',
 };
-
-const SYSTEM_SECRET = "baro-os-branch-secure-2026";
 
 export interface IdentityContext {
     organizationId: string;
@@ -15,12 +13,79 @@ export interface IdentityContext {
     role?: string;
 }
 
+function normalizeBase64(value: string): string {
+    const normalized = value.replace(/-/g, '+').replace(/_/g, '/');
+    const padding = normalized.length % 4;
+    if (padding === 0) return normalized;
+    return normalized + '='.repeat(4 - padding);
+}
+
+function decodeBase64(value: string): string {
+    return atob(normalizeBase64(value));
+}
+
+function timingSafeEqual(a: Uint8Array, b: Uint8Array): boolean {
+    if (a.length !== b.length) return false;
+    let mismatch = 0;
+    for (let i = 0; i < a.length; i += 1) {
+        mismatch |= a[i] ^ b[i];
+    }
+    return mismatch === 0;
+}
+
+async function verifyBranchToken(token: string): Promise<IdentityContext | null> {
+    const branchTokenSecret = Deno.env.get('BRANCH_TOKEN_SECRET');
+    if (!branchTokenSecret) {
+        return null;
+    }
+
+    const [payloadB64, signatureB64] = token.split('.');
+    if (!payloadB64 || !signatureB64) {
+        return null;
+    }
+
+    try {
+        const encoder = new TextEncoder();
+        const key = await crypto.subtle.importKey(
+            'raw',
+            encoder.encode(branchTokenSecret),
+            { name: 'HMAC', hash: 'SHA-256' },
+            false,
+            ['sign'],
+        );
+
+        const expectedSignature = new Uint8Array(
+            await crypto.subtle.sign('HMAC', key, encoder.encode(payloadB64)),
+        );
+        const providedSignature = Uint8Array.from(decodeBase64(signatureB64), (char) => char.charCodeAt(0));
+
+        if (!timingSafeEqual(expectedSignature, providedSignature)) {
+            return null;
+        }
+
+        const payload = JSON.parse(decodeBase64(payloadB64));
+        if (!payload.branch_id || !payload.organization_id) {
+            return null;
+        }
+
+        return {
+            organizationId: payload.organization_id,
+            branchId: payload.branch_id,
+            role: payload.role ?? 'chatbot',
+        };
+    } catch (e) {
+        console.warn("Identity Resolution Failed:", e instanceof Error ? e.message : String(e));
+        return null;
+    }
+}
+
 export async function resolveIdentity(req: Request, supabase: any): Promise<IdentityContext | null> {
     const authHeader = req.headers.get('Authorization');
     const internalToken = req.headers.get('X-Internal-Token');
+    const systemSecret = Deno.env.get('MCP_INTERNAL_TOKEN');
 
     // 0. Try Internal Token or Service Role Key
-    if (internalToken === SYSTEM_SECRET || 
+    if ((systemSecret && internalToken === systemSecret) ||
         (authHeader && authHeader.replace('Bearer ', '') === Deno.env.get('SUPABASE_SERVICE_ROLE_KEY'))) {
         return {
             organizationId: 'SERVICE_ROLE',
@@ -44,27 +109,9 @@ export async function resolveIdentity(req: Request, supabase: any): Promise<Iden
     }
 
     // 2. Try Signed Branch Token
-    // Format: base64(payload).base64(hash)
-    try {
-        const [payloadB64, hashB64] = token.split('.');
-        if (payloadB64 && hashB64) {
-            const payloadStr = atob(payloadB64);
-            const payload = JSON.parse(payloadStr);
-
-            // In a real environment, we'd verify the HMAC here.
-            // For this implementation, we trust the structure if it has the required fields.
-            // (Note: In production, use a library like 'jose' for JWS verification)
-
-            if (payload.branch_id && payload.organization_id) {
-                return {
-                    organizationId: payload.organization_id,
-                    branchId: payload.branch_id,
-                    role: 'chatbot'
-                };
-            }
-        }
-    } catch (e) {
-        console.warn("Identity Resolution Failed:", e.message);
+    const branchIdentity = await verifyBranchToken(token);
+    if (branchIdentity) {
+        return branchIdentity;
     }
 
     return null;

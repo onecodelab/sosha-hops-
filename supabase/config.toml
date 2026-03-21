@@ -9,3 +9,8 @@ entrypoint = "./functions/db-migrate/index.ts"
 # Specifies static files to be bundled with the function. Supports glob patterns.
 # For example, if you want to serve static HTML pages in your function:
 # static_files = [ "./functions/db-migrate/*.html" ]
+
+[functions.mcp-server]
+enabled = true
+verify_jwt = false
+entrypoint = "./functions/mcp-server/index.ts"
