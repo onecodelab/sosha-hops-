@@ -85,12 +85,36 @@ export async function listTables(context: ToolContext) {
         throw new Error(`Database Error listing tables: ${error.message}`);
     }
 
-    const tableNumbers = (tables || []).map((table: any) => table.table_number);
+    let tableNumbers = (tables || []).map((table: any) => table.table_number);
     console.log(`[MCP-LIST-TABLES] Found ${tableNumbers.length} tables for branch ${branchId}`);
+
+    // AUTO-SEED: If no tables exist for this branch, seed some default ones
+    if (tableNumbers.length === 0 && branchId) {
+        console.log(`[MCP-LIST-TABLES] SEEDING default tables for branch ${branchId}...`);
+        const defaultTables = [
+            '1', '2', '3', '4', '5', '6', '7', '8', '9', '10',
+            'C1', 'C2', 'C3', 'C4', 'C5', 'C8', 'T1', 'T2'
+        ];
+        
+        const seedData = defaultTables.map(num => ({
+            branch_id: branchId,
+            table_number: num,
+            status: 'available',
+            organization_id: context.organizationId
+        }));
+
+        const { error: seedErr } = await context.supabase.from('tables').insert(seedData);
+        if (seedErr) {
+            console.error("[MCP-LIST-TABLES] Seed Error:", seedErr);
+        } else {
+            console.log(`[MCP-LIST-TABLES] Successfully seeded ${defaultTables.length} tables.`);
+            tableNumbers = defaultTables;
+        }
+    }
 
     return {
         tables: tableNumbers,
         count: tableNumbers.length,
-        message: tableNumbers.length === 0 ? "No tables found in this branch." : "Success",
+        message: tableNumbers.length === 0 ? "No tables found and seeding failed." : "Success",
     };
 }
