@@ -58,7 +58,8 @@ serve(async (req) => {
                 table_id,
                 telegram_id,
                 source: source || 'chatbot'
-            }
+            },
+            p_organization_id: organizationId
         });
 
         if (rpcErr || !result?.success) {

@@ -48,6 +48,7 @@ export async function placeOrder(context: ToolContext) {
             customer_phone: customerPhone,
             session_id: sessionId,
         },
+        p_organization_id: context.organizationId,
     });
 
     if (atomicErr) throw atomicErr;
