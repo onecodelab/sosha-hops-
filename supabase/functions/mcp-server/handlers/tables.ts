@@ -1,5 +1,5 @@
 import type { ToolContext } from "../types.ts";
-import { getString, requireBranchId, resolveBranchId } from "../utils.ts";
+import { getString, normalizeTableNumber, requireBranchId, resolveBranchId, resolveTableRecord } from "../utils.ts";
 
 export async function getBranchInfo(context: ToolContext) {
     const branchId = requireBranchId(context);
@@ -41,15 +41,15 @@ export async function verifyNFCTap(context: ToolContext) {
     const sessionId = getString(context.params.session_id);
     const branchId = requireBranchId(context);
 
-    const { data: tableData, error: tableErr } = await context.supabase
-        .from('tables')
-        .select('*')
-        .eq('table_number', tableNumber)
-        .eq('branch_id', branchId)
-        .single();
+    let tableData = null;
+    try {
+        tableData = await resolveTableRecord(context.supabase, branchId, tableNumber);
+    } catch (tableErr) {
+        console.error("[NFC] Table lookup failed:", tableErr);
+    }
 
-    if (tableErr || !tableData) {
-        console.error("[NFC] Invalid token or table not found:", tableErr);
+    if (!tableData) {
+        console.error("[NFC] Invalid token or table not found");
         return { success: false, reason: "Invalid verification token." };
     }
 
@@ -114,6 +114,7 @@ export async function listTables(context: ToolContext) {
 
     return {
         tables: tableNumbers,
+        normalized_tables: tableNumbers.map((table: string) => normalizeTableNumber(table)),
         count: tableNumbers.length,
         message: tableNumbers.length === 0 ? "No tables found and seeding failed." : "Success",
     };

@@ -1,5 +1,5 @@
 import type { JsonRecord, ToolContext } from "../types.ts";
-import { getArray, getNumber, getString, requireBranchId, resolveBranchId, resolveOrderItemsByNameOrId, resolveTableId } from "../utils.ts";
+import { getArray, getNumber, getString, normalizeTableNumber, requireBranchId, resolveBranchId, resolveOrderItemsByNameOrId, resolveTableId } from "../utils.ts";
 
 export async function placeOrder(context: ToolContext) {
     const items = getArray<JsonRecord>(context.params.items);
@@ -144,11 +144,19 @@ export async function getOrderStatus(context: ToolContext) {
         query = query.eq('id', orderId);
     } else if (tableNumber) {
         const branchId = resolveBranchId(context);
-        query = query.eq('table_number', tableNumber)
+        const { data: matchingOrders, error: orderErr } = await context.supabase
+            .from('orders')
+            .select('id, order_number, status, payment_status, total_amount, created_at, table_number')
+            .eq('organization_id', context.organizationId)
             .eq('branch_id', branchId)
             .in('status', ['pending', 'preparing', 'accepted', 'ready'])
-            .order('created_at', { ascending: false })
-            .limit(1);
+            .order('created_at', { ascending: false });
+
+        if (orderErr) throw orderErr;
+
+        const normalizedTarget = normalizeTableNumber(tableNumber);
+        const matchedOrder = (matchingOrders || []).find((order: any) => normalizeTableNumber(order.table_number) === normalizedTarget);
+        return { orders: matchedOrder ? [matchedOrder] : [] };
     } else {
         throw new Error("order_id or table_number is required.");
     }

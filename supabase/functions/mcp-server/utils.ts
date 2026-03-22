@@ -16,6 +16,15 @@ export function getArray<T = any>(value: unknown): T[] {
     return Array.isArray(value) ? value as T[] : [];
 }
 
+export function normalizeTableNumber(value: unknown): string {
+    return getString(value)
+        .trim()
+        .toUpperCase()
+        .replace(/^TABLE\s*/i, '')
+        .replace(/^#/, '')
+        .replace(/\s+/g, '');
+}
+
 export function resolveBranchId(context: ToolContext): string | undefined {
     return getString(context.branchId) || getString(context.params.branch_id) || undefined;
 }
@@ -29,22 +38,38 @@ export function requireBranchId(context: ToolContext): string {
 }
 
 export async function resolveTableId(supabase: any, branchId: string, tableNumber: string) {
-    const { data: tableData, error: tableErr } = await supabase
+    const normalizedTarget = normalizeTableNumber(tableNumber);
+    const { data: tables, error: tableErr } = await supabase
         .from('tables')
-        .select('id')
-        .eq('table_number', tableNumber)
+        .select('id, table_number')
         .eq('branch_id', branchId)
-        .maybeSingle();
+        .limit(200);
 
     if (tableErr) {
         console.error("[MCP-ORDER] Table lookup error:", tableErr);
     }
 
+    const tableData = (tables || []).find((table: any) => normalizeTableNumber(table.table_number) === normalizedTarget);
     if (!tableData) {
         throw new Error(`Could not find table number "${tableNumber}" in this branch.`);
     }
 
     return tableData.id;
+}
+
+export async function resolveTableRecord(supabase: any, branchId: string, tableNumber: string) {
+    const normalizedTarget = normalizeTableNumber(tableNumber);
+    const { data: tables, error } = await supabase
+        .from('tables')
+        .select('*')
+        .eq('branch_id', branchId)
+        .limit(200);
+
+    if (error) {
+        throw error;
+    }
+
+    return (tables || []).find((table: any) => normalizeTableNumber(table.table_number) === normalizedTarget) || null;
 }
 
 export async function resolveOrderItemsByNameOrId(context: ToolContext, items: JsonRecord[]) {
