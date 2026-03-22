@@ -261,6 +261,38 @@ const PROFESSIONALISM_PROTOCOL = `
 - Every response should be concise.
 `;
 
+function normalizeTableCandidate(value: string): string {
+    return value
+        .trim()
+        .toUpperCase()
+        .replace(/^TABLE\s*/i, '')
+        .replace(/^#/, '')
+        .replace(/\s+/g, '');
+}
+
+function hasUsableTableContext(value?: string | null): boolean {
+    const normalized = normalizeTableCandidate(value || '');
+    return !!normalized && normalized !== 'UNKNOWN' && normalized !== 'GUEST';
+}
+
+function looksLikeTableCandidate(message: string): boolean {
+    const normalized = normalizeTableCandidate(message);
+    return /^[A-Z]?\d{1,3}$/.test(normalized);
+}
+
+function matchTableCandidate(input: string, availableTables: string[]): string | null {
+    const normalizedInput = normalizeTableCandidate(input);
+    if (!normalizedInput) return null;
+
+    for (const table of availableTables) {
+        if (normalizeTableCandidate(table) === normalizedInput) {
+            return table;
+        }
+    }
+
+    return null;
+}
+
 
 // ─── MCP TOOL EXECUTOR ───
 async function executeMcpTool(
@@ -405,6 +437,9 @@ serve(async (req) => {
 
         const body = await req.json();
         const { message, session_id, table_number, organization_id, organization_name, branch_id: clientBranchId, branch_name, is_verified } = body;
+        let resolvedTableNumber = table_number;
+        let prefetchedMetadata: any = {};
+        let shouldShortcutVerifiedTable = false;
 
         // External timeout for the entire reasoning process (25s to stay under Edge limit)
         const globalController = new AbortController();
@@ -442,6 +477,42 @@ serve(async (req) => {
             console.warn("[CustomerAgent] Identity resolution error:", e);
         }
 
+        if (!hasUsableTableContext(resolvedTableNumber) && session_id) {
+            try {
+                const { data: recentMetadata } = await supabase
+                    .from("customer_chats")
+                    .select("metadata")
+                    .eq("session_id", session_id)
+                    .order("created_at", { ascending: false })
+                    .limit(10);
+
+                const savedTable = recentMetadata?.find((row: any) => hasUsableTableContext(row?.metadata?.confirmed_table_number))
+                    ?.metadata?.confirmed_table_number;
+
+                if (savedTable) {
+                    resolvedTableNumber = savedTable;
+                    prefetchedMetadata.confirmed_table_number = savedTable;
+                }
+            } catch (e) {
+                console.warn("[CustomerAgent] Saved table lookup failed:", e);
+            }
+        }
+
+        if (!hasUsableTableContext(resolvedTableNumber) && branchId && looksLikeTableCandidate(message)) {
+            try {
+                const tableResult = await executeMcpTool(supabase, "list_tables", {}, organizationId, branchId || "", "");
+                const matchedTable = matchTableCandidate(message, tableResult?.tables || []);
+
+                if (matchedTable) {
+                    resolvedTableNumber = matchedTable;
+                    prefetchedMetadata.confirmed_table_number = matchedTable;
+                    shouldShortcutVerifiedTable = true;
+                }
+            } catch (e) {
+                console.warn("[CustomerAgent] Deterministic table verification failed:", e);
+            }
+        }
+
         if (!message || !session_id) {
             clearTimeout(globalTimeout);
             return new Response(
@@ -469,7 +540,10 @@ serve(async (req) => {
         }
 
         const activeBranchName = branch_name || "Unknown";
-        const activeTable = table_number || "Unknown";
+        const activeTable = resolvedTableNumber || "Unknown";
+        const tableInstruction = hasUsableTableContext(resolvedTableNumber)
+            ? `- TABLE VERIFIED: The confirmed table for this session is ${resolvedTableNumber}. Do NOT ask for table confirmation again. You may place orders and updates for this table immediately.`
+            : `- ONBOARDING: Ask the customer to confirm their table number before placing or updating any order.`;
         
         let timeOfDay = "Evening";
         let timeBasedMenuContext = "Display a 'Dinner & Drinks' carousel highlighting signature entrees and cocktails.";
@@ -502,7 +576,7 @@ ${DEFAULT_SYSTEM_PROMPT}
 - **NO TEXT LISTS**: NEVER use tables, lists, or bullets to describe the menu.
 - **GREETING ONLY**: Your text response should ONLY ever be a warm greeting or a confirmation (e.g., "Got it! You're at Table 5! ✅ Great to have you here! 🎉 Check out our menu:").
 - **CAROUSEL IS AUTOMATIC**: The pictures and menu details are handled by a separate UI component that displays automatically when you call 'get_menu'. DO NOT try to describe them.
-- **ONBOARDING**: Even if context shows a Table Number, you MUST ask the user to confirm it: "Welcome! To make sure I have the right spot, could you please confirm your table number? 😊"
+- **TABLE STATE**: ${tableInstruction}
 - **MATCH GREETING**: When confirmed, use ONLY: "Got it! You're at Table [Number]! ✅ Great to have you here! 🎉 Now, what can I get you tonight? Check out our menu:"
 `;
 
@@ -601,11 +675,26 @@ ${DEFAULT_SYSTEM_PROMPT}
 
         let finalResponse = "";
         let attachments: any = null;
-        let richMetadata: any = {};
+        let richMetadata: any = { ...prefetchedMetadata };
         let loopCount = 0;
         const MAX_LOOPS = 5;
 
-        while (loopCount < MAX_LOOPS) {
+        if (shouldShortcutVerifiedTable && resolvedTableNumber) {
+            const menuResult = await executeMcpTool(supabase, "get_menu", {}, organizationId, branchId || "", resolvedTableNumber);
+            attachments = {
+                type: 'menu',
+                data: menuResult.items || [],
+            };
+            richMetadata.confirmed_table_number = resolvedTableNumber;
+            richMetadata.buttons = [
+                { label: "✨ Best Offers", prompt: "Show me the best offers" },
+                { label: "🍹 Drinks", prompt: "Show me the drinks menu" },
+                { label: "🍕 Food Menu", prompt: "Show me the food menu" }
+            ];
+            finalResponse = `Got it! You're at Table ${resolvedTableNumber}! ✅ Great to have you here! 🎉 Now, what can I get you today? Check out our menu:`;
+        }
+
+        while (!finalResponse && loopCount < MAX_LOOPS) {
             loopCount++;
             let llmResult: any;
 
@@ -750,7 +839,7 @@ ${DEFAULT_SYSTEM_PROMPT}
 
                     let toolResult: any;
                     try {
-                        toolResult = await executeMcpTool(supabase, toolName, toolParams, organizationId, branchId || "", table_number);
+                        toolResult = await executeMcpTool(supabase, toolName, toolParams, organizationId, branchId || "", resolvedTableNumber || "");
                     } catch (err: any) {
                         toolResult = { error: err.message };
                     }
@@ -769,6 +858,12 @@ ${DEFAULT_SYSTEM_PROMPT}
                             data: toolResult.items || [],
                             debug: toolResult.debug 
                         };
+                    } else if (toolName === 'list_tables') {
+                        const matchedTable = matchTableCandidate(message, toolResult.tables || []);
+                        if (matchedTable) {
+                            resolvedTableNumber = matchedTable;
+                            richMetadata.confirmed_table_number = matchedTable;
+                        }
                     } else if (toolName === 'get_top_performing_items') {
                         richMetadata.top_performing_items = toolResult.items || toolResult || [];
                     } else if (toolName === 'get_categories') {
