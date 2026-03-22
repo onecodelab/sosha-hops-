@@ -498,7 +498,7 @@ serve(async (req) => {
             }
         }
 
-        if (!hasUsableTableContext(resolvedTableNumber) && branchId && looksLikeTableCandidate(message)) {
+        if (branchId && looksLikeTableCandidate(message)) {
             try {
                 const tableResult = await executeMcpTool(supabase, "list_tables", {}, organizationId, branchId || "", "");
                 const matchedTable = matchTableCandidate(message, tableResult?.tables || []);
@@ -507,6 +507,8 @@ serve(async (req) => {
                     resolvedTableNumber = matchedTable;
                     prefetchedMetadata.confirmed_table_number = matchedTable;
                     shouldShortcutVerifiedTable = true;
+                } else if (normalizeTableCandidate(message) !== normalizeTableCandidate(resolvedTableNumber || '')) {
+                    prefetchedMetadata.requested_table_number = normalizeTableCandidate(message);
                 }
             } catch (e) {
                 console.warn("[CustomerAgent] Deterministic table verification failed:", e);
