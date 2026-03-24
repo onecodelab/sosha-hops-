@@ -6,7 +6,7 @@ import { Printer, X } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../AuthContext';
 import { QRCodeSVG } from 'qrcode.react';
-import { buildMerchantQR, BANK_EMV_CONFIG } from '../lib/emvqr';
+import { buildMerchantQR, buildUniversalMerchantQR, BANK_EMV_CONFIG } from '../lib/emvqr';
 
 interface OrderDetailsModalProps {
     isOpen: boolean;
@@ -229,58 +229,36 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ isOpen, on
 
                     <p className="text-center text-[9px] text-gray-400 my-2">{DASHED}</p>
 
-                    {/* ERCA & Payment QR Footer */}
-                    <div className="mt-4 flex flex-col items-center">
-                        <div className="flex items-start justify-center gap-4">
-                            {/* ERCA Fiscal QR */}
-                            <div className="text-center flex flex-col items-center">
-                                <QRCodeSVG
-                                    value={`TIN:0043819230|INV:ORD-${order.order_number || order.id.slice(0, 8)}|DATE:${new Date(order.created_at).toISOString()}|TOTAL:${total}|VAT:${vat}`}
-                                    size={60}
-                                    level="M"
-                                    className="mb-1"
-                                />
-                                <span className="font-black text-[9px] tracking-wide">ERCA</span>
-                            </div>
-
-                            {/* Payment QR (per bank) */}
-                            {activeBanks.length > 0 && (
-                                <div className="text-center flex flex-col items-center">
-                                    <QRCodeSVG
-                                        value={buildMerchantQR({
-                                            bankKey: activeBanks[selectedPayBank]?.bank_key,
-                                            accountNumber: activeBanks[selectedPayBank]?.account_number,
-                                            merchantName: restaurantName,
-                                            amount: total,
-                                        })}
-                                        size={60}
-                                        level="M"
-                                        className="mb-1"
-                                    />
-                                    {/* Bank Tabs */}
-                                    <div className="flex gap-1 mt-1">
-                                        {activeBanks.map((b: any, i: number) => {
-                                            const emvCfg = BANK_EMV_CONFIG[b.bank_key];
-                                            return (
-                                                <button key={b.id}
-                                                    onClick={() => setSelectedPayBank(i)}
-                                                    className={cn(
-                                                        "px-1.5 py-0.5 rounded text-[7px] font-black uppercase transition-all",
-                                                        i === selectedPayBank
-                                                            ? "bg-black text-white"
-                                                            : "bg-gray-200 text-gray-500 hover:bg-gray-300"
-                                                    )}
-                                                >
-                                                    {emvCfg?.label || b.bank_key}
-                                                </button>
-                                            );
-                                        })}
-                                    </div>
-                                </div>
-                            )}
+                    {/* Universal QR Footer (ERCA + ALL Banks) */}
+                    <div className="flex flex-col items-center gap-4 mt-6 font-mono">
+                        <div className="text-center flex flex-col items-center bg-gray-50 p-2 rounded-lg border border-gray-100 print:bg-transparent print:border-none">
+                            <QRCodeSVG
+                                value={buildUniversalMerchantQR(
+                                    activeBanks.map((b: any) => ({
+                                        bankKey: b.bank_key,
+                                        accountNumber: b.account_number,
+                                        merchantName: restaurantName,
+                                        amount: total,
+                                    })),
+                                    `TIN:0043819230|INV:ORD-${order.order_number || order.id.slice(0, 8)}|DATE:${new Date(order.created_at).toISOString()}|TOTAL:${total}`
+                                )}
+                                size={120}
+                                level="M"
+                            />
                         </div>
-                        <p className="text-[9px] text-gray-500 font-mono mt-2">FG{order.id.slice(0, 8).toUpperCase()}</p>
-                        <p className="text-[9px] text-gray-400 mt-1 tracking-wider">Powered by Baro OS</p>
+
+                        {/* List of Accounts for reference */}
+                        <div className="w-full px-8 space-y-1">
+                            {activeBanks.map((b: any) => (
+                                <div key={b.id} className="flex justify-between text-[8px] uppercase font-bold text-gray-400">
+                                    <span>{BANK_EMV_CONFIG[b.bank_key]?.label || b.bank_key}</span>
+                                    <span>{b.account_number}</span>
+                                </div>
+                            ))}
+                        </div>
+
+                        <p className="text-[9px] text-gray-400 mt-2 font-mono uppercase tracking-tighter">FG{order.id.slice(0, 8).toUpperCase()}</p>
+                        <p className="text-[9px] text-gray-300 mt-1 tracking-widest">Powered by Baro OS</p>
                     </div>
                 </div>
 

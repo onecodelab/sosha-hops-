@@ -27,10 +27,10 @@ export const Header: React.FC<HeaderProps> = ({
     const { t } = useLanguage();
 
     return (
-        <header className="flex-none h-24 flex items-center justify-between px-8 border-b border-primary/30 bg-background/80 backdrop-blur-xl relative z-30">
-            <div className="flex flex-col">
-                <h2 className="text-2xl font-bold tracking-tight text-foreground">{title || t('nav.overview')}</h2>
-                {subtitle && <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest leading-none mt-1">{subtitle}</p>}
+        <header className="flex-none h-16 md:h-20 lg:h-24 flex items-center justify-between px-4 md:px-8 border-b border-border/10 bg-background/80 backdrop-blur-xl relative z-30 shadow-sm">
+            <div className="flex flex-col flex-1 overflow-hidden pr-2">
+                <h2 className="text-lg md:text-xl lg:text-2xl font-black tracking-tight text-foreground truncate">{title || t('nav.overview')}</h2>
+                {subtitle && <p className="hidden lg:block text-[10px] font-black text-muted-foreground uppercase tracking-widest leading-none mt-1 truncate">{subtitle}</p>}
             </div>
 
             <div className="flex items-center gap-6">
@@ -47,20 +47,20 @@ export const Header: React.FC<HeaderProps> = ({
                     </RoleGuard>
                 )}
 
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 md:gap-3">
                     <ThemeToggle />
                     <LanguageSwitcher />
 
-                    <div className="h-10 w-px bg-primary/30 mx-2 hidden sm:block" />
+                    <div className="h-8 w-px bg-border/20 mx-1 hidden sm:block" />
 
                     {/* Profile Dropdown */}
                     <div className="relative">
                         <button
                             ref={profileRef}
                             onClick={() => setIsProfileActive(!isProfileActive)}
-                            className="flex items-center gap-3 pl-2 pr-4 py-1.5 rounded-full bg-card/50 border border-primary/30 hover:bg-card hover:border-primary/50 transition-all group shadow-sm bg-primary/5"
+                            className="flex items-center gap-2 p-1 rounded-full bg-primary/5 border border-border/20 hover:bg-primary/10 hover:border-primary/30 transition-all group shrink-0"
                         >
-                            <div className="w-10 h-10 rounded-full overflow-hidden bg-primary shadow-[0_0_20px_rgba(255,184,0,0.3)] border-2 border-primary/40">
+                            <div className="w-10 h-10 rounded-full overflow-hidden bg-primary shadow-[0_0_20px_rgba(255,184,0,0.3)] border-2 border-primary/40 shrink-0">
                                 {profile?.avatar_url ? (
                                     <img src={profile.avatar_url} className="w-full h-full object-cover" />
                                 ) : (
@@ -69,11 +69,11 @@ export const Header: React.FC<HeaderProps> = ({
                                     </div>
                                 )}
                             </div>
-                            <div className="flex flex-col items-start leading-tight pr-2">
-                                <span className="text-sm font-bold text-primary">{displayName}</span>
+                            <div className="hidden md:flex flex-col items-start leading-tight pr-2 overflow-hidden">
+                                <span className="text-sm font-bold text-primary truncate max-w-[100px]">{displayName}</span>
                                 <span className="text-[9px] font-black text-primary/60 uppercase tracking-widest">{role}</span>
                             </div>
-                            <ChevronDown className={cn("w-4 h-4 text-primary/60 transition-transform duration-300", isProfileActive && "rotate-180")} />
+                            <ChevronDown className={cn("hidden md:block w-4 h-4 text-primary/60 transition-transform duration-300", isProfileActive && "rotate-180")} />
                         </button>
 
                         {isProfileActive && (

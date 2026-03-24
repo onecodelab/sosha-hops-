@@ -98,7 +98,7 @@ export const OrderCard: React.FC<OrderCardProps> = ({
 
   const cardContent = (
     <div className={cn(
-      "relative p-4 rounded-2xl flex flex-col gap-3 transition-all duration-300 group",
+      "relative p-3 rounded-xl flex flex-col gap-2 transition-all duration-300 group",
       // Status-based Border/Glow
       order.status === 'pending' ? "bg-card border border-yellow-500/20 shadow-[0_0_15px_rgba(234,179,8,0.05)] hover:border-yellow-500/40" :
         (order.status === 'accepted' || order.status === 'preparing') ? "bg-card border border-orange-500/20 shadow-[0_0_15px_rgba(249,115,22,0.05)] hover:border-orange-500/40" :
@@ -108,7 +108,7 @@ export const OrderCard: React.FC<OrderCardProps> = ({
       {/* Header */}
       <div className="flex justify-between items-start">
         <div className="min-w-0 flex-1">
-          <span className="text-lg font-black text-foreground tracking-tight">#{order.order_number?.slice(-4) || order.id.slice(0, 5)}</span>
+          <span className="text-base font-black text-foreground tracking-tight">#{order.order_number?.slice(-4) || order.id.slice(0, 5)}</span>
           <div className="flex items-center gap-2 mt-1">
             <span className="text-[9px] font-black text-muted px-1.5 py-0.5 bg-muted/10 rounded-md border border-border uppercase tracking-widest">
               T-{order.table_number}
@@ -142,16 +142,16 @@ export const OrderCard: React.FC<OrderCardProps> = ({
       </div>
 
       {/* Items List - Cleaner Look */}
-      <div className="bg-muted/5 p-3 rounded-xl space-y-2 border border-border">
+      <div className="bg-muted/5 p-2 rounded-xl space-y-1.5 border border-border">
         {order.order_items?.map((item: any) => (
           <div key={item.id} className="flex flex-col border-b border-white/5 last:border-0 pb-2 last:pb-0">
             <div className="flex items-start gap-3 w-full">
               {/* Item Thumbnail */}
-              <div className="w-10 h-10 rounded-lg bg-background/50 border border-border flex items-center justify-center overflow-hidden shrink-0 shadow-inner group-hover:border-primary/20 transition-colors">
+              <div className="w-8 h-8 rounded-lg bg-background/50 border border-border flex items-center justify-center overflow-hidden shrink-0 shadow-inner group-hover:border-primary/20 transition-colors">
                 {item.menu_item?.image_url ? (
                   <img src={item.menu_item.image_url} alt={item.menu_item?.name} className="w-full h-full object-cover" />
                 ) : (
-                  <Receipt className="w-4 h-4 text-muted/50" />
+                  <Receipt className="w-3 h-3 text-muted/50" />
                 )}
               </div>
 
@@ -190,14 +190,14 @@ export const OrderCard: React.FC<OrderCardProps> = ({
       <div className="flex flex-col gap-2 mt-auto pt-1">
         {/* Kitchen Controls - Glossy Buttons */}
         {isKitchen && order.status === 'pending' && (
-          <Button size="sm" onClick={() => onAction?.('accepted', order.id)} className="w-full bg-primary text-black h-10 rounded-xl font-black uppercase text-[10px] tracking-widest shadow-[0_0_15px_rgba(251,191,36,0.2)] hover:bg-white hover:scale-[1.02] transition-all">Accept Order</Button>
+          <Button size="sm" onClick={() => onAction?.('accepted', order.id)} className="w-full bg-primary text-black h-8 rounded-lg font-black uppercase text-[10px] tracking-widest shadow-[0_0_15px_rgba(251,191,36,0.2)] hover:bg-white hover:scale-[1.02] transition-all">Accept Order</Button>
         )}
         {isKitchen && (order.status === 'accepted' || order.status === 'preparing') && (
-          <Button size="sm" onClick={() => onAction?.('ready', order.id)} className="w-full bg-green-500 text-black h-10 rounded-xl font-black uppercase text-[10px] tracking-widest shadow-[0_0_15px_rgba(34,197,94,0.2)] hover:bg-green-400 hover:scale-[1.02] transition-all">Mark Prepared</Button>
+          <Button size="sm" onClick={() => onAction?.('ready', order.id)} className="w-full bg-green-500 text-black h-8 rounded-lg font-black uppercase text-[10px] tracking-widest shadow-[0_0_15px_rgba(34,197,94,0.2)] hover:bg-green-400 hover:scale-[1.02] transition-all">Mark Prepared</Button>
         )}
         {isKitchen && order.status === 'ready' && (
-          <Button size="sm" onClick={() => onAction?.('dispatch', order.id)} className="w-full bg-emerald-600 text-white h-10 rounded-xl font-black uppercase text-[10px] tracking-widest shadow-[0_0_15px_rgba(16,185,129,0.2)] hover:bg-emerald-500 hover:scale-[1.02] transition-all">
-            <Truck className="w-4 h-4 mr-2" /> Dispatch for Delivery
+          <Button size="sm" onClick={() => onAction?.('dispatch', order.id)} className="w-full bg-emerald-600 text-white h-8 rounded-lg font-black uppercase text-[10px] tracking-widest shadow-[0_0_15px_rgba(16,185,129,0.2)] hover:bg-emerald-500 hover:scale-[1.02] transition-all">
+            <Truck className="w-4 h-4 mr-2" /> Dispatch
           </Button>
         )}
 

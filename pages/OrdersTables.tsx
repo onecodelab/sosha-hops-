@@ -40,6 +40,7 @@ const OrdersTables: React.FC = () => {
       toServed: 0,
       total: 0
    });
+   const [recentOrders, setRecentOrders] = useState<any[]>([]);
 
    useEffect(() => {
       fetchData();
@@ -258,6 +259,8 @@ const OrdersTables: React.FC = () => {
          });
 
 
+         // --- Update State ---
+         setRecentOrders(safeOrders.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).slice(0, 15));
       } catch (err) {
          console.error("Orders Analytics Error:", err);
          showToast("Failed to load analytics data", "error");
@@ -483,71 +486,124 @@ const OrdersTables: React.FC = () => {
                </Card>
             </div>
 
-            {/* Order Flow Timeline */}
+            {/* Live Order Feed - NEW Section */}
             <Card className="bg-card/60 backdrop-blur-xl border border-border rounded-[2.5rem] shadow-2xl overflow-hidden">
-               <CardHeader className="p-8 border-b border-border bg-muted/5">
+               <CardHeader className="p-8 border-b border-border bg-muted/5 flex flex-row items-center justify-between">
+                  <CardTitle className="text-[10px] font-black text-foreground uppercase tracking-[0.2em] flex items-center gap-3">
+                     <ClipboardList className="w-4 h-4 text-primary" strokeWidth={3} /> Live Order Feed
+                  </CardTitle>
+                  <Badge variant="glass" className="text-[9px] font-black tracking-[0.1em]">{recentOrders.length} Recent Activity</Badge>
+               </CardHeader>
+               <CardContent className="p-0">
+                  <div className="overflow-x-auto custom-scrollbar">
+                     <table className="w-full text-left border-collapse">
+                        <thead className="text-[9px] font-black text-muted uppercase bg-muted/5 border-b border-border sticky top-0 backdrop-blur-xl z-10 tracking-widest ">
+                           <tr>
+                              <th className="px-8 py-5">Order #</th>
+                              <th className="px-8 py-5">Origin</th>
+                              <th className="px-8 py-5">Value</th>
+                              <th className="px-8 py-5">Status</th>
+                              <th className="px-8 py-5">Time</th>
+                           </tr>
+                        </thead>
+                        <tbody className="divide-y divide-border">
+                           {recentOrders.length === 0 && (
+                              <tr>
+                                 <td colSpan={5} className="p-10 text-center text-muted uppercase font-black text-[10px] tracking-widest opacity-40 italic">
+                                    No transaction records found for this period.
+                                 </td>
+                              </tr>
+                           )}
+                           {recentOrders.map((o) => (
+                              <tr key={o.id} className="hover:bg-primary/5 transition-colors group">
+                                 <td className="px-8 py-5">
+                                    <div className="font-black text-foreground uppercase italic group-hover:text-primary transition-all">#{o.id.slice(0, 8)}</div>
+                                    <div className="text-[9px] text-muted font-bold tracking-widest opacity-40 mt-0.5">{o.customer_name || 'Guest User'}</div>
+                                 </td>
+                                 <td className="px-8 py-5">
+                                    <div className="flex items-center gap-2">
+                                       <Badge variant="outline" className="h-6 font-black bg-white/5 border-primary/20 text-primary">Table {o.table_number || 'N/A'}</Badge>
+                                       <span className="text-[10px] text-muted font-black opacity-40 uppercase">{o.order_type || 'Dine-in'}</span>
+                                    </div>
+                                 </td>
+                                 <td className="px-8 py-5">
+                                    <div className="font-mono text-foreground font-black text-base italic">
+                                       <span className="text-[10px] mr-1 opacity-30 font-sans NOT-italic">ETB</span>
+                                       {o.total_amount?.toLocaleString()}
+                                    </div>
+                                 </td>
+                                 <td className="px-8 py-5">
+                                    <Badge 
+                                       className={cn(
+                                          "font-black text-[9px] tracking-[0.15em] px-3 py-1 uppercase rounded-lg border-none",
+                                          o.status === 'paid' ? "bg-emerald-500/10 text-emerald-500" :
+                                          o.status === 'cancelled' ? "bg-red-500/10 text-red-500" :
+                                          o.status === 'ready' ? "bg-primary/10 text-primary animate-pulse" :
+                                          "bg-blue-500/10 text-blue-500"
+                                       )}
+                                    >
+                                       {o.status}
+                                    </Badge>
+                                 </td>
+                                 <td className="px-8 py-5">
+                                    <div className="font-mono text-[10px] text-muted font-black uppercase tracking-widest">
+                                       {new Date(o.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                    </div>
+                                    <div className="text-[8px] text-muted/40 font-black tracking-tighter mt-0.5">
+                                       {new Date(o.created_at).toLocaleDateString()}
+                                    </div>
+                                 </td>
+                              </tr>
+                           ))}
+                        </tbody>
+                     </table>
+                  </div>
+               </CardContent>
+            </Card>
+
+            {/* Simplified Service Tracking */}
+            <Card className="bg-card/60 backdrop-blur-xl border border-border rounded-[2.5rem] shadow-2xl overflow-hidden">
+               <CardHeader className="p-8 border-b border-border bg-muted/5 flex flex-row items-center justify-between">
                   <CardTitle className="text-[10px] font-black text-foreground uppercase tracking-[0.2em] flex items-center gap-3">
                      <Clock className="w-4 h-4 text-primary" strokeWidth={3} /> {t('ordersTables.flowTitle')}
                   </CardTitle>
+                  <div className="flex items-center gap-3">
+                     <span className="text-[9px] font-black text-muted uppercase tracking-[0.3em]">{t('ordersTables.totalLatency')}</span>
+                     <span className="text-xl font-black text-foreground italic font-mono">{serviceFlow.total} {t('ordersTables.min')}</span>
+                  </div>
                </CardHeader>
                <CardContent className="p-10">
                   <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-
-                     {/* Step 1 */}
-                     <div className="relative p-8 bg-muted/5 rounded-3xl border border-border flex flex-col items-center text-center group hover:bg-muted/10 transition-colors">
-                        <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mb-4 shadow-inner group-hover:scale-110 transition-transform">
-                           <ClipboardList className="w-6 h-6 text-primary" strokeWidth={3} />
+                     <div className="relative p-6 bg-muted/5 rounded-3xl border border-border flex flex-col items-center text-center group">
+                        <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center mb-3">
+                           <ClipboardList className="w-5 h-5 text-primary" strokeWidth={3} />
                         </div>
-                        <p className="text-[11px] font-black text-foreground uppercase italic tracking-tighter">{t('ordersTables.orderOrigin')}</p>
-                        <p className="text-[9px] text-muted font-black uppercase tracking-widest mt-1 opacity-40">{t('ordersTables.nodeStart')}</p>
-
-                        <div className="hidden md:flex absolute top-1/2 -right-8 w-8 h-8 z-10 items-center justify-center bg-card rounded-full border border-border shadow-lg">
-                           <ArrowRight className="w-4 h-4 text-primary" strokeWidth={3} />
-                        </div>
+                        <p className="text-[10px] font-black text-foreground uppercase tracking-wider">{t('ordersTables.orderOrigin')}</p>
+                        <ArrowRight className="hidden md:block absolute top-1/2 -right-4 w-4 h-4 text-primary opacity-30" />
                      </div>
-
-                     {/* Step 2 */}
-                     <div className="relative p-8 bg-muted/5 rounded-3xl border border-border flex flex-col items-center text-center group hover:bg-muted/10 transition-colors">
-                        <div className="w-14 h-14 rounded-2xl bg-purple-500/10 flex items-center justify-center mb-4 shadow-inner group-hover:scale-110 transition-transform">
-                           <CheckCircle2 className="w-6 h-6 text-purple-500" strokeWidth={3} />
+                     <div className="relative p-6 bg-muted/5 rounded-3xl border border-border flex flex-col items-center text-center group">
+                        <div className="w-12 h-12 rounded-2xl bg-purple-500/10 flex items-center justify-center mb-3">
+                           <CheckCircle2 className="w-5 h-5 text-purple-500" strokeWidth={3} />
                         </div>
-                        <p className="text-[11px] font-black text-foreground uppercase italic tracking-tighter">{t('ordersTables.kitchenSync')}</p>
+                        <p className="text-[10px] font-black text-foreground uppercase tracking-wider">{t('ordersTables.kitchenSync')}</p>
                         <p className="text-[10px] text-primary font-black mt-1 font-mono">{serviceFlow.toKitchen} {t('ordersTables.min')}</p>
-
-                        <div className="hidden md:flex absolute top-1/2 -right-8 w-8 h-8 z-10 items-center justify-center bg-card rounded-full border border-border shadow-lg">
-                           <ArrowRight className="w-4 h-4 text-primary" strokeWidth={3} />
-                        </div>
+                        <ArrowRight className="hidden md:block absolute top-1/2 -right-4 w-4 h-4 text-primary opacity-30" />
                      </div>
-
-                     {/* Step 3 */}
-                     <div className="relative p-8 bg-muted/5 rounded-3xl border border-border flex flex-col items-center text-center group hover:bg-muted/10 transition-colors">
-                        <div className="w-14 h-14 rounded-2xl bg-orange-500/10 flex items-center justify-center mb-4 shadow-inner group-hover:scale-110 transition-transform">
-                           <Utensils className="w-6 h-6 text-orange-500" strokeWidth={3} />
+                     <div className="relative p-6 bg-muted/5 rounded-3xl border border-border flex flex-col items-center text-center group">
+                        <div className="w-12 h-12 rounded-2xl bg-orange-500/10 flex items-center justify-center mb-3">
+                           <Utensils className="w-5 h-5 text-orange-500" strokeWidth={3} />
                         </div>
-                        <p className="text-[11px] font-black text-foreground uppercase italic tracking-tighter">{t('ordersTables.productionReady')}</p>
+                        <p className="text-[10px] font-black text-foreground uppercase tracking-wider">{t('ordersTables.productionReady')}</p>
                         <p className="text-[10px] text-primary font-black mt-1 font-mono">{serviceFlow.toReady} {t('ordersTables.min')}</p>
-
-                        <div className="hidden md:flex absolute top-1/2 -right-8 w-8 h-8 z-10 items-center justify-center bg-card rounded-full border border-border shadow-lg">
-                           <ArrowRight className="w-4 h-4 text-primary" strokeWidth={3} />
-                        </div>
+                        <ArrowRight className="hidden md:block absolute top-1/2 -right-4 w-4 h-4 text-primary opacity-30" />
                      </div>
-
-                     {/* Step 4 */}
-                     <div className="relative p-8 bg-muted/5 rounded-3xl border border-border flex flex-col items-center text-center group hover:bg-muted/10 transition-colors">
-                        <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 flex items-center justify-center mb-4 shadow-inner group-hover:scale-110 transition-transform">
-                           <Truck className="w-6 h-6 text-emerald-500" strokeWidth={3} />
+                     <div className="relative p-6 bg-muted/5 rounded-3xl border border-border flex flex-col items-center text-center group">
+                        <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 flex items-center justify-center mb-3">
+                           <CheckCircle2 className="w-5 h-5 text-emerald-500" strokeWidth={3} />
                         </div>
-                        <p className="text-[11px] font-black text-foreground uppercase italic tracking-tighter">{t('ordersTables.settleVector')}</p>
+                        <p className="text-[10px] font-black text-foreground uppercase tracking-wider">{t('ordersTables.settleVector')}</p>
                         <p className="text-[10px] text-primary font-black mt-1 font-mono">{serviceFlow.toServed} {t('ordersTables.min')}</p>
                      </div>
-
-                  </div>
-                  <div className="mt-8 flex items-center justify-center gap-8 bg-muted/5 p-4 rounded-2xl border border-dashed border-border">
-                     <div className="flex items-center gap-3">
-                        <span className="text-[9px] font-black text-muted uppercase tracking-[0.3em]">{t('ordersTables.totalLatency')}</span>
-                        <span className="text-lg font-black text-foreground italic font-mono">{serviceFlow.total} {t('ordersTables.min')}</span>
-                     </div>
-                     <span className="text-[9px] font-black text-muted/40 uppercase tracking-widest italic">{t('ordersTables.kdsRequirement')}</span>
                   </div>
                </CardContent>
             </Card>

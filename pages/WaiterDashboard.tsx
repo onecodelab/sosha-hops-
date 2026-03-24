@@ -140,6 +140,20 @@ const WaiterDashboard: React.FC = () => {
     }
   };
 
+  const handleInstantClaim = async (orderId: string, tableId: string) => {
+    if (claiming) return;
+    setClaiming(true);
+    try {
+      await orderService.claimChatbotOrder(orderId, user!.id, tableId);
+      showToast("Order claimed successfully", "success");
+      refreshAll();
+    } catch (err: any) {
+      showToast("Claim failed: " + err.message, "error");
+    } finally {
+      setClaiming(false);
+    }
+  };
+
   const isLoading = ordersLoading || isSyncingTables;
 
   useLayoutConfig({
@@ -322,16 +336,26 @@ const WaiterDashboard: React.FC = () => {
                         <span className="text-[10px] font-black text-muted uppercase tracking-widest">Estimated Total</span>
                         <span className="text-sm font-black text-primary font-mono">ETB {order.total_amount.toLocaleString()}</span>
                       </div>
-                      <Button
-                        onClick={() => {
-                          setSelectedChatOrder(order);
-                          if (order.table_id) setSelectedClaimTable(order.table_id);
-                          setIsClaimModalOpen(true);
-                        }}
-                        className="w-full bg-primary hover:bg-primary/90 text-black font-black uppercase text-[10px] h-10 rounded-xl mt-2 transition-transform hover:scale-[1.02] active:scale-[0.98]"
-                      >
-                        Claim & Assign Table
-                      </Button>
+                      {order.table_id ? (
+                        <Button
+                          onClick={() => handleInstantClaim(order.id, order.table_id!)}
+                          disabled={claiming}
+                          className="w-full bg-primary hover:bg-primary/90 text-black font-black uppercase text-[10px] h-10 rounded-xl mt-2 transition-transform hover:scale-[1.02] active:scale-[0.98]"
+                        >
+                          Claim Order (T-{order.table_number})
+                        </Button>
+                      ) : (
+                        <Button
+                          onClick={() => {
+                            setSelectedChatOrder(order);
+                            setIsClaimModalOpen(true);
+                          }}
+                          disabled={claiming}
+                          className="w-full bg-primary hover:bg-primary/90 text-black font-black uppercase text-[10px] h-10 rounded-xl mt-2 transition-transform hover:scale-[1.02] active:scale-[0.98]"
+                        >
+                          Claim & Assign Table
+                        </Button>
+                      )}
                     </div>
                   </Card>
                 ))}

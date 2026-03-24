@@ -147,8 +147,10 @@ Guidelines:
 - Use markdown. Bold for metrics.
 - DO NOT hallucinate. Use help from tools to fetch live data.
 - If you present metrics, ALWAYS output a JSON card carousel:
-{"cards":[{"title":"Revenue","description":"ETB 4500","icon":"dollar-sign"}]}
-- If you notice a risk (low stock, low margin), suggest a proposal.`;
+{"cards":[{"title":"Revenue Today","description":"ETB 45,000","icon":"banknote"}]}
+- If you notice a risk (low stock, low margin), suggest a proposal.
+- ALWAYS use ETB for all currency representations. NEVER use USD or $.
+- Use 'banknote' or 'trending-up' for financial icons instead of 'dollar-sign'.`;
 
             const messages = [{ role: "system", content: systemPrompt }, ...history, { role: "user", content: question }];
 

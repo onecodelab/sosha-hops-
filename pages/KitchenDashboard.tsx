@@ -106,12 +106,15 @@ const KitchenDashboard: React.FC = () => {
    const incomingOrders = useMemo(() =>
       orders.filter(o => o.status === 'pending' && !(o.source === 'chatbot' && !o.waiter_id)),
       [orders]);
-   const acceptedOrders = useMemo(() => orders.filter(o => ['accepted', 'preparing'].includes(o.status)), [orders]);
+   const acceptedOrders = useMemo(() =>
+      orders.filter(o => ['accepted', 'preparing'].includes(o.status) && !(o.source === 'chatbot' && !o.waiter_id)),
+      [orders]);
    const preparedOrders = useMemo(() => orders.filter(o => o.status === 'ready'), [orders]);
 
    useLayoutConfig({
       title: "Kitchen Display",
       subtitle: "Live Production Board",
+      className: "p-4 md:p-4 flex flex-col min-h-0 overflow-hidden h-full",
       actions: (
          <div className="flex gap-2">
             {error && (
@@ -129,19 +132,19 @@ const KitchenDashboard: React.FC = () => {
 
    return (
       <>
-         <div className="space-y-6 animate-in fade-in duration-700 h-full flex flex-col">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 flex-1 min-h-0 pb-20">
+         <div className="flex-1 min-h-0 animate-in fade-in duration-700">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-full min-h-0">
                {/* INCOMING */}
-               <div className="flex flex-col min-h-0 bg-card/60 backdrop-blur-xl border border-border rounded-[2.5rem] overflow-hidden shadow-2xl relative group hover:border-yellow-500/30 transition-all">
+               <div className="flex flex-col min-h-0 bg-card/60 backdrop-blur-xl border border-border rounded-[2rem] overflow-hidden shadow-2xl relative group hover:border-yellow-500/30 transition-all h-full">
                   <div className="absolute inset-0 bg-gradient-to-br from-yellow-500/5 to-transparent pointer-events-none" />
-                  <div className="p-8 border-b border-border bg-muted/5 flex items-center justify-between relative z-10">
+                  <div className="px-6 py-4 border-b border-border bg-muted/5 flex items-center justify-between relative z-10">
                      <div className="flex items-center gap-4">
                         <div className="w-3 h-3 rounded-full bg-yellow-400 animate-pulse shadow-[0_0_15px_rgba(234,179,8,0.5)]" />
                         <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-yellow-500">Incoming</h3>
                      </div>
                      <Badge className="bg-yellow-500/10 text-yellow-500 border-yellow-500/20 px-4 py-1.5 font-mono text-xs font-black shadow-lg">{incomingOrders.length}</Badge>
                   </div>
-                  <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar relative z-10">
+                  <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar relative z-10">
                      {incomingOrders.map(order => (
                         <OrderCard key={order.id} order={order} role="kitchen" onAction={handleOrderAction} />
                      ))}
@@ -157,16 +160,16 @@ const KitchenDashboard: React.FC = () => {
                </div>
 
                {/* ACCEPTED (PREPARING) */}
-               <div className="flex flex-col min-h-0 bg-card/60 backdrop-blur-xl border border-border rounded-[2.5rem] overflow-hidden shadow-2xl relative group hover:border-orange-500/30 transition-all">
+               <div className="flex flex-col min-h-0 bg-card/60 backdrop-blur-xl border border-border rounded-[2rem] overflow-hidden shadow-2xl relative group hover:border-orange-500/30 transition-all h-full">
                   <div className="absolute inset-0 bg-gradient-to-br from-orange-500/5 to-transparent pointer-events-none" />
-                  <div className="p-8 border-b border-border bg-muted/5 flex items-center justify-between relative z-10">
+                  <div className="px-6 py-4 border-b border-border bg-muted/5 flex items-center justify-between relative z-10">
                      <div className="flex items-center gap-4">
                         <div className="w-3 h-3 rounded-full bg-orange-500 shadow-[0_0_15px_rgba(249,115,22,0.5)]" />
                         <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-orange-500">Prep Station</h3>
                      </div>
                      <Badge className="bg-orange-500/10 text-orange-500 border-orange-500/20 px-4 py-1.5 font-mono text-xs font-black shadow-lg">{acceptedOrders.length}</Badge>
                   </div>
-                  <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar relative z-10">
+                  <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar relative z-10">
                      {acceptedOrders.map(order => (
                         <OrderCard key={order.id} order={order} role="kitchen" onAction={handleOrderAction} />
                      ))}
@@ -182,16 +185,16 @@ const KitchenDashboard: React.FC = () => {
                </div>
 
                {/* PREPARED (READY) */}
-               <div className="flex flex-col min-h-0 bg-card/60 backdrop-blur-xl border border-border rounded-[2.5rem] overflow-hidden shadow-2xl relative group hover:border-emerald-500/30 transition-all">
+               <div className="flex flex-col min-h-0 bg-card/60 backdrop-blur-xl border border-border rounded-[2rem] overflow-hidden shadow-2xl relative group hover:border-emerald-500/30 transition-all h-full">
                   <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-transparent pointer-events-none" />
-                  <div className="p-8 border-b border-border bg-muted/5 flex items-center justify-between relative z-10">
+                  <div className="px-6 py-4 border-b border-border bg-muted/5 flex items-center justify-between relative z-10">
                      <div className="flex items-center gap-4">
                         <div className="w-3 h-3 rounded-full bg-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.5)]" />
                         <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-emerald-500">Ready to Serve</h3>
                      </div>
                      <Badge className="bg-emerald-500/10 text-emerald-500 border-emerald-500/20 px-4 py-1.5 font-mono text-xs font-black shadow-lg">{preparedOrders.length}</Badge>
                   </div>
-                  <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar relative z-10">
+                  <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar relative z-10">
                      {preparedOrders.map(order => (
                         <OrderCard key={order.id} order={order} role="kitchen" onAction={handleOrderAction} />
                      ))}

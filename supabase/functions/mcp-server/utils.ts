@@ -37,8 +37,24 @@ export function requireBranchId(context: ToolContext): string {
     return branchId;
 }
 
-export async function resolveTableId(supabase: any, branchId: string, tableNumber: string) {
-    const normalizedTarget = normalizeTableNumber(tableNumber);
+export async function resolveTableId(supabase: any, branchId: string, tableNumberOrId: string) {
+    if (!tableNumberOrId) return null;
+
+    // Check if it's already a valid UUID (table_id)
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (uuidRegex.test(tableNumberOrId)) {
+        const { data: table, error } = await supabase
+            .from('tables')
+            .select('id')
+            .eq('id', tableNumberOrId)
+            .eq('branch_id', branchId)
+            .maybeSingle();
+        
+        if (table) return table.id;
+    }
+
+    // Otherwise, resolve by table_number
+    const normalizedTarget = normalizeTableNumber(tableNumberOrId);
     const { data: tables, error: tableErr } = await supabase
         .from('tables')
         .select('id, table_number')
@@ -51,7 +67,7 @@ export async function resolveTableId(supabase: any, branchId: string, tableNumbe
 
     const tableData = (tables || []).find((table: any) => normalizeTableNumber(table.table_number) === normalizedTarget);
     if (!tableData) {
-        throw new Error(`Could not find table number "${tableNumber}" in this branch.`);
+        throw new Error(`Could not resolve table "${tableNumberOrId}" in this branch.`);
     }
 
     return tableData.id;

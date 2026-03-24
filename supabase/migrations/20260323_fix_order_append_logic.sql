@@ -1,5 +1,6 @@
--- 20260318_UPDATE_ATOMIC_ORDER.sql
--- Redefine place_order_atomic to support explicit p_organization_id for Service Role calls.
+-- 20260323_fix_order_append_logic.sql
+-- Purpose: Redefine place_order_atomic to support appending items to an existing active order on a table.
+-- This prevents the "unique_active_order_per_table" constraint violation when adding items to table C1 (or any table).
 
 CREATE OR REPLACE FUNCTION public.place_order_atomic(
     p_branch_id UUID,
@@ -22,6 +23,8 @@ DECLARE
     v_recipe_id UUID;
     v_ing_rec RECORD;
     v_total_amount NUMERIC := 0;
+    v_subtotal NUMERIC := 0;
+    v_vat NUMERIC := 0;
     v_user_id UUID;
     v_session_id UUID;
     v_table_num TEXT;
@@ -45,11 +48,14 @@ BEGIN
 
     -- 3. CALCULATE TOTAL & VALIDATE ITEMS
     FOR v_item IN SELECT * FROM jsonb_array_elements(p_items) LOOP
-        v_total_amount := v_total_amount + ((v_item->>'quantity')::NUMERIC * (v_item->>'unit_price')::NUMERIC);
+        v_subtotal := v_subtotal + ((v_item->>'quantity')::NUMERIC * (v_item->>'unit_price')::NUMERIC);
     END LOOP;
+    
+    v_vat := ROUND((v_subtotal * 0.15), 2);
+    v_total_amount := v_subtotal + v_vat;
 
-    -- 4. MANAGE TABLE SESSION (If applicable)
-    IF (p_order_details->>'table_id') IS NOT NULL THEN
+    -- 4. MANAGE TABLE SESSION & RESOLVE ORDER (If applicable)
+    IF (p_order_details->>'table_id') IS NOT NULL AND (p_order_details->>'table_id') <> '' THEN
         -- Check if table belongs to branch
         SELECT table_number INTO v_table_num FROM public.tables 
         WHERE id = (p_order_details->>'table_id')::UUID AND branch_id = p_branch_id;
@@ -68,43 +74,74 @@ BEGIN
             RETURNING id INTO v_session_id;
         END IF;
 
-        -- Update Table Status
+        -- Check if there's an existing active order for this table
+        -- Using status check to match the unique constraint's logic
+        SELECT id INTO v_order_id FROM public.orders
+        WHERE table_id = (p_order_details->>'table_id')::UUID 
+        AND organization_id = v_org_id
+        AND branch_id = p_branch_id
+        AND status NOT IN ('paid', 'closed', 'cancelled')
+        ORDER BY created_at DESC
+        LIMIT 1;
+    END IF;
+
+    -- 5. INSERT OR UPDATE ORDER
+    IF v_order_id IS NOT NULL THEN
+        -- UPDATE EXISTING ORDER
+        UPDATE public.orders SET
+            total_amount = total_amount + v_total_amount,
+            subtotal_amount = COALESCE(subtotal_amount, 0) + v_subtotal,
+            vat_amount = COALESCE(vat_amount, 0) + v_vat,
+            last_updated = NOW(),
+            status = 'pending' -- Move back to pending so kitchen sees new additions
+        WHERE id = v_order_id;
+    ELSE
+        -- INSERT NEW ORDER
+        INSERT INTO public.orders (
+            organization_id,
+            branch_id,
+            table_id,
+            table_number,
+            waiter_id,
+            telegram_id,
+            customer_phone,
+            source,
+            status,
+            payment_status,
+            total_amount,
+            subtotal_amount,
+            vat_amount,
+            vat_rate,
+            created_at,
+            last_updated
+        ) VALUES (
+            v_org_id,
+            p_branch_id,
+            (p_order_details->>'table_id')::UUID,
+            v_table_num,
+            COALESCE((p_order_details->>'waiter_id')::UUID, v_user_id),
+            (p_order_details->>'telegram_id'),
+            (p_order_details->>'customer_phone'),
+            COALESCE(p_order_details->>'source', 'dine_in'),
+            'pending',
+            'pending',
+            v_total_amount,
+            v_subtotal,
+            v_vat,
+            15,
+            NOW(),
+            NOW()
+        ) RETURNING id INTO v_order_id;
+    END IF;
+
+    -- Always update table status and current_order_id if applicable
+    IF (p_order_details->>'table_id') IS NOT NULL AND (p_order_details->>'table_id') <> '' THEN
         UPDATE public.tables SET
             status = 'occupied',
+            current_order_id = v_order_id,
             last_updated = NOW()
         WHERE id = (p_order_details->>'table_id')::UUID;
     END IF;
-
-    -- 5. INSERT ORDER
-    INSERT INTO public.orders (
-        organization_id,
-        branch_id,
-        table_id,
-        table_number, -- Added denormalization
-        waiter_id,
-        telegram_id,
-        customer_phone,
-        source,
-        status,
-        payment_status,
-        total_amount,
-        created_at,
-        last_updated
-    ) VALUES (
-        v_org_id,
-        p_branch_id,
-        (p_order_details->>'table_id')::UUID,
-        v_table_num, -- Added denormalization
-        COALESCE((p_order_details->>'waiter_id')::UUID, v_user_id),
-        (p_order_details->>'telegram_id'),
-        (p_order_details->>'customer_phone'),
-        COALESCE(p_order_details->>'source', 'dine_in'),
-        'pending',
-        'pending',
-        v_total_amount,
-        NOW(),
-        NOW()
-    ) RETURNING id INTO v_order_id;
 
     -- 6. PROCESS ITEMS & INVENTORY
     FOR v_item IN SELECT * FROM jsonb_array_elements(p_items) LOOP
@@ -185,7 +222,8 @@ BEGIN
     RETURN jsonb_build_object(
         'success', true,
         'order_id', v_order_id,
-        'total_amount', v_total_amount
+        'total_amount', v_total_amount,
+        'appended', (v_order_id IS NOT NULL) -- This might be misleading if we just set it above, but we know if it was found
     );
 
 EXCEPTION

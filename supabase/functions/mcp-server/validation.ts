@@ -32,13 +32,14 @@ export const toolValidators: Record<string, (params: JsonRecord) => void> = {
     get_top_performing_items: () => {},
     place_order: (params) => {
         validateItems(params.items, 'items');
+        assert(hasNonEmptyString(params.table_id) || hasNonEmptyString(params.table_number), "table_id or table_number is required to place an order.");
     },
     update_order: (params) => {
         assert(hasNonEmptyString(params.order_id), "order_id is required.");
         validateItems(params.new_items, 'new_items');
     },
     get_order_status: (params) => {
-        assert(hasNonEmptyString(params.order_id) || hasNonEmptyString(params.table_number), "order_id or table_number is required.");
+        assert(hasNonEmptyString(params.order_id) || hasNonEmptyString(params.table_id) || hasNonEmptyString(params.table_number), "order_id, table_id or table_number is required.");
     },
     verify_payment: (params) => {
         assert(hasNonEmptyString(params.reference), "reference is required.");

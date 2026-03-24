@@ -1,4 +1,5 @@
 
+import { useNavigate } from 'react-router-dom';
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '../supabase';
@@ -8,15 +9,14 @@ import { Badge, Button, cn, showToast, Dialog, Input } from '../components/ui';
 import {
    Armchair, Clock, CheckCircle2, User, RefreshCw,
    AlertTriangle, History, Eye, MapPin,
-   Users, TrendingUp, DollarSign, Timer, BarChart3,
+   Users, TrendingUp, Timer, BarChart3,
    Calendar, Zap, LayoutGrid, Search, Filter, Plus,
-   Sparkles, Trash2, Lock, CreditCard, ChevronRight, Edit3
+   Sparkles, Trash2, Lock, CreditCard, ChevronRight, Edit3, Share2
 } from 'lucide-react';
 import { Table, TableZone, Order } from '../types';
 import { useAuth } from '../AuthContext';
 import { useBranch } from '../contexts/BranchContext';
 import { useLanguage } from '../contexts/LanguageContext';
-import { CreateOrderModal } from '../components/CreateOrderModal';
 import { useRoleAccess } from '../hooks/useRoleAccess';
 import { RoleGuard } from '../components/RoleGuard';
 import { analyticsService, TableMetric } from '../services/analyticsService';
@@ -26,6 +26,7 @@ import { TableOrderHistory } from '../components/TableOrderHistory';
 import { OrderDetailsModal } from '../components/OrderDetailsModal';
 
 const TableStatus: React.FC = () => {
+   const navigate = useNavigate();
    const { profile } = useAuth();
    const { hasPermission } = useRoleAccess();
    const { activeBranchId } = useBranch();
@@ -34,10 +35,6 @@ const TableStatus: React.FC = () => {
    const [zoneFilter, setZoneFilter] = useState<TableZone | 'all'>('all');
    const [statusFilter, setStatusFilter] = useState<string>('all');
    const [currentTime, setCurrentTime] = useState(new Date());
-   const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
-   const [orderInitialTable, setOrderInitialTable] = useState('');
-   const [orderAppendId, setOrderAppendId] = useState<string | null>(null);
-
    // Add Table Modal State
    const [isAddTableModalOpen, setIsAddTableModalOpen] = useState(false);
    const [newTableData, setNewTableData] = useState({
@@ -55,8 +52,8 @@ const TableStatus: React.FC = () => {
    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
    const [editingTableId, setEditingTableId] = useState<string | null>(null);
 
-   // New: Analytics Mode State (Starts in Analytics for Owners)
-   const [isAnalyticsMode, setIsAnalyticsMode] = useState(true);
+   // Default to 'Live' mode instead of 'Data'
+   const [isAnalyticsMode, setIsAnalyticsMode] = useState(false);
    const [isMapView, setIsMapView] = useState(false);
    const canViewAnalytics = hasPermission('canViewAnalytics');
 
@@ -148,6 +145,8 @@ const TableStatus: React.FC = () => {
       });
    }, [tables, zoneFilter, statusFilter]);
 
+   const generateToken = () => crypto.randomUUID().replace(/-/g, '').slice(0, 16);
+
    const handleQuickOrder = useCallback((table: any) => {
       // 1. Setup Mode Behavior
       if (isSetupMode) {
@@ -155,12 +154,18 @@ const TableStatus: React.FC = () => {
          return;
       }
 
-      // 2. Standard Order Behavior
-      if (isAnalyticsMode) return; // Disable quick actions in analytics mode
-      setOrderInitialTable(table.table_number.toString());
-      setOrderAppendId(table.status === 'occupied' ? table.current_order_id : null);
-      setIsOrderModalOpen(true);
-   }, [isSetupMode, isAnalyticsMode]);
+      // 2. Already Occupied Check
+      if (table.status !== 'available') {
+         showToast("This table is already occupied", "warning");
+         return;
+      }
+
+      // 3. Desktop/Analytics Check
+      if (isAnalyticsMode) return; 
+      
+      const chatLink = `/order-chat/${table.id}${table.qr_token ? `?token=${table.qr_token}` : ''}`;
+      navigate(chatLink);
+   }, [isSetupMode, isAnalyticsMode, navigate]);
 
 
    const openEditModal = (table: any) => {
@@ -213,8 +218,9 @@ const TableStatus: React.FC = () => {
             pos_y: newTableData.pos_y,
             status: 'available',
             branch_id: activeBranchId,
-            organization_id: profile?.organization_id
-         });
+            organization_id: profile?.organization_id,
+            qr_token: generateToken()
+          });
          if (error) throw error;
          showToast(`Table ${newTableData.table_number} created successfully!`, 'success');
          setIsAddTableModalOpen(false);
@@ -315,16 +321,16 @@ const TableStatus: React.FC = () => {
       <>
          <div className="space-y-6 animate-in fade-in duration-500 pb-20">
 
-            <div className="flex flex-col md:flex-row justify-between items-center gap-6 bg-card/60 backdrop-blur-xl p-6 rounded-[2.5rem] border border-primary/20 shadow-2xl">
-               {/* Zone Filter */}
-               <div className="flex items-center bg-muted/10 p-1 rounded-[1.25rem] border border-primary/20 overflow-x-auto w-full md:w-auto no-scrollbar snap-x shadow-inner">
+            <div className="flex flex-col gap-4 bg-card/60 backdrop-blur-xl p-4 md:p-6 rounded-[2rem] border border-primary/20 shadow-2xl">
+               {/* Zone Filter - Clean horizontal scroll */}
+               <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
                   {['all', 'indoor', 'outdoor', 'vip', 'bar'].map(z => (
                      <button
                         key={z}
                         onClick={() => setZoneFilter(z as any)}
                         className={cn(
-                           "px-6 py-2 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all whitespace-nowrap snap-start",
-                           zoneFilter === z ? "bg-primary text-black shadow-lg" : "text-muted hover:text-foreground hover:bg-muted/10 font-bold"
+                           "px-5 py-2 text-[9px] font-black uppercase tracking-widest rounded-xl transition-all whitespace-nowrap border shrink-0",
+                           zoneFilter === z ? "bg-primary text-black border-primary shadow-lg" : "bg-muted/5 text-muted border-white/5 hover:text-foreground hover:bg-muted/10"
                         )}
                      >
                         {t(`tableStatus.filters.${z}`)}
@@ -332,72 +338,77 @@ const TableStatus: React.FC = () => {
                   ))}
                </div>
 
-               <div className="flex flex-wrap items-center justify-center gap-3">
-                  {/* Analytics Toggle */}
-                  {canViewAnalytics && (
-                     <div className="flex items-center gap-3">
-                        {isAnalyticsMode && (
-                           <div className="flex bg-muted/10 p-1 rounded-xl border border-border animate-in fade-in slide-in-from-right-4">
-                              {(['today', 'week', 'month'] as const).map(r => (
-                                 <button
-                                    key={r}
-                                    onClick={() => setAnalyticsRange(r)}
-                                    className={cn(
-                                       "px-4 py-1.5 text-[9px] uppercase font-black tracking-[0.2em] rounded-lg transition-all",
-                                       analyticsRange === r ? "bg-card text-foreground shadow-sm border border-border" : "text-muted hover:text-foreground"
-                                    )}
-                                 >
-                                    {t(`analytics.period.${r}`)}
-                                 </button>
-                              ))}
-                           </div>
-                        )}
-                        <div className="flex bg-muted/10 p-1 rounded-xl border border-primary/20 shadow-inner">
-                           <button
-                              onClick={() => { setIsAnalyticsMode(false); setIsMapView(false); }}
-                              className={cn("px-4 py-2 text-[10px] uppercase font-black tracking-widest rounded-lg transition-all flex items-center gap-2", !isAnalyticsMode && !isMapView ? "bg-primary text-black shadow-md" : "text-muted hover:text-foreground")}
-                           >
-                              <LayoutGrid className="w-3.5 h-3.5" strokeWidth={3} /> {t('tableStatus.view.live')}
-                           </button>
-                           <button
-                              onClick={() => { setIsAnalyticsMode(false); setIsMapView(true); }}
-                              className={cn("px-4 py-2 text-[10px] uppercase font-black tracking-widest rounded-lg transition-all flex items-center gap-2", isMapView ? "bg-blue-500 text-white shadow-md" : "text-muted hover:text-foreground")}
-                           >
-                              <MapPin className="w-3.5 h-3.5" strokeWidth={3} /> {t('tableStatus.view.map')}
-                           </button>
-                           <button
-                              onClick={() => { setIsAnalyticsMode(true); setIsMapView(false); }}
-                              className={cn("px-4 py-2 text-[10px] uppercase font-black tracking-widest rounded-lg transition-all flex items-center gap-2", isAnalyticsMode ? "bg-purple-500 text-white shadow-md" : "text-muted hover:text-foreground")}
-                           >
-                              <TrendingUp className="w-3.5 h-3.5" strokeWidth={3} /> {t('tableStatus.view.data')}
-                           </button>
-                        </div>
-                     </div>
-                  )}
-
-                  <RoleGuard allowedRoles={['owner', 'admin']}>
-                     <div className="flex gap-2">
-                        <button
-                           onClick={() => setIsSetupMode(!isSetupMode)}
-                           className={cn(
-                              "px-4 py-2 text-[10px] uppercase font-black tracking-widest rounded-xl transition-all flex items-center gap-2 border",
-                              isSetupMode
-                                 ? "bg-orange-500 text-white border-orange-400 shadow-[0_0_15px_rgba(249,115,22,0.4)] animate-pulse"
-                                 : "bg-muted/10 text-muted border-border hover:text-foreground"
+               <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+                  {/* View Toggles & Analytics */}
+                  <div className="flex flex-wrap items-center justify-center gap-3 w-full md:w-auto">
+                     {canViewAnalytics && (
+                        <div className="flex flex-col gap-3 w-full md:w-auto">
+                           {isAnalyticsMode && (
+                              <div className="flex bg-muted/10 p-1 rounded-xl border border-border animate-in fade-in slide-in-from-top-2">
+                                 {(['today', 'week', 'month'] as const).map(r => (
+                                    <button
+                                       key={r}
+                                       onClick={() => setAnalyticsRange(r)}
+                                       className={cn(
+                                          "flex-1 md:flex-none px-4 py-1.5 text-[9px] uppercase font-black tracking-[0.2em] rounded-lg transition-all",
+                                          analyticsRange === r ? "bg-card text-foreground shadow-sm border border-border" : "text-muted hover:text-foreground"
+                                       )}
+                                    >
+                                       {t(`analytics.period.${r}`)}
+                                    </button>
+                                 ))}
+                              </div>
                            )}
-                        >
-                           <Zap className="w-3.5 h-3.5" /> {isSetupMode ? t('tableStatus.actions.syncOn') : t('tableStatus.actions.setup')}
-                        </button>
+                           
+                           <div className="flex bg-muted/10 p-1 rounded-xl border border-primary/20 shadow-inner w-full md:w-auto">
+                              <button
+                                 onClick={() => { setIsAnalyticsMode(false); setIsMapView(false); }}
+                                 className={cn("flex-1 px-3 py-2 text-[9px] md:text-[10px] uppercase font-black tracking-widest rounded-lg transition-all flex items-center justify-center gap-2", !isAnalyticsMode && !isMapView ? "bg-primary text-black shadow-md" : "text-muted hover:text-foreground")}
+                              >
+                                 <LayoutGrid className="w-3 h-3 md:w-3.5 md:h-3.5" strokeWidth={3} /> {t('tableStatus.view.live')}
+                              </button>
+                              <button
+                                 onClick={() => { setIsAnalyticsMode(false); setIsMapView(true); }}
+                                 className={cn("flex-1 px-3 py-2 text-[9px] md:text-[10px] uppercase font-black tracking-widest rounded-lg transition-all flex items-center justify-center gap-2", isMapView ? "bg-blue-500 text-white shadow-md" : "text-muted hover:text-foreground")}
+                              >
+                                 <MapPin className="w-3 h-3 md:w-3.5 md:h-3.5" strokeWidth={3} /> {t('tableStatus.view.map')}
+                              </button>
+                              <button
+                                 onClick={() => { setIsAnalyticsMode(true); setIsMapView(false); }}
+                                 className={cn("flex-1 px-3 py-2 text-[9px] md:text-[10px] uppercase font-black tracking-widest rounded-lg transition-all flex items-center justify-center gap-2", isAnalyticsMode ? "bg-purple-500 text-white shadow-md" : "text-muted hover:text-foreground")}
+                              >
+                                 <TrendingUp className="w-3 h-3 md:w-3.5 md:h-3.5" strokeWidth={3} /> {t('tableStatus.view.data')}
+                              </button>
+                           </div>
+                        </div>
+                     )}
+                  </div>
 
-                        <Button onClick={openAddTableModal} size="sm" className="h-10 bg-primary/10 text-primary border-primary/20 hover:bg-primary/20 rounded-xl font-black text-[10px] uppercase tracking-widest">
-                           <Plus className="w-4 h-4 mr-2" strokeWidth={3} /> {t('tableStatus.actions.table')}
-                        </Button>
-                     </div>
-                  </RoleGuard>
+                  <div className="flex items-center gap-2 mt-2 md:mt-0 w-full md:w-auto">
+                     <RoleGuard allowedRoles={['owner', 'admin']}>
+                        <div className="flex gap-2 w-full md:w-auto">
+                           <button
+                              onClick={() => setIsSetupMode(!isSetupMode)}
+                              className={cn(
+                                 "flex-1 md:flex-none px-4 py-2 text-[9px] md:text-[10px] uppercase font-black tracking-widest rounded-xl transition-all flex items-center justify-center gap-2 border",
+                                 isSetupMode
+                                    ? "bg-orange-500 text-white border-orange-400 shadow-[0_0_15px_rgba(249,115,22,0.4)] animate-pulse"
+                                    : "bg-muted/10 text-muted border-border hover:text-foreground"
+                              )}
+                           >
+                              <Zap className="w-3 h-3" /> {isSetupMode ? t('tableStatus.actions.syncOn') : t('tableStatus.actions.setup')}
+                           </button>
 
-                  <Button variant="ghost" onClick={() => { refetch(); }} size="sm" className="h-10 w-10 p-0 rounded-xl bg-muted/5 border border-primary/20 text-muted hover:text-foreground transition-all">
-                     <RefreshCw className={cn("w-4 h-4", isLoading && "animate-spin")} />
-                  </Button>
+                           <Button onClick={openAddTableModal} size="sm" className="flex-1 md:flex-none h-10 bg-primary/10 text-primary border-primary/20 hover:bg-primary/20 rounded-xl font-black text-[9px] md:text-[10px] uppercase tracking-widest shadow-inner">
+                              <Plus className="w-3 h-3 mr-1 md:mr-2" strokeWidth={3} /> {t('tableStatus.actions.table')}
+                           </Button>
+                        </div>
+                     </RoleGuard>
+
+                     <Button variant="ghost" onClick={() => { refetch(); }} size="sm" className="h-10 w-10 p-0 rounded-xl bg-muted/5 border border-primary/20 text-muted hover:text-foreground transition-all shrink-0">
+                        <RefreshCw className={cn("w-3.5 h-3.5", isLoading && "animate-spin")} />
+                     </Button>
+                  </div>
                </div>
             </div>
 
@@ -446,21 +457,21 @@ const TableStatus: React.FC = () => {
                                        <span className="text-[9px] font-black uppercase text-muted tracking-widest">{table.zone}</span>
                                        {metric?.is_camper && <div className="w-2 h-2 rounded-full bg-red-500 animate-ping shadow-[0_0_10px_rgba(239,68,68,0.5)]" />}
                                     </div>
-                                    <div className="flex items-center gap-4">
-                                       <div className="flex items-center gap-1.5">
-                                          <DollarSign className="w-3.5 h-3.5 text-primary" strokeWidth={3} />
-                                          <span className="text-xs font-black text-foreground">{metric?.revenue_per_hour || 0}<span className="text-[8px] opacity-40 ml-0.5">/hr</span></span>
-                                       </div>
+                                     <div className="flex items-center gap-4">
+                                        <div className="flex items-center gap-1">
+                                           <span className="text-[10px] font-black text-primary mr-0.5">ETB</span>
+                                           <span className="text-xs font-black text-foreground">{metric?.revenue_per_hour || 0}<span className="text-[8px] opacity-40 ml-0.5">/hr</span></span>
+                                        </div>
                                        {table.active_session && (
                                           <div className="flex items-center gap-1.5">
                                              <Timer className="w-3.5 h-3.5 text-muted" />
                                              <span className="text-[10px] font-bold text-muted">
                                                 {Math.floor((currentTime.getTime() - new Date(table.active_session.seated_at).getTime()) / 60000)}m
-                                             </span>
-                                          </div>
-                                       )}
-                                    </div>
-                                 </div>
+                                              </span>
+                                           </div>
+                                        )}
+                                     </div>
+                                  </div>
                               </div>
                               <Button
                                  size="sm"
@@ -473,10 +484,16 @@ const TableStatus: React.FC = () => {
                                        handleQuickOrder(table);
                                     }
                                  }}
-                                 className="h-12 w-12 rounded-2xl bg-muted/5 border border-primary/20 group hover:bg-primary/10 transition-all"
-                              >
-                                 <ChevronRight className="w-6 h-6 text-muted group-hover:text-primary transition-colors" strokeWidth={3} />
-                              </Button>
+                                  disabled={!isAnalyticsMode && table.status !== 'available'}
+                                  className={cn(
+                                     "h-12 w-12 rounded-2xl border transition-all flex items-center justify-center group",
+                                     (!isAnalyticsMode && table.status !== 'available') 
+                                        ? "bg-muted/5 border-border cursor-not-allowed opacity-40" 
+                                        : "bg-muted/5 border-primary/20 hover:bg-primary/10"
+                                  )}
+                               >
+                                  <ChevronRight className={cn("w-6 h-6 transition-colors", (!isAnalyticsMode && table.status !== 'available') ? "text-muted" : "text-muted group-hover:text-primary")} strokeWidth={3} />
+                               </Button>
                            </div>
                         );
                      })}
@@ -505,8 +522,6 @@ const TableStatus: React.FC = () => {
                </>
             )}
          </div>
-
-         <CreateOrderModal isOpen={isOrderModalOpen} onClose={() => setIsOrderModalOpen(false)} initialTableNo={orderInitialTable} appendOrderId={orderAppendId} onOrderCreated={refetch} />
 
          {/* Table Order History Dialog */}
          <Dialog
@@ -874,22 +889,22 @@ const TableCard: React.FC<TableCardProps> = React.memo(({ table, currentTime, on
             <div className="flex flex-col items-end gap-2">
                {isSetupMode ? (
                   <div className="flex gap-1">
-                     <Button
+                      <Button
                         size="sm"
                         variant="ghost"
                         onClick={(e) => { e.stopPropagation(); onEdit?.(); }}
-                        className="h-8 w-8 p-0 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-500 hover:bg-blue-500/20"
-                     >
-                        <Edit3 className="w-3.5 h-3.5" strokeWidth={3} />
-                     </Button>
-                     <Button
+                        className="h-10 w-10 p-0 rounded-xl bg-blue-500 text-white shadow-lg shadow-blue-500/20 hover:bg-blue-400 border border-blue-400/50"
+                      >
+                        <Edit3 className="w-4 h-4" strokeWidth={3} />
+                      </Button>
+                      <Button
                         size="sm"
                         variant="ghost"
                         onClick={(e) => { e.stopPropagation(); onDelete?.(); }}
-                        className="h-8 w-8 p-0 rounded-lg bg-red-500/10 border border-red-500/20 text-red-500 hover:bg-red-500/20"
-                     >
-                        <Trash2 className="w-3.5 h-3.5" strokeWidth={3} />
-                     </Button>
+                        className="h-10 w-10 p-0 rounded-xl bg-red-500 text-white shadow-lg shadow-red-500/20 hover:bg-red-400 border border-red-400/50"
+                      >
+                        <Trash2 className="w-4 h-4" strokeWidth={3} />
+                      </Button>
                   </div>
                ) : (
                   <div className={cn("p-3 rounded-2xl shadow-inner", isAnalyticsMode ? heatColor : statusStyles[table.status as keyof typeof statusStyles])}>
@@ -906,16 +921,16 @@ const TableCard: React.FC<TableCardProps> = React.memo(({ table, currentTime, on
                      <p className="text-[8px] font-black text-muted uppercase tracking-widest mb-1">{t('tableStatus.metrics.score')}</p>
                      <p className="text-lg font-black text-foreground">{score}%</p>
                   </div>
-                  <div className="bg-muted/5 border border-border p-3 rounded-2xl">
-                     <p className="text-[8px] font-black text-muted uppercase tracking-widest mb-1">{t('tableStatus.metrics.orders')}</p>
-                     <p className="text-lg font-black text-foreground">{(metric as any)?.orders_count || 0}</p>
-                  </div>
+                   <div className="bg-muted/5 border border-border p-3 rounded-2xl">
+                      <p className="text-[8px] font-black text-muted uppercase tracking-widest mb-1">{t('tableStatus.metrics.orders')}</p>
+                      <p className="text-lg font-black text-foreground">{metric?.orders_count || 0}</p>
+                   </div>
                </div>
-               <div className="flex items-center justify-between p-3 rounded-2xl bg-primary/5 border border-primary/10">
-                  <div className="flex items-center gap-2">
-                     <DollarSign className="w-4 h-4 text-primary" strokeWidth={3} />
-                     <span className="text-xs font-black text-foreground">{metric?.revenue_per_hour || 0}<span className="text-[8px] opacity-40">/hr</span></span>
-                  </div>
+                <div className="flex items-center justify-between p-3 rounded-2xl bg-primary/5 border border-primary/10">
+                   <div className="flex items-center gap-1">
+                      <span className="text-[10px] font-black text-primary mr-1">ETB</span>
+                      <span className="text-xs font-black text-foreground">{metric?.revenue_per_hour || 0}<span className="text-[8px] opacity-40">/hr</span></span>
+                   </div>
                   <Button
                      size="sm"
                      variant="ghost"
@@ -942,9 +957,28 @@ const TableCard: React.FC<TableCardProps> = React.memo(({ table, currentTime, on
                <div className="pt-4 border-t border-border flex gap-3">
                   <Button
                      onClick={() => onQuickOrder(table)}
-                     className="flex-1 bg-foreground text-background font-black rounded-2xl h-12 text-[10px] uppercase tracking-widest shadow-xl hover:bg-foreground/90 transition-all active:scale-95"
+                     disabled={table.status !== 'available'}
+                     className={cn(
+                        "flex-1 font-black rounded-2xl h-12 text-[10px] uppercase tracking-widest shadow-xl transition-all active:scale-95",
+                        table.status === 'available' 
+                           ? "bg-foreground text-background hover:bg-foreground/90" 
+                           : "bg-muted/10 text-muted border border-border cursor-not-allowed opacity-50"
+                     )}
                   >
                      {t('tableStatus.quickOrder')}
+                  </Button>
+                  <Button
+                     variant="ghost"
+                     size="sm"
+                     onClick={(e) => {
+                        e.stopPropagation();
+                        const link = `${window.location.origin}/order-chat/${table.id}${table.qr_token ? `?token=${table.qr_token}` : ''}`;
+                        navigator.clipboard.writeText(link);
+                        showToast("Chatbot link copied to clipboard", "success");
+                     }}
+                     className="w-12 h-12 rounded-2xl bg-muted/5 border border-border text-muted hover:text-primary transition-all shrink-0"
+                  >
+                     <Share2 className="w-4 h-4" />
                   </Button>
                   <Button
                      variant="ghost"

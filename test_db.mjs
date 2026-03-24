@@ -13,24 +13,16 @@ if (!supabaseUrl || !supabaseKey) {
 
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-async function checkTables() {
-  const { data, error } = await supabase
-    .from("tables")
-    .select("*");
+async function runDiagnostic() {
+  const { data: branches } = await supabase.from("branches").select("id, name, organization_id");
+  console.log("BRANCHES:" + JSON.stringify(branches));
 
-  if (error) {
-    console.error("Error fetching tables:", error);
-  } else {
-    console.log("Total tables in DB:", data.length);
-    const branchTables = data.filter(t => t.branch_id === "effde1a0-09d3-4508-a66c-64fbd636bcc9");
-    console.log("Tables in branch effde1a0-09d3-4508-a66c-64fbd636bcc9:", branchTables.length);
-    console.log("Branch table numbers:", JSON.stringify(branchTables.map(t => t.table_number), null, 2));
-
-    const otherTables = data.filter(t => t.branch_id !== "effde1a0-09d3-4508-a66c-64fbd636bcc9");
-    if (otherTables.length > 0) {
-      console.log("Example of other branch:", otherTables[0].branch_id);
-    }
-  }
+  const { data: orders } = await supabase
+    .from("orders")
+    .select("id, order_number, branch_id, status, source, table_number, created_at, waiter_id")
+    .eq("source", "chatbot")
+    .is("waiter_id", null);
+  console.log("UNASSIGNED_ORDERS:" + JSON.stringify(orders));
 }
 
-checkTables();
+runDiagnostic();

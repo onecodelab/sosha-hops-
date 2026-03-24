@@ -40,9 +40,10 @@ export async function getTopPerformingItems(context: ToolContext) {
 export async function getMenu(context: ToolContext) {
     const queryStr = getString(context.params.query);
     const catStr = getString(context.params.category);
+    const onlyAvailable = context.params.only_available !== false; // Default to true
     const targetBranch = resolveBranchId(context);
 
-    console.log(`[MCP-MENU] Searching for: query="${queryStr}", cat="${catStr}", branch="${targetBranch}"`);
+    console.log(`[MCP-MENU] Searching for: query="${queryStr}", cat="${catStr}", branch="${targetBranch}", availableOnly=${onlyAvailable}`);
 
     let dbQuery = context.supabase
         .from('view_menu_details')
@@ -51,6 +52,10 @@ export async function getMenu(context: ToolContext) {
 
     if (targetBranch) {
         dbQuery = dbQuery.eq('branch_id', targetBranch);
+    }
+
+    if (onlyAvailable) {
+        dbQuery = dbQuery.eq('is_available', true);
     }
 
     if (catStr) dbQuery = dbQuery.ilike('category', `%${catStr}%`);

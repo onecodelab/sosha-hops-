@@ -66,11 +66,11 @@ export interface MerchantQROptions {
 }
 
 export function buildMerchantQR(opts: MerchantQROptions): string {
-  const bankConfig = BANK_EMV_CONFIG[opts.bankKey];
-  if (!bankConfig) {
-    // Fallback: simple account-based QR
-    return `${opts.accountNumber}`;
-  }
+  return buildUniversalMerchantQR([opts]);
+}
+
+export function buildUniversalMerchantQR(banks: MerchantQROptions[], ercaData?: string): string {
+  if (banks.length === 0 && !ercaData) return "";
 
   let payload = '';
 
@@ -78,39 +78,52 @@ export function buildMerchantQR(opts: MerchantQROptions): string {
   payload += tlv("00", "01");
 
   // Tag 01: Point of Initiation Method
-  // "11" = Static (reusable), "12" = Dynamic (one-time with amount)
-  payload += tlv("01", opts.amount ? "12" : "11");
+  // "11" = Static, "12" = Dynamic. Use "11" for multi-bank unless all have amount
+  const hasAmount = banks.every(b => b.amount);
+  payload += tlv("01", hasAmount ? "12" : "11");
 
-  // Tag 26-51: Merchant Account Information
-  payload += buildMAI(
-    bankConfig.tag,
-    bankConfig.schemeId, 
-    opts.accountNumber,
-    opts.merchantId
-  );
+  // Tag 26-51: Merchant Account Information for each bank
+  banks.forEach(opts => {
+    const bankConfig = BANK_EMV_CONFIG[opts.bankKey];
+    if (bankConfig) {
+      payload += buildMAI(
+        bankConfig.tag,
+        bankConfig.schemeId, 
+        opts.accountNumber,
+        opts.merchantId
+      );
+    }
+  });
 
-  // Tag 52: Merchant Category Code (5812 = Eating Places / Restaurants)
+  // Tag 52: Category Code
   payload += tlv("52", "5812");
 
-  // Tag 53: Transaction Currency (230 = ETB)
+  // Tag 53: Currency (230 = ETB)
   payload += tlv("53", "230");
 
-  // Tag 54: Transaction Amount (only for dynamic QR)
-  if (opts.amount) {
-    payload += tlv("54", opts.amount.toFixed(2));
+  // Tag 54: Amount (if universal amount applies)
+  if (hasAmount && banks[0].amount) {
+    payload += tlv("54", banks[0].amount.toFixed(2));
   }
 
-  // Tag 58: Country Code
+  // Tag 58: Country
   payload += tlv("58", "ET");
 
   // Tag 59: Merchant Name
-  payload += tlv("59", opts.merchantName.slice(0, 25));
+  const merchantName = banks[0]?.merchantName || "BARO MERCHANT";
+  payload += tlv("59", merchantName.slice(0, 25));
 
-  // Tag 60: Merchant City
-  payload += tlv("60", (opts.merchantCity || "Addis Ababa").slice(0, 15));
+  // Tag 60: City
+  payload += tlv("60", "Addis Ababa");
 
-  // Tag 63: CRC — Must be calculated last
-  // Append tag "63" and length "04" first, then compute CRC over the full string
+  // Tag 62: Additional Data (Store ERCA here)
+  if (ercaData) {
+    // We use a custom sub-tag 99 for ERCA string inside Tag 62
+    const ercaSubTag = tlv("99", ercaData.slice(0, 99));
+    payload += tlv("62", ercaSubTag);
+  }
+
+  // Tag 63: CRC
   payload += "6304";
   const checksum = crc16ccitt(payload);
   payload += checksum;

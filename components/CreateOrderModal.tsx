@@ -59,16 +59,43 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
       setTableId(initialTableId || '');
       setTableNumber(initialTableNo || '');
       setGuestCount(1);
-      setInternalAppendId(appendOrderId || null); // Explicitly null if undefined
+      setInternalAppendId(appendOrderId || null);
       setActiveOrderSummary(null);
     }
   }, [isOpen, initialTableId, initialTableNo, appendOrderId]);
 
-  // Handle Order Summary fetching if starting with a table
+  // 2. Proactive Active Order Detection
+  // Whenever the modal opens with a table (initialTableId or recovered from tableNumber),
+  // immediately check the DB for an active order to prevent constraint violations.
   useEffect(() => {
-    if (isOpen && initialTableId && !activeOrderSummary) {
-      fetchOrderSummary(initialTableId);
-    }
+    if (!isOpen || !initialTableId) return;
+
+    const detectActiveOrder = async () => {
+      try {
+        // Direct DB query — don't rely on stale table.status or table.current_order_id
+        const { data: activeOrder, error } = await supabase
+          .from('orders')
+          .select('id, total_amount, subtotal_amount, vat_amount, status')
+          .eq('table_id', initialTableId)
+          .not('status', 'in', '("paid","closed","cancelled")')
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (!error && activeOrder) {
+          console.log(`[CreateOrder] Detected active order ${activeOrder.id} on initial table. Switching to APPEND mode.`);
+          setInternalAppendId(activeOrder.id);
+        }
+
+        // Also fetch summary for display
+        const summary = await orderService.fetchTableOrderSummary(initialTableId);
+        setActiveOrderSummary(summary);
+      } catch (err) {
+        console.warn("Failed to detect active order on initial table", err);
+      }
+    };
+
+    detectActiveOrder();
   }, [isOpen, initialTableId]);
 
   const fetchOrderSummary = async (id: string) => {
@@ -80,7 +107,7 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
     }
   };
 
-  // 2. Recovery Logic: Detect occupied tables automatically
+  // 3. Recovery Logic: Detect occupied tables automatically
   useEffect(() => {
     if (isOpen && tables.length > 0 && tableNumber) {
       const found = tables.find(t => t.table_number.toString() === tableNumber.toString());
@@ -115,12 +142,38 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
       setTableId(id);
       setTableNumber(tbl.table_number);
       setGuestCount(tbl.capacity_min || 1);
-      if (tbl.status === 'occupied' && tbl.current_order_id) {
-        setInternalAppendId(tbl.current_order_id);
-        fetchOrderSummary(id);
-      } else {
-        setInternalAppendId(null);
-        setActiveOrderSummary(null);
+      
+      // Proactively look for any active order on this table, 
+      // even if the table status doesn't explicitly say 'occupied' yet
+      try {
+        const { data: activeOrder } = await supabase
+          .from('orders')
+          .select('id')
+          .eq('table_id', id)
+          .not('status', 'in', '("paid","closed","cancelled")')
+          .maybeSingle();
+
+        if (activeOrder) {
+          console.log(`[CreateOrder] Found active order ${activeOrder.id} for table ${tbl.table_number}. Switching to APPEND mode.`);
+          setInternalAppendId(activeOrder.id);
+          fetchOrderSummary(id);
+        } else if (tbl.status === 'occupied' && tbl.current_order_id) {
+          setInternalAppendId(tbl.current_order_id);
+          fetchOrderSummary(id);
+        } else {
+          setInternalAppendId(null);
+          setActiveOrderSummary(null);
+        }
+      } catch (err) {
+        console.warn("Error checking for active order:", err);
+        // Fallback to table status
+        if (tbl.status === 'occupied' && tbl.current_order_id) {
+          setInternalAppendId(tbl.current_order_id);
+          fetchOrderSummary(id);
+        } else {
+          setInternalAppendId(null);
+          setActiveOrderSummary(null);
+        }
       }
     } else {
       setTableId('');
@@ -318,7 +371,8 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
             .from('orders')
             .select('id, total_amount, subtotal_amount, vat_amount')
             .eq('table_id', activeTableId)
-            .not('status', 'in', '("paid","closed","cancelled")')
+            .not('status', 'in', '("paid","closed","cancelled","completed")')
+            .order('created_at', { ascending: false })
             .maybeSingle();
 
           if (existingActiveOrder) {

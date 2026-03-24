@@ -84,7 +84,7 @@ const AppDispatcher: React.FC = () => {
         const role = profile.role?.toLowerCase().trim();
         switch (role) {
             case 'super_admin': navigate('/app/baro-admin', { replace: true }); break;
-            case 'owner': navigate('/app/owner', { replace: true }); break;
+            case 'owner': navigate('/app/admin', { replace: true }); break;
             case 'admin': navigate('/app/admin', { replace: true }); break;
             case 'manager': navigate('/app/manager', { replace: true }); break;
             case 'waiter': navigate('/app/waiter', { replace: true }); break;

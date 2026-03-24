@@ -90,11 +90,11 @@ interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
 export const Card: React.FC<CardProps> = ({ className, variant = 'default', children, ...props }) => {
   const variants = {
     // Default surface: Highly opaque for depth
-    default: "bg-[#1A1A1A] border-primary/20 shadow-xl",
+    default: "bg-card border-primary/20 shadow-xl",
     // Elevated: Near-solid for maximum contrast
-    elevated: "bg-[#1A1A1A] border-primary/30 shadow-2xl",
+    elevated: "bg-card border-primary/30 shadow-2xl",
     // Interactive: Clear feedback
-    interactive: "bg-[#1A1A1A] border-primary/20 hover:border-primary/40 hover:bg-[#252525] cursor-pointer shadow-md hover:shadow-xl",
+    interactive: "bg-card border-primary/20 hover:border-primary/40 hover:bg-muted/10 cursor-pointer shadow-md hover:shadow-xl",
     // Outline: Minimal weight
     outline: "bg-transparent border-primary/20"
   };
@@ -165,7 +165,7 @@ export const Dialog: React.FC<DialogProps> = ({ isOpen, onClose, title, children
   }, [isOpen]);
 
   return (
-    <AnimatePresence>
+    <AnimatePresence mode="wait">
       {isOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
           <motion.div
@@ -173,25 +173,36 @@ export const Dialog: React.FC<DialogProps> = ({ isOpen, onClose, title, children
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="absolute inset-0 bg-black/80 backdrop-blur-md"
+            className="absolute inset-0 bg-black/90 backdrop-blur-2xl transition-all"
           />
           <motion.div
-            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+            initial={{ opacity: 0, scale: 0.95, y: 30 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.9, y: 20 }}
-            transition={{ type: "spring", damping: 20, stiffness: 300 }}
-            className={cn("w-full max-h-[95vh] rounded-[2.5rem] bg-card border border-primary/20 shadow-[0_0_50px_-12px_rgba(0,0,0,0.5)] overflow-hidden flex flex-col relative", maxWidth)}
+            exit={{ opacity: 0, scale: 0.95, y: 30 }}
+            transition={{ type: "spring", damping: 25, stiffness: 450 }}
+            className={cn(
+              "w-full max-h-[95vh] rounded-[1.5rem] bg-card border border-primary/20 shadow-2xl overflow-hidden flex flex-col relative backdrop-blur-xl", 
+              maxWidth
+            )}
           >
+            {/* Soft Header highlight */}
+            <div className="absolute top-0 inset-x-0 h-32 bg-gradient-to-b from-white to-transparent pointer-events-none opacity-50" />
+            
             {showTitle && (
-              <div className="flex items-center justify-between px-8 py-6 border-b border-primary/10 bg-black/40">
-                <h2 className="text-lg font-black text-foreground tracking-tight uppercase">{title}</h2>
-                <button onClick={onClose} className="p-2 rounded-full hover:bg-white/10 text-muted hover:text-foreground transition-all duration-300 hover:rotate-90">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+              <div className="flex items-center justify-between px-10 py-8 border-b border-border/50 bg-card/40 backdrop-blur-xl relative z-10 shrink-0">
+                <h2 className="text-xl font-black text-foreground tracking-tighter uppercase">{title}</h2>
+                <button 
+                  onClick={onClose} 
+                  className="w-10 h-10 flex items-center justify-center rounded-xl bg-white/5 border border-white/10 text-muted hover:text-foreground hover:bg-white/10 hover:shadow-lg transition-all duration-500 hover:rotate-90 group"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="group-hover:scale-110"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                 </button>
               </div>
             )}
-            <div className="flex-1 overflow-y-auto custom-scrollbar">
-              {children}
+            <div className="flex-1 overflow-y-auto custom-scrollbar p-2 relative z-0">
+              <div className="p-4">
+                {children}
+              </div>
             </div>
           </motion.div>
         </div>

@@ -21,18 +21,18 @@ export default function BaroMenubar() {
     };
 
     return (
-        <Menubar className="flex rounded-xl border border-white/5 bg-black/40 backdrop-blur-2xl p-1 shadow-[0_0_20px_rgba(0,0,0,0.5)]">
+        <Menubar className="flex rounded-xl border border-border/10 bg-card/40 backdrop-blur-2xl p-1 shadow-lg shadow-black/20">
             {/* APPS MENU */}
             <Menu.Root>
-                <Menu.Trigger className="h-9 rounded-lg px-4 text-sm font-black uppercase tracking-wider text-gray-400 outline-none select-none hover:bg-white/5 data-[popup-open]:bg-white/10 data-[popup-open]:text-white transition-all">
+                <Menu.Trigger className="h-9 rounded-lg px-4 text-sm font-black uppercase tracking-wider text-muted-foreground outline-none select-none hover:bg-foreground/5 data-[popup-open]:bg-foreground/10 data-[popup-open]:text-foreground transition-all">
                     Apps
                 </Menu.Trigger>
                 <Menu.Portal>
                     <Menu.Positioner className="outline-none z-[100]" sideOffset={8}>
-                        <Menu.Popup className="origin-[var(--transform-origin)] rounded-xl bg-[#0A0A0A] border border-white/10 py-1.5 text-white shadow-2xl shadow-black/80 outline-none min-w-[160px] animate-in fade-in zoom-in-95 duration-200">
+                        <Menu.Popup className="origin-[var(--transform-origin)] rounded-xl bg-card border border-border/10 py-1.5 text-foreground shadow-2xl shadow-black/30 outline-none min-w-[160px] animate-in fade-in zoom-in-95 duration-200">
 
                             <RoleGuard allowedRoles={['owner', 'admin']} hideOnly>
-                                <Menu.Item onClick={() => handleNav('/app/admin')} className="flex cursor-pointer items-center justify-between gap-4 px-4 py-2.5 text-sm font-bold outline-none select-none hover:bg-white/5 data-[highlighted]:bg-white/5">
+                                <Menu.Item onClick={() => handleNav('/app/admin')} className="flex cursor-pointer items-center justify-between gap-4 px-4 py-2.5 text-sm font-bold outline-none select-none hover:bg-foreground/5 data-[highlighted]:bg-foreground/5">
                                     <div className="flex items-center gap-3">
                                         <LayoutDashboard className="w-4 h-4 text-primary" />
                                         <span>Admin Home</span>
@@ -41,7 +41,7 @@ export default function BaroMenubar() {
                             </RoleGuard>
 
                             <RoleGuard allowedRoles={['manager']} hideOnly>
-                                <Menu.Item onClick={() => handleNav('/app/manager')} className="flex cursor-pointer items-center justify-between gap-4 px-4 py-2.5 text-sm font-bold outline-none select-none hover:bg-white/5 data-[highlighted]:bg-white/5">
+                                <Menu.Item onClick={() => handleNav('/app/manager')} className="flex cursor-pointer items-center justify-between gap-4 px-4 py-2.5 text-sm font-bold outline-none select-none hover:bg-foreground/5 data-[highlighted]:bg-foreground/5">
                                     <div className="flex items-center gap-3">
                                         <LayoutDashboard className="w-4 h-4 text-primary" />
                                         <span>Ops Dashboard</span>
@@ -50,7 +50,7 @@ export default function BaroMenubar() {
                             </RoleGuard>
 
                             <RoleGuard allowedRoles={['owner', 'admin', 'waiter', 'manager']} hideOnly>
-                                <Menu.Item onClick={() => handleNav('/app/tables')} className="flex cursor-pointer items-center justify-between gap-4 px-4 py-2.5 text-sm font-bold outline-none select-none hover:bg-white/5 data-[highlighted]:bg-white/5">
+                                <Menu.Item onClick={() => handleNav('/app/tables')} className="flex cursor-pointer items-center justify-between gap-4 px-4 py-2.5 text-sm font-bold outline-none select-none hover:bg-foreground/5 data-[highlighted]:bg-foreground/5">
                                     <div className="flex items-center gap-3">
                                         <Monitor className="w-4 h-4 text-blue-400" />
                                         <span>Floor Map</span>
@@ -59,7 +59,7 @@ export default function BaroMenubar() {
                             </RoleGuard>
 
                             <RoleGuard allowedRoles={['waiter']} hideOnly>
-                                <Menu.Item onClick={() => handleNav('/app/waiter')} className="flex cursor-pointer items-center justify-between gap-4 px-4 py-2.5 text-sm font-bold outline-none select-none hover:bg-white/5 data-[highlighted]:bg-white/5">
+                                <Menu.Item onClick={() => handleNav('/app/waiter')} className="flex cursor-pointer items-center justify-between gap-4 px-4 py-2.5 text-sm font-bold outline-none select-none hover:bg-foreground/5 data-[highlighted]:bg-foreground/5">
                                     <div className="flex items-center gap-3">
                                         <User className="w-4 h-4 text-amber-500" />
                                         <span>Waiter Station</span>
@@ -73,15 +73,15 @@ export default function BaroMenubar() {
 
             {/* MANAGE MENU */}
             <Menu.Root>
-                <Menu.Trigger className="h-9 rounded-lg px-4 text-sm font-black uppercase tracking-wider text-gray-400 outline-none select-none hover:bg-white/5 data-[popup-open]:bg-white/10 data-[popup-open]:text-white transition-all">
+                <Menu.Trigger className="h-9 rounded-lg px-4 text-sm font-black uppercase tracking-wider text-muted-foreground outline-none select-none hover:bg-foreground/5 data-[popup-open]:bg-foreground/10 data-[popup-open]:text-foreground transition-all">
                     Manage
                 </Menu.Trigger>
                 <Menu.Portal>
                     <Menu.Positioner className="outline-none z-[100]" sideOffset={8}>
-                        <Menu.Popup className="origin-[var(--transform-origin)] rounded-xl bg-[#0A0A0A] border border-white/10 py-1.5 text-white shadow-2xl shadow-black/80 outline-none min-w-[160px] animate-in fade-in zoom-in-95 duration-200">
+                        <Menu.Popup className="origin-[var(--transform-origin)] rounded-xl bg-card border border-border/10 py-1.5 text-foreground shadow-2xl shadow-black/30 outline-none min-w-[160px] animate-in fade-in zoom-in-95 duration-200">
 
                             <RoleGuard allowedRoles={['owner', 'admin', 'manager']} hideOnly>
-                                <Menu.Item onClick={() => handleNav('/app/admin/menu')} className="flex cursor-pointer items-center justify-between gap-4 px-4 py-2.5 text-sm font-bold outline-none select-none hover:bg-white/5 data-[highlighted]:bg-white/5">
+                                <Menu.Item onClick={() => handleNav('/app/admin/menu')} className="flex cursor-pointer items-center justify-between gap-4 px-4 py-2.5 text-sm font-bold outline-none select-none hover:bg-foreground/5 data-[highlighted]:bg-foreground/5">
                                     <div className="flex items-center gap-3">
                                         <BookOpen className="w-4 h-4 text-orange-400" />
                                         <span>Menu Keys</span>
@@ -90,7 +90,7 @@ export default function BaroMenubar() {
                             </RoleGuard>
 
                             <RoleGuard allowedRoles={['manager', 'admin', 'owner']} hideOnly>
-                                <Menu.Item onClick={() => handleNav('/app/inventory')} className="flex cursor-pointer items-center justify-between gap-4 px-4 py-2.5 text-sm font-bold outline-none select-none hover:bg-white/5 data-[highlighted]:bg-white/5">
+                                <Menu.Item onClick={() => handleNav('/app/inventory')} className="flex cursor-pointer items-center justify-between gap-4 px-4 py-2.5 text-sm font-bold outline-none select-none hover:bg-foreground/5 data-[highlighted]:bg-foreground/5">
                                     <div className="flex items-center gap-3">
                                         <ShoppingBag className="w-4 h-4 text-purple-400" />
                                         <span>Inventory</span>
@@ -99,7 +99,7 @@ export default function BaroMenubar() {
                             </RoleGuard>
 
                             <RoleGuard allowedRoles={['owner', 'admin']} hideOnly>
-                                <Menu.Item onClick={() => handleNav('/app/admin/staff-performance')} className="flex cursor-pointer items-center justify-between gap-4 px-4 py-2.5 text-sm font-bold outline-none select-none hover:bg-white/5 data-[highlighted]:bg-white/5">
+                                <Menu.Item onClick={() => handleNav('/app/admin/staff-performance')} className="flex cursor-pointer items-center justify-between gap-4 px-4 py-2.5 text-sm font-bold outline-none select-none hover:bg-foreground/5 data-[highlighted]:bg-foreground/5">
                                     <div className="flex items-center gap-3">
                                         <Users className="w-4 h-4 text-green-400" />
                                         <span>Staff Perf.</span>
@@ -114,15 +114,15 @@ export default function BaroMenubar() {
 
             {/* SYSTEM MENU */}
             <Menu.Root>
-                <Menu.Trigger className="h-9 rounded-lg px-4 text-sm font-black uppercase tracking-wider text-gray-400 outline-none select-none hover:bg-white/5 data-[popup-open]:bg-white/10 data-[popup-open]:text-white transition-all">
+                <Menu.Trigger className="h-9 rounded-lg px-4 text-sm font-black uppercase tracking-wider text-muted-foreground outline-none select-none hover:bg-foreground/5 data-[popup-open]:bg-foreground/10 data-[popup-open]:text-foreground transition-all">
                     System
                 </Menu.Trigger>
                 <Menu.Portal>
                     <Menu.Positioner className="outline-none z-[100]" sideOffset={8}>
-                        <Menu.Popup className="origin-[var(--transform-origin)] rounded-xl bg-[#0A0A0A] border border-white/10 py-1.5 text-white shadow-2xl shadow-black/80 outline-none min-w-[160px] animate-in fade-in zoom-in-95 duration-200">
+                        <Menu.Popup className="origin-[var(--transform-origin)] rounded-xl bg-card border border-border/10 py-1.5 text-foreground shadow-2xl shadow-black/30 outline-none min-w-[160px] animate-in fade-in zoom-in-95 duration-200">
 
                             <RoleGuard allowedRoles={['admin', 'owner']} hideOnly>
-                                <Menu.Item onClick={() => handleNav('/app/settings')} className="flex cursor-pointer items-center justify-between gap-4 px-4 py-2.5 text-sm font-bold outline-none select-none hover:bg-white/5 data-[highlighted]:bg-white/5">
+                                <Menu.Item onClick={() => handleNav('/app/settings')} className="flex cursor-pointer items-center justify-between gap-4 px-4 py-2.5 text-sm font-bold outline-none select-none hover:bg-foreground/5 data-[highlighted]:bg-foreground/5">
                                     <div className="flex items-center gap-3">
                                         <Settings className="w-4 h-4 text-gray-400" />
                                         <span>Settings</span>
@@ -130,7 +130,7 @@ export default function BaroMenubar() {
                                 </Menu.Item>
                             </RoleGuard>
 
-                            <Menu.Separator className="mx-4 my-1.5 h-px bg-white/10" />
+                            <Menu.Separator className="mx-4 my-1.5 h-px bg-border/20" />
 
                             <Menu.Item
                                 onClick={handleLogout}

@@ -17,6 +17,7 @@ export interface TableMetric {
     is_camper: boolean; // Flag for potential camper
     reopen_abuse: boolean; // Flag for suspicious quick reopens
     void_count: number; // Count of cancelled/voided orders
+    orders_count: number; // Total non-voided orders
 }
 
 export const analyticsService = {
@@ -84,9 +85,14 @@ export const analyticsService = {
             // A. Duration & Utilization
             let totalDurationMins = 0;
             tableSessions.forEach(s => {
-                const start = new Date(s.seated_at).getTime();
-                const end = s.closed_at ? new Date(s.closed_at).getTime() : now.getTime();
-                totalDurationMins += (end - start) / 60000;
+                const sessionStart = new Date(s.seated_at).getTime();
+                const sessionEnd = s.closed_at ? new Date(s.closed_at).getTime() : now.getTime();
+                
+                // Constrain session to start from the beginning of our analytics range (startDate) at most
+                const effectiveStart = Math.max(sessionStart, startDate.getTime());
+                const effectiveEnd = Math.max(effectiveStart, sessionEnd);
+                
+                totalDurationMins += (effectiveEnd - effectiveStart) / 60000;
             });
 
             // Operating window in minutes (for utilization calc)
@@ -96,20 +102,22 @@ export const analyticsService = {
             // B. Revenue
             const totalRevenue = tableOrders.filter(o => ['closed', 'paid'].includes(o.status)).reduce((sum, o) => sum + (o.total_amount || 0), 0);
 
-            // C. RPM (Revenue Per Minute)
-            const safeDuration = totalDurationMins < 5 ? 5 : totalDurationMins; // Avoid div by zero
-            const rpm = totalRevenue / safeDuration;
+             // C. RPM (Revenue Per Available Minute)
+            // Using windowMins shows RevPASH - the true business productivity of the floor space.
+            const rpm = windowMins > 0 ? totalRevenue / windowMins : 0;
+            const rph = rpm * 60;
 
-            // D. Scoring (Simple Weighted algo)
-            // Revenue (50%), Utilization (30%), Turnover (20%)
-            const revScore = Math.min(100, (totalRevenue / (range === 'today' ? 5000 : 35000)) * 100);
-            const utilScore = Math.min(100, utilization * 1.5);
+            // D. Scoring (Balanced Algo)
+            // Revenue (60%) + Utilization (40%)
+            // Reference target for a "perfect" table today: 2000 ETB revenue or 70% utilization
+            const revScore = Math.min(100, (totalRevenue / (range === 'today' ? 2000 : 15000)) * 100);
+            const utilScore = Math.min(100, utilization * 1.4); // 70% util = 100pts
             const score = Math.round((revScore * 0.6) + (utilScore * 0.4));
 
             // E. Detection Flags
-            // Camper: High duration (> 90m), Low RPM (< 10 ETB/min)
+            // Camper: High duration (> 90m), Low Revenue Contribution
             const avgDuration = tableSessions.length > 0 ? totalDurationMins / tableSessions.length : 0;
-            const isCamper = avgDuration > 90 && rpm < 10;
+            const isCamper = avgDuration > 90 && (totalRevenue / (totalDurationMins || 1)) < 2; // Less than 2 ETB/min while occupied
 
             // Median Calculation
             const durations = tableSessions.map(s => {
@@ -173,13 +181,14 @@ export const analyticsService = {
                 avg_duration_minutes: Math.round(avgDuration),
                 median_duration_minutes: Math.round(medianDuration),
                 revenue_per_minute: parseFloat(rpm.toFixed(2)),
-                revenue_per_hour: parseFloat((rpm * 60).toFixed(2)),
+                revenue_per_hour: parseFloat(rph.toFixed(2)),
                 utilization_rate: Math.round(utilization),
                 dead_hours: deadHoursCount,
                 score,
                 is_camper: isCamper,
                 reopen_abuse: reopenAbuseDetected,
-                void_count: voidCount
+                void_count: voidCount,
+                orders_count: tableOrders.length - voidCount
             };
         });
 

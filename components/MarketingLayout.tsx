@@ -7,6 +7,7 @@ import { Menu, X, Settings2, Globe, Sparkles } from 'lucide-react';
 import ThemeToggle from './ThemeToggle';
 import { LanguageSwitcher } from './LanguageSwitcher';
 import { useLanguage } from '../contexts/LanguageContext';
+import { BaroLogo } from './BaroLogo';
 
 interface MarketingLayoutProps {
     children: React.ReactNode;
@@ -32,10 +33,7 @@ export const MarketingLayout: React.FC<MarketingLayoutProps> = ({ children }) =>
                         {/* Logo & Left Links */}
                         <div className="flex items-center gap-12">
                             <Link to="/" className="flex items-center gap-3 group liquid-core-logo">
-                                <span className="text-2xl tracking-tighter flex items-center gap-1 group">
-                                    <span className="serif-ital text-white group-hover:text-brand-yellow transition-all duration-500 lowercase">baro</span>
-                                    <span className="mono-os text-brand-green bg-brand-green/10 px-2 py-0.5 rounded-full text-[10px] font-black border border-brand-green/20">os</span>
-                                </span>
+                                <BaroLogo className="scale-110" />
                             </Link>
 
                             <div className="hidden md:flex items-center gap-10">
@@ -195,10 +193,7 @@ export const MarketingLayout: React.FC<MarketingLayoutProps> = ({ children }) =>
                     <div className="flex flex-col md:flex-row items-center justify-between gap-16 mb-20">
                         <div className="flex flex-col items-center md:items-start gap-6">
                             <Link to="/" className="flex items-center gap-2 grayscale opacity-40 hover:grayscale-0 hover:opacity-100 transition-all duration-700">
-                                <span className="text-2xl tracking-tighter">
-                                    <span className="serif-ital text-white lowercase">baro</span>
-                                    <span className="mono-os text-brand-green ml-2 text-xs">os</span>
-                                </span>
+                                <BaroLogo className="scale-90" />
                             </Link>
                             <p className="mono-os text-[10px] font-black text-white/20 tracking-[0.3em] uppercase">
                                 {t('footer.tagline')}

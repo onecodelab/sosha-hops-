@@ -21,21 +21,38 @@ const QRScanner: React.FC<QRScannerProps> = ({ onScan, onClose }) => {
 
     const startCamera = async () => {
       try {
-        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+        // Try with environment facing mode first (back camera)
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+        } catch (e) {
+          console.warn("[Camera] Environment mode failed, using default video stream.");
+          // Fallback to any available camera
+          stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        }
+
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
-          // Wait for video to be ready
           videoRef.current.setAttribute("playsinline", "true");
           await videoRef.current.play();
           setLoading(false);
           requestAnimationFrame(tick);
         }
-      } catch (err) {
-        setError('Unable to access camera. Please ensure permissions are granted.');
+      } catch (err: any) {
+        let msg = 'Unable to access camera.';
+        if (!window.isSecureContext) {
+          msg = 'Camera access requires a secure context (HTTPS). On mobile, please test via localhost or use a tunnel.';
+        } else if (err.name === 'NotAllowedError') {
+          msg = 'Camera permission was denied. Please allow it in browser settings.';
+        } else if (err.name === 'NotFoundError') {
+          msg = 'No camera device found on this system.';
+        }
+        setError(msg);
         setLoading(false);
         console.error(err);
       }
     };
+
+
 
     const tick = () => {
       if (videoRef.current && videoRef.current.readyState === videoRef.current.HAVE_ENOUGH_DATA) {

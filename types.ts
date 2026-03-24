@@ -119,6 +119,7 @@ export interface Table {
   capacity_min: number;
   capacity_max: number;
   zone?: string;
+  qr_token?: string;
   current_order_id?: string | null;
   current_session_id?: string | null;
   last_updated?: string;

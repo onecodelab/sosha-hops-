@@ -224,21 +224,25 @@ export const ChatWidget: React.FC = () => {
                 body: {
                     message: msg,
                     session_id: sessionId,
-                    table_number: tableFromUrl,
-                    organization_id: organizationId,
-                    branch_id: branchId,
+                    table_id: tableFromUrl || undefined
                 },
             });
 
             if (error) throw error;
 
+            // Parse attachments from API format: metadata.attachments.items
+            const rawItems = data?.metadata?.attachments?.items;
+            const parsedAttachments = rawItems && Array.isArray(rawItems) && rawItems.length > 0
+                ? { type: 'menu' as const, data: rawItems }
+                : undefined;
+
             const assistantMsg: ChatMessage = {
                 id: crypto.randomUUID(),
                 role: 'assistant',
-                content: data?.text || '⚠️ No response.',
+                content: data?.text || data?.response || '⚠️ No response.',
                 timestamp: new Date(),
                 metadata: data?.metadata,
-                attachments: data?.metadata?.attachments
+                attachments: parsedAttachments
             };
             setMessages(prev => [...prev, assistantMsg]);
         } catch (err: any) {
@@ -251,7 +255,7 @@ export const ChatWidget: React.FC = () => {
         } finally {
             setIsTyping(false);
         }
-    }, [inputValue, sessionId, tableFromUrl, organizationId, branchId]);
+    }, [inputValue, sessionId, tableFromUrl]);
 
     return (
         <>

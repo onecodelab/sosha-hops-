@@ -14,7 +14,7 @@ import QRScanner from './QRScanner';
 import { AnimatedTicket } from './AnimatedTicket';
 import { usePaymentVerification } from '../hooks/usePaymentVerification';
 import { QRCodeSVG } from 'qrcode.react';
-import { buildMerchantQR, BANK_EMV_CONFIG } from '../lib/emvqr';
+import { buildMerchantQR, buildUniversalMerchantQR, BANK_EMV_CONFIG } from '../lib/emvqr';
 
 interface BillModalProps {
   isOpen: boolean;
@@ -27,40 +27,60 @@ interface BillModalProps {
 // Fix: Property 'env' does not exist on type 'ImportMeta'. Using process.env to align with provided environment guidelines.
 const BARO_API_KEY = import.meta.env.VITE_BARO_API_KEY || "baro_prod_key_8821";
 
-const BANK_CONFIG: Record<string, { label: string, placeholder: string, color: string, icon: any, endpoint: string, receiver?: string }> = {
+const BANK_CONFIG: Record<string, { label: string, placeholder: string, color: string, activeColor: string, icon: any, imageUrl?: string, iconSize?: string, logoGlow?: string, endpoint: string, receiver?: string }> = {
   telebirr: {
     label: "Telebirr",
     placeholder: "10-char ID (e.g. CL...)",
-    color: "text-purple-400 border-purple-500/30 bg-purple-500/5",
+    color: "bg-[#00C8FF]/5 text-[#00C8FF] border-[#00C8FF]/20",
+    activeColor: "bg-[#00C8FF] text-[#000F3C] border-[#00C8FF] shadow-[0_0_20px_rgba(0,200,255,0.4)]",
     icon: Smartphone,
+    imageUrl: "/telebirr-logo.png",
+    iconSize: "w-10 h-10",
+    logoGlow: "drop-shadow-[0_0_8px_rgba(0,200,255,0.6)]",
     endpoint: "telebirr"
   },
   cbe: {
     label: "CBE",
     placeholder: "FT Reference...",
-    color: "text-blue-400 border-blue-500/30 bg-blue-500/5",
+    color: "bg-[#00339B]/5 text-[#7BC8F2] border-[#00339B]/20",
+    activeColor: "bg-[#00339B] text-white border-[#FFD700] shadow-[0_0_20px_rgba(0,51,155,0.4)]",
     icon: Landmark,
+    imageUrl: "/cbe-logo.png",
+    iconSize: "w-10 h-10",
+    logoGlow: "drop-shadow-[0_0_8px_rgba(255,215,0,0.6)]",
     endpoint: "cbe"
   },
   dashen: {
     label: "Dashen",
     placeholder: "Ref Number...",
-    color: "text-emerald-400 border-emerald-500/30 bg-emerald-500/5",
+    color: "bg-[#273274]/5 text-[#FFCB70] border-[#273274]/20",
+    activeColor: "bg-[#273274] text-white border-[#FFCB70] shadow-[0_0_20px_rgba(39,50,116,0.4)]",
     icon: Landmark,
+    imageUrl: "/dashen-logo.png",
+    iconSize: "w-10 h-10 rounded-lg",
+    logoGlow: "drop-shadow-[0_0_8px_rgba(255,203,112,0.6)]",
     endpoint: "dashen"
   },
   abyssinia: {
     label: "Abyssinia",
     placeholder: "BoA Reference...",
-    color: "text-zinc-400 border-zinc-500/30 bg-zinc-500/5",
+    color: "bg-[#FDB813]/5 text-[#FDB813] border-[#FDB813]/20",
+    activeColor: "bg-[#FDB813] text-black border-[#FDB813] shadow-[0_0_20px_rgba(253,184,19,0.4)]",
     icon: Landmark,
+    imageUrl: "/abyssinia-logo.png",
+    iconSize: "w-10 h-10 -mr-2",
+    logoGlow: "drop-shadow-[0_0_8px_rgba(253,184,19,0.6)]",
     endpoint: "abyssinia"
   },
   cbebirr: {
     label: "CBE Birr",
     placeholder: "Receipt #",
-    color: "text-orange-400 border-orange-500/30 bg-orange-500/5",
+    color: "bg-[#0056D2]/5 text-[#FFCC00] border-[#0056D2]/20",
+    activeColor: "bg-[#0056D2] text-white border-[#FFCC00] shadow-[0_0_20px_rgba(0,86,210,0.4)]",
     icon: Coins,
+    imageUrl: "/cbebirr-logo.png",
+    iconSize: "w-10 h-10",
+    logoGlow: "drop-shadow-[0_0_8px_rgba(255,204,0,0.6)]",
     endpoint: "cbebirr"
   }
 };
@@ -72,6 +92,7 @@ export const BillModal: React.FC<BillModalProps> = ({
   const { user, profile } = useAuth();
 
   const [view, setView] = useState<'bill' | 'payment' | 'receipt' | 'success' | 'split'>('bill');
+  const [qrMode, setQrMode] = useState<'erca' | number>('erca');
   const [paymentMethod, setPaymentMethod] = useState<string>('cash');
   const [amountPaid, setAmountPaid] = useState<string>('');
   const [refNumber, setRefNumber] = useState('');
@@ -100,6 +121,7 @@ export const BillModal: React.FC<BillModalProps> = ({
   useEffect(() => {
     if (isOpen) {
       setView('bill');
+      setQrMode('erca');
       setRefNumber('');
       setAmountPaid('');
       setPaymentMethod('cash');
@@ -119,37 +141,89 @@ export const BillModal: React.FC<BillModalProps> = ({
     setIsQRScannerOpen(false);
     let extractedRef = "";
     let extractedReceiver = "";
-    let detectedBank = 'telebirr';
+    // Use the currently selected payment method as the default instead of hardcoding telebirr
+    let detectedBank = paymentMethod !== 'cash' ? paymentMethod : 'telebirr';
+
+    // Helper: try to find an FT reference in any string
+    const findFTRef = (str: string): string | null => {
+      const match = str.match(/(FT[A-Z0-9]{8,12})/i);
+      return match ? match[1].toUpperCase() : null;
+    };
+
+    // Helper: try base64 decode safely
+    const tryBase64Decode = (str: string): string | null => {
+      try {
+        const decoded = atob(str);
+        // Check if decoded content has readable ASCII characters
+        if (/[\x20-\x7E]{4,}/.test(decoded)) return decoded;
+      } catch { /* not valid base64 */ }
+      return null;
+    };
 
     try {
       if (rawData.startsWith('http')) {
         const url = new URL(rawData);
         const params = url.searchParams;
 
-        if (rawData.includes('bankofabyssinia.com')) {
-          extractedRef = params.get('trx') || "";
+        if (rawData.includes('bankofabyssinia.com') || rawData.includes('boa.') || rawData.includes('abyssinia')) {
+          extractedRef = params.get('trx') || params.get('ref') || params.get('id') || "";
           extractedReceiver = params.get('acc') || "";
           detectedBank = 'abyssinia';
-        } else if (rawData.includes('cbe.com.et')) {
+        } else if (rawData.includes('cbe.com.et') || rawData.includes('combanketh')) {
           extractedRef = params.get('id') || "";
           extractedReceiver = params.get('receiver') || params.get('acc') || "";
           detectedBank = 'cbe';
-        } else if (rawData.includes('dashen')) {
+        } else if (rawData.includes('dashen') || rawData.includes('dashenbanksc')) {
           extractedRef = params.get('ref') || params.get('id') || "";
           detectedBank = 'dashen';
-        }
-      } else {
-        // Priority check for CBE (FT + digits)
-        const cbeMatch = rawData.match(/(FT[A-Z0-9]{10})/i);
-        const teleMatch = rawData.match(/(?:receipt\/|transaction\/)?([A-Z0-9]{10})/i);
-
-        if (cbeMatch) {
-          extractedRef = cbeMatch[1].toUpperCase();
-          detectedBank = 'cbe';
-        } else if (teleMatch) {
-          extractedRef = teleMatch[1];
+        } else if (rawData.includes('telebirr') || rawData.includes('ethiotelecom')) {
+          extractedRef = params.get('ref') || params.get('id') || "";
           detectedBank = 'telebirr';
         } else {
+          // Unknown URL — extract any ref-like param and keep current bank selection
+          extractedRef = params.get('ref') || params.get('trx') || params.get('id') || url.pathname.split('/').pop() || "";
+        }
+      } else {
+        // Non-URL QR data
+
+        // 1. First, try to find FT reference directly in the raw data
+        const ftRef = findFTRef(rawData);
+        if (ftRef) {
+          extractedRef = ftRef;
+          // FT refs are used by both CBE and BOA — keep the selected bank
+          if (detectedBank !== 'abyssinia' && detectedBank !== 'cbe') {
+            detectedBank = 'cbe'; // default FT to CBE if no bank pre-selected
+          }
+        }
+        // 2. If no FT found and data is long (likely encoded/encrypted payload from BOA etc.)
+        else if (rawData.length > 30) {
+          // Try base64 decoding to find embedded FT reference
+          const decoded = tryBase64Decode(rawData);
+          const decodedFT = decoded ? findFTRef(decoded) : null;
+
+          if (decodedFT) {
+            extractedRef = decodedFT;
+            if (detectedBank !== 'abyssinia' && detectedBank !== 'cbe') {
+              detectedBank = 'cbe';
+            }
+          } else {
+            // Encoded QR with no extractable reference — ask user to type it manually
+            showToast("QR contains encoded data. Please enter the FT reference manually.", "warning");
+            setPaymentMethod(detectedBank);
+            return;
+          }
+        }
+        // 3. CBE Birr: typically long numeric receipt numbers
+        else if (/^\d{12,20}$/.test(rawData)) {
+          extractedRef = rawData;
+          detectedBank = 'cbebirr';
+        }
+        // 4. Short alphanumeric code (e.g. Telebirr 10-char codes)
+        else if (rawData.length >= 6 && rawData.length <= 30) {
+          extractedRef = rawData.trim();
+          // Keep currently selected bank
+        }
+        else {
           extractedRef = rawData.trim();
         }
       }
@@ -160,7 +234,6 @@ export const BillModal: React.FC<BillModalProps> = ({
     // Standardize CBE to 12 chars if it starts with FT
     if (extractedRef.toUpperCase().startsWith('FT') && extractedRef.length > 12) {
       extractedRef = extractedRef.slice(0, 12).toUpperCase();
-      detectedBank = 'cbe';
     }
 
     extractedRef = extractedRef.replace(/[^a-zA-Z0-9]+$/, "");
@@ -363,14 +436,22 @@ export const BillModal: React.FC<BillModalProps> = ({
     }
   };
 
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth <= 640);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
   if (!order) return null;
 
   return (
-    <Dialog isOpen={isOpen} onClose={onClose} title={view === 'payment' ? "Checkout" : "Order Summary"} maxWidth="max-w-md">
-      <div className="flex flex-col p-1 min-h-[500px]">
+    <Dialog isOpen={isOpen} onClose={onClose} title={view === 'payment' ? "Checkout Station" : "Order Summary"} maxWidth="max-w-md" showTitle={!isMobile}>
+      <div className="flex flex-col p-1 min-h-[400px] bg-zinc-950/50 rounded-[1.5rem] border border-white/5">
         {view === 'bill' && (
           <div className="animate-in fade-in zoom-in-95 duration-300">
-            <div className="bg-white text-black p-5 rounded-lg shadow-inner mx-1 w-full max-w-[320px] mx-auto" style={{ fontFamily: "'Courier New', Courier, monospace" }}>
+            <div className="bg-white text-black p-4 rounded-lg shadow-inner mx-auto w-full max-w-[280px] sm:max-w-[320px] scale-[0.78] sm:scale-100 origin-top transition-transform mb-[-5rem] sm:mb-0 print:shadow-none print:px-0 print:scale-100" style={{ fontFamily: "'Courier New', Courier, monospace" }}>
               {/* TIN */}
               <div className="text-center mb-1">
                 <p className="text-[10px] tracking-wider font-mono">TIN: 0043819230</p>
@@ -393,8 +474,8 @@ export const BillModal: React.FC<BillModalProps> = ({
               <p className="text-center text-[9px] text-gray-400 my-1 font-mono">- - - - - - - - - - - - - - - - - - - -</p>
 
               {/* Invoice Type */}
-              <div className="text-center mb-2">
-                <p className="font-black text-xs uppercase tracking-widest font-mono">CASH INVOICE</p>
+              <div className="text-center mb-1">
+                <p className="font-black text-[10px] uppercase tracking-widest font-mono">ORDER SUMMARY</p>
               </div>
 
               {/* Customer / Invoice / Operator */}
@@ -451,76 +532,46 @@ export const BillModal: React.FC<BillModalProps> = ({
 
               <p className="text-center text-[9px] text-gray-400 my-2 font-mono">- - - - - - - - - - - - - - - - - - - -</p>
 
-              {/* Item Count */}
-              <div className="flex justify-between text-[10px] text-gray-500 font-mono">
-                <span>ITEM#</span>
-                <span className="font-bold">{order.order_items?.reduce((sum: number, item: any) => sum + (item.quantity || 1), 0) || 0}</span>
-              </div>
-
-              <p className="text-center text-[9px] text-gray-400 my-2 font-mono">- - - - - - - - - - - - - - - - - - - -</p>
-
-              {/* ERCA & Payment QR Footer */}
-              <div className="mt-4 font-mono">
-                <div className="flex items-start justify-center gap-4">
-                  {/* ERCA Fiscal QR */}
-                  <div className="text-center flex flex-col items-center">
-                    <QRCodeSVG
-                      value={`TIN:0043819230|INV:ORD-${order.order_number || order.id.slice(0, 8)}|DATE:${new Date(order.created_at).toISOString()}|TOTAL:${order.total_amount}|VAT:${(order.total_amount - order.total_amount / 1.15).toFixed(2)}`}
-                      size={60}
-                      level="M"
-                      className="mb-1"
-                    />
-                    <span className="font-black text-[9px] tracking-wide">ERCA</span>
-                  </div>
-
-                  {/* Payment QR (per bank) */}
-                  {activeBanks.length > 0 && (
-                    <div className="text-center flex flex-col items-center">
-                      <QRCodeSVG
-                        value={buildMerchantQR({
-                          bankKey: activeBanks[selectedPayBank]?.bank_key,
-                          accountNumber: activeBanks[selectedPayBank]?.account_number,
-                          merchantName: 'BARO MERCHANT',
-                          amount: order.total_amount,
-                        })}
-                        size={60}
-                        level="M"
-                        className="mb-1"
-                      />
-                      {/* Bank Tabs */}
-                      <div className="flex gap-1 mt-1">
-                        {activeBanks.map((b: any, i: number) => {
-                          const emvCfg = BANK_EMV_CONFIG[b.bank_key];
-                          return (
-                            <button key={b.id}
-                              onClick={() => setSelectedPayBank(i)}
-                              className={cn(
-                                "px-1.5 py-0.5 rounded text-[7px] font-black uppercase transition-all",
-                                i === selectedPayBank
-                                  ? "bg-black text-white"
-                                  : "bg-gray-200 text-gray-500 hover:bg-gray-300"
-                              )}
-                            >
-                              {emvCfg?.label || b.bank_key}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
+              {/* Universal QR Section */}
+              <div className="flex flex-col items-center gap-1 mt-1 font-mono">
+                <div className="text-center flex flex-col items-center bg-gray-50 p-2 rounded-lg border border-gray-100">
+                  <QRCodeSVG
+                    value={buildUniversalMerchantQR(
+                      activeBanks.map((b: any) => ({
+                        bankKey: b.bank_key,
+                        accountNumber: b.account_number,
+                        merchantName: restaurantName,
+                        amount: order.total_amount
+                      })),
+                      `TIN:0043819230|INV:ORD-${order.order_number || order.id.slice(0, 8)}|DATE:${new Date(order.created_at).toISOString()}|TOTAL:${order.total_amount}`
+                    )}
+                    size={80}
+                    level="M"
+                  />
                 </div>
-                <p className="text-[9px] text-gray-500 text-center mt-2">FG{order.id.slice(0, 8).toUpperCase()}</p>
-                <p className="text-[9px] text-gray-400 text-center mt-1 tracking-wider">Powered by Baro OS</p>
+
+                {/* Human Readable Accounts (for manual entry if scan fails) */}
+                <div className="w-full space-y-1 px-4">
+                  {activeBanks.map((b: any) => (
+                    <div key={b.id} className="flex justify-between text-[8px] uppercase font-bold text-gray-500">
+                      <span>{BANK_EMV_CONFIG[b.bank_key]?.label || b.bank_key}</span>
+                      <span className="font-mono">{b.account_number}</span>
+                    </div>
+                  ))}
+                </div>
+
+                <p className="text-[9px] text-gray-500 text-center mt-2 font-mono">FG{order.id.slice(0, 8).toUpperCase()}</p>
+                <p className="text-[9px] text-gray-400 text-center mt-1 tracking-wider font-mono">Powered by Baro OS</p>
               </div>
             </div>
 
-            <div className="flex flex-col md:grid md:grid-cols-2 gap-3 mt-6">
-              <Button onClick={handleGoToPayment} className="w-full h-14 bg-primary text-black font-black uppercase rounded-xl order-1 md:order-2 md:col-start-2">
-                Pay All <ChevronRight className="ml-2 w-5 h-5" />
+            <div className="flex flex-col md:grid md:grid-cols-2 gap-3 mt-4 sm:mt-6 print:hidden">
+              <Button onClick={handleGoToPayment} className="w-full h-14 bg-primary text-black font-black uppercase rounded-xl order-1 md:order-2 md:col-start-2 shadow-xl shadow-primary/10">
+                Checkout All <ChevronRight className="ml-2 w-5 h-5" />
               </Button>
               <div className="grid grid-cols-2 gap-2 order-2 md:order-1 md:col-start-1">
                 <Button variant="outline" onClick={() => window.print()} className="h-12 bg-white/5 border-white/10 rounded-xl font-bold">
-                  <Printer className="w-4 h-4 mr-2" /> Print
+                  <Printer className="w-4 h-4 mr-2" /> Print Bill
                 </Button>
                 <Button onClick={() => setView('split')} className="h-12 bg-white/10 text-white font-black uppercase rounded-xl border border-white/10 hover:bg-white/20">
                   Split
@@ -531,86 +582,116 @@ export const BillModal: React.FC<BillModalProps> = ({
         )}
 
         {view === 'payment' && (
-          <div className="space-y-5 animate-in slide-in-from-right duration-300">
-            <div className="flex items-center justify-between px-1">
-              <button onClick={() => setView('bill')} className="flex items-center gap-1.5 text-zinc-500 hover:text-white text-[10px] font-black uppercase tracking-widest transition-colors">
-                <ArrowLeft className="w-3.5 h-3.5" /> Back
-              </button>
-              <div className="flex items-center gap-1.5 bg-primary/10 px-3 py-1 rounded-full border border-primary/20">
-                <ShieldCheck className="w-3.5 h-3.5 text-primary" />
-                <span className="text-[9px] font-black text-primary uppercase">Secure Edge</span>
-              </div>
+          <div className="space-y-4 animate-in fade-in duration-200">
+            <div className="flex items-center justify-between px-2">
+              <button onClick={() => setView('bill')} className="flex items-center gap-1.5 text-zinc-400 hover:text-primary text-[9px] font-black uppercase tracking-[0.2em] transition-all group">
+                <div className="w-7 h-7 rounded-full bg-white/5 flex items-center justify-center group-hover:bg-primary/20 group-hover:text-primary transition-all">
+                   <ArrowLeft className="w-3.5 h-3.5" />
+                </div>
+                Back
+               </button>
+               <div className="flex items-center gap-1.5 bg-primary/10 px-3 py-1.5 rounded-lg border border-primary/20">
+                 <ShieldCheck className="w-3.5 h-3.5 text-primary" />
+                 <span className="text-[9px] font-black text-primary uppercase tracking-widest">Secure Entry</span>
+               </div>
             </div>
 
-            <div className="bg-[#0A0A0A] p-5 rounded-2xl border border-white/5 text-center relative overflow-hidden">
-              <p className="text-[9px] font-black text-zinc-600 uppercase tracking-widest">Amount to Collect</p>
-              <h3 className="text-3xl font-black text-white font-mono mt-1 tracking-tighter">
-                ETB {order.total_amount.toLocaleString()}
-              </h3>
+            <div className="bg-zinc-900/80 p-4 rounded-xl border border-white/10 text-center relative overflow-hidden shadow-lg group">
+               <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-transparent opacity-30" />
+               <p className="text-[9px] font-black text-zinc-500 uppercase tracking-widest mb-1 relative z-10">Amount to Collect</p>
+               <div className="flex items-baseline justify-center gap-2 relative z-10">
+                  <span className="text-[9px] font-black text-primary/40 uppercase">ETB</span>
+                  <h3 className="text-2xl font-black text-white tracking-tighter">
+                    {order.total_amount.toLocaleString()}
+                  </h3>
+               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-2">
-              <button onClick={() => { setPaymentMethod('cash'); setIsVerified(false); setRefNumber(''); }} className={cn("p-2.5 rounded-xl border flex items-center gap-2 transition-all", paymentMethod === 'cash' ? "bg-primary/10 border-primary text-primary" : "bg-black/40 border-white/5 text-zinc-500")}>
-                <Banknote className="w-3.5 h-3.5" />
-                <span className="font-black uppercase text-[9px]">Cash</span>
-              </button>
-              {Object.entries(BANK_CONFIG).map(([key, config]) => (
-                <button key={key} onClick={() => { setPaymentMethod(key); setRefNumber(''); setIsVerified(false); }} className={cn("p-2.5 rounded-xl border flex items-center gap-2 transition-all", paymentMethod === key ? `${config.color}` : "bg-black/40 border-white/5 text-zinc-500")}>
-                  <config.icon className="w-3.5 h-3.5" />
-                  <span className="font-black uppercase text-[9px]">{config.label}</span>
-                </button>
-              ))}
-            </div>
-
-            <div className="space-y-3 bg-[#0A0A0A] p-4 rounded-2xl border border-white/5 relative">
-              <div className="space-y-1.5">
-                <div className="flex justify-between items-center ml-1">
-                  <label className="text-[9px] font-black text-zinc-500 uppercase tracking-widest">Transaction ID</label>
-                  {paymentMethod !== 'cash' && (
-                    <button onClick={() => setIsQRScannerOpen(true)} className="text-[9px] font-black text-primary uppercase flex items-center gap-1 hover:opacity-80">
-                      <Scan className="w-3 h-3" /> Scan Receipt
-                    </button>
-                  )}
-                </div>
-                <div className="relative">
-                  <Input
-                    placeholder={(BANK_CONFIG as any)[paymentMethod]?.placeholder || "Manual ID..."}
-                    value={refNumber}
-                    onChange={e => { setRefNumber(e.target.value); setIsVerified(false); }}
-                    className={cn(
-                      "bg-black/40 border-white/10 font-mono text-white h-10 text-xs rounded-lg transition-all",
-                      isVerified && "border-green-500/50 text-green-400 bg-green-500/5"
-                    )}
-                    disabled={paymentMethod === 'cash'}
-                  />
-                  {isVerified && <CheckCircle2 className="absolute right-3 top-2.5 w-4 h-4 text-green-500" />}
-                </div>
-              </div>
-
-              {(BANK_CONFIG as any)[paymentMethod]?.receiver && (
-                <div className={cn("p-2 rounded-lg flex items-center justify-between border transition-all", isVerified ? "bg-green-500/5 border-green-500/20" : "bg-primary/5 border-primary/20")}>
-                  <div className="flex items-center gap-2">
-                    <ShieldCheck className={cn("w-3.5 h-3.5", isVerified ? "text-green-500" : "text-primary")} />
-                    <span className="text-[8px] text-zinc-400 font-black uppercase">To Account:</span>
-                  </div>
-                  <span className="text-[10px] text-primary font-mono font-black tracking-widest">
-                    ...{(BANK_CONFIG as any)[paymentMethod].receiver}
-                  </span>
-                </div>
-              )}
-
-              <div className="space-y-1.5">
-                <label className="text-[9px] font-black text-zinc-500 uppercase tracking-widest ml-1">Collection (ETB)</label>
-                <Input
-                  type="number"
-                  value={amountPaid}
-                  onChange={e => { setAmountPaid(e.target.value); setIsVerified(false); }}
+               <button 
+                  onClick={() => { setPaymentMethod('cash'); setIsVerified(false); setRefNumber(''); }} 
                   className={cn(
-                    "bg-black/40 border-white/10 font-mono font-black h-11 text-lg rounded-lg transition-colors",
-                    isVerified ? "text-green-400" : "text-primary"
+                    "h-11 rounded-lg border flex items-center justify-center gap-2 transition-colors text-[9px] font-black uppercase tracking-widest",
+                    paymentMethod === 'cash' 
+                      ? "bg-primary text-black border-primary shadow-lg" 
+                      : "bg-white/5 border-white/10 text-zinc-500 hover:bg-white/10"
                   )}
-                />
-              </div>
+               >
+                  <Banknote className="w-3.5 h-3.5" />
+                  Cash
+               </button>
+               {Object.entries(BANK_CONFIG).map(([key, config]) => (
+                  <button 
+                    key={key} 
+                    onClick={() => { setPaymentMethod(key); setRefNumber(''); setIsVerified(false); }} 
+                    className={cn(
+                      "h-11 rounded-lg border flex items-center justify-center gap-2 transition-colors text-[9px] font-black uppercase tracking-widest", 
+                      paymentMethod === key 
+                        ? (config as any).activeColor.replace('transition-all duration-500', '') 
+                        : "bg-white/5 border-white/10 text-zinc-500 hover:bg-white/10"
+                    )}
+                  >
+                     {config.imageUrl ? (
+                        <img src={config.imageUrl} alt={config.label} className={cn(config.iconSize || "w-6 h-6", "object-contain transition-transform group-hover:scale-110", paymentMethod === key && config.logoGlow)} />
+                     ) : (
+                        <config.icon className="w-4 h-4" />
+                     )}
+                     {config.label}
+                  </button>
+               ))}
+            </div>
+            <div className="space-y-3 bg-zinc-900/30 p-4 rounded-xl border border-white/5 relative">
+               <div className="space-y-1.5">
+                  <div className="flex justify-between items-center px-1">
+                     <label className="text-[9px] font-black text-zinc-500 uppercase tracking-widest">Transaction Method</label>
+                     {paymentMethod !== 'cash' && (
+                        <button onClick={() => setIsQRScannerOpen(true)} className="text-[9px] font-black text-primary uppercase flex items-center gap-1.5 hover:opacity-80">
+                           <Scan className="w-3 h-3" /> Scan Receipt
+                        </button>
+                     )}
+                  </div>
+                  <div className="relative">
+                     <Input
+                        placeholder={(BANK_CONFIG as any)[paymentMethod]?.placeholder || "Manual ID..."}
+                        value={refNumber}
+                        onChange={e => { setRefNumber(e.target.value); setIsVerified(false); }}
+                        className={cn(
+                          "bg-black/40 border-white/10 font-mono text-white h-9 text-[11px] rounded transition-all pl-3 pr-8",
+                          isVerified && "border-green-500/50 text-green-400"
+                        )}
+                        disabled={paymentMethod === 'cash'}
+                     />
+                     {isVerified && <CheckCircle2 className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-green-500" />}
+                  </div>
+               </div>
+
+               {(BANK_CONFIG as any)[paymentMethod]?.receiver && (
+                  <div className={cn("p-2 rounded-lg flex items-center justify-between border transition-all", isVerified ? "bg-green-500/5 border-green-500/20" : "bg-primary/5 border-primary/20")}>
+                    <div className="flex items-center gap-2">
+                       <ShieldCheck className={cn("w-3.5 h-3.5", isVerified ? "text-green-500" : "text-primary")} />
+                       <span className="text-[8px] text-zinc-400 font-black uppercase">To Account:</span>
+                    </div>
+                    <span className="text-[10px] text-primary font-mono font-black tracking-widest">
+                       ...{(BANK_CONFIG as any)[paymentMethod].receiver}
+                    </span>
+                  </div>
+               )}
+
+               <div className="space-y-1">
+                  <label className="text-[9px] font-black text-zinc-500 uppercase tracking-widest px-1">Input Collection (ETB)</label>
+                  <div className="relative">
+                     <Input
+                        type="number"
+                        value={amountPaid}
+                        onChange={e => { setAmountPaid(e.target.value); setIsVerified(false); }}
+                        className={cn(
+                          "bg-black/40 border-white/10 font-mono font-black h-11 text-lg rounded-lg transition-all px-3",
+                          isVerified ? "text-green-400 border-green-500/20" : "text-primary border-primary/10"
+                        )}
+                     />
+                  </div>
+               </div>
+
 
               {/* Tip Confirmation Card */}
               {isVerified && (parseFloat(amountPaid) > order.total_amount) && (
@@ -669,184 +750,148 @@ export const BillModal: React.FC<BillModalProps> = ({
           )
         }
 
-        {
-          view === 'receipt' && (
-            <div className="animate-in fade-in zoom-in-95 duration-300 flex flex-col items-center">
-              <div className="bg-white text-black p-5 rounded-lg shadow-inner mx-1 w-full max-w-[320px] mx-auto mt-4" style={{ fontFamily: "'Courier New', Courier, monospace" }}>
-                {/* TIN */}
-                <div className="text-center mb-1">
-                  <p className="text-[10px] tracking-wider font-mono">TIN: 0043819230</p>
-                </div>
-                <p className="text-center text-[9px] text-gray-400 mb-1 font-mono">- - - - - - - - - - - - - - - - - - - -</p>
+        {view === 'receipt' && (
+          <div className="animate-in fade-in zoom-in-95 duration-300 flex flex-col items-center">
+            <div className="bg-white text-black p-4 rounded-lg shadow-inner mx-auto w-full max-w-[280px] sm:max-w-[320px] mt-4 scale-[0.78] sm:scale-100 origin-top transition-transform mb-[-5rem] sm:mb-0 print:shadow-none print:px-0 print:scale-100" style={{ fontFamily: "'Courier New', Courier, monospace" }}>
+              {/* TIN */}
+              <div className="text-center mb-1">
+                <p className="text-[10px] tracking-wider font-mono">TIN: 0043819230</p>
+              </div>
+              <p className="text-center text-[9px] text-gray-400 mb-1 font-mono">- - - - - - - - - - - - - - - - - - - -</p>
 
-                {/* Business Name */}
-                <div className="text-center mb-1">
-                  <h3 className="font-black text-sm uppercase tracking-tight leading-tight font-mono">{restaurantName}</h3>
-                  <p className="text-[9px] text-gray-600 leading-tight font-mono">Location: {locationName}</p>
-                </div>
+              {/* Business Name */}
+              <div className="text-center mb-1">
+                <h3 className="font-black text-sm uppercase tracking-tight leading-tight font-mono">{restaurantName}</h3>
+                <p className="text-[9px] text-gray-600 leading-tight font-mono">Location: {locationName}</p>
+              </div>
 
-                {/* FS No & Date */}
-                <div className="flex justify-between text-[9px] text-gray-600 mt-1 font-mono">
-                  <span>FS No.{order.order_number || order.id.slice(0, 7)}</span>
-                  <span>{new Date().toLocaleDateString('en-GB')}</span>
-                  <span>{new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</span>
-                </div>
+              {/* FS No & Date */}
+              <div className="flex justify-between text-[9px] text-gray-600 mt-1 font-mono">
+                <span>FS No.{order.order_number || order.id.slice(0, 7)}</span>
+                <span>{new Date().toLocaleDateString('en-GB')}</span>
+                <span>{new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</span>
+              </div>
 
-                <p className="text-center text-[9px] text-gray-400 my-1 font-mono">- - - - - - - - - - - - - - - - - - - -</p>
+              <p className="text-center text-[9px] text-gray-400 my-1 font-mono">- - - - - - - - - - - - - - - - - - - -</p>
 
-                {/* Invoice Type */}
-                <div className="text-center mb-2">
-                  <p className="font-black text-xs uppercase tracking-widest font-mono bg-green-100 py-1 rounded inline-block px-2">PAID INVOICE</p>
-                </div>
+              {/* Invoice Type */}
+              <div className="text-center mb-1">
+                <p className="font-black text-[10px] uppercase tracking-widest font-mono bg-green-100 py-1 rounded inline-block px-2">PAID INVOICE</p>
+              </div>
 
-                {/* Customer / Invoice / Operator */}
-                <div className="space-y-0.5 text-[10px] mb-2 font-mono">
-                  <p>Customer: <span className="font-bold uppercase">{isVerified && refNumber ? 'Verified Payer' : 'Walk-in'}</span></p>
-                  <p>Invoice: <span className="font-bold">ORD-{order.order_number || order.id.slice(0, 8)}</span></p>
-                  <p>Operator: <span className="font-bold uppercase">{order.waiter?.full_name || profile?.full_name || user?.user_metadata?.full_name || 'Staff'}</span></p>
-                  <p>Table: <span className="font-bold">T-{order.table_number || 'N/A'}</span></p>
-                </div>
+              {/* Customer / Invoice / Operator */}
+              <div className="space-y-0.5 text-[10px] mb-2 font-mono">
+                <p>Customer: <span className="font-bold uppercase">{isVerified && refNumber ? 'Verified Payer' : 'Walk-in'}</span></p>
+                <p>Invoice: <span className="font-bold">ORD-{order.order_number || order.id.slice(0, 8)}</span></p>
+                <p>Operator: <span className="font-bold uppercase">{order.waiter?.full_name || profile?.full_name || user?.user_metadata?.full_name || 'Staff'}</span></p>
+                <p>Table: <span className="font-bold">T-{order.table_number || 'N/A'}</span></p>
+              </div>
 
-                <p className="text-center text-[9px] text-gray-400 my-1 font-mono">- - - - - - - - - - - - - - - - - - - -</p>
+              <p className="text-center text-[9px] text-gray-400 my-1 font-mono">- - - - - - - - - - - - - - - - - - - -</p>
 
-                {/* Items Header */}
-                <div className="flex text-[9px] font-black uppercase tracking-wider text-gray-500 mb-1 font-mono">
-                  <span className="flex-1">Description</span>
-                  <span className="w-8 text-center">Qty</span>
-                  <span className="w-16 text-right">Price</span>
-                  <span className="w-20 text-right">Amount</span>
-                </div>
+              {/* Items Header */}
+              <div className="flex text-[9px] font-black uppercase tracking-wider text-gray-500 mb-1 font-mono">
+                <span className="flex-1">Description</span>
+                <span className="w-8 text-center">Qty</span>
+                <span className="w-16 text-right">Price</span>
+                <span className="w-20 text-right">Amount</span>
+              </div>
 
-                {/* Items */}
-                <div className="space-y-1 mb-2 max-h-40 overflow-y-auto custom-scrollbar font-mono">
-                  {order.order_items?.map((item: any, i: number) => (
-                    <div key={i} className="flex text-[10px]">
-                      <span className="flex-1 truncate pr-1 uppercase">{item.menu_item?.name || 'Item'}</span>
-                      <span className="w-8 text-center">{item.quantity}</span>
-                      <span className="w-16 text-right">{(item.price || 0).toLocaleString()}</span>
-                      <span className="w-20 text-right font-bold">{((item.price || 0) * (item.quantity || 1)).toLocaleString()}</span>
-                    </div>
-                  ))}
-                </div>
-
-                <p className="text-center text-[9px] text-gray-400 my-1 font-mono">- - - - - - - - - - - - - - - - - - - -</p>
-
-                {/* Tax Breakdown */}
-                <div className="space-y-1 text-[10px] font-mono">
-                  <div className="flex justify-between">
-                    <span>TXBL 1</span>
-                    <span className="font-bold">*{(order.total_amount / 1.15).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+              {/* Items */}
+              <div className="space-y-1 mb-2 max-h-40 overflow-y-auto custom-scrollbar font-mono">
+                {order.order_items?.map((item: any, i: number) => (
+                  <div key={i} className="flex text-[10px]">
+                    <span className="flex-1 truncate pr-1 uppercase">{item.menu_item?.name || 'Item'}</span>
+                    <span className="w-8 text-center">{item.quantity}</span>
+                    <span className="w-16 text-right">{(item.price || 0).toLocaleString()}</span>
+                    <span className="w-20 text-right font-bold">{((item.price || 0) * (item.quantity || 1)).toLocaleString()}</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span>TAX1 15%</span>
-                    <span className="font-bold">*{(order.total_amount - order.total_amount / 1.15).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-                  </div>
+                ))}
+              </div>
+
+              <p className="text-center text-[9px] text-gray-400 my-1 font-mono">- - - - - - - - - - - - - - - - - - - -</p>
+
+              {/* Tax Breakdown */}
+              <div className="space-y-1 text-[10px] font-mono">
+                <div className="flex justify-between">
+                  <span>TXBL 1</span>
+                  <span className="font-bold">*{(order.total_amount / 1.15).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                 </div>
-
-                <p className="text-center text-[9px] text-gray-400 my-2 font-mono">- - - - - - - - - - - - - - - - - - - -</p>
-
-                {/* TOTAL */}
-                <div className="flex justify-between text-sm font-black font-mono">
-                  <span>TOTAL PAID</span>
-                  <span>*{order.total_amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-                </div>
-
-                <p className="text-center text-[9px] text-gray-400 my-2 font-mono">- - - - - - - - - - - - - - - - - - - -</p>
-
-                {/* ERCA & Payment QR Footer */}
-                <div className="mt-4 font-mono">
-                  <div className="flex items-start justify-center gap-4">
-                    {/* ERCA Fiscal QR */}
-                    <div className="text-center flex flex-col items-center">
-                      <QRCodeSVG
-                        value={`TIN:0043819230|INV:ORD-${order.order_number || order.id.slice(0, 8)}|DATE:${new Date().toISOString()}|TOTAL:${order.total_amount}|VAT:${(order.total_amount - order.total_amount / 1.15).toFixed(2)}`}
-                        size={60}
-                        level="M"
-                        className="mb-1"
-                      />
-                      <span className="font-black text-[9px] tracking-wide">ERCA</span>
-                    </div>
-
-                    {/* Payment QR (per bank) */}
-                    {activeBanks.length > 0 && (
-                      <div className="text-center flex flex-col items-center">
-                        <QRCodeSVG
-                          value={buildMerchantQR({
-                            bankKey: activeBanks[selectedPayBank]?.bank_key,
-                            accountNumber: activeBanks[selectedPayBank]?.account_number,
-                            merchantName: 'BARO MERCHANT',
-                            amount: order.total_amount,
-                          })}
-                          size={60}
-                          level="M"
-                          className="mb-1"
-                        />
-                        {/* Bank Tabs */}
-                        <div className="flex gap-1 mt-1">
-                          {activeBanks.map((b: any, i: number) => {
-                            const emvCfg = BANK_EMV_CONFIG[b.bank_key];
-                            return (
-                              <button key={b.id}
-                                onClick={() => setSelectedPayBank(i)}
-                                className={cn(
-                                  "px-1.5 py-0.5 rounded text-[7px] font-black uppercase transition-all",
-                                  i === selectedPayBank
-                                    ? "bg-black text-white"
-                                    : "bg-gray-200 text-gray-500 hover:bg-gray-300"
-                                )}
-                              >
-                                {emvCfg?.label || b.bank_key}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                  <p className="text-[9px] text-gray-500 text-center mt-2">FG{order.id.slice(0, 8).toUpperCase()}</p>
-                  <p className="text-[9px] text-gray-400 text-center mt-1 tracking-wider">Powered by Baro OS</p>
+                <div className="flex justify-between">
+                  <span>TAX1 15%</span>
+                  <span className="font-bold">*{(order.total_amount - order.total_amount / 1.15).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                 </div>
               </div>
 
-              <div className="flex flex-col md:grid md:grid-cols-2 gap-3 mt-6 w-full max-w-[320px]">
-                <Button onClick={() => window.print()} className="w-full h-14 bg-white/10 text-white font-black uppercase rounded-xl border border-white/10 hover:bg-white/20 order-2 md:order-1">
-                  <Printer className="w-5 h-5 mr-2" /> Print
-                </Button>
-                <Button onClick={() => { setView('success'); onSuccess(); }} className="w-full h-14 bg-primary text-black font-black uppercase rounded-xl order-1 md:order-2">
-                  Continue <ChevronRight className="ml-2 w-5 h-5" />
-                </Button>
+              <p className="text-center text-[9px] text-gray-400 my-2 font-mono">- - - - - - - - - - - - - - - - - - - -</p>
+
+              {/* TOTAL */}
+              <div className="flex justify-between text-sm font-black font-mono">
+                <span>TOTAL PAID</span>
+                <span>*{order.total_amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+              </div>
+
+              <p className="text-center text-[9px] text-gray-400 my-2 font-mono">- - - - - - - - - - - - - - - - - - - -</p>
+
+              {/* Universal QR Footer for Paid Receipt */}
+              <div className="flex flex-col items-center gap-1 mt-1 font-mono">
+                <div className="text-center flex flex-col items-center">
+                   <QRCodeSVG
+                    value={buildUniversalMerchantQR(
+                      activeBanks.map((b: any) => ({
+                        bankKey: b.bank_key,
+                        accountNumber: b.account_number,
+                        merchantName: restaurantName,
+                        amount: order.total_amount
+                      })),
+                      `TIN:0043819230|INV:ORD-${order.order_number || order.id.slice(0, 8)}|DATE:${new Date().toISOString()}|TOTAL:${order.total_amount}`
+                    )}
+                    size={60}
+                    level="M"
+                    className="mb-1"
+                  />
+                  <span className="font-black text-[7px] tracking-widest uppercase text-gray-500">Invoice Authenticity QR</span>
+                </div>
+
+                <p className="text-[9px] text-gray-500 text-center mt-4 font-mono">FG{order.id.slice(0, 8).toUpperCase()}</p>
+                <p className="text-[9px] text-gray-400 text-center mt-1 tracking-wider font-mono">Powered by Baro OS</p>
               </div>
             </div>
-          )
-        }
 
-        {
-          view === 'success' && (
-            <div className="flex-1 flex flex-col items-center justify-center pt-2 space-y-8 animate-in fade-in duration-500">
-              <AnimatedTicket
-                ticketId={order.order_number || order.id.slice(0, 8)}
-                amount={parseFloat(amountPaid) || order.total_amount}
-                date={new Date()}
-                staffName={order.waiter?.full_name || user?.user_metadata?.full_name || 'Staff'}
-                paymentMethod={paymentMethod}
-                reference={refNumber}
-                barcodeValue={order.id.slice(0, 8).toUpperCase()}
-              />
-
-              <Button onClick={onClose} className="w-full bg-white/5 hover:bg-white/10 text-white font-black h-14 rounded-2xl text-[10px] uppercase tracking-[0.2em] border border-white/5 transition-all">
-                Return to Station
+            <div className="flex flex-col md:grid md:grid-cols-2 gap-3 mt-6 w-full max-w-[320px] print:hidden">
+              <Button onClick={() => window.print()} className="w-full h-14 bg-white/10 text-white font-black uppercase rounded-xl border border-white/10 hover:bg-white/20 order-2 md:order-1">
+                <Printer className="w-5 h-5 mr-2" /> Print
+              </Button>
+              <Button onClick={() => { setView('success'); onSuccess(); }} className="w-full h-14 bg-primary text-black font-black uppercase rounded-xl order-1 md:order-2">
+                Continue <ChevronRight className="ml-2 w-5 h-5" />
               </Button>
             </div>
-          )
-        }
-      </div >
+          </div>
+        )}
 
-      {
-        isQRScannerOpen && (
-          <QRScanner onScan={handleQRScan} onClose={() => setIsQRScannerOpen(false)} />
-        )
-      }
-    </Dialog >
+        {view === 'success' && (
+          <div className="flex-1 flex flex-col items-center justify-center pt-2 space-y-8 animate-in fade-in duration-500">
+            <AnimatedTicket
+              ticketId={order.order_number || order.id.slice(0, 8)}
+              amount={parseFloat(amountPaid) || order.total_amount}
+              date={new Date()}
+              staffName={order.waiter?.full_name || user?.user_metadata?.full_name || 'Staff'}
+              paymentMethod={paymentMethod}
+              reference={refNumber}
+              barcodeValue={order.id.slice(0, 8).toUpperCase()}
+            />
+
+            <Button onClick={onClose} className="w-full bg-white/5 hover:bg-white/10 text-white font-black h-14 rounded-2xl text-[10px] uppercase tracking-[0.2em] border border-white/5 transition-all">
+              Return to Station
+            </Button>
+          </div>
+        )}
+      </div>
+
+      {isQRScannerOpen && (
+        <QRScanner onScan={handleQRScan} onClose={() => setIsQRScannerOpen(false)} />
+      )}
+    </Dialog>
   );
 };
 

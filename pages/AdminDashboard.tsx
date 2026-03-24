@@ -35,7 +35,7 @@ const AdminDashboard: React.FC = () => {
    const [selectedDetailsOrder, setSelectedDetailsOrder] = useState<Order | null>(null);
    const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
    const [searchQuery, setSearchQuery] = useState('');
-   const [dateFilter, setDateFilter] = useState<'today' | 'yesterday' | 'week' | 'all'>('week');
+   const [dateFilter, setDateFilter] = useState<'today' | 'yesterday' | 'week' | 'all'>('today');
 
    const syncTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -254,7 +254,7 @@ const AdminDashboard: React.FC = () => {
    useLayoutConfig({
       title: t('adminDashboard.title'),
       subtitle: t('adminDashboard.subtitle'),
-      className: "h-full md:h-screen md:overflow-hidden"
+      className: "p-3 md:p-3 h-full md:h-screen md:overflow-hidden"
    });
 
    return (
@@ -262,12 +262,12 @@ const AdminDashboard: React.FC = () => {
          <div className="space-y-3 animate-in fade-in duration-500 h-full flex flex-col overflow-y-auto md:overflow-hidden">
 
             {/* Top Compact Metrics Bar */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 shrink-0">
-               <Card className="bg-card/60 backdrop-blur-xl border border-primary/20 rounded-[2rem] shadow-xl overflow-hidden group">
-                  <div className="p-6 relative">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-4 shrink-0">
+               <Card className="bg-card/60 backdrop-blur-xl border border-primary/20 rounded-[1.5rem] shadow-xl overflow-hidden group">
+                  <div className="p-4 relative">
                      <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/5 rounded-full -mr-16 -mt-16 blur-3xl" />
                      <div className="relative z-10 flex flex-col">
-                        <p className="text-[10px] font-black text-muted uppercase tracking-[0.2em] opacity-60 mb-2">{t('adminDashboard.revenueToday')}</p>
+                        <p className="text-[10px] font-black text-muted uppercase tracking-[0.2em] opacity-60 mb-1">{t('adminDashboard.revenueToday')}</p>
                         <h3 className="text-3xl font-black text-foreground tracking-tighter">
                            <span className="text-sm mr-1 opacity-40">{t('adminDashboard.etb')}</span>
                            {stats.totalRevenue.toLocaleString()}
@@ -280,13 +280,13 @@ const AdminDashboard: React.FC = () => {
                </Card>
 
                <Card
-                  className="bg-card/60 backdrop-blur-xl border border-primary/20 rounded-[2rem] shadow-xl overflow-hidden group cursor-pointer hover:border-primary/50 transition-all"
+                  className="bg-card/60 backdrop-blur-xl border border-primary/20 rounded-[1.5rem] shadow-xl overflow-hidden group cursor-pointer hover:border-primary/50 transition-all"
                   onClick={() => setIsModalOpen(true)}
                >
-                  <div className="p-6 relative">
+                  <div className="p-4 relative">
                      <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full -mr-16 -mt-16 blur-3xl" />
                      <div className="relative z-10 flex flex-col">
-                        <p className="text-[10px] font-black text-muted uppercase tracking-[0.2em] opacity-60 mb-2">{t('adminDashboard.liveActivity')}</p>
+                        <p className="text-[10px] font-black text-muted uppercase tracking-[0.2em] opacity-60 mb-1">{t('adminDashboard.liveActivity')}</p>
                         <div className="flex items-center gap-3">
                            <h3 className="text-3xl font-black text-foreground tracking-tighter">{stats.activeOrdersCount}</h3>
                            <div className="h-2.5 w-2.5 rounded-full bg-blue-500 animate-pulse shadow-glow" />
@@ -302,9 +302,9 @@ const AdminDashboard: React.FC = () => {
                <div className="hidden lg:block lg:col-span-2" />
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-auto md:h-full md:min-h-0 md:flex-1 pb-20 md:pb-0">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-auto md:h-full md:min-h-0 md:flex-1 pb-10 md:pb-0">
                {/* Left Col: Live Production Board (Takes 4 cols) */}
-               <div className="lg:col-span-4 flex flex-col md:min-h-0 space-y-4 h-[500px] md:h-auto shrink-0">
+               <div className="lg:col-span-4 flex flex-col md:min-h-0 h-[500px] md:h-full shrink-0">
                   <div className="bg-card/60 backdrop-blur-xl border border-primary/20 rounded-[2.5rem] p-8 flex flex-col h-full shadow-2xl">
                      <div className="flex items-center justify-between mb-8">
                         <h3 className="text-[10px] font-black text-muted uppercase tracking-[0.2em] flex items-center gap-3 opacity-60">
@@ -355,7 +355,7 @@ const AdminDashboard: React.FC = () => {
                </div>
 
                {/* Right Col: Transaction Audit (Takes 8 cols) */}
-               <div className="lg:col-span-8 flex flex-col md:min-h-0 h-[600px] md:h-auto shrink-0">
+               <div className="lg:col-span-8 flex flex-col md:min-h-0 h-[650px] md:h-full shrink-0">
                   <Card className="bg-card/60 backdrop-blur-xl border border-primary/20 rounded-[2.5rem] flex-1 flex flex-col min-h-0 p-0 overflow-hidden shadow-2xl">
                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-8 gap-6 shrink-0 border-b border-primary/20 bg-muted/5">
                         <h3 className="flex items-center gap-3 text-[10px] font-black text-muted uppercase tracking-[0.2em] opacity-60">

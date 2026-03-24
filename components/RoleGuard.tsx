@@ -39,6 +39,12 @@ export const RoleGuard: React.FC<RoleGuardProps> = ({
     if (!profile) return null;
 
     const userRole = profile.role?.toLowerCase().trim() as Role;
+    
+    // If no roles are specified, allow access (or you could choose to deny)
+    if (!allowedRoles) {
+        return <>{children}</>;
+    }
+
     const isAllowed = allowedRoles.some(
         r => r.toLowerCase().trim() === userRole
     );

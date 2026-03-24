@@ -110,7 +110,7 @@ const App: React.FC = () => {
                     <Route path="/book-demo" element={<BookDemo />} />
                     <Route path="/pricing" element={<PricingPage />} />
                     <Route path="/features" element={<Features />} />
-                    <Route path="/order-chat/:branchId/:tableNumber" element={<CustomerChatPage />} />
+                    <Route path="/order-chat/:tableId" element={<CustomerChatPage />} />
 
                     {/* Auth Layer */}
                     <Route path="/login" element={<Login />} />

@@ -12,6 +12,7 @@ import { Sidebar } from './Sidebar';
 import { Header } from './Header';
 import { RoleGuard } from './RoleGuard';
 import BaroMenubar from './BaroMenubar';
+import { BaroLogo } from './BaroLogo';
 import { useLayout } from '../contexts/LayoutContext';
 
 interface DashboardLayoutProps {
@@ -83,18 +84,22 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
 
       {/* Mobile Header */}
       {!config.fullScreen && (
-        <div className="md:hidden fixed top-0 left-0 right-0 h-16 bg-card/40 backdrop-blur-2xl border-b border-primary/30 z-[100] px-4 flex items-center justify-between">
-          <div className="absolute -top-10 left-10 w-32 h-32 bg-primary/20 blur-[100px] rounded-full pointer-events-none" />
-          <span className="font-black text-xs uppercase tracking-widest text-foreground/90 drop-shadow-md">
-            Baro <span className="text-primary italic">OS</span>
-          </span>
-          <div className="transform scale-90 origin-right">
+        <div className="md:hidden fixed top-0 left-0 right-0 h-16 bg-background/80 backdrop-blur-3xl border-b border-border/10 shadow-xl z-[100] px-4 flex items-center justify-between">
+          
+          <div className="absolute inset-0 bg-gradient-to-r from-primary/5 via-transparent to-transparent pointer-events-none overflow-hidden rounded-b-xl" />
+          
+          {/* Logo — no scaling transforms */}
+          <div className="relative z-10 flex items-center">
+            <BaroLogo variant="full" />
+          </div>
+
+          <div className="relative z-10">
             <BaroMenubar />
           </div>
         </div>
       )}
 
-      <main className="flex-1 flex flex-col h-full overflow-hidden relative z-10">
+      <main className="flex-1 flex flex-col h-full overflow-hidden relative z-10 pt-16 md:pt-0">
         {!config.fullScreen && (
           <Header
             title={activeTitle}

@@ -5,7 +5,8 @@ import { useLayoutConfig } from '../contexts/LayoutContext';
 import { Card, CardContent, CardHeader, CardTitle, Button, Input, showToast, cn } from '../components/ui';
 import {
   Square, Circle, Maximize2, Trash2, Save, Plus,
-  MousePointer2, Info, Layout, Armchair, Loader2, RefreshCw
+  MousePointer2, Info, Layout, Armchair, Loader2, RefreshCw,
+  Link2, Copy, Check, ExternalLink
 } from 'lucide-react';
 import { supabase } from '../supabase';
 import { useAuth } from '../AuthContext';
@@ -22,6 +23,7 @@ interface Table {
   status: string;
   branch_id: string;
   organization_id: string;
+  qr_token?: string;
 }
 
 const AdminTableMap: React.FC = () => {
@@ -32,6 +34,7 @@ const AdminTableMap: React.FC = () => {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
   const canvasRef = useRef<HTMLDivElement>(null);
 
   // Canvas dimensions
@@ -59,6 +62,20 @@ const AdminTableMap: React.FC = () => {
     }
   };
 
+  const generateToken = () => crypto.randomUUID().replace(/-/g, '').slice(0, 16);
+
+  const getChatLink = (table: Table) => {
+    const base = `${window.location.origin}/order-chat/${table.id}`;
+    return table.qr_token ? `${base}?token=${table.qr_token}` : base;
+  };
+
+  const handleCopyLink = (table: Table) => {
+    navigator.clipboard.writeText(getChatLink(table));
+    setCopiedLink(true);
+    showToast(`Chat link for ${table.table_number} copied!`, 'success');
+    setTimeout(() => setCopiedLink(false), 2000);
+  };
+
   const handleAddTable = async (shape: 'square' | 'round' | 'rectangle') => {
     const nextNum = tables.length + 1;
     const newTable = {
@@ -69,7 +86,8 @@ const AdminTableMap: React.FC = () => {
       y_position: CANVAS_HEIGHT / 2 - 50,
       status: 'available',
       branch_id: activeBranchId,
-      organization_id: profile?.organization_id
+      organization_id: profile?.organization_id,
+      qr_token: generateToken()
     };
 
     try {
@@ -307,7 +325,46 @@ const AdminTableMap: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="pt-6 border-t border-border flex flex-col gap-3">
+                  {/* Shareable Chat Link */}
+                  <div className="space-y-3 pt-5 border-t border-border">
+                    <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider flex items-center gap-1.5">
+                      <Link2 className="w-3.5 h-3.5" /> Chatbot Link
+                    </label>
+                    <div className="p-3 bg-black/40 border border-zinc-800 rounded-xl">
+                      <p className="text-[10px] text-zinc-400 font-mono break-all leading-relaxed">
+                        {getChatLink(selectedTable)}
+                      </p>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button
+                        size="sm"
+                        onClick={() => handleCopyLink(selectedTable)}
+                        className={cn(
+                          "gap-1.5 text-[10px] font-bold uppercase tracking-wider rounded-xl transition-all",
+                          copiedLink
+                            ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
+                            : "bg-primary/10 text-primary border-primary/20 hover:bg-primary/20"
+                        )}
+                        variant="outline"
+                      >
+                        {copiedLink ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                        {copiedLink ? 'Copied' : 'Copy Link'}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="gap-1.5 text-[10px] font-bold uppercase tracking-wider rounded-xl border-zinc-800 hover:bg-zinc-800"
+                        onClick={() => window.open(getChatLink(selectedTable), '_blank')}
+                      >
+                        <ExternalLink className="w-3.5 h-3.5" /> Preview
+                      </Button>
+                    </div>
+                    <p className="text-[9px] text-zinc-600 text-center leading-relaxed">
+                      Copy this link and convert it to a QR code for printing. Customers scan the QR to open the chatbot for this table.
+                    </p>
+                  </div>
+
+                  <div className="pt-3 border-t border-border flex flex-col gap-3">
                     <Button
                       variant="destructive"
                       onClick={handleDeleteTable}

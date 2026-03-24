@@ -8,8 +8,8 @@ export async function placeOrder(context: ToolContext) {
     const sessionId = getString(context.params.session_id);
     const branchId = requireBranchId(context);
 
-    let tableId = null;
-    if (tableNumber) {
+    let tableId = getString(context.params.table_id);
+    if (!tableId && tableNumber) {
         tableId = await resolveTableId(context.supabase, branchId, tableNumber);
     }
 
@@ -141,13 +141,14 @@ export async function getOrderStatus(context: ToolContext) {
         .select('id, order_number, status, payment_status, total_amount, created_at, table_number')
         .eq('organization_id', context.organizationId);
 
+    const tableId = getString(context.params.table_id);
     if (orderId) {
         query = query.eq('id', orderId);
-    } else if (tableNumber) {
+    } else if (tableId || tableNumber) {
         const branchId = resolveBranchId(context);
         const { data: matchingOrders, error: orderErr } = await context.supabase
             .from('orders')
-            .select('id, order_number, status, payment_status, total_amount, created_at, table_number')
+            .select('id, order_number, status, payment_status, total_amount, created_at, table_number, table_id')
             .eq('organization_id', context.organizationId)
             .eq('branch_id', branchId)
             .in('status', ['pending', 'preparing', 'accepted', 'ready'])
@@ -155,11 +156,17 @@ export async function getOrderStatus(context: ToolContext) {
 
         if (orderErr) throw orderErr;
 
-        const normalizedTarget = normalizeTableNumber(tableNumber);
-        const matchedOrder = (matchingOrders || []).find((order: any) => normalizeTableNumber(order.table_number) === normalizedTarget);
+        let matchedOrder = null;
+        if (tableId) {
+            matchedOrder = (matchingOrders || []).find((order: any) => order.table_id === tableId);
+        } else if (tableNumber) {
+            const normalizedTarget = normalizeTableNumber(tableNumber);
+            matchedOrder = (matchingOrders || []).find((order: any) => normalizeTableNumber(order.table_number) === normalizedTarget);
+        }
+        
         return { orders: matchedOrder ? [matchedOrder] : [] };
     } else {
-        throw new Error("order_id or table_number is required.");
+        throw new Error("order_id, table_id or table_number is required.");
     }
 
     const { data: orderData, error: orderErr } = await query;
@@ -182,7 +189,17 @@ export async function verifyPayment(context: ToolContext) {
         .maybeSingle();
 
     if (existing) {
-        return { verified: false, reason: "This reference has already been used." };
+        return { verified: false, reason: "This reference has already been used. Please double check your payment or contact staff." };
+    }
+
+    let orderAmount = 0;
+    if (orderId) {
+        const { data: order } = await context.supabase
+            .from('orders')
+            .select('total_amount')
+            .eq('id', orderId)
+            .maybeSingle();
+        if (order) orderAmount = order.total_amount;
     }
 
     if (orderId) {
@@ -192,7 +209,7 @@ export async function verifyPayment(context: ToolContext) {
             order_id: orderId,
             bank_key: bankKey,
             reference,
-            amount: 0,
+            amount: orderAmount,
             status: 'pending',
             source: 'chatbot',
         }).select().maybeSingle();

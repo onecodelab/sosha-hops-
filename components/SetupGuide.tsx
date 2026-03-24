@@ -84,6 +84,7 @@ CREATE TABLE IF NOT EXISTS public.tables (
     capacity_min INTEGER DEFAULT 1,
     capacity_max INTEGER DEFAULT 4,
     zone TEXT DEFAULT 'Main Hall',
+    qr_token TEXT UNIQUE,
     current_order_id UUID,
     current_session_id UUID,
     last_updated TIMESTAMPTZ DEFAULT now(),

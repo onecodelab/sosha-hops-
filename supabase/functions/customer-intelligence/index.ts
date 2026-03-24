@@ -22,7 +22,7 @@ const TOOL_DEFINITIONS = [
         type: "function",
         function: {
             name: "place_order",
-            description: "Place a new order for the customer. ALWAYS confirm items and get a TABLE NUMBER first. Use either 'menu_item_id' (UUID from get_menu) or 'name' (exact item name) for each item.",
+            description: "Place a NEW order. Use for initial selections or when the customer says 'I want...', 'I would like...', or simply picks an item. ALWAYS confirm items and ensure the TABLE NUMBER is known before calling this.",
             parameters: {
                 type: "object",
                 properties: {
@@ -63,7 +63,7 @@ const TOOL_DEFINITIONS = [
         type: "function",
         function: {
             name: "update_order",
-            description: "Add more items to an existing order. Use when customer says 'add one more...' or 'I also want...'",
+            description: "ADD items to an EXISTING order that has already been placed and is currently in the system. Use ONLY when the customer says 'add more', 'I also want...', or 'one more thing'.",
             parameters: {
                 type: "object",
                 properties: {
@@ -192,38 +192,29 @@ const TOOL_DEFINITIONS = [
     },
 ];
 
-// ─── DEFAULT SYSTEM PROMPT ───
-const DEFAULT_SYSTEM_PROMPT = `You are a smart, professional restaurant assistant for the restaurant mentioned in the CONTEXT.
+// ─── DEFAULT SYSTEM PROMPT (CADE BESTIE ENERGY) ───
+const DEFAULT_SYSTEM_PROMPT = `You are CADE, a smart, high-energy, and friendly restaurant assistant for the restaurant in the CONTEXT. You help customers browse the menu, place orders, track their food, and handle payments with "bestie" energy.
 
-## STRICT ONBOARDING FLOW (MANDATORY)
-1. **GREETING**: Start by warmly greeting the customer.
-2. **TABLE VERIFICATION**: Immediately after greeting, you MUST ask: "Could you please tell me your table number? 😊"
-    - DO NOT show the menu or take orders until the table is verified.
-3. **VALIDATION**: Once the user provides a table number, call 'list_tables' to see if it exists in the floor map.
-    - MATCHING LOGIC: Be flexible. Ignore prefixes like '#' and be case-insensitive (e.g., 'c15' matches '#C15').
-    - If it's a MATCH: Confirm it explicitly as follows: "Recognized Table #X! I'm ready to help you order. 🦄"
-    - If it's NOT a match: Reply with the exact table numbers returned from the tool (e.g., "I couldn't find table c15. I only see: [insert actual, real table numbers from tool output]. Which one are you at?")
-    - ACTION: Immediately after matching, you MUST call 'get_menu' (with no query) to show the visual carousel.
-    - If it's NOT in the list: Politely explain that you couldn't find that table and ask them to double-check the number on their table card.
-    - DO NOT hallucinate. Only valid numbers from 'list_tables' are allowed.
-4. **UNLOCK**: Only after verification can you use 'get_menu', 'place_order', or 'update_order'.
+# STRICT OPERATIONAL RULES:
+1. MENU FIRST: ALWAYS use the 'get_menu' tool when a customer asks about food, the menu, or what's available. NEVER guess or hallucinate menu items.
+2. TABLE NUMBER: Check the TABLE (CLAIMED) in the CONTEXT. If it is "Unknown", you MUST ask for the table number before placing any order. If it's already known, DO NOT ASK—just confirm it and move on. No table, no food. fr.
+3. CUSTOMER MEMORY: When a customer shares their name, phone, or any food preference/allergy, IMMEDIATELY call 'update_customer_profile'.
+4. ORDER UPDATES: Use 'update_order' to add items to an existing order.
+5. PAYMENT & BILLING: For bills, call 'get_branch_info' then 'get_order_status' for the total.
+6. VERIFICATION: For payment references, call 'verify_payment' immediately.
+7. VOICE & TONE: Be warm, helpful, and concise. Use Gen Z slang (slaps, bet, fr, main character) naturally but keep it brief. Emojis strictly allowed. ✨
+8. NO TEXT MENUS: NEVER list food items or prices in plain text. ALWAYS use 'get_menu' to show the visual carousel.
+9. CONFIRMATION: Always confirm the full order details before calling 'place_order'.
 
-## OPERATIONAL RULES
-1. **NO TEXT MENUS**: NEVER list food items, descriptions, or prices in plain text. ALWAYS use 'get_menu' to show the visual carousel. Your text response should only ever be an invitation to look at the carousel (e.g. "Check out our delicious options below!").
-2. **ORDER FLOW**: Once an order is placed, tell the customer: "Order sent for approval! 📡 A waiter will confirm it shortly so the kitchen can start cooking."
-3. **UPSELL**: If they order a main course, ask if they'd like a drink and show the drinks menu.
-4. **CONTEXT**: Use the Restaurant name and Branch ID from the auto-injected CONTEXT below.
-
-## RESPONSE STYLE
-- Keep messages short and clean.
-- Do not use markdown styling like **bold** or *italics*.
-- Use emojis naturally but sparingly.`;
+# VOICE:
+- Use Gen Z slang (slaps, bet, fr, main character, no cap) but keep it brief.
+- Responses MUST be under 3 sentences. No long intros. Just hype + data.
+- Example: "Ayy! Table 5? Slaps. fr. Here's the fire menu for you: [Calling get_menu]. What we locking in? bet."
+`;
 
 const RICH_UI_INSTRUCTIONS = `
-## RICH UI CAPABILITIES
-Include a JSON block at the end of your response for interactive elements.
-Example: \`\`\`json { "buttons": [{"label": "🍴 View Menu", "prompt": "Show me the menu"}] } \`\`\`
-
+## RICHER UI CAPABILITIES
+You have access to a specialized Rich UI system. Whenever you send a message, the frontend can render interactive elements if you include them.
 Supported elements:
 - "buttons": Array of { label, prompt }.
 - "tracking": { "status": "placed" | "preparing" | "ready" | "delivered" }
@@ -234,30 +225,23 @@ Supported elements:
 ## STRICT UI RULES - READ CAREFULLY
 1. **NO TEXT MENUS**: You are FORBIDDEN from typing menu items, prices, or categories in markdown text. NEVER use bullet points or bold text to list food.
 2. **CAROUSEL ONLY**: Every time you want to show a menu or items, you MUST ONLY use the 'get_menu' or 'get_top_performing_items' tool.
-3. **SHORT RESPONSES**: Your text response should only be a short greeting like: "Here is our menu! 🍽️" or "Check out our specials below."
-4. **COMPACT SUMMARY**: When an item is added, ONLY send a short confirmation: "Added Item Name! ✅ Your total is now ETB Total." (Do NOT use brackets [] or parentheses () around names/prices). Followed by buttons: [{"label": "🛒 View Cart", "prompt": "Show my cart"}, {"label": "🥤 Add Drinks/Sides", "prompt": "Show me drinks and sides"}].
+3. **SHORT RESPONSES**: Your text response should only be a short greeting.
+4. **COMPACT SUMMARY**: When an item is added, ONLY send a short confirmation: "Added Item Name! ✅ Your total is now ETB Total."
 5. **CONTEXTUAL QUICK REPLIES**: Always provide interactive buttons based on the user's current flow:
-   - *Discovery Phase*: [{"label": "🍔 Food Menu", "prompt": "Show me the menu"}, {"label": "🥤 Drinks & Sides", "prompt": "Show me drinks and sides"}, {"label": "🤩 What's Popular?", "prompt": "Show me popular items"}]
-   - *Selection Phase*: [{"label": "🚀 Confirm Order", "prompt": "Confirm my order and send it to the kitchen"}, {"label": "🥗 Add Starters", "prompt": "Show me starters"}, {"label": "🛒 View Cart", "prompt": "Show my cart"}]
-   - *Post-Placement*: [{"label": "📡 Track My Order", "prompt": "Where is my food?"}, {"label": "➕ Add Main Course", "prompt": "Show menu"}, {"label": "➕ Add Drinks", "prompt": "Show me drinks"}, {"label": "🧾 Request Bill", "prompt": "Show my bill"}]
+   - *Discovery Phase*: [{"label": "🍔 Food Menu", "prompt": "Show me the menu"}, {"label": "🤩 What's Popular?", "prompt": "Show me popular items"}]
+   - *Selection Phase*: [{"label": "🚀 Confirm Order", "prompt": "Confirm my order"}, {"label": "🛒 View Cart", "prompt": "Show my cart"}]
+   - *Post-Placement*: [{"label": "📡 Track My Order", "prompt": "Where is my food?"}, {"label": "🧾 Request Bill", "prompt": "Show my bill"}]
 
-## YOUR RULES
-1. **TABLE VERIFICATION**: You MUST call 'get_tables' at initialization and whenever the table context is unclear. If the Table Number from CONTEXT does not match any 'table_number' in the list (e.g., if you see "#C1" but user is on "T1"), you MUST ask: "Welcome! I see you're starting an order, but I couldn't find your table on our map. Could you double-check the number on your table card? 😊"
-2. **STRICT ORDERING**: You are FORBIDDEN from calling 'place_order' until you have a confirmed 'table_number' that matches an entry in 'get_tables'.
-3. **NO FORMATTING**: You are FORBIDDEN from using markdown characters like asterisks (*), underscores (_), or parentheses () to style your text. Keep all text plain and clean.
-3. ALWAYS use the 'get_menu' tool when a customer asks about food. NEVER guess menu items.
-4. Call 'update_customer_profile' when you learn something new about the customer.
-5. ORDER WORKFLOW: After calling 'place_order', explain that it is "Sent for Approval" and that a "Waiter will confirm it shortly". NEVER say it is already in the kitchen.
-6. Drink Pairings: As soon as a user adds a 'Main Course' (Burger, Steak, Fish), your next message MUST be: "Great choice! 🥩 Would you like a drink to go with that?" followed IMMEDIATELY by calling 'get_menu' with category="Drinks".
-7. Deal of the Day: Always mention the "Happy Hour" deal in your first greeting.
-8. DECISION BUTTONS: Every time you suggest an action (like viewing a menu or confirming an order), you MUST include the corresponding interactive button from the RICH UI CAPABILITIES.
-9. PROACTIVE CONFIRMATION: Once a user has added items to their cart, your VERY NEXT message MUST include the "🚀 Confirm Order" button.
+## CADE PERSONA RULES
+- **VOICE**: Gen Z, high-energy, "bestie" energy.
+- **SLANG**: Use "fr", "slaps", "fire", "bet", "no cap" naturally.
+- **CONCISE**: Max 2-3 sentences.
 `;
 
 const PROFESSIONALISM_PROTOCOL = `
 ## TONE & VOICE
-- Professional, helpful, and welcoming.
-- No slang or overly casual language.
+- Hype, energetic, and helpful.
+- Gen Z slang strictly allowed.
 - Every response should be concise.
 `;
 
@@ -340,7 +324,7 @@ async function executeMcpTool(
 
         const items = menuData || [];
         console.log(`[MCP-LOCAL-MENU] Found ${items.length} items.`);
-        
+
         // If category filter returned 0 results, retry without category
         if (items.length === 0 && catStr) {
             console.log(`[MCP-LOCAL-MENU] Category "${catStr}" returned 0 items. Retrying without category filter...`);
@@ -366,8 +350,8 @@ async function executeMcpTool(
 
     const requestBody = {
         tool: toolName,
-        params: { 
-            ...toolParams, 
+        params: {
+            ...toolParams,
             organization_id: organizationId,
             branch_id: branchId,
             table_number: toolParams.table_number || table_number
@@ -405,7 +389,7 @@ async function executeMcpTool(
 
         const data = await response.json();
         console.log(`[MCP-CALL] Result:`, JSON.stringify(data).substring(0, 500));
-        
+
         if (!data.success) {
             throw new Error(data.error || `Tool ${toolName} failed`);
         }
@@ -431,15 +415,46 @@ serve(async (req) => {
 
         // ── IDENTITY RESOLUTION ──
         const identity = await resolveIdentity(req, supabase);
-        
+
         let organizationId = identity?.organizationId;
         let branchId = identity?.branchId;
 
         const body = await req.json();
-        const { message, session_id, table_number, organization_id, organization_name, branch_id: clientBranchId, branch_name, is_verified } = body;
+        const { message, session_id, table_number, table_id, organization_id, organization_name, branch_id: clientBranchId, branch_name, is_verified } = body;
         let resolvedTableNumber = table_number;
         let prefetchedMetadata: any = {};
         let shouldShortcutVerifiedTable = false;
+
+        // ── NEW: Resolve Table Number from ID (for QR/NFC sessions) ──
+        if (table_id && !resolvedTableNumber) {
+            try {
+                // Try UUID first
+                const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(table_id);
+                let tableQuery = supabase.from('tables').select('table_number, branch_id, organization_id');
+
+                if (isUuid) {
+                    tableQuery = tableQuery.eq('id', table_id);
+                } else {
+                    // Fallback for manual testing: look by table_number
+                    tableQuery = tableQuery.eq('table_number', table_id);
+                    if (branchId) tableQuery = tableQuery.eq('branch_id', branchId);
+                }
+
+                const { data: tableData, error: tableErr } = await tableQuery.maybeSingle();
+
+                if (tableData) {
+                    resolvedTableNumber = tableData.table_number;
+                    prefetchedMetadata.confirmed_table_number = tableData.table_number;
+                    if (!branchId) branchId = tableData.branch_id;
+                    if (!organizationId) organizationId = tableData.organization_id;
+                    console.log(`[CustomerAgent] Resolved table_id ${table_id} -> Table ${resolvedTableNumber}`);
+                } else if (tableErr) {
+                    console.warn(`[CustomerAgent] Table resolution error for ${table_id}:`, tableErr.message);
+                }
+            } catch (e) {
+                console.warn("[CustomerAgent] table_id resolution failed:", e);
+            }
+        }
 
         // External timeout for the entire reasoning process (25s to stay under Edge limit)
         const globalController = new AbortController();
@@ -475,6 +490,49 @@ serve(async (req) => {
             }
         } catch (e) {
             console.warn("[CustomerAgent] Identity resolution error:", e);
+        }
+
+        // ── STEP 0: Resolve Customer Identity ──
+        let customerProfile: any = null;
+        let customerId: string | null = body.customer_id || null; // Prioritize passed ID
+        let customerOrderHistory: any[] = [];
+
+        try {
+            if (!customerId) {
+                // Find most recent chat with a customer_id for this session
+                const { data: recentChat } = await supabase
+                    .from("customer_chats")
+                    .select("customer_id")
+                    .eq("session_id", session_id)
+                    .not("customer_id", "is", null)
+                    .order("created_at", { ascending: false })
+                    .limit(1)
+                    .maybeSingle();
+
+                if (recentChat?.customer_id) {
+                    customerId = recentChat.customer_id;
+                }
+            }
+
+            if (customerId) {
+                const { data: profile } = await supabase
+                    .from("customer_profiles")
+                    .select("*")
+                    .eq("id", customerId)
+                    .maybeSingle();
+                customerProfile = profile;
+
+                // Fetch recent orders
+                const { data: history } = await supabase
+                    .from("orders")
+                    .select("id, total_amount, created_at, order_items(quantity, menu_item:menu(name))")
+                    .eq("customer_id", customerId)
+                    .order("created_at", { ascending: false })
+                    .limit(3);
+                customerOrderHistory = history || [];
+            }
+        } catch (e) {
+            console.warn("[CustomerAgent] Identity lookup failed:", e);
         }
 
         if (!hasUsableTableContext(resolvedTableNumber) && session_id) {
@@ -534,7 +592,7 @@ serve(async (req) => {
                 .single();
 
             if (orgData?.chatbot_system_prompt?.trim()) {
-                orgPrompt = `\n\n## HISTORICAL CONTEXT (MAY BE OUTDATED)\n${orgData.chatbot_system_prompt}\n\n`;
+                orgPrompt = orgData.chatbot_system_prompt;
             }
             if (orgData?.name) orgName = orgData.name;
         } catch (e) {
@@ -546,7 +604,7 @@ serve(async (req) => {
         const tableInstruction = hasUsableTableContext(resolvedTableNumber)
             ? `- TABLE VERIFIED: The confirmed table for this session is ${resolvedTableNumber}. Do NOT ask for table confirmation again. You may place orders and updates for this table immediately.`
             : `- ONBOARDING: Ask the customer to confirm their table number before placing or updating any order.`;
-        
+
         let timeOfDay = "Evening";
         let timeBasedMenuContext = "Display a 'Dinner & Drinks' carousel highlighting signature entrees and cocktails.";
         const hour = new Date().getHours();
@@ -558,31 +616,18 @@ serve(async (req) => {
             timeBasedMenuContext = "Display a 'Lunch Deals' carousel with quick-serve items and combos.";
         }
 
-        // ── STEP 2: Construct Final System Prompt (STRICTEST RULES LAST) ──
-        let systemPrompt = `You are the digital assistant for ${orgName}.
-${orgPrompt}
-
-${PROFESSIONALISM_PROTOCOL}
-
-## CURRENT SESSION CONTEXT
-- Restaurant: ${orgName}
-- Branch: ${activeBranchName}
-- Table (Claimed): ${activeTable}
-- Session ID: ${session_id}
-- Local Time: ${new Date().toLocaleTimeString()} (${timeOfDay})
-
-${DEFAULT_SYSTEM_PROMPT}
-
-## HARD_RESET & FINAL INSTRUCTIONS (CRITICAL)
-- **NO ITEM NAMES**: Your response MUST NOT contain any food names, category names, or prices (e.g., "Burger", "Drinks", "100 ETB").
-- **NO TEXT LISTS**: NEVER use tables, lists, or bullets to describe the menu.
-- **GREETING ONLY**: Your text response should ONLY ever be a warm greeting or a confirmation (e.g., "Got it! You're at Table 5! ✅ Great to have you here! 🎉 Check out our menu:").
-- **CAROUSEL IS AUTOMATIC**: The pictures and menu details are handled by a separate UI component that displays automatically when you call 'get_menu'. DO NOT try to describe them.
-- **TABLE STATE**: ${tableInstruction}
-- **MATCH GREETING**: When confirmed, use ONLY: "Got it! You're at Table [Number]! ✅ Great to have you here! 🎉 Now, what can I get you tonight? Check out our menu:"
+        // ── STEP 1.5: Personalization Injection ──
+        let personalContext = "";
+        if (customerProfile) {
+            personalContext = `
+## CUSTOMER RECOGNITION
+- **Name**: ${customerProfile.full_name || 'Guest'}
+- **Visits**: ${customerProfile.visit_count}
+- **Preferences**: ${JSON.stringify(customerProfile.preferences || {})}
 `;
+        }
 
-        // ── STEP 2: Load Customer Profile ──
+        // ── STEP 2: Construct Final System Prompt ──
         let customerContext = "";
         try {
             const { data: recentChat } = await supabase
@@ -601,31 +646,49 @@ ${DEFAULT_SYSTEM_PROMPT}
                     .single();
 
                 if (profile) {
+                    customerId = profile.id; // Corrected: Use the top-level variable
+                    customerProfile = profile;
                     customerContext = `\n## RETURNING CUSTOMER
-- Name: ${profile.full_name || "Unknown"}
+- Name: ${profile.full_name || "Guest"}
 - Phone: ${profile.phone || "Unknown"}
-- Visit #${profile.visit_count || 1}
-- Preferences: ${JSON.stringify(profile.preferences || {})}
-- Last Visit: ${profile.last_visit || "First time"}`;
-                    
+- Visits: ${profile.visit_count || 1}
+- BIO: ${JSON.stringify(profile.preferences || {})}`;
+
+                    // Fetch the very last order items for "Your Usual" logic
                     const { data: lastOrder } = await supabase
                         .from("orders")
                         .select("id, items")
-                        .eq("customer_id", recentChat.customer_id)
+                        .eq("customer_id", customerId)
                         .order("created_at", { ascending: false })
                         .limit(1)
                         .maybeSingle();
-                        
+
                     if (lastOrder && lastOrder.items) {
-                        customerContext += `\n- Last Order Items: ${JSON.stringify(lastOrder.items)}\n- ACTION REQUIRED: Offer a "1-Click Reorder" of their previous items as the first thing you suggest! Call it "Your Usual".`;
+                        customerContext += `\n- Last Order Items: ${JSON.stringify(lastOrder.items)}\n- REORDER ACTION: If the user says "I want my usual", call 'place_order' with these exact items.`;
                     }
                 }
             }
         } catch (e) {
-            console.warn("[CustomerAgent] Profile lookup failed:", e);
+            console.warn("[CustomerAgent] Customer profiling failed:", e);
         }
 
-        systemPrompt += customerContext;
+        const systemPrompt = `You are CADE, the digital assistant for ${orgName}.
+
+## CURRENT SESSION CONTEXT
+- Restaurant: ${orgName}
+- Table (Claimed): ${activeTable}
+
+${orgPrompt || DEFAULT_SYSTEM_PROMPT}
+
+${personalContext}
+${customerContext}
+
+## CRITICAL SAFETY RULES
+1. **NO GHOST ORDERS**: NEVER call 'place_order' or 'update_order' unless the user explicitly names a food/drink item or says "I want my usual".
+2. **ITEM REQUIREMENT**: If no specific item is identified, NEVER call ordering tools.
+3. **NO EMPTY LISTS**: Never call a tool with an empty 'items' array. If you need IDs, call 'get_menu' first.
+4. **REPLY STYLE**: Tone is Gen Z, hype, concise. Max 3 sentences.
+`;
 
         // ── STEP 3: Load Chat History ──
         let history: any[] = [];
@@ -661,9 +724,9 @@ ${DEFAULT_SYSTEM_PROMPT}
             return greetings.includes(lower) || lower.length < 3;
         };
 
-        if ((history.length <= 1 && isGreeting(message)) || message.toLowerCase() === 'init_chat') {
-            messages.push({ 
-                role: "system", 
+        if (((history.length <= 1 && isGreeting(message)) || message.toLowerCase() === 'init_chat') && !hasUsableTableContext(resolvedTableNumber)) {
+            messages.push({
+                role: "system",
                 content: `CRITICAL: First message must be 'Welcome to ${orgName}! 🌟' and ask for their table number. NEVER show the menu until you have the table number.`
             });
         }
@@ -671,17 +734,21 @@ ${DEFAULT_SYSTEM_PROMPT}
         const availableTools = TOOL_DEFINITIONS;
 
         // ── STEP 4: Agentic Reasoning Loop ──
+        const nvidiaKey = Deno.env.get("NVIDIA_API_KEY");
         const openRouterKey = Deno.env.get("OPENROUTER_API_KEY");
         const geminiKey = Deno.env.get("GEMINI_API_KEY");
         const openAIKey = Deno.env.get("OPENAI_API_KEY");
 
         let finalResponse = "";
         let attachments: any = null;
-        let richMetadata: any = { ...prefetchedMetadata };
+        let richMetadata: any = { 
+            ...prefetchedMetadata,
+            customer_id: customerId // Send back to frontend for persistence
+        };
         let loopCount = 0;
         const MAX_LOOPS = 5;
 
-        if (shouldShortcutVerifiedTable && resolvedTableNumber) {
+        if ((shouldShortcutVerifiedTable || message.toLowerCase() === 'init_chat') && hasUsableTableContext(resolvedTableNumber)) {
             const menuResult = await executeMcpTool(supabase, "get_menu", {}, organizationId, branchId || "", resolvedTableNumber);
             attachments = {
                 type: 'menu',
@@ -693,7 +760,7 @@ ${DEFAULT_SYSTEM_PROMPT}
                 { label: "🍹 Drinks", prompt: "Show me the drinks menu" },
                 { label: "🍕 Food Menu", prompt: "Show me the food menu" }
             ];
-            finalResponse = `Got it! You're at Table ${resolvedTableNumber}! ✅ Great to have you here! 🎉 Now, what can I get you today? Check out our menu:`;
+            finalResponse = `Ayy! Table ${resolvedTableNumber}? Slaps. fr. Welcome to ${orgName}! 🌟 Let's get it! Here's the fire menu:`;
         }
 
         while (!finalResponse && loopCount < MAX_LOOPS) {
@@ -701,115 +768,187 @@ ${DEFAULT_SYSTEM_PROMPT}
             let llmResult: any;
 
             try {
-                if (openRouterKey) {
-                    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-                        method: "POST",
-                        headers: {
-                            "Content-Type": "application/json",
-                            "Authorization": `Bearer ${openRouterKey}`,
-                        },
-                        body: JSON.stringify({
-                            model: "arcee-ai/trinity-large-preview:free",
-                            messages,
-                            tools: availableTools,
-                            tool_choice: "auto",
-                        }),
-                        signal: globalController.signal,
-                    });
-                    if (!response.ok) throw new Error(`OpenRouter Error: ${await response.text()}`);
-                    llmResult = await response.json();
-                } else if (openAIKey) {
-                    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-                        method: "POST",
-                        headers: {
-                            "Content-Type": "application/json",
-                            "Authorization": `Bearer ${openAIKey}`,
-                        },
-                        body: JSON.stringify({
-                            model: "gpt-4o-mini",
-                            messages,
-                            tools: availableTools,
-                        }),
-                        signal: globalController.signal,
-                    });
-                    if (!response.ok) throw new Error(`OpenAI Error: ${await response.text()}`);
-                    llmResult = await response.json();
-                } else if (geminiKey) {
-                    const contents = messages
-                        .filter(m => m.role !== "system")
-                        .map((m: any) => {
-                            if (m.role === "tool") {
-                                let res: any;
-                                try {
-                                    res = JSON.parse(m.content);
-                                } catch {
-                                    res = { result: m.content };
-                                }
-                                return {
-                                    role: "function",
-                                    parts: [{ functionResponse: { name: m.name, response: res } }]
-                                };
-                            }
+                let llmResponseOk = false;
+                let lastError = "";
 
-                            const parts: any[] = [];
-                            if (m.content) {
-                                parts.push({ text: m.content });
-                            }
-
-                            if (m.tool_calls) {
-                                m.tool_calls.forEach((tc: any) => {
-                                    parts.push({
-                                        functionCall: {
-                                            name: tc.function.name,
-                                            args: JSON.parse(tc.function.arguments),
-                                        },
-                                    });
-                                });
-                            }
-
-                            return { 
-                                role: m.role === "assistant" ? "model" : "user", 
-                                parts: parts.length > 0 ? parts : [{ text: "" }] 
-                            };
-                        });
-
-                    const response = await fetch(
-                        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`,
-                        {
+                // 1. Try NVIDIA NIM (Primary)
+                if (nvidiaKey && !llmResponseOk) {
+                    try {
+                        const response = await fetch("https://integrate.api.nvidia.com/v1/chat/completions", {
                             method: "POST",
-                            headers: { "Content-Type": "application/json" },
+                            headers: {
+                                "Content-Type": "application/json",
+                                "Authorization": `Bearer ${nvidiaKey}`,
+                            },
                             body: JSON.stringify({
-                                system_instruction: { parts: [{ text: systemPrompt }] },
-                                contents,
-                                tools: [{ function_declarations: availableTools.map(td => td.function) }],
-                                tool_config: { function_calling_config: { mode: "AUTO" } }
+                                model: "meta/llama-3.1-70b-instruct",
+                                messages: messages.map(m => ({
+                                    role: m.role,
+                                    content: m.content,
+                                    tool_calls: m.tool_calls,
+                                    tool_call_id: m.tool_call_id,
+                                    name: m.name
+                                })),
+                                tools: availableTools,
+                                tool_choice: "auto",
                             }),
                             signal: globalController.signal,
+                        });
+                        if (!response.ok) {
+                            const errText = await response.text();
+                            throw new Error(`NVIDIA Error: ${errText.substring(0, 100)}`);
                         }
-                    );
+                        llmResult = await response.json();
+                        llmResponseOk = true;
+                    } catch (e: any) {
+                        console.warn("[CustomerAgent] NVIDIA NIM failed:", e.message);
+                        lastError += `NVIDIA: ${e.message}; `;
+                    }
+                }
 
-                    if (!response.ok) throw new Error(`Gemini Error: ${await response.text()}`);
-                    const gemResult = await response.json();
-                    const modelParts = gemResult.candidates?.[0]?.content?.parts || [];
-                    
-                    const toolCalls = modelParts
-                        .filter((p: any) => p.functionCall)
-                        .map((p: any) => ({
-                            id: `gem-${Math.random().toString(36).substr(2, 9)}`,
-                            type: "function",
-                            function: { name: p.functionCall.name, arguments: JSON.stringify(p.functionCall.args) },
-                        }));
+                // 2. Try OpenRouter (Secondary)
+                if (openRouterKey && !llmResponseOk) {
+                    try {
+                        const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+                            method: "POST",
+                            headers: {
+                                "Content-Type": "application/json",
+                                "Authorization": `Bearer ${openRouterKey}`,
+                            },
+                            body: JSON.stringify({
+                                model: "meta-llama/llama-3.1-70b-instruct",
+                                messages,
+                                tools: availableTools,
+                            }),
+                            signal: globalController.signal,
+                        });
+                        if (!response.ok) {
+                            const errText = await response.text();
+                            throw new Error(`OpenRouter Error: ${errText.substring(0, 100)}`);
+                        }
+                        llmResult = await response.json();
+                        llmResponseOk = true;
+                    } catch (e: any) {
+                        console.warn("[CustomerAgent] OpenRouter failed:", e.message);
+                        lastError += `OpenRouter: ${e.message}; `;
+                    }
+                }
 
-                    const textPart = modelParts.find((p: any) => p.text);
-                    llmResult = {
-                        choices: [{
-                            message: {
-                                role: "assistant",
-                                content: textPart?.text || null,
-                                tool_calls: toolCalls.length > 0 ? toolCalls : undefined,
+                // 3. Try OpenAI (Tertiary)
+                if (openAIKey && !llmResponseOk) {
+                    try {
+                        const response = await fetch("https://api.openai.com/v1/chat/completions", {
+                            method: "POST",
+                            headers: {
+                                "Content-Type": "application/json",
+                                "Authorization": `Bearer ${openAIKey}`,
+                            },
+                            body: JSON.stringify({
+                                model: "gpt-4o-mini",
+                                messages,
+                                tools: availableTools,
+                            }),
+                            signal: globalController.signal,
+                        });
+                        if (!response.ok) {
+                            const errText = await response.text();
+                            throw new Error(`OpenAI Error: ${errText.substring(0, 100)}`);
+                        }
+                        llmResult = await response.json();
+                        llmResponseOk = true;
+                    } catch (e: any) {
+                        console.warn("[CustomerAgent] OpenAI failed:", e.message);
+                        lastError += `OpenAI: ${e.message}; `;
+                    }
+                }
+
+                // 4. Try Gemini (Final Fallback)
+                if (geminiKey && !llmResponseOk) {
+                    try {
+                        const contents = messages
+                            .filter(m => m.role !== "system")
+                            .map((m: any) => {
+                                if (m.role === "tool") {
+                                    let res: any;
+                                    try {
+                                        res = JSON.parse(m.content);
+                                    } catch {
+                                        res = { result: m.content };
+                                    }
+                                    return {
+                                        role: "function",
+                                        parts: [{ functionResponse: { name: m.name, response: res } }]
+                                    };
+                                }
+
+                                const parts: any[] = [];
+                                if (m.content) parts.push({ text: m.content });
+                                if (m.tool_calls) {
+                                    m.tool_calls.forEach((tc: any) => {
+                                        parts.push({
+                                            functionCall: {
+                                                name: tc.function.name,
+                                                args: JSON.parse(tc.function.arguments),
+                                            },
+                                        });
+                                    });
+                                }
+
+                                return {
+                                    role: m.role === "assistant" ? "model" : "user",
+                                    parts: parts.length > 0 ? parts : [{ text: "" }]
+                                };
+                            });
+
+                        const response = await fetch(
+                            `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`,
+                            {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({
+                                    system_instruction: { parts: [{ text: systemPrompt }] },
+                                    contents,
+                                    tools: [{ function_declarations: availableTools.map(td => td.function) }],
+                                    tool_config: { function_calling_config: { mode: "AUTO" } }
+                                }),
+                                signal: globalController.signal,
                             }
-                        }]
-                    };
+                        );
+
+                        if (!response.ok) {
+                            const errText = await response.text();
+                            throw new Error(`Gemini Error: ${errText.substring(0, 100)}`);
+                        }
+                        const gemResult = await response.json();
+                        const modelParts = gemResult.candidates?.[0]?.content?.parts || [];
+
+                        const toolCalls = modelParts
+                            .filter((p: any) => p.functionCall)
+                            .map((p: any) => ({
+                                id: `gem-${Math.random().toString(36).substr(2, 9)}`,
+                                type: "function",
+                                function: { name: p.functionCall.name, arguments: JSON.stringify(p.functionCall.args) },
+                            }));
+
+                        const textPart = modelParts.find((p: any) => p.text);
+                        llmResult = {
+                            choices: [{
+                                message: {
+                                    role: "assistant",
+                                    content: textPart?.text || null,
+                                    tool_calls: toolCalls.length > 0 ? toolCalls : undefined,
+                                }
+                            }]
+                        };
+                        llmResponseOk = true;
+                    } catch (e: any) {
+                        console.warn("[CustomerAgent] Gemini failed:", e.message);
+                        lastError = e.message;
+                    }
+                }
+
+                if (!llmResponseOk) {
+                    throw new Error(`All configured LLM providers failed. Last error: ${lastError}`);
                 }
             } catch (err: any) {
                 console.error("[CustomerAgent] LLM Call Error:", err.message);
@@ -837,7 +976,7 @@ ${DEFAULT_SYSTEM_PROMPT}
                 for (const toolCall of assistantMessage.tool_calls) {
                     const toolName = toolCall.function.name;
                     let toolParams = {};
-                    try { toolParams = JSON.parse(toolCall.function.arguments); } catch {}
+                    try { toolParams = JSON.parse(toolCall.function.arguments); } catch { }
 
                     let toolResult: any;
                     try {
@@ -855,21 +994,45 @@ ${DEFAULT_SYSTEM_PROMPT}
 
                     // Capture results for UI
                     if (toolName === 'get_menu') {
-                        attachments = { 
-                            type: 'menu', 
+                        attachments = {
+                            type: 'menu',
                             data: toolResult.items || [],
-                            debug: toolResult.debug 
+                            debug: toolResult.debug
                         };
                     } else if (toolName === 'list_tables') {
                         const matchedTable = matchTableCandidate(message, toolResult.tables || []);
                         if (matchedTable) {
                             resolvedTableNumber = matchedTable;
                             richMetadata.confirmed_table_number = matchedTable;
+                            // Update the toolResult to be more helpful for the AI
+                            toolResult = {
+                                success: true,
+                                verified: true,
+                                matched_table: matchedTable,
+                                available_tables: toolResult.tables
+                            };
+                        } else {
+                            toolResult = {
+                                success: true,
+                                verified: false,
+                                message: "No match found for the table provided by the user.",
+                                available_tables: toolResult.tables
+                            };
                         }
                     } else if (toolName === 'get_top_performing_items') {
                         richMetadata.top_performing_items = toolResult.items || toolResult || [];
                     } else if (toolName === 'get_categories') {
                         richMetadata.categories = toolResult.categories || toolResult || [];
+                    } else if (toolName === 'update_customer_profile') {
+                        if (toolResult?.profile?.id) {
+                            customerId = toolResult.profile.id;
+                            customerProfile = toolResult.profile;
+                            // Update existing messages in this session to link to this customer
+                            await supabase
+                                .from("customer_chats")
+                                .update({ customer_id: customerId })
+                                .eq("session_id", session_id);
+                        }
                     }
                 }
                 continue;
@@ -939,7 +1102,7 @@ ${DEFAULT_SYSTEM_PROMPT}
                 try {
                     JSON.parse(lastTrailingMatch[0]);
                     finalResponse = finalResponse.replace(trailingJsonRegex, "").trim();
-                } catch {}
+                } catch { }
             }
         }
 
@@ -947,7 +1110,7 @@ ${DEFAULT_SYSTEM_PROMPT}
         if (!richMetadata.buttons && !richMetadata.tracking) {
             const lowerResp = finalResponse.toLowerCase();
             const lowerMsg = message.toLowerCase();
-            
+
             // If it's a greeting or table request, provide minimal buttons
             if (lowerResp.includes("welcome") || lowerResp.includes("table number")) {
                 richMetadata.buttons = [
@@ -996,6 +1159,7 @@ ${DEFAULT_SYSTEM_PROMPT}
             await supabase.from("customer_chats").insert([
                 {
                     session_id,
+                    customer_id: customerId,
                     organization_id: organizationId,
                     branch_id: branchId,
                     role: "user",
@@ -1003,6 +1167,7 @@ ${DEFAULT_SYSTEM_PROMPT}
                 },
                 {
                     session_id,
+                    customer_id: customerId,
                     organization_id: organizationId,
                     branch_id: branchId,
                     role: "assistant",
@@ -1016,10 +1181,10 @@ ${DEFAULT_SYSTEM_PROMPT}
 
         clearTimeout(globalTimeout);
 
-        return new Response(JSON.stringify({ 
-            text: finalResponse, 
+        return new Response(JSON.stringify({
+            text: finalResponse,
             response: finalResponse,
-            metadata: richMetadata 
+            metadata: richMetadata
         }), {
             headers: { ...corsHeaders, "Content-Type": "application/json" },
             status: 200,
@@ -1028,12 +1193,12 @@ ${DEFAULT_SYSTEM_PROMPT}
     } catch (error: any) {
         if (typeof globalTimeout !== 'undefined') clearTimeout(globalTimeout);
         console.error("[CustomerAgent] Global Error:", error.message);
-        return new Response(JSON.stringify({ 
+        return new Response(JSON.stringify({
             text: "I'm having a bit of trouble reaching my knowledge right now. Could you please try again in a moment? 🍽️",
-            error: error.message 
+            error: error.message
         }), {
             headers: { ...corsHeaders, "Content-Type": "application/json" },
-            status: 200, 
+            status: 200,
         });
     }
 });

@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../supabase';
 import { Dialog, Button, Input, cn, showToast, Badge } from './ui';
-import { Info, BookOpen, Loader2, ListTree, Lock, Upload, Image as ImageIcon, X, RefreshCw } from 'lucide-react';
+import { Info, BookOpen, Loader2, ListTree, Lock, Upload, Image as ImageIcon, X, RefreshCw, Edit3 } from 'lucide-react';
 import { MenuItem, Category } from '../types';
 import { RecipeEditor } from './RecipeEditor';
 import { RoleGuard } from './RoleGuard';
@@ -44,6 +44,7 @@ export const MenuEditorModal: React.FC<MenuEditorModalProps> = ({
 
   // Manual Category State
   const [isAddingCategory, setIsAddingCategory] = useState(false);
+  const [isEditingCategory, setIsEditingCategory] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState('');
 
   // Initialize state when modal opens or editingItem changes
@@ -71,6 +72,7 @@ export const MenuEditorModal: React.FC<MenuEditorModalProps> = ({
           setIsAvailable(true);
           setRecipeCost(0);
           setIsAddingCategory(false);
+          setIsEditingCategory(false);
           setNewCategoryName('');
         }
       }
@@ -177,17 +179,16 @@ export const MenuEditorModal: React.FC<MenuEditorModalProps> = ({
       let finalCategoryId = categoryId;
       let finalCategoryName = '';
 
-      // 1. Create Category if needed
-      if (isAddingCategory) {
+      // 1. Resolve Category
+      if (isAddingCategory && !isEditingCategory) {
+        // CASE: Creating New Category
         const trimmedCat = newCategoryName.trim();
-        // Check if category already exists (simple client-side check)
         const existing = categories.find(c => c.name.toLowerCase() === trimmedCat.toLowerCase());
 
         if (existing) {
           finalCategoryId = existing.id;
           finalCategoryName = existing.name;
         } else {
-          // Create New
           const { data: newCat, error: catErr } = await supabase
             .from('categories')
             .insert({
@@ -200,19 +201,62 @@ export const MenuEditorModal: React.FC<MenuEditorModalProps> = ({
           if (catErr) throw catErr;
           finalCategoryId = newCat.id;
           finalCategoryName = newCat.name;
-
-          // Refresh categories list for next time
           fetchCategories();
         }
+      } else if (isEditingCategory && categoryId) {
+        // CASE: Renaming Existing Category
+        const trimmedCat = newCategoryName.trim();
+        const existing = categories.find(c => c.id === categoryId);
+
+        if (existing && existing.name !== trimmedCat) {
+          // Update Category Entry
+          const { error: catErr } = await supabase
+            .from('categories')
+            .update({ name: trimmedCat })
+            .eq('id', categoryId);
+          if (catErr) throw catErr;
+
+          // Cascade Update Menu Table (for consistency)
+          await supabase
+            .from('menu')
+            .update({ category: trimmedCat })
+            .eq('category_id', categoryId);
+
+          finalCategoryName = trimmedCat;
+          finalCategoryId = categoryId;
+          fetchCategories();
+        } else {
+          finalCategoryId = categoryId;
+          finalCategoryName = existing?.name || '';
+        }
+      } else if (isEditingCategory && !categoryId) {
+        // CASE: Renaming a category that was just a string (no ID yet)
+        // We convert it into a real category record
+        const trimmedCat = newCategoryName.trim();
+        const { data: newCat, error: catErr } = await supabase
+          .from('categories')
+          .insert({
+            name: trimmedCat,
+            organization_id: userProfile?.organization_id
+          })
+          .select()
+          .single();
+
+        if (catErr) throw catErr;
+        finalCategoryId = newCat.id;
+        finalCategoryName = newCat.name;
+        fetchCategories();
       } else {
+        // CASE: Using Selected Category
         const selected = categories.find(c => c.id === categoryId);
+        finalCategoryId = categoryId;
         finalCategoryName = selected?.name || 'Uncategorized';
       }
 
       const payload: any = {
         name: name.trim(),
         category: finalCategoryName,
-        category_id: finalCategoryId,
+        category_id: finalCategoryId || null,
         price: parseFloat(price.toString()),
         image_url: imageUrl.trim() || null,
         status: isAvailable ? 'available' : 'unavailable',
@@ -346,20 +390,54 @@ export const MenuEditorModal: React.FC<MenuEditorModalProps> = ({
                 <div className="space-y-2">
                   <div className="flex items-center justify-between ml-1">
                     <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Category</label>
-                    <button
-                      type="button"
-                      onClick={() => setIsAddingCategory(!isAddingCategory)}
-                      className="text-[9px] font-black text-primary hover:text-primary/80 uppercase tracking-tighter transition-colors"
-                    >
-                      {isAddingCategory ? 'Select Existing' : '+ New Category'}
-                    </button>
+                    <div className="flex items-center gap-3">
+                      {!isAddingCategory && (categoryId || (editingItem && editingItem.category)) && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const current = categories.find(c => c.id === categoryId || c.name === editingItem?.category);
+                            if (current) {
+                              setNewCategoryName(current.name);
+                              setCategoryId(current.id); // Ensure ID is set if it was string-only
+                              setIsAddingCategory(true);
+                              setIsEditingCategory(true);
+                            } else if (editingItem?.category) {
+                              setNewCategoryName(editingItem.category);
+                              setIsAddingCategory(true);
+                              setIsEditingCategory(true);
+                            }
+                          }}
+                          className="flex items-center gap-1.5 text-[9px] font-black text-gray-400 hover:text-primary uppercase tracking-widest transition-all group/edit"
+                        >
+                          <Edit3 className="w-3 h-3 group-hover/edit:scale-110 transition-transform" />
+                          <span>Edit</span>
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (isAddingCategory) {
+                             setIsAddingCategory(false);
+                             setIsEditingCategory(false);
+                             setNewCategoryName('');
+                          } else {
+                             setIsAddingCategory(true);
+                             setIsEditingCategory(false);
+                             setNewCategoryName('');
+                          }
+                        }}
+                        className="text-[9px] font-black text-primary hover:text-primary/80 uppercase tracking-tighter transition-colors"
+                      >
+                        {isAddingCategory ? 'Select Existing' : '+ New Category'}
+                      </button>
+                    </div>
                   </div>
                   {isAddingCategory ? (
                     <div className="relative animate-in zoom-in-95 duration-200">
                       <Input
                         value={newCategoryName}
                         onChange={e => setNewCategoryName(e.target.value)}
-                        placeholder="Type category name..."
+                        placeholder={isEditingCategory ? "Rename category..." : "Type category name..."}
                         className="bg-black/40 border-primary/30 h-11 pr-10"
                         autoFocus
                       />

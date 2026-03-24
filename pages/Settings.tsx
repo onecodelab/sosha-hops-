@@ -11,6 +11,42 @@ import { Branch } from '../types';
 const Settings: React.FC = () => {
    const { profile } = useAuth();
    const queryClient = useQueryClient();
+
+// Small helper to resolve a table_id from a branch for the Test Chatbot link
+const TestChatbotLink: React.FC<{ branchId: string }> = ({ branchId }) => {
+   const { data: tableId } = useQuery({
+      queryKey: ['first_table', branchId],
+      queryFn: async () => {
+         const { data } = await supabase
+            .from('tables')
+            .select('id')
+            .eq('branch_id', branchId)
+            .limit(1)
+            .maybeSingle();
+         return data?.id || null;
+      },
+      enabled: !!branchId
+   });
+
+   if (!tableId) return (
+      <span className="flex items-center gap-2 px-6 py-3 bg-muted/10 border border-border text-muted rounded-full text-[10px] font-black uppercase tracking-widest shadow-sm opacity-50 cursor-not-allowed">
+         <Sparkles className="w-3.5 h-3.5" />
+         No Tables Found
+      </span>
+   );
+
+   return (
+      <a
+         href={`/order-chat/${tableId}`}
+         target="_blank"
+         rel="noopener noreferrer"
+         className="flex items-center gap-2 px-6 py-3 bg-muted/10 border border-border text-foreground rounded-full hover:bg-primary/10 hover:border-primary/40 hover:scale-105 transition-all text-[10px] font-black uppercase tracking-widest shadow-sm"
+      >
+         <Sparkles className="w-3.5 h-3.5 text-primary" />
+         Test Chatbot
+      </a>
+   );
+};
    const [newBranchName, setNewBranchName] = useState('');
    const [newBranchLocation, setNewBranchLocation] = useState('');
    const [editingBranchId, setEditingBranchId] = useState<string | null>(null);
@@ -117,30 +153,30 @@ const Settings: React.FC = () => {
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                {/* Branch Management Card */}
-               <Card className="bg-[#1A1A1A] border-gray-800 rounded-[2.5rem] overflow-hidden">
-                  <div className="p-8 border-b border-gray-800 flex items-center justify-between">
+               <Card className="bg-card backdrop-blur-xl border border-border rounded-[2.5rem] overflow-hidden shadow-2xl">
+                  <div className="p-8 border-b border-border flex items-center justify-between bg-muted/5">
                      <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center border border-primary/20">
+                        <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center border border-primary/20 shadow-inner">
                            <Building2 className="w-6 h-6 text-primary" />
                         </div>
                         <div>
-                           <CardTitle className="text-white">Branch Management</CardTitle>
-                           <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mt-0.5">Scale your empire</p>
+                           <CardTitle className="text-foreground text-xl tracking-tight">Branch Management</CardTitle>
+                           <p className="text-[10px] font-black text-muted uppercase tracking-widest mt-0.5">Scale your empire</p>
                         </div>
                      </div>
                   </div>
-                  <CardContent className="p-8 space-y-6">
+                  <CardContent className="p-8 space-y-8">
                      {isOwnerOrAdmin && (
-                        <div className="bg-[#252525] border border-gray-700 p-6 rounded-3xl space-y-4">
-                           <h4 className="text-xs font-black text-primary uppercase tracking-widest mb-2">New Branch Entry</h4>
-                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                              <div className="space-y-1">
-                                 <label className="text-[10px] font-bold text-gray-500 uppercase ml-1">Location Name</label>
+                        <div className="bg-muted/5 border border-border p-8 rounded-[2rem] space-y-6 shadow-inner">
+                           <h4 className="text-[10px] font-black text-primary uppercase tracking-[0.2em] mb-4">New Branch Entry</h4>
+                           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                              <div className="space-y-2">
+                                 <label className="text-[10px] font-black text-muted uppercase tracking-widest ml-1 opacity-60">Location Name</label>
                                  <input
                                     value={newBranchName}
                                     onChange={e => setNewBranchName(e.target.value)}
                                     placeholder="e.g. Downtown Branch"
-                                    className="w-full h-11 bg-black/40 border border-white/5 rounded-xl px-4 text-sm text-white focus:outline-none focus:border-primary/50"
+                                    className="w-full h-12 bg-card border border-border rounded-xl px-4 text-sm text-foreground focus:outline-none focus:border-primary/50 shadow-sm transition-all"
                                  />
                               </div>
                               <div className="space-y-1">
@@ -149,7 +185,7 @@ const Settings: React.FC = () => {
                                     value={newBranchLocation}
                                     onChange={e => setNewBranchLocation(e.target.value)}
                                     placeholder="e.g. Addis Ababa"
-                                    className="w-full h-11 bg-black/40 border border-white/5 rounded-xl px-4 text-sm text-white focus:outline-none focus:border-primary/50"
+                                    className="w-full h-12 bg-card border border-border rounded-xl px-4 text-sm text-foreground focus:outline-none focus:border-primary/50 shadow-sm transition-all"
                                  />
                               </div>
                            </div>
@@ -163,37 +199,37 @@ const Settings: React.FC = () => {
                         </div>
                      )}
 
-                     <div className="space-y-3">
-                        <h4 className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">Active Network</h4>
+                     <div className="space-y-4">
+                        <h4 className="text-[10px] font-black text-muted uppercase tracking-[0.2em] ml-1 opacity-60">Active Network</h4>
                         {branchesLoading ? (
-                           <div className="p-8 text-center text-gray-600 animate-pulse uppercase text-[10px] font-black tracking-widest">Scanning network...</div>
+                           <div className="p-8 text-center text-muted animate-pulse uppercase text-[10px] font-black tracking-widest">Scanning network...</div>
                         ) : branches.map((b: Branch) => (
-                           <div key={b.id} className="p-4 bg-black/40 border border-white/5 rounded-2xl flex items-center justify-between group hover:border-primary/20 transition-all">
+                           <div key={b.id} className="p-5 bg-muted/5 border border-border rounded-2xl flex items-center justify-between group hover:bg-muted/10 hover:border-primary/40 transition-all duration-300">
                               <div className="flex-1">
                                  {editingBranchId === b.id ? (
                                     <div className="flex flex-col md:flex-row gap-2">
-                                       <input
-                                          value={editName}
-                                          onChange={e => setEditName(e.target.value)}
-                                          className="bg-black/60 border border-white/10 rounded-lg px-3 py-1 text-sm text-white focus:border-primary/50 outline-none w-full md:w-1/2"
-                                          placeholder="Name"
-                                       />
-                                       <input
-                                          value={editLocation}
-                                          onChange={e => setEditLocation(e.target.value)}
-                                          className="bg-black/60 border border-white/10 rounded-lg px-3 py-1 text-sm text-white focus:border-primary/50 outline-none w-full md:w-1/2"
-                                          placeholder="Location"
-                                       />
+                                        <input
+                                           value={editName}
+                                           onChange={e => setEditName(e.target.value)}
+                                           className="bg-card border border-border rounded-lg px-4 py-2 text-sm text-foreground focus:border-primary/50 outline-none w-full md:w-1/2 shadow-sm"
+                                           placeholder="Name"
+                                        />
+                                        <input
+                                           value={editLocation}
+                                           onChange={e => setEditLocation(e.target.value)}
+                                           className="bg-card border border-border rounded-lg px-4 py-2 text-sm text-foreground focus:border-primary/50 outline-none w-full md:w-1/2 shadow-sm"
+                                           placeholder="Location"
+                                        />
                                     </div>
                                  ) : (
                                     <div className="flex items-center justify-between flex-wrap gap-4">
-                                       <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center border border-white/10 group-hover:bg-primary/10 group-hover:border-primary/20 transition-all">
-                                          <MapPin className="w-5 h-5 text-gray-500 group-hover:text-primary" />
-                                       </div>
-                                       <div>
-                                          <p className="text-sm font-bold text-white uppercase tracking-tight">{b.name}</p>
-                                          <p className="text-[9px] text-gray-500 font-black uppercase tracking-widest">{b.location || 'Unknown Location'}</p>
-                                       </div>
+                                        <div className="w-12 h-12 rounded-xl bg-muted/10 flex items-center justify-center border border-border group-hover:bg-primary/20 group-hover:border-primary/40 transition-all duration-500 shadow-inner">
+                                           <MapPin className="w-5 h-5 text-muted group-hover:text-primary transition-colors" />
+                                        </div>
+                                        <div>
+                                           <p className="text-base font-black text-foreground uppercase tracking-tight italic">{b.name}</p>
+                                           <p className="text-[10px] text-muted font-bold uppercase tracking-widest mt-0.5 opacity-60">{b.location || 'Unknown Location'}</p>
+                                        </div>
                                     </div>
                                  )}
                               </div>
@@ -221,27 +257,27 @@ const Settings: React.FC = () => {
                                           <span className="px-2 py-0.5 rounded-full bg-primary/20 text-primary text-[8px] font-black uppercase border border-primary/20">Primary HQ</span>
                                        ) : isOwnerOrAdmin && (
                                           <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                             <button
-                                                onClick={() => {
-                                                   setEditingBranchId(b.id);
-                                                   setEditName(b.name);
-                                                   setEditLocation(b.location || '');
-                                                }}
-                                                className="p-2 hover:bg-white/5 text-gray-400 hover:text-white rounded-lg transition-colors"
-                                             >
-                                                <Edit2 className="w-3.5 h-3.5" />
-                                             </button>
-                                             <button
-                                                onClick={() => {
-                                                   if (confirm(`Are you sure you want to delete "${b.name}"? This action cannot be undone and will fail if the branch has active orders or staff.`)) {
-                                                      deleteBranchMutation.mutate(b.id);
-                                                   }
-                                                }}
-                                                disabled={deleteBranchMutation.isPending}
-                                                className="p-2 hover:bg-red-500/10 text-gray-400 hover:text-red-500 rounded-lg transition-colors disabled:opacity-50"
-                                             >
-                                                <Trash2 className="w-3.5 h-3.5" />
-                                             </button>
+                                              <button
+                                                 onClick={() => {
+                                                    setEditingBranchId(b.id);
+                                                    setEditName(b.name);
+                                                    setEditLocation(b.location || '');
+                                                 }}
+                                                 className="p-2.5 hover:bg-primary/10 text-muted hover:text-primary rounded-xl transition-all"
+                                              >
+                                                 <Edit2 className="w-4 h-4" />
+                                              </button>
+                                              <button
+                                                 onClick={() => {
+                                                    if (confirm(`Are you sure you want to delete "${b.name}"? This action cannot be undone and will fail if the branch has active orders or staff.`)) {
+                                                       deleteBranchMutation.mutate(b.id);
+                                                    }
+                                                 }}
+                                                 disabled={deleteBranchMutation.isPending}
+                                                 className="p-2.5 hover:bg-red-500/10 text-muted hover:text-red-500 rounded-xl transition-all disabled:opacity-50"
+                                              >
+                                                 <Trash2 className="w-4 h-4" />
+                                              </button>
                                           </div>
                                        )}
                                     </>
@@ -254,15 +290,15 @@ const Settings: React.FC = () => {
                </Card>
 
                {/* Bank Configuration Card */}
-               <Card className="bg-[#1A1A1A] border-gray-800 rounded-[2.5rem] overflow-hidden relative group/bank">
+               <Card className="bg-card backdrop-blur-xl border border-border rounded-[2.5rem] overflow-hidden relative group/bank shadow-2xl">
                   <div className="absolute inset-0 bg-blue-500/5 opacity-0 group-hover/bank:opacity-100 transition-opacity duration-500 blur-3xl pointer-events-none" />
-                  <div className="p-8 border-b border-gray-800 relative bg-black/20 backdrop-blur-sm">
-                     <div className="flex items-center justify-between flex-wrap gap-4">
-                        <div className="w-12 h-12 rounded-2xl bg-blue-500/10 flex items-center justify-center border border-blue-500/20 shadow-[0_0_20px_rgba(59,130,246,0.1)]">
+                  <div className="p-8 border-b border-border relative bg-muted/5">
+                     <div className="flex items-center justify-between flex-wrap gap-4 relative z-10">
+                        <div className="w-12 h-12 rounded-2xl bg-blue-500/10 flex items-center justify-center border border-blue-500/20 shadow-inner">
                            <ShieldCheck className="w-6 h-6 text-blue-400" />
                         </div>
                         <div>
-                           <CardTitle className="text-white text-xl tracking-tight">Bank Configuration</CardTitle>
+                           <CardTitle className="text-foreground text-xl tracking-tight">Bank Configuration</CardTitle>
                            <p className="text-[10px] font-black text-blue-500/60 uppercase tracking-widest mt-0.5">Secure Transaction Verification</p>
                         </div>
                      </div>
@@ -273,124 +309,119 @@ const Settings: React.FC = () => {
                </Card>
             </div>
 
-            {/* Full Width Customer AI Agent - More balanced layout */}
-            <Card className="bg-[#1A1A1A] border-gray-800 rounded-[2.5rem] overflow-hidden group/bot relative">
-               <div className="absolute -top-24 -right-24 w-64 h-64 bg-primary/5 rounded-full blur-3xl pointer-events-none group-hover:bg-primary/10 transition-all duration-700" />
-               <div className="p-8 border-b border-gray-800 relative bg-black/20 backdrop-blur-sm">
-                  <div className="flex items-center gap-4">
-                     <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center border border-primary/20 shadow-[0_0_20px_rgba(255,193,7,0.1)]">
-                        <Zap className="w-6 h-6 text-primary" />
-                     </div>
-                     <div>
-                        <CardTitle className="text-white text-xl tracking-tight">Customer AI Agent</CardTitle>
-                        <p className="text-[10px] font-black text-primary/60 uppercase tracking-widest mt-0.5">Full System Prompt Control</p>
+            {/* AI Agent Configuration - Fixed stretchiness by using a max-width or grid container */}
+            <Card className="bg-card backdrop-blur-xl border border-border rounded-[2.5rem] overflow-hidden group/bot relative shadow-2xl">
+               <div className="absolute top-0 right-0 w-96 h-96 bg-primary/5 rounded-full blur-[100px] pointer-events-none opacity-50 transition-all duration-700" />
+               <div className="p-8 border-b border-border relative bg-muted/5">
+                  <div className="flex items-center justify-between flex-wrap gap-6 relative z-10">
+                     <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center border border-primary/20 shadow-inner">
+                           <Zap className="w-6 h-6 text-primary" />
+                        </div>
+                        <div>
+                           <CardTitle className="text-foreground text-xl tracking-tight">Customer AI Agent</CardTitle>
+                           <p className="text-[10px] font-black text-primary/60 uppercase tracking-[0.2em] mt-0.5">Full System Prompt Control</p>
+                        </div>
                      </div>
                      {branches.length > 0 && (
-                        <a
-                           href={`/order-chat/${branches[0].id}/UNKNOWN`}
-                           target="_blank"
-                           rel="noopener noreferrer"
-                           className="flex items-center gap-2 px-5 py-2.5 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 rounded-full hover:bg-emerald-500/20 hover:scale-105 transition-all text-[10px] font-black uppercase tracking-widest"
-                        >
-                           <Sparkles className="w-3.5 h-3.5" />
-                           Test Chatbot (Guest)
-                        </a>
+                        <TestChatbotLink branchId={branches[0].id} />
                      )}
                   </div>
                </div>
-               <CardContent className="p-8">
+               <CardContent className="p-8 relative z-10">
                   <BotSettingsSection isEditable={isOwnerOrAdmin} organizationId={profile?.organization_id} />
                </CardContent>
             </Card>
 
             {/* Organization & Subscription Section */}
             {isOwnerOrAdmin && (
-               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
-                  <Card className="bg-[#1A1A1A] border-gray-800 rounded-[2.5rem] overflow-hidden">
-                     <div className="p-8 border-b border-gray-800">
-                        <div className="flex items-center gap-4">
-                           <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center border border-primary/20">
-                              <Building2 className="w-6 h-6 text-primary" />
-                           </div>
-                           <div>
-                              <CardTitle className="text-white">Organization Profile</CardTitle>
-                              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-0.5">Your Business Identity</p>
-                           </div>
-                        </div>
-                     </div>
-                     <CardContent className="p-8 space-y-4">
-                        <div className="space-y-1">
-                           <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">Business Name</label>
-                           <div className="p-4 bg-black/40 border border-white/5 rounded-2xl text-white font-bold uppercase tracking-tight">
-                              {orgLoading ? '...' : org?.name}
-                           </div>
-                        </div>
-                        <div className="space-y-1">
-                           <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">Organization ID</label>
-                           <div className="p-4 bg-black/20 border border-white/5 rounded-2xl text-gray-500 font-mono text-[10px] break-all">
-                              {profile?.organization_id}
-                           </div>
-                        </div>
-                     </CardContent>
-                  </Card>
-
-                  <Card className="bg-[#1A1A1A] border-gray-800 rounded-[2.5rem] overflow-hidden relative">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+                   <Card className="bg-card backdrop-blur-xl border border-border rounded-[2.5rem] overflow-hidden shadow-2xl">
+                      <div className="p-8 border-b border-border bg-muted/5">
+                         <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center border border-primary/20 shadow-inner">
+                               <Building2 className="w-6 h-6 text-primary" />
+                            </div>
+                            <div>
+                               <CardTitle className="text-foreground text-xl tracking-tight">Organization Profile</CardTitle>
+                               <p className="text-[10px] font-black text-muted uppercase tracking-widest mt-0.5 opacity-60">Your Business Identity</p>
+                            </div>
+                         </div>
+                      </div>
+                      <CardContent className="p-8 space-y-6">
+                         <div className="space-y-2">
+                            <label className="text-[10px] font-black text-muted uppercase tracking-widest ml-1 opacity-60">Business Name</label>
+                            <div className="p-5 bg-muted/5 border border-border rounded-2xl text-foreground font-black uppercase tracking-tight italic text-lg shadow-inner">
+                               {orgLoading ? '...' : org?.name}
+                            </div>
+                         </div>
+                         <div className="space-y-2">
+                            <label className="text-[10px] font-black text-muted uppercase tracking-widest ml-1 opacity-60">Organization ID</label>
+                            <div className="p-5 bg-muted/5 border border-border rounded-2xl text-muted font-mono text-[10px] break-all shadow-inner opacity-50">
+                               {profile?.organization_id}
+                            </div>
+                         </div>
+                      </CardContent>
+                   </Card>
+ 
+                   <Card className="bg-card backdrop-blur-xl border border-border rounded-[2.5rem] overflow-hidden relative shadow-2xl">
                      <div className="absolute top-4 right-4 animate-pulse">
                         <div className="px-2 py-1 rounded-full bg-primary/20 border border-primary/30 text-[8px] font-black text-primary uppercase tracking-widest">Live</div>
                      </div>
-                     <div className="p-8 border-b border-gray-800">
-                        <div className="flex items-center gap-4">
-                           <div className="w-12 h-12 rounded-2xl bg-purple-500/10 flex items-center justify-center border border-purple-500/20">
-                              <Zap className="w-6 h-6 text-purple-400" />
-                           </div>
-                           <div>
-                              <CardTitle className="text-white">Subscription Plan</CardTitle>
-                              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-0.5">Manage your capabilities</p>
-                           </div>
-                        </div>
-                     </div>
-                     <CardContent className="p-8 space-y-6">
-                        <div className="flex items-center justify-between p-6 bg-gradient-to-br from-purple-500/10 to-primary/5 border border-purple-500/20 rounded-3xl">
-                           <div>
-                              <p className="text-[10px] font-black text-purple-400 uppercase tracking-widest mb-1">Current Plan</p>
-                              <h4 className="text-3xl font-black text-white uppercase tracking-tighter italic">
-                                 {orgLoading ? '...' : (org?.plan || 'Free Tier')}
-                              </h4>
-                           </div>
-                           <Sparkles className="w-10 h-10 text-primary opacity-20" />
-                        </div>
+                      <div className="p-8 border-b border-border bg-muted/5">
+                         <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 rounded-2xl bg-purple-500/10 flex items-center justify-center border border-purple-500/20 shadow-inner">
+                               <Zap className="w-6 h-6 text-purple-400" />
+                            </div>
+                            <div>
+                               <CardTitle className="text-foreground text-xl tracking-tight">Subscription Plan</CardTitle>
+                               <p className="text-[10px] font-black text-muted uppercase tracking-widest mt-0.5 opacity-60">Manage your capabilities</p>
+                            </div>
+                         </div>
+                      </div>
+                      <CardContent className="p-8 space-y-8">
+                         <div className="flex items-center justify-between p-8 bg-gradient-to-br from-purple-500/10 to-primary/5 border border-purple-500/20 rounded-[2rem] shadow-inner relative overflow-hidden">
+                            <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 blur-3xl rounded-full" />
+                            <div className="relative z-10">
+                               <p className="text-[10px] font-black text-purple-400 uppercase tracking-widest mb-2 opacity-60">Current Plan</p>
+                               <h4 className="text-4xl font-black text-foreground uppercase tracking-tighter italic">
+                                  {orgLoading ? '...' : (org?.plan || 'Free Tier')}
+                               </h4>
+                            </div>
+                            <Sparkles className="w-12 h-12 text-primary opacity-30 relative z-10" />
+                         </div>
 
-                        <div className="space-y-3">
-                           <div className="flex items-center gap-3 text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                              <CheckCircle2 className="w-4 h-4 text-primary" /> Multi-branch operations enabled
-                           </div>
-                           <div className="flex items-center gap-3 text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                              <CheckCircle2 className="w-4 h-4 text-primary" /> Real-time verification queue active
-                           </div>
-                        </div>
+                         <div className="space-y-4">
+                            <div className="flex items-center gap-3 text-[10px] font-black text-muted uppercase tracking-[0.2em] opacity-60">
+                               <CheckCircle2 className="w-4 h-4 text-emerald-500" /> Multi-branch operations enabled
+                            </div>
+                            <div className="flex items-center gap-3 text-[10px] font-black text-muted uppercase tracking-[0.2em] opacity-60">
+                               <CheckCircle2 className="w-4 h-4 text-emerald-500" /> Real-time verification queue active
+                            </div>
+                         </div>
 
-                        <Button
-                           variant="outline"
-                           onClick={() => showToast("Stripe Portal integration coming soon!", "warning")}
-                           className="w-full h-14 border-white/10 hover:bg-white/5 font-black uppercase tracking-widest text-[11px] rounded-2xl flex items-center gap-3"
-                        >
-                           <CreditCard className="w-5 h-5 text-gray-500" /> Manage Billing & Invoices
-                        </Button>
+                         <Button
+                            variant="outline"
+                            onClick={() => showToast("Stripe Portal integration coming soon!", "warning")}
+                            className="w-full h-14 border-border hover:bg-muted/5 font-black uppercase tracking-widest text-[11px] rounded-2xl flex items-center gap-3 shadow-sm"
+                         >
+                            <CreditCard className="w-5 h-5 text-muted opacity-40" /> Manage Billing & Invoices
+                         </Button>
                      </CardContent>
                   </Card>
                </div>
             )}
 
             {/* Info Card */}
-            <Card className="bg-[#1A1A1A] border-gray-800 rounded-[2.5rem] overflow-hidden">
-               <div className="p-12 flex flex-col justify-center items-center text-center">
-                  <Building2 className="w-16 h-16 text-primary opacity-20 mb-6" />
-                  <h3 className="text-white font-bold text-lg">Centralized Logic / Isolated Execution</h3>
-                  <p className="text-xs text-gray-500 max-w-lg mt-2 leading-relaxed">
-                     Global definitions for <span className="text-white font-bold">Ingredients</span> and <span className="text-white font-bold">Recipes</span> are shared across all branches. Operational data such as stock levels, orders, and staff are strictly isolated within each branch environment.
-                  </p>
-               </div>
-            </Card>
+             <Card className="bg-card backdrop-blur-xl border border-dashed border-border rounded-[2.5rem] overflow-hidden opacity-80">
+                <div className="p-16 flex flex-col justify-center items-center text-center">
+                   <Building2 className="w-16 h-16 text-primary opacity-20 mb-8" />
+                   <h3 className="text-foreground font-black uppercase tracking-widest italic text-xl">Centralized Logic / Isolated Execution</h3>
+                   <p className="text-xs text-muted max-w-lg mt-4 leading-relaxed font-bold uppercase tracking-widest opacity-40">
+                      Global definitions for <span className="text-primary">Ingredients</span> and <span className="text-primary">Recipes</span> are shared across all branches. Operational data such as stock levels, orders, and staff are strictly isolated within each branch environment.
+                   </p>
+                </div>
+             </Card>
 
          </div>
       </>
@@ -509,14 +540,14 @@ const BankSettingsSection: React.FC<{ isEditable: boolean; organizationId?: stri
                   </button>
                </div>
                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                     <label className="text-[10px] font-bold text-gray-500 uppercase ml-1">Bank Type</label>
-                     <select
-                        value={newBankKey}
-                        onChange={e => setNewBankKey(e.target.value)}
-                        className="w-full h-11 bg-black/60 border border-white/10 rounded-xl px-4 text-sm text-white focus:outline-none focus:border-blue-500/50 appearance-none bg-no-repeat bg-[right_1rem_center]"
-                        style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='white'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundSize: '1em' }}
-                     >
+                   <div className="space-y-2">
+                      <label className="text-[10px] font-black text-muted uppercase tracking-widest ml-1 opacity-60">Bank Type</label>
+                      <select
+                         value={newBankKey}
+                         onChange={e => setNewBankKey(e.target.value)}
+                         className="w-full h-12 bg-card border border-border rounded-xl px-4 text-sm text-foreground focus:outline-none focus:border-blue-500/50 appearance-none bg-no-repeat bg-[right_1rem_center] shadow-sm transition-all"
+                         style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='currentColor'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundSize: '1em' }}
+                      >
                         <option value="cbe">Commercial Bank (CBE)</option>
                         <option value="telebirr">Telebirr</option>
                         <option value="abyssinia">Bank of Abyssinia</option>
@@ -524,16 +555,16 @@ const BankSettingsSection: React.FC<{ isEditable: boolean; organizationId?: stri
                         <option value="cbebirr">CBE Birr</option>
                         <option value="awash">Awash Bank</option>
                      </select>
-                  </div>
-                  <div className="space-y-1">
-                     <label className="text-[10px] font-bold text-gray-500 uppercase ml-1">Account / Suffix ID</label>
-                     <input
-                        value={newBankAccount}
-                        onChange={e => setNewBankAccount(e.target.value)}
-                        placeholder="Enter account number"
-                        className="w-full h-11 bg-black/60 border border-white/10 rounded-xl px-4 text-sm text-white focus:outline-none focus:border-blue-500/50 font-mono"
-                     />
-                  </div>
+                   </div>
+                   <div className="space-y-2">
+                      <label className="text-[10px] font-black text-muted uppercase tracking-widest ml-1 opacity-60">Account / Suffix ID</label>
+                      <input
+                         value={newBankAccount}
+                         onChange={e => setNewBankAccount(e.target.value)}
+                         placeholder="Enter account number"
+                         className="w-full h-12 bg-card border border-border rounded-xl px-4 text-sm text-foreground focus:outline-none focus:border-blue-500/50 font-mono shadow-sm transition-all"
+                      />
+                   </div>
                </div>
                <Button
                   onClick={() => createBankMutation.mutate()}
@@ -545,20 +576,20 @@ const BankSettingsSection: React.FC<{ isEditable: boolean; organizationId?: stri
             </div>
          )}
 
-         {bankSettings.length === 0 && !isAddingNew ? (
-            <div className="flex flex-col items-center justify-center py-12 text-center bg-black/20 rounded-[2rem] border border-white/5 border-dashed">
-               <div className="w-16 h-16 rounded-3xl bg-white/5 flex items-center justify-center border border-white/10 mb-4 opacity-20">
-                  <ShieldCheck className="w-8 h-8 text-white" />
-               </div>
-               <h5 className="text-sm font-bold text-gray-400 uppercase tracking-tight">No Bank Profiles Found</h5>
-               <p className="text-[10px] text-gray-600 font-black uppercase tracking-widest mt-1 max-w-[200px]">Bank-level transaction verification is currently offline</p>
-            </div>
+          {bankSettings.length === 0 && !isAddingNew ? (
+             <div className="flex flex-col items-center justify-center py-16 text-center bg-muted/5 rounded-[2.5rem] border border-border border-dashed">
+                <div className="w-20 h-20 rounded-[2rem] bg-muted/10 flex items-center justify-center border border-border mb-6 opacity-20 shadow-inner">
+                   <ShieldCheck className="w-10 h-10 text-muted" />
+                </div>
+                <h5 className="text-base font-black text-muted uppercase tracking-widest italic">No Bank Profiles Found</h5>
+                <p className="text-[10px] text-muted font-black uppercase tracking-[0.2em] mt-2 max-w-[250px] opacity-40 leading-relaxed">Bank-level transaction verification is currently offline</p>
+             </div>
          ) : (
             <div className="space-y-4">
                {bankSettings.map((bank: any) => (
-                  <div key={bank.bank_key} className="relative group overflow-hidden">
-                     <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                     <div className="relative p-5 bg-black/40 border border-white/5 rounded-3xl flex items-center justify-between hover:border-blue-500/30 hover:scale-[1.01] transition-all duration-300">
+                   <div key={bank.bank_key} className="relative group overflow-hidden">
+                      <div className="absolute inset-0 bg-gradient-to-r from-blue-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                      <div className="relative p-6 bg-muted/5 border border-border rounded-[2rem] flex items-center justify-between hover:bg-muted/10 hover:border-blue-500/40 hover:scale-[1.01] transition-all duration-500 shadow-sm group-hover:shadow-lg">
                         <div className="flex items-center gap-5 flex-1">
                            <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center border transition-all duration-500 shadow-lg",
                               bank.bank_key === 'cbe' ? "bg-blue-600/20 border-blue-500/30 text-blue-400 group-hover:shadow-blue-500/20" :
@@ -567,10 +598,10 @@ const BankSettingsSection: React.FC<{ isEditable: boolean; organizationId?: stri
                               <CreditCard className="w-6 h-6" />
                            </div>
                            <div className="flex-1">
-                              <div className="flex items-center gap-2">
-                                 <p className="text-sm font-black text-white uppercase tracking-tighter italic">{bank.bank_key}</p>
-                                 <span className="px-2 py-0.5 bg-white/5 rounded-full text-[8px] font-black text-gray-500 uppercase tracking-widest border border-white/5">Authenticated</span>
-                              </div>
+                               <div className="flex items-center gap-3">
+                                  <p className="text-base font-black text-foreground uppercase tracking-tighter italic">{bank.bank_key}</p>
+                                  <span className="px-3 py-1 bg-muted/10 rounded-full text-[9px] font-black text-muted uppercase tracking-[0.2em] border border-border opacity-60">Authenticated</span>
+                               </div>
                               {editingBank === bank.bank_key ? (
                                  <div className="mt-3 relative">
                                     <input
@@ -582,12 +613,12 @@ const BankSettingsSection: React.FC<{ isEditable: boolean; organizationId?: stri
                                     />
                                  </div>
                               ) : (
-                                 <div className="mt-1 flex items-center gap-2">
-                                    <span className="text-[10px] text-zinc-500 font-black uppercase tracking-widest">Entry:</span>
-                                    <span className="text-xs text-white font-mono bg-white/5 px-2 py-0.5 rounded-lg border border-white/5">
-                                       {bank.account_number || 'NULL_REFERENCE'}
-                                    </span>
-                                 </div>
+                                  <div className="mt-2 flex items-center gap-2">
+                                     <span className="text-[10px] text-muted font-black uppercase tracking-widest opacity-40">Entry:</span>
+                                     <span className="text-sm text-foreground font-mono bg-muted/10 px-3 py-1 rounded-xl border border-border shadow-inner">
+                                        {bank.account_number || 'NULL_REFERENCE'}
+                                     </span>
+                                  </div>
                               )}
                            </div>
                         </div>
@@ -711,14 +742,17 @@ const BotSettingsSection: React.FC<{ isEditable: boolean; organizationId?: strin
 
    return (
       <div className="space-y-6">
-         {/* Info Banner */}
-         <div className="p-4 bg-primary/5 border border-primary/20 rounded-2xl">
-            <p className="text-[10px] text-primary/80 font-bold uppercase tracking-widest mb-1">Full Control Mode</p>
-            <p className="text-xs text-gray-400 leading-relaxed">
-               This is the <span className="text-white font-bold">complete instruction set</span> your customer chatbot follows. 
-               Edit it to change how the bot behaves, what it says, and how it uses tools like menu search, ordering, and payments.
-            </p>
-         </div>
+          {/* Info Banner */}
+          <div className="p-6 bg-primary/5 border border-primary/20 rounded-[2rem] shadow-inner relative overflow-hidden">
+             <div className="absolute -top-10 -left-10 w-32 h-32 bg-primary/20 blur-[60px] rounded-full pointer-events-none" />
+             <div className="relative z-10">
+                <p className="text-[10px] text-primary/80 font-black uppercase tracking-[0.2em] mb-2 px-1">Full Control Mode</p>
+                <p className="text-xs text-muted font-bold uppercase tracking-widest leading-relaxed opacity-60 px-1">
+                   This is the <span className="text-foreground">complete instruction set</span> your customer chatbot follows. 
+                   Edit it to change how the bot behaves, what it says, and how it uses tools like menu search, ordering, and payments.
+                </p>
+             </div>
+          </div>
 
          {/* System Prompt Editor */}
          <div className="space-y-2">
@@ -739,29 +773,29 @@ const BotSettingsSection: React.FC<{ isEditable: boolean; organizationId?: strin
                   )}
                </div>
             </div>
-            <textarea
-               value={systemPrompt}
-               onChange={e => {
-                  setSystemPrompt(e.target.value);
-                  setCharCount(e.target.value.length);
-               }}
-               disabled={!isEditable}
-               rows={16}
-               placeholder={DEFAULT_PROMPT}
-               className="w-full bg-black/60 border border-white/10 rounded-2xl p-5 text-xs text-gray-200 focus:outline-none focus:border-primary/40 focus:shadow-[0_0_30px_rgba(255,184,0,0.05)] resize-y font-mono leading-relaxed min-h-[300px] transition-all"
-            />
-         </div>
+             <textarea
+                value={systemPrompt}
+                onChange={e => {
+                   setSystemPrompt(e.target.value);
+                   setCharCount(e.target.value.length);
+                }}
+                disabled={!isEditable}
+                rows={16}
+                placeholder={DEFAULT_PROMPT}
+                className="w-full bg-card border border-border rounded-[2rem] p-8 text-sm text-foreground focus:outline-none focus:border-primary/40 shadow-inner resize-y font-mono leading-relaxed min-h-[350px] transition-all"
+             />
+          </div>
 
          {/* Available Tools Reference */}
-         <div className="p-4 bg-white/[0.02] border border-white/5 rounded-2xl">
-            <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-3">Available Tools (Reference)</p>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-               {['get_menu', 'place_order', 'update_order', 'get_order_status', 'verify_payment', 'get_branch_info', 'update_customer_profile'].map(tool => (
-                  <div key={tool} className="px-3 py-2 bg-black/40 border border-white/5 rounded-xl">
-                     <code className="text-[10px] text-emerald-400 font-mono">{tool}</code>
-                  </div>
-               ))}
-            </div>
+          <div className="p-6 bg-muted/5 border border-border rounded-[2rem] shadow-inner">
+             <p className="text-[10px] font-black text-muted uppercase tracking-[0.2em] mb-4 ml-1 opacity-60">Available Tools (Reference)</p>
+             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {['get_menu', 'place_order', 'update_order', 'get_order_status', 'verify_payment', 'get_branch_info', 'update_customer_profile'].map(tool => (
+                   <div key={tool} className="px-4 py-3 bg-card border border-border rounded-xl shadow-sm hover:border-primary/20 transition-all group">
+                      <code className="text-[10px] text-emerald-500 font-mono font-black group-hover:text-emerald-400">{tool}</code>
+                   </div>
+                ))}
+             </div>
             <p className="text-[9px] text-gray-600 mt-3 leading-relaxed">
                These tools are automatically available to the chatbot. Reference them in your prompt to control when and how the bot uses them.
             </p>

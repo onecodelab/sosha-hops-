@@ -51,12 +51,18 @@ export function LoadingSpinner({
       */}
       <div className="w-full max-w-lg flex flex-col items-center gap-16 transition-all duration-700">
 
-        {/* Logo Layer - Wrapped in glow container as per rules */}
-        <div className="relative w-full flex justify-center items-center group">
-          <div className="absolute inset-0 bg-primary/5 blur-[60px] rounded-full animate-pulse group-hover:bg-primary/10 transition-colors" />
-          <div className="relative z-10 w-full max-w-[400px] animate-float-logo">
-            <BaroLogo className="w-full h-auto" />
+        <div className="flex flex-col items-center gap-6">
+          {/* Spinner with icon only */}
+          <div className="relative w-32 h-32 flex items-center justify-center animate-pulse duration-1000">
+            <div className="absolute inset-0 border-4 border-primary/20 rounded-full animate-spin direction-reverse" />
+            <div className="absolute inset-2 border-4 border-t-primary rounded-full animate-spin" />
+            <div className="w-16 h-16 z-10 flex items-center justify-center">
+              <BaroLogo variant="icon" />
+            </div>
           </div>
+        
+          {/* Full logo shown below the spinner */}
+          <BaroLogo variant="full" className="animate-pulse" />
         </div>
 
         {/* System Initializer UI */}

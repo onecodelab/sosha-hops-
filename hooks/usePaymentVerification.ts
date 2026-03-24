@@ -1,5 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
-import { supabase } from '../supabase';
+import { useState } from 'react';
 import { useAuth } from '../AuthContext';
 
 export interface VerificationJob {
@@ -19,19 +18,19 @@ interface StartVerificationParams {
     additional_data?: any;
 }
 
+// Verifier service URL and API key from environment
+const VERIFIER_URL = import.meta.env.VITE_VERIFIER_URL || 'http://localhost:3002';
+const VERIFIER_API_KEY = import.meta.env.VITE_VERIFIER_API_KEY || 'test-key-123';
+
+/**
+ * Calls the local verifier-service's /verify-payment endpoint directly.
+ * No job queue, no edge function — direct HTTP call.
+ */
 export function usePaymentVerification() {
     const { organizationId } = useAuth();
     const [job, setJob] = useState<VerificationJob | null>(null);
     const [isVerifying, setIsVerifying] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const channelRef = useRef<any>(null);
-
-    // Cleanup subscription on unmount
-    useEffect(() => {
-        return () => {
-            if (channelRef.current) supabase.removeChannel(channelRef.current);
-        };
-    }, []);
 
     const startVerification = async (params: StartVerificationParams) => {
         if (!organizationId) {
@@ -44,58 +43,101 @@ export function usePaymentVerification() {
         setJob(null);
 
         try {
-            // 1. Create Job
-            const { data, error: insertError } = await supabase
-                .from('payment_verification_jobs')
-                .insert({
-                    organization_id: organizationId,
-                    payment_method: params.payment_method,
-                    reference: params.reference,
-                    expected_amount: params.expected_amount,
-                    amount: params.amount,
-                    additional_data: params.additional_data,
-                    status: 'pending'
-                })
-                .select()
-                .single();
+            // Build the payload for the verifier service
+            const payload: any = {
+                payment_method: params.payment_method,
+                reference: params.reference,
+                expected_amount: params.expected_amount,
+            };
 
-            if (insertError) throw insertError;
+            // Add bank-specific params from additional_data
+            if (params.additional_data) {
+                if (params.additional_data.accountSuffix) {
+                    payload.accountSuffix = params.additional_data.accountSuffix;
+                }
+                if (params.additional_data.suffix) {
+                    payload.suffix = params.additional_data.suffix;
+                }
+                if (params.additional_data.expected_receiver) {
+                    payload.expected_receiver = params.additional_data.expected_receiver;
+                }
+                if (params.additional_data.phoneNumber) {
+                    payload.phoneNumber = params.additional_data.phoneNumber;
+                }
+                if (params.additional_data.receiptNumber) {
+                    payload.receiptNumber = params.additional_data.receiptNumber;
+                }
+            }
 
-            const newJob = data as VerificationJob;
-            setJob(newJob);
+            console.log('[Verify] Calling verifier service:', `${VERIFIER_URL}/verify-payment`, payload);
 
-            // 2. Subscribe to Realtime Updates
-            if (channelRef.current) supabase.removeChannel(channelRef.current);
+            // Call the local verifier service directly
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s timeout
 
-            const channel = supabase
-                .channel(`job-${newJob.id}`)
-                .on(
-                    'postgres_changes',
-                    {
-                        event: 'UPDATE',
-                        schema: 'public',
-                        table: 'payment_verification_jobs',
-                        filter: `id=eq.${newJob.id}`
-                    },
-                    (payload) => {
-                        const updatedJob = payload.new as VerificationJob;
-                        setJob(updatedJob);
+            const response = await fetch(`${VERIFIER_URL}/verify-payment`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-api-key': VERIFIER_API_KEY,
+                },
+                body: JSON.stringify(payload),
+                signal: controller.signal,
+            });
 
-                        if (updatedJob.status === 'completed' || updatedJob.status === 'failed') {
-                            setIsVerifying(false);
-                            if (updatedJob.status === 'failed') {
-                                setError(updatedJob.last_error || "Verification failed");
-                            }
-                        }
-                    }
-                )
-                .subscribe();
+            clearTimeout(timeoutId);
 
-            channelRef.current = channel;
+            const data = await response.json();
+            console.log('[Verify] Response:', data);
+
+            if (!response.ok) {
+                throw new Error(data?.error || `Verifier returned ${response.status}`);
+            }
+
+            // Build a job-like response for backward compatibility with the BillModal UI
+            const jobResult: VerificationJob = {
+                id: crypto.randomUUID(),
+                organization_id: organizationId,
+                status: (data?.success && data?.validated) ? 'completed' : 'failed',
+                result_data: {
+                    success: data?.success || false,
+                    validated: data?.validated || false,
+                    amount: data?.amount || params.expected_amount,
+                    receipt_reference: data?.receipt_reference || params.reference,
+                    error: data?.error,
+                    validation: data?.validation || null,
+                },
+                last_error: (!data?.success || !data?.validated)
+                    ? (data?.error || 'Transaction not found or invalid')
+                    : undefined,
+                created_at: new Date().toISOString(),
+            };
+
+            setJob(jobResult);
+
+            if (!data?.success || !data?.validated) {
+                setError(data?.error || 'Transaction not found or invalid');
+            }
 
         } catch (err: any) {
-            console.error("Failed to start verification:", err);
-            setError(err.message);
+            console.error("Failed to verify payment:", err);
+
+            const errorMessage = err.name === 'AbortError'
+                ? 'Verification timed out. Please try again.'
+                : (err.message || 'Verification failed');
+
+            // Build a failed job for UI consistency
+            const failedJob: VerificationJob = {
+                id: crypto.randomUUID(),
+                organization_id: organizationId,
+                status: 'failed',
+                result_data: { success: false, error: errorMessage },
+                last_error: errorMessage,
+                created_at: new Date().toISOString(),
+            };
+            setJob(failedJob);
+            setError(errorMessage);
+        } finally {
             setIsVerifying(false);
         }
     };
@@ -109,7 +151,6 @@ export function usePaymentVerification() {
             setJob(null);
             setIsVerifying(false);
             setError(null);
-            if (channelRef.current) supabase.removeChannel(channelRef.current);
         }
     };
 }

@@ -26,6 +26,9 @@ export const orderService = {
         // If waiterId is provided, show their assigned orders OR any unassigned chatbot orders
         if (waiterId) {
             query = query.or(`waiter_id.eq.${waiterId},and(source.eq.chatbot,waiter_id.is.null)`);
+        } else {
+            // Show all branch active orders if no waiter ID (useful for admins/HQ)
+            // But we already filter by branch_id above.
         }
 
         const { data, error } = await query;
@@ -73,16 +76,13 @@ export const orderService = {
             sessionId = newSession.id;
         }
 
-        // 3. Update the order with waiter, table, and status 'accepted'
+        // 3. Update the order with waiter and table
         const { error: orderErr } = await supabase
             .from('orders')
             .update({
                 waiter_id: waiterId,
                 table_id: tableId,
                 table_number: tableData.table_number,
-                status: 'accepted',
-                accepted_at: now,
-                // Removed non-existent waiter_assigned_at column
                 last_updated: now
             })
             .eq('id', orderId);

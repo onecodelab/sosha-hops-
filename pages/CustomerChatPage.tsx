@@ -6,7 +6,7 @@ import {
     Receipt, CreditCard, MessageCircle, Sparkles, X, ChevronDown,
     CheckCircle2, Timer, ChefHat, PackageCheck, Star, Users
 } from 'lucide-react';
-import { cn, showToast } from '../components/ui';
+import { cn, showToast, Button } from '../components/ui';
 import { supabase } from '../supabase';
 import ThemeToggle from '../components/ThemeToggle';
 import { LanguageSwitcher } from '../components/LanguageSwitcher';
@@ -42,8 +42,8 @@ interface MenuItem {
 }
 
 /* ─── SESSION MANAGEMENT ─── */
-const getSessionId = (branchId: string, tableNumber: string): string => {
-    const key = `baro_session_${branchId}_${tableNumber}`;
+const getSessionId = (tableId: string): string => {
+    const key = `baro_session_${tableId}`;
     let sid = localStorage.getItem(key);
     if (!sid) {
         sid = crypto.randomUUID();
@@ -155,7 +155,7 @@ const MenuCarousel: React.FC<{ items: MenuItem[]; onSelect: (name: string) => vo
                                 ...item,
                                 demand_status: item.demand_status || (Math.random() > 0.7 ? 'High Demand' : 'Low Demand')
                             }} 
-                            onAdd={() => onSelect(`Add ${item.name} to my order`)} 
+                            onAdd={() => onSelect(`I want the ${item.name}`)} 
                         />
                     </div>
                 ))}
@@ -397,7 +397,7 @@ const MessageBubble: React.FC<{ msg: ChatMessage; onQuickAction: (p: string) => 
             )}
 
             {/* Attachments Section */}
-            {msg.attachments?.type === 'menu' && (
+            {msg.attachments?.type === 'menu' && msg.attachments.data?.length > 0 && (
                 <div className="w-full max-w-[95%] pl-9">
                     <MenuCarousel items={msg.attachments.data} onSelect={onQuickAction} />
                 </div>
@@ -500,69 +500,75 @@ const CustomerChatPage: React.FC = () => {
         { label: '🍕 Food Menu', icon: <ShoppingBag className="w-3.5 h-3.5" />, prompt: 'Show me the food menu' },
     ];
 
-    const { branchId, tableNumber } = useParams<{ branchId: string; tableNumber: string }>();
+    const { tableId } = useParams<{ tableId: string }>();
     const [searchParams] = useSearchParams();
-    const [activeOrgId, setActiveOrgId] = useState(searchParams.get('org') || '');
+    const [activeOrgId, setActiveOrgId] = useState('');
 
     const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [inputValue, setInputValue] = useState('');
     const [isTyping, setIsTyping] = useState(false);
     const [hasInteracted, setHasInteracted] = useState(false);
     const [branchName, setBranchName] = useState('');
+    const [branchId, setBranchId] = useState('');
     const [topItems, setTopItems] = useState<MenuItem[]>([]);
     const [isHistoryLoading, setIsHistoryLoading] = useState(true);
     const [isVerified, setIsVerified] = useState(false);
     const [isVerifying, setIsVerifying] = useState(false);
     const [orgName, setOrgName] = useState('');
+    const [tableNumber, setTableNumber] = useState('');
     const [dynamicPrompts, setDynamicPrompts] = useState<{ label: string; prompt: string }[]>([]);
 
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const scrollRef = useRef<HTMLDivElement>(null);
     const hasInitialGreetingSent = useRef(false);
 
-    const sessionId = branchId ? getSessionId(branchId, tableNumber || 'GUEST') : '';
+    const sessionId = tableId ? getSessionId(tableId) : '';
 
-    /* TEMPORARILY DISABLED NFC VERIFICATION FOR TESTING
-    // Verify NFC Token
+    // QR Token Verification
     useEffect(() => {
-        const verifyToken = searchParams.get('verify');
-        if (!verifyToken || !branchId || !tableNumber) return;
+        const urlToken = searchParams.get('token');
+        if (!urlToken) {
+            // No token in URL — allow access (backwards-compatible for Test Chatbot)
+            setIsVerified(true);
+            return;
+        }
+        if (!tableId) return;
 
-        const checkToken = async () => {
+        const verifyQrToken = async () => {
             setIsVerifying(true);
             try {
-                // Call the mcp-server directly to verify the token and update occupancy
-                const { data, error } = await supabase.functions.invoke('mcp-server', {
-                    body: {
-                        action: 'run_mcp_tool',
-                        organization_id: activeOrgId,
-                        branch_id: branchId,
-                        server_name: 'supabase',
-                        tool_name: 'verify_nfc_tap',
-                        input: {
-                            token: verifyToken,
-                            table_number: tableNumber,
-                            session_id: sessionId
-                        }
-                    }
-                });
+                const { data: tableData } = await supabase
+                    .from('tables')
+                    .select('qr_token, status')
+                    .eq('id', tableId)
+                    .maybeSingle();
 
-                if (!error && data?.success) {
+                if (!tableData) {
+                    showToast('Table not found.', 'error');
+                    return;
+                }
+
+                if (tableData.qr_token && tableData.qr_token === urlToken) {
                     setIsVerified(true);
-                    showToast("Table physical connection verified!", "success");
+                    // Mark table as occupied if it was available
+                    if (tableData.status === 'available') {
+                        await supabase
+                            .from('tables')
+                            .update({ status: 'occupied', current_session_id: sessionId })
+                            .eq('id', tableId);
+                    }
                 } else {
-                    console.error("NFC Verification failed:", error || data);
+                    showToast('Invalid table token. Please scan the correct QR code.', 'error');
                 }
             } catch (err) {
-                console.error("Error verifying NFC tap:", err);
+                console.error('QR token verification failed:', err);
             } finally {
                 setIsVerifying(false);
             }
         };
 
-        checkToken();
-    }, [searchParams, branchId, tableNumber, orgId, sessionId]);
-    */
+        verifyQrToken();
+    }, [tableId, searchParams, sessionId]);
 
     // Auto-resize textarea
     useEffect(() => {
@@ -617,24 +623,38 @@ const CustomerChatPage: React.FC = () => {
         load();
     }, [sessionId]);
 
-    // Load branch name
+    // Load table info, then branch + org names for display
     useEffect(() => {
-        const loadBranch = async () => {
-            if (!branchId) return;
-            const { data } = await supabase
-                .from('branches')
-                .select('id, name, organization_id')
-                .eq('id', branchId)
+        const loadTableInfo = async () => {
+            if (!tableId) return;
+            // 1. Get table details (branch_id, table_number)
+            const { data: tableData } = await supabase
+                .from('tables')
+                .select('id, table_number, branch_id, organization_id, qr_token')
+                .eq('id', tableId)
                 .maybeSingle();
-            if (data) {
-                setBranchName(data.name);
-                if (!activeOrgId && data.organization_id) {
-                    setActiveOrgId(data.organization_id);
+            if (!tableData) return;
+            setTableNumber(tableData.table_number || '');
+            setBranchId(tableData.branch_id || '');
+            if (tableData.organization_id) setActiveOrgId(tableData.organization_id);
+
+            // 2. Get branch name
+            if (tableData.branch_id) {
+                const { data: branchData } = await supabase
+                    .from('branches')
+                    .select('name, organization_id')
+                    .eq('id', tableData.branch_id)
+                    .maybeSingle();
+                if (branchData) {
+                    setBranchName(branchData.name);
+                    if (!tableData.organization_id && branchData.organization_id) {
+                        setActiveOrgId(branchData.organization_id);
+                    }
                 }
             }
         };
-        loadBranch();
-    }, [branchId, activeOrgId]);
+        loadTableInfo();
+    }, [tableId]);
 
     // Initialize/Update dynamic prompts when language/defaults change
     useEffect(() => {
@@ -685,12 +705,7 @@ const CustomerChatPage: React.FC = () => {
                 body: {
                     message: msg,
                     session_id: sessionId,
-                    table_number: tableNumber || 'Guest',
-                    organization_id: activeOrgId || undefined,
-                    organization_name: orgName,
-                    branch_id: branchId,
-                    branch_name: branchName,
-                    is_verified: true // HARDCODED TO TRUE FOR NOW FOR TESTING
+                    table_id: tableId
                 }
             });
 
@@ -698,22 +713,28 @@ const CustomerChatPage: React.FC = () => {
 
             if (error) throw error;
 
-            const responseText = data?.text || '⚠️ No response. Please try again.';
+            const responseText = data?.text || data?.response || '⚠️ No response. Please try again.';
+            
+            // Parse attachments from API response format
+            const rawItems = data?.metadata?.attachments?.items || data?.metadata?.attachments?.data;
+            const parsedAttachments = rawItems && Array.isArray(rawItems) && rawItems.length > 0
+                ? { type: 'menu' as const, data: rawItems }
+                : undefined;
+
             const assistantMsg: ChatMessage = {
                 id: crypto.randomUUID(),
                 role: 'assistant',
                 content: responseText,
                 timestamp: new Date(),
                 metadata: data?.metadata,
-                attachments: data?.metadata?.attachments
+                attachments: parsedAttachments
             };
             
             // Extract top performer items from metadata if present
             if (data?.metadata?.top_performing_items) {
                 setTopItems(data.metadata.top_performing_items);
-            } else if (data?.metadata?.attachments?.type === 'menu' && topItems.length === 0) {
-                // Fallback: use first few items from a menu attachment if we don't have top items yet
-                setTopItems((data.metadata.attachments.data || []).slice(0, 6));
+            } else if (parsedAttachments && topItems.length === 0) {
+                setTopItems(parsedAttachments.data.slice(0, 6));
             }
 
             setMessages(prev => [...prev, assistantMsg]);
@@ -745,13 +766,13 @@ const CustomerChatPage: React.FC = () => {
         } finally {
             setIsTyping(false);
         }
-    }, [inputValue, sessionId, tableNumber, activeOrgId, branchId, topItems.length, branchName, orgName]);
+    }, [inputValue, sessionId, tableId, topItems.length]);
 
     // Proactive Greeting
     useEffect(() => {
         const sendGreeting = async () => {
             // Wait for core context to be ready
-            if (!isHistoryLoading && sessionId && messages.length === 0 && !isTyping && !hasInitialGreetingSent.current && activeOrgId && branchName) {
+            if (!isHistoryLoading && sessionId && messages.length === 0 && !isTyping && !hasInitialGreetingSent.current && tableId) {
                 hasInitialGreetingSent.current = true;
                 try {
                     await handleSend('init_chat');
@@ -762,7 +783,7 @@ const CustomerChatPage: React.FC = () => {
             }
         };
         sendGreeting();
-    }, [sessionId, messages.length, isTyping, handleSend, isHistoryLoading, activeOrgId, branchName]);
+    }, [sessionId, messages.length, isTyping, handleSend, isHistoryLoading, tableId]);
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
         if (e.key === 'Enter' && !e.shiftKey) {
@@ -772,6 +793,35 @@ const CustomerChatPage: React.FC = () => {
     };
 
     const hasContent = inputValue.trim().length > 0;
+
+    if (isVerifying || (isHistoryLoading && tableId)) {
+        return (
+            <div className="w-full h-[100dvh] flex flex-col items-center justify-center bg-background text-foreground space-y-4">
+                <Loader2 className="w-10 h-10 text-emerald-500 animate-spin" />
+                <p className="text-sm font-medium animate-pulse">Verifying Table Connection...</p>
+            </div>
+        );
+    }
+
+    if (!isVerified && !isVerifying) {
+        return (
+            <div className="w-full h-[100dvh] flex flex-col items-center justify-center bg-background text-foreground p-8 text-center">
+                <div className="w-20 h-20 rounded-3xl bg-red-500/10 border border-red-500/20 flex items-center justify-center mb-6">
+                    <X className="w-10 h-10 text-red-500" />
+                </div>
+                <h1 className="text-2xl font-black mb-2">Access Denied</h1>
+                <p className="text-muted-foreground text-sm max-w-xs mx-auto">
+                    This table session is protected. Please scan the QR code on your table to start ordering.
+                </p>
+                <Button 
+                    className="mt-8 bg-foreground text-background hover:bg-foreground/90 rounded-2xl px-8"
+                    onClick={() => window.location.reload()}
+                >
+                    Try Again
+                </Button>
+            </div>
+        );
+    }
 
     return (
         <div className="w-full h-[100dvh] flex flex-col bg-background text-foreground overflow-hidden font-sans">
