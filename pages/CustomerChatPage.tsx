@@ -705,9 +705,14 @@ const CustomerChatPage: React.FC = () => {
                 body: {
                     message: msg,
                     session_id: sessionId,
-                    table_id: tableId
+                    table_id: tableId,
+                    customer_id: localStorage.getItem(`baro_customer_${activeOrgId}`)
                 }
             });
+
+            if (data?.metadata?.customer_id) {
+                localStorage.setItem(`baro_customer_${activeOrgId}`, data.metadata.customer_id);
+            }
 
             clearTimeout(timeoutId);
 
