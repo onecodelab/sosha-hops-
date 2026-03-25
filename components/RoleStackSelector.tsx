@@ -127,7 +127,7 @@ export const RoleStackSelector: React.FC<RoleStackSelectorProps> = ({ roles }) =
               key={role.id}
               className={cn(
                 "absolute rounded-[3rem] border shadow-[0_40px_80px_rgba(0,0,0,0.7)] overflow-hidden cursor-pointer flex flex-col select-none origin-center transition-shadow duration-500",
-                "bg-[#080808] border-white/5",
+                "bg-[#080808] border-primary/10",
                 isActive ? "z-30 shadow-primary/5" : "z-10",
                 "w-[260px] h-[360px] md:w-[300px] md:h-[420px]"
               )}
@@ -180,8 +180,8 @@ export const RoleStackSelector: React.FC<RoleStackSelectorProps> = ({ roles }) =
                 {/* Icon Tile */}
                 <div className="mt-2">
                   <div className={cn(
-                    "w-20 h-20 md:w-24 md:h-24 rounded-[2rem] flex items-center justify-center border transition-all duration-700 bg-white/[0.01]",
-                    isActive ? (iconBorderStyles[role.color] + " shadow-[0_0_50px_rgba(0,0,0,0.5)]") : "border-white/5"
+                    "w-20 h-20 md:w-24 md:h-24 rounded-[2rem] flex items-center justify-center border transition-all duration-700 bg-primary/5",
+                    isActive ? (iconBorderStyles[role.color] + " shadow-[0_0_50px_rgba(0,0,0,0.5)]") : "border-primary/10"
                   )}>
                     <Icon className={cn(
                       "w-8 h-8 md:w-10 md:h-10 transition-colors duration-700",
@@ -207,7 +207,7 @@ export const RoleStackSelector: React.FC<RoleStackSelectorProps> = ({ roles }) =
                 <div className="mb-2 space-y-6 w-full flex flex-col items-center">
                   <span className={cn(
                     "text-[8px] font-bold uppercase tracking-[0.2em] px-4 py-1.5 rounded-full border transition-all duration-700",
-                    isActive ? pillStyles[role.color] : "bg-transparent border-white/5 text-zinc-800"
+                    isActive ? pillStyles[role.color] : "bg-transparent border-primary/10 text-zinc-800"
                   )}>
                     {role.tagline}
                   </span>

@@ -30,6 +30,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, setIsCollapsed, h
     const { activeBranch, branches, switchBranch, isLoading: branchesLoading } = useBranch();
     const [isBranchSelectorOpen, setIsBranchSelectorOpen] = React.useState(false);
 
+    const isSpecialRole = profile?.role === 'waiter' || profile?.role === 'kitchen';
+
     const NavItem = ({ icon: Icon, label, path, allowedRoles, badge }: any) => {
         const isActive = location.pathname === path;
         const itemRef = React.useRef<HTMLButtonElement>(null);
@@ -40,39 +42,52 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, setIsCollapsed, h
             }
         }, [isActive]);
 
+        const buttonClasses = isSpecialRole
+            ? cn(
+                "w-full flex items-center transition-all duration-300 relative",
+                isCollapsed ? "justify-center h-12 mb-2" : "gap-4 px-4 py-3 rounded-2xl mb-1",
+                isActive
+                    ? "bg-primary text-black shadow-lg shadow-primary/20"
+                    : "text-muted hover:text-foreground hover:bg-foreground/5"
+            )
+            : cn(
+                "w-full flex items-center transition-all duration-300 relative rounded-xl",
+                isCollapsed ? "justify-center h-12 mb-1" : "gap-3 px-3 py-2.5 mb-1",
+                isActive
+                    ? "bg-primary/10 text-primary font-bold"
+                    : "text-muted hover:text-foreground hover:bg-foreground/5"
+            );
+
         return (
             <RoleGuard allowedRoles={allowedRoles} hideOnly>
                 <div className="relative group/nav">
                     <button
                         ref={itemRef}
                         onClick={() => navigate(path)}
-                        className={cn(
-                            "w-full flex items-center transition-all duration-300 relative rounded-xl",
-                            isCollapsed ? "justify-center h-12 mb-1" : "gap-3 px-3 py-2.5 mb-1",
-                            isActive
-                                ? "bg-primary/10 text-primary"
-                                : "text-foreground/50 hover:text-foreground hover:bg-white/[0.05]"
-                        )}
+                        className={buttonClasses}
                     >
-                        {/* Active Indicator Dot */}
-                        {isActive && (
+                        {!isSpecialRole && isActive && (
                             <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-4 bg-primary rounded-r-full" />
                         )}
 
                         <Icon className={cn("w-5 h-5 shrink-0 transition-transform duration-300", 
-                            isActive ? "text-primary scale-110" : "text-foreground/40 group-hover/nav:text-white"
+                            isSpecialRole && isActive ? "text-black" : 
+                            isActive ? "text-primary scale-110" : "text-muted group-hover/nav:text-foreground"
                         )} />
                         
                         {!isCollapsed && (
                             <div className="flex-1 flex items-center justify-between overflow-hidden">
                                 <span className={cn(
-                                    "text-[13px] font-medium tracking-tight text-left truncate",
-                                    isActive ? "text-primary font-bold" : ""
+                                    isSpecialRole ? "text-sm font-bold tracking-tight text-left truncate" : "text-[13px] font-medium tracking-tight text-left truncate",
+                                    isActive ? (isSpecialRole ? "text-black" : "text-primary font-bold") : ""
                                 )}>
                                     {label}
                                 </span>
                                 {badge && (
-                                    <span className="text-[10px] font-bold bg-muted/20 text-muted px-1.5 py-0.5 rounded-md">
+                                    <span className={cn(
+                                        "text-[10px] font-bold px-1.5 py-0.5 rounded-md",
+                                        isSpecialRole && isActive ? "bg-black/20 text-black" : "bg-muted/10 text-muted"
+                                    )}>
                                         {badge}
                                     </span>
                                 )}
@@ -98,7 +113,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, setIsCollapsed, h
             {!isCollapsed && (
                 <div className="px-3 mb-2 flex items-center justify-between group/section cursor-pointer">
                     <span className="text-[10px] font-black text-muted/60 uppercase tracking-[0.2em] group-hover/section:text-primary transition-colors">{label}</span>
-                    <div className="h-px flex-1 bg-primary/5 mx-3 group-hover/section:bg-primary/20 transition-colors" />
+                    <div className="h-px flex-1 bg-primary/10 mx-3 group-hover/section:bg-primary/20 transition-colors" />
                 </div>
             )}
             <div className="space-y-1">
@@ -107,14 +122,100 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, setIsCollapsed, h
         </div>
     );
 
+    if (isSpecialRole) {
+        return (
+            <aside
+                className={cn(
+                    "hidden md:flex flex-col relative z-20 bg-card border-r border-border/10 transition-[width,background-color,border-color] duration-500 ease-in-out",
+                    isCollapsed ? "w-20" : "w-72"
+                )}
+            >
+                <div className="flex-none flex flex-col justify-center px-6 h-16 md:h-20 lg:h-24 border-b border-border/10 transition-colors duration-500">
+                    {!isCollapsed ? (
+                        <div className="flex flex-col gap-1 animate-in fade-in duration-500">
+                            <div className="h-10 w-full max-w-[140px] cursor-pointer" onClick={() => navigate('/')}>
+                                <BaroLogo />
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <div className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
+                                <span className="text-[10px] font-black uppercase text-muted tracking-[0.3em]">Master Unit</span>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="h-10 w-full flex items-center justify-center">
+                            <BaroLogo className="w-8 h-8" variant="compact" />
+                        </div>
+                    )}
+                </div>
+
+                {/* Legacy Branch Display for Waiter/Kitchen */}
+                {!isCollapsed && (
+                    <div className="p-5 animate-in slide-in-from-left duration-500 delay-150">
+                        <div className="bg-primary/5 border border-primary/20 rounded-2xl p-4 flex items-center gap-4 group hover:bg-primary/10 transition-all cursor-default">
+                            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center border border-primary/20 shrink-0">
+                                <MapPin className="w-5 h-5 text-primary" />
+                            </div>
+                            <div className="flex flex-col leading-tight overflow-hidden text-left">
+                                <span className="text-[9px] font-black text-muted uppercase tracking-[0.2em] mb-1">Active Branch</span>
+                                <span className="text-sm font-bold text-foreground truncate w-full italic">
+                                    {activeBranch?.name || "Bole Micheal"}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                <nav className="flex-1 px-4 space-y-2 py-4 overflow-y-auto no-scrollbar">
+                    {profile?.role === 'waiter' ? (
+                        <>
+                            <NavItem icon={LayoutDashboard} label="My Station" path="/app/waiter" allowedRoles={['waiter']} />
+                            <NavItem icon={ShoppingCart} label="My Order Transaction" path="/app/waiter/orders" allowedRoles={['waiter']} />
+                            <NavItem icon={DollarSign} label="My Tips & Gratuity" path="/app/waiter/tips" allowedRoles={['waiter']} />
+                            <NavItem icon={Monitor} label="Floor Live Map" path="/app/tables" allowedRoles={['waiter']} />
+                        </>
+                    ) : (
+                        <>
+                            <NavItem icon={Monitor} label="Kitchen Display" path="/app/kitchen" allowedRoles={['kitchen']} />
+                            <NavItem icon={Package} label="Kitchen Stock" path="/app/kitchen/stock" allowedRoles={['kitchen']} />
+                            <NavItem icon={Trash2} label="Kitchen Waste" path="/app/kitchen/waste" allowedRoles={['kitchen']} />
+                            <NavItem icon={Truck} label="Restock" path="/app/kitchen/restock" allowedRoles={['kitchen']} />
+                        </>
+                    )}
+                </nav>
+
+                <div className="p-4 border-t border-primary/20">
+                    <button
+                        onClick={handleLogout}
+                        className={cn(
+                            "w-full flex items-center gap-4 px-4 py-3 rounded-2xl text-muted hover:text-red-500 hover:bg-red-500/10 transition-all duration-300 group",
+                            isCollapsed && "justify-center"
+                        )}
+                    >
+                        <LogOut className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                        {!isCollapsed && <span className="font-bold text-sm tracking-tight uppercase tracking-widest">Sign Out</span>}
+                    </button>
+                </div>
+
+                <button
+                    onClick={() => setIsCollapsed(!isCollapsed)}
+                    className="absolute -right-3 h-16 md:h-20 lg:h-24 flex items-center justify-center z-[60]"
+                >
+                    <div className="w-6 h-6 bg-card border border-primary/20 rounded-full flex items-center justify-center text-muted hover:text-primary transition-all shadow-sm">
+                        {isCollapsed ? <ChevronRight className="w-3 h-3" /> : <ChevronLeft className="w-3 h-3" />}
+                    </div>
+                </button>
+            </aside>
+        );
+    }
+
     return (
         <aside
             className={cn(
-                "hidden md:flex flex-col relative z-20 bg-[#0A0A0A]/80 backdrop-blur-3xl border-r border-primary/5 transition-all duration-500",
+                "hidden md:flex flex-col relative z-20 bg-card border-r border-border/10 transition-[width,background-color,border-color] duration-500 ease-in-out",
                 isCollapsed ? "w-[72px]" : "w-64"
             )}
         >
-            <div className={cn("flex items-center justify-center pt-3 pb-4", isCollapsed ? "" : "px-6")}>
+            <div className={cn("flex-none h-16 md:h-20 lg:h-24 flex items-center border-b border-border/10 transition-colors duration-500", isCollapsed ? "justify-center" : "px-6")}>
                 <div className="relative group cursor-pointer" onClick={() => navigate('/app')}>
                     <div className="absolute -inset-4 bg-primary/10 rounded-full blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
                     <BaroLogo variant={isCollapsed ? "compact" : "full"} className="relative z-10" />
@@ -130,8 +231,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, setIsCollapsed, h
                             className={cn(
                                 "w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl border transition-all duration-300",
                                 isOwnerOrAdmin
-                                    ? "bg-white/[0.02] border-primary/10 hover:border-primary/30 hover:bg-white/[0.04]"
-                                    : "bg-muted/5 border-border/10 cursor-default"
+                                    ? "bg-primary/5 border-primary/20 hover:border-primary/40 hover:bg-primary/10"
+                                    : "bg-primary/5 border-primary/10 cursor-default"
                             )}
                         >
                             <div className="flex items-center gap-2.5 overflow-hidden">
@@ -151,7 +252,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, setIsCollapsed, h
                         </button>
 
                         {isBranchSelectorOpen && isOwnerOrAdmin && (
-                            <div className="absolute top-full left-0 right-0 mt-3 py-2 bg-[#121212] border border-primary/20 rounded-2xl shadow-2xl z-[100] animate-in fade-in zoom-in-95 duration-200 backdrop-blur-3xl">
+                            <div className="absolute top-full left-0 right-0 mt-3 py-2 bg-card border border-primary/20 rounded-2xl shadow-2xl z-[100] animate-in fade-in zoom-in-95 duration-200 backdrop-blur-3xl">
                                 {branches.map((branch) => (
                                     <button
                                         key={branch.id}
@@ -163,7 +264,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, setIsCollapsed, h
                                             "w-full text-left px-4 py-2.5 text-[13px] font-medium transition-colors",
                                             activeBranch?.id === branch.id
                                                 ? "text-primary bg-primary/10"
-                                                : "text-muted hover:text-foreground hover:bg-white/[0.05]"
+                                                : "text-muted hover:text-foreground hover:bg-primary/5"
                                         )}
                                     >
                                         {branch.name}
@@ -182,18 +283,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, setIsCollapsed, h
                         label={t('nav.adminHome')}
                         path="/app/admin"
                         allowedRoles={['owner', 'admin']}
-                    />
-                    <NavItem
-                        icon={User}
-                        label={t('nav.myStation')}
-                        path="/app/waiter"
-                        allowedRoles={['waiter', 'owner', 'admin']}
-                    />
-                    <NavItem
-                        icon={Monitor}
-                        label={t('nav.kds')}
-                        path="/app/kitchen"
-                        allowedRoles={['kitchen', 'owner', 'admin']}
                     />
                 </NavSection>
 
@@ -275,7 +364,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, setIsCollapsed, h
                 <button
                     onClick={handleLogout}
                     className={cn(
-                        "w-full flex items-center transition-all duration-300 rounded-xl text-red-400/60 hover:text-red-400 hover:bg-red-500/10",
+                        "w-full flex items-center transition-all duration-300 rounded-xl text-muted hover:text-red-500 hover:bg-red-500/10",
                         isCollapsed ? "justify-center h-12" : "gap-3 px-3 py-2.5"
                     )}
                 >
@@ -284,7 +373,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, setIsCollapsed, h
                 </button>
                 
                 {!isCollapsed && (
-                    <div className="pt-4 px-3 flex items-center justify-between border-t border-white/[0.03] mt-4">
+                    <div className="pt-4 px-3 flex items-center justify-between border-t border-primary/10 mt-4">
                         <span className="text-[10px] font-black text-muted/30 uppercase tracking-widest">Baro OS 1.2.4</span>
                         <div className="flex gap-1">
                             <div className="w-1 h-1 rounded-full bg-primary/20" />
@@ -295,13 +384,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, setIsCollapsed, h
                 )}
             </div>
 
-            {/* Collapse Toggle */}
             <button
                 onClick={() => setIsCollapsed(!isCollapsed)}
-                className="absolute -right-3 top-24 w-6 h-6 bg-[#0A0A0A] border border-primary/20 rounded-full flex items-center justify-center text-muted hover:text-primary transition-all shadow-2xl z-40 group overflow-hidden"
+                className="absolute -right-3 h-16 md:h-20 lg:h-24 flex items-center justify-center z-[60] group overflow-hidden"
             >
-                <div className="absolute inset-0 bg-primary/10 translate-y-full group-hover:translate-y-0 transition-transform" />
-                {isCollapsed ? <ChevronRight className="w-3 h-3 relative z-10" /> : <ChevronLeft className="w-3 h-3 relative z-10" />}
+                <div className="w-6 h-6 bg-card border border-primary/20 rounded-full flex items-center justify-center text-muted hover:text-primary transition-all shadow-sm relative z-10">
+                    <div className="absolute inset-0 bg-primary/10 translate-y-full group-hover:translate-y-0 transition-transform -z-1" />
+                    {isCollapsed ? <ChevronRight className="w-3 h-3" /> : <ChevronLeft className="w-3 h-3" />}
+                </div>
             </button>
         </aside>
     );

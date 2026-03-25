@@ -351,7 +351,7 @@ export const MenuEditorModal: React.FC<MenuEditorModalProps> = ({
       <div className="flex flex-col gap-6">
 
         {/* Navigation Tabs */}
-        <div className="flex bg-black/40 p-1 rounded-xl border border-white/5">
+        <div className="flex bg-black/40 p-1 rounded-xl border border-primary/10">
           <button
             onClick={() => setActiveTab('basic')}
             className={cn(
@@ -383,7 +383,7 @@ export const MenuEditorModal: React.FC<MenuEditorModalProps> = ({
                   value={name}
                   onChange={e => setName(e.target.value)}
                   placeholder="e.g. Doro Wat"
-                  className="bg-black/40 border-gray-700 h-12"
+                  className="bg-black/40 border-primary/20 h-12"
                 />
               </div>
               <div className="grid grid-cols-2 gap-4">
@@ -448,7 +448,7 @@ export const MenuEditorModal: React.FC<MenuEditorModalProps> = ({
                       <select
                         value={categoryId}
                         onChange={e => setCategoryId(e.target.value)}
-                        className="w-full h-11 bg-black/40 border border-gray-700 rounded-lg px-3 text-sm text-white outline-none focus:border-primary/50 appearance-none transition-all"
+                        className="w-full h-11 bg-black/40 border border-primary/15 rounded-lg px-3 text-sm text-white outline-none focus:border-primary/50 appearance-none transition-all"
                       >
                         <option value="" disabled>Select category...</option>
                         {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -477,7 +477,7 @@ export const MenuEditorModal: React.FC<MenuEditorModalProps> = ({
                   <RoleGuard
                     allowedRoles={['owner', 'admin']}
                     fallback={
-                      <div className="flex items-center gap-2 h-11 px-3 bg-black/60 border border-gray-800 rounded-lg">
+                      <div className="flex items-center gap-2 h-11 px-3 bg-black/60 border border-primary/15 rounded-lg">
                         <Lock className="w-4 h-4 text-gray-600" />
                         <span className="font-mono text-primary font-bold">ETB {price.toLocaleString()}</span>
                         <span className="text-[9px] text-gray-600 uppercase">(View Only)</span>
@@ -489,7 +489,7 @@ export const MenuEditorModal: React.FC<MenuEditorModalProps> = ({
                         type="number"
                         value={price}
                         onChange={e => setPrice(parseFloat(e.target.value) || 0)}
-                        className="font-mono text-primary font-bold bg-black/40 border-gray-700 h-11 transition-all group-focus-within:border-primary/40"
+                        className="font-mono text-primary font-bold bg-black/40 border-primary/20 h-11 transition-all group-focus-within:border-primary/40"
                       />
                       {recipeCost > 0 && (
                         <div className="absolute right-3 top-2.5 text-[8px] font-black text-gray-600 uppercase">
@@ -512,7 +512,7 @@ export const MenuEditorModal: React.FC<MenuEditorModalProps> = ({
 
                 <div className={cn(
                   "relative group overflow-hidden rounded-[1.5rem] border-2 border-dashed transition-all duration-500 bg-black/40 h-40 flex flex-col items-center justify-center",
-                  imageUrl ? "border-primary/20 bg-primary/5" : "border-gray-800 hover:border-primary/30"
+                   imageUrl ? "border-primary/20 bg-primary/5" : "border-primary/20 hover:border-primary/30"
                 )}>
                   {imageUrl ? (
                     <>
@@ -545,7 +545,7 @@ export const MenuEditorModal: React.FC<MenuEditorModalProps> = ({
                       className="w-full h-full flex flex-col items-center justify-center gap-4 group/btn"
                       disabled={uploading}
                     >
-                      <div className="w-14 h-14 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center transition-all group-hover/btn:scale-110 group-hover/btn:border-primary/40 group-hover/btn:bg-primary/5">
+                      <div className="w-14 h-14 rounded-2xl bg-primary/5 border border-primary/10 flex items-center justify-center transition-all group-hover/btn:scale-110 group-hover/btn:border-primary/40 group-hover/btn:bg-primary/5">
                         {uploading ? (
                           <Loader2 className="w-7 h-7 animate-spin text-primary" />
                         ) : (
@@ -569,7 +569,7 @@ export const MenuEditorModal: React.FC<MenuEditorModalProps> = ({
                   />
                 </div>
               </div>
-              <div className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/5">
+              <div className="flex items-center justify-between p-4 bg-primary/5 rounded-2xl border border-primary/10">
                 <span className="text-sm font-bold text-gray-300">Available for Order</span>
                 <button
                   onClick={() => setIsAvailable(!isAvailable)}

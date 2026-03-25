@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@1,300;1,700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@1,300;1,700&family=Satisfy&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -14,6 +14,11 @@
         font-family: 'JetBrains Mono', monospace;
         letter-spacing: 0.1em;
         text-transform: uppercase;
+    }
+
+    .cursive-vibe {
+        font-family: 'Satisfy', cursive;
+        letter-spacing: 0.02em;
     }
 }
 
@@ -54,10 +59,14 @@ body[data-theme="fresh"] {
 body {
     background-color: var(--background);
     color: var(--foreground);
-    transition: background-color 0.4s cubic-bezier(0.2, 0.8, 0.2, 1), color 0.4s ease;
+    transition: background-color 0.5s cubic-bezier(0.4, 0, 0.2, 1), color 0.5s ease;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     overflow-x: hidden;
+}
+
+hr {
+    border-color: rgba(255, 184, 0, 0.1);
 }
 
 @keyframes liquid-core {
@@ -266,17 +275,17 @@ body[data-theme="fresh"] .river-gradient {
     @keyframes system-flush {
         0% {
             opacity: 0;
-            filter: blur(10px) brightness(2);
+            filter: blur(8px) brightness(1.5);
         }
 
         50% {
-            opacity: 0.3;
-            filter: blur(0px) brightness(1.5);
+            opacity: 0.15;
+            filter: blur(0px) brightness(1.2);
         }
 
         100% {
             opacity: 0;
-            filter: blur(5px) brightness(1);
+            filter: blur(4px) brightness(1);
         }
     }
 
@@ -287,11 +296,11 @@ body[data-theme="fresh"] .river-gradient {
         pointer-events: none;
         background: white;
         mix-blend-mode: overlay;
-        animation: system-flush 0.8s ease-out forwards;
+        animation: system-flush 0.4s ease-out forwards;
     }
 
     body {
-        transition: background-color 1s ease, color 0.5s ease;
+        transition: background-color 0.5s cubic-bezier(0.4, 0, 0.2, 1), color 0.5s ease;
     }
 
     .custom-scrollbar::-webkit-scrollbar {

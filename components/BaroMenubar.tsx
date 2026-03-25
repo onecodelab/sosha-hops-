@@ -21,7 +21,7 @@ export default function BaroMenubar() {
     };
 
     return (
-        <Menubar className="flex rounded-xl border border-border/10 bg-card/40 backdrop-blur-2xl p-1 shadow-lg shadow-black/20">
+        <Menubar className="flex rounded-xl border border-primary/20 bg-primary/5 backdrop-blur-2xl p-1 shadow-lg shadow-black/20">
             {/* APPS MENU */}
             <Menu.Root>
                 <Menu.Trigger className="h-9 rounded-lg px-4 text-sm font-black uppercase tracking-wider text-muted-foreground outline-none select-none hover:bg-foreground/5 data-[popup-open]:bg-foreground/10 data-[popup-open]:text-foreground transition-all">
@@ -29,7 +29,7 @@ export default function BaroMenubar() {
                 </Menu.Trigger>
                 <Menu.Portal>
                     <Menu.Positioner className="outline-none z-[100]" sideOffset={8}>
-                        <Menu.Popup className="origin-[var(--transform-origin)] rounded-xl bg-card border border-border/10 py-1.5 text-foreground shadow-2xl shadow-black/30 outline-none min-w-[160px] animate-in fade-in zoom-in-95 duration-200">
+                        <Menu.Popup className="origin-[var(--transform-origin)] rounded-xl bg-card border border-primary/20 py-1.5 text-foreground shadow-2xl shadow-black/30 outline-none min-w-[160px] animate-in fade-in zoom-in-95 duration-200">
 
                             <RoleGuard allowedRoles={['owner', 'admin']} hideOnly>
                                 <Menu.Item onClick={() => handleNav('/app/admin')} className="flex cursor-pointer items-center justify-between gap-4 px-4 py-2.5 text-sm font-bold outline-none select-none hover:bg-foreground/5 data-[highlighted]:bg-foreground/5">
@@ -130,7 +130,7 @@ export default function BaroMenubar() {
                                 </Menu.Item>
                             </RoleGuard>
 
-                            <Menu.Separator className="mx-4 my-1.5 h-px bg-border/20" />
+                            <Menu.Separator className="mx-4 my-1.5 h-px bg-primary/10" />
 
                             <Menu.Item
                                 onClick={handleLogout}

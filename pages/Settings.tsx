@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useLayoutConfig } from '../contexts/LayoutContext';
 import { Card, CardContent, CardHeader, CardTitle, Button, showToast, cn } from '../components/ui';
 import { Database, RefreshCw, AlertTriangle, Package, CheckCircle2, FlaskConical, ShieldCheck, Zap, Plus, MapPin, Building2, Trash2, Edit2, X, Check, CreditCard, Sparkles } from 'lucide-react';
@@ -680,9 +680,13 @@ const BotSettingsSection: React.FC<{ isEditable: boolean; organizationId?: strin
    const queryClient = useQueryClient();
    const [isSaving, setIsSaving] = useState(false);
    const [systemPrompt, setSystemPrompt] = useState('');
+   const [logoUrl, setLogoUrl] = useState('');
    const [charCount, setCharCount] = useState(0);
+   const [isUploading, setIsUploading] = useState(false);
+   const fileInputRef = useRef<HTMLInputElement>(null);
 
-   const DEFAULT_PROMPT = `You are a smart, friendly restaurant assistant. You help customers browse the menu, place orders, track their food, and handle payments.
+   const DEFAULT_PROMPT = `You are a smart, friendly restaurant assistant. Your vibe is professional but Gen-Z friendly.
+Start the conversation with: "slay first, eat second — jk eat first, chat with me to orderrr 🫶🔥"
 
 ## YOUR RULES
 1. ALWAYS use the 'get_menu' tool when a customer asks about food, menu, or what's available. NEVER guess menu items.
@@ -691,7 +695,7 @@ const BotSettingsSection: React.FC<{ isEditable: boolean; organizationId?: strin
 4. If they want to add more items to an existing order, use 'update_order' instead of 'place_order'.
 5. When asked for the bill or how to pay, call 'get_branch_info' to get payment methods, then 'get_order_status' to get the total.
 6. When they share a payment reference number, call 'verify_payment'.
-7. Be warm, helpful, and concise. Use emojis sparingly but naturally.
+7. Be warm, helpful, and concise. Use emojis like 🫶, 🔥, and ✨.
 8. Format menu items clearly with names and prices.
 9. Always confirm the order before placing it.`;
 
@@ -702,7 +706,7 @@ const BotSettingsSection: React.FC<{ isEditable: boolean; organizationId?: strin
          if (!organizationId) return null;
          const { data, error } = await supabase
             .from('organizations')
-            .select('chatbot_system_prompt')
+            .select('chatbot_system_prompt, chatbot_logo_url')
             .eq('id', organizationId)
             .single();
          if (error) throw error;
@@ -717,6 +721,7 @@ const BotSettingsSection: React.FC<{ isEditable: boolean; organizationId?: strin
          const prompt = orgData.chatbot_system_prompt || '';
          setSystemPrompt(prompt);
          setCharCount(prompt.length);
+         setLogoUrl(orgData.chatbot_logo_url || '');
       }
    }, [orgData]);
 
@@ -726,7 +731,10 @@ const BotSettingsSection: React.FC<{ isEditable: boolean; organizationId?: strin
          setIsSaving(true);
          const { error } = await supabase
             .from('organizations')
-            .update({ chatbot_system_prompt: systemPrompt })
+            .update({ 
+                chatbot_system_prompt: systemPrompt,
+                chatbot_logo_url: logoUrl
+            })
             .eq('id', organizationId);
          if (error) throw error;
       },
@@ -737,6 +745,46 @@ const BotSettingsSection: React.FC<{ isEditable: boolean; organizationId?: strin
       onError: (err: any) => showToast(err.message, "error"),
       onSettled: () => setIsSaving(false)
    });
+
+   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+       const file = e.target.files?.[0];
+       if (!file) return;
+
+       if (!file.type.startsWith('image/')) {
+           showToast("Please upload a valid image file", "error");
+           return;
+       }
+
+       if (file.size > 2 * 1024 * 1024) {
+           showToast("Image must be smaller than 2MB", "error");
+           return;
+       }
+
+       setIsUploading(true);
+       try {
+           const fileExt = file.name.split('.').pop();
+           const fileName = `chatbot_logo_${Math.random().toString(36).substring(2)}_${Date.now()}.${fileExt}`;
+           const filePath = `organization-assets/${fileName}`;
+
+           const { error: uploadError } = await supabase.storage
+               .from('menu-images') // Using existing public bucket
+               .upload(filePath, file);
+
+           if (uploadError) throw uploadError;
+
+           const { data: { publicUrl } } = supabase.storage
+               .from('menu-images')
+               .getPublicUrl(filePath);
+
+           setLogoUrl(publicUrl);
+           showToast("Logo uploaded securely! Click Deploy to save.", "success");
+       } catch (err: any) {
+           showToast(err.message || "Upload failed", "error");
+       } finally {
+           setIsUploading(false);
+           if (fileInputRef.current) fileInputRef.current.value = '';
+       }
+   };
 
    if (isLoading) return <div className="text-center py-4 text-zinc-600 animate-pulse text-[10px] font-black uppercase tracking-widest">Loading AI Configuration...</div>;
 
@@ -784,6 +832,51 @@ const BotSettingsSection: React.FC<{ isEditable: boolean; organizationId?: strin
                 placeholder={DEFAULT_PROMPT}
                 className="w-full bg-card border border-border rounded-[2rem] p-8 text-sm text-foreground focus:outline-none focus:border-primary/40 shadow-inner resize-y font-mono leading-relaxed min-h-[350px] transition-all"
              />
+
+             <div className="mt-8 space-y-2">
+                <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">Chatbot Avatar Image URL</label>
+                <div className="flex items-center gap-4">
+                    <div className="w-16 h-16 rounded-2xl bg-muted/10 border border-border flex items-center justify-center shrink-0 shadow-inner overflow-hidden relative group">
+                        {logoUrl ? (
+                            <img src={logoUrl} alt="Chatbot Avatar" className="w-full h-full object-cover" />
+                        ) : (
+                            <Zap className="w-6 h-6 text-muted/50" />
+                        )}
+                        {isEditable && (
+                           <button 
+                               onClick={() => fileInputRef.current?.click()}
+                               disabled={isUploading}
+                               className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-[8px] font-black text-white tracking-widest uppercase cursor-pointer backdrop-blur-sm"
+                           >
+                               {isUploading ? '...' : 'UPLOAD'}
+                           </button>
+                        )}
+                    </div>
+                    <div className="flex-1 flex gap-2">
+                        <input
+                            value={logoUrl}
+                            onChange={e => setLogoUrl(e.target.value)}
+                            disabled={!isEditable}
+                            placeholder="e.g. /ai-avatar.png or https://imgur.com/your-image.png"
+                            className="flex-1 w-full bg-card border border-border rounded-xl px-4 h-12 text-sm text-foreground focus:outline-none focus:border-primary/40 shadow-sm transition-all"
+                        />
+                        {isEditable && (
+                           <Button
+                               variant="outline"
+                               onClick={() => fileInputRef.current?.click()}
+                               disabled={isUploading}
+                               className="h-12 border-border hover:bg-muted/10 uppercase font-black text-[10px] tracking-widest rounded-xl px-6 shrink-0"
+                           >
+                               {isUploading ? 'Uploading...' : 'Browse'}
+                           </Button>
+                        )}
+                        <input type="file" ref={fileInputRef} onChange={handleImageUpload} accept="image/*" className="hidden" />
+                    </div>
+                </div>
+                <p className="text-[9px] text-gray-500 mt-1 ml-1 leading-relaxed max-w-lg">
+                    Provide a transparent PNG or simple image URL to replace the default AI core/sparkles with your own custom branded mascot in the Customer App.
+                </p>
+             </div>
           </div>
 
          {/* Available Tools Reference */}

@@ -163,8 +163,9 @@ serve(async (req) => {
 
       return new Response(JSON.stringify({
         success: false,
-        message: "This transaction reference is already linked to another order!",
-        action_taken: "Blocked Duplicate"
+        message: `This transaction reference is already linked to Order ${existingOrderRef.order_number || 'Unknown'}!`,
+        action_taken: "Blocked Duplicate",
+        linked_order_id: existingOrderRef.id
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200
@@ -266,10 +267,16 @@ serve(async (req) => {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 15000);
 
+    // Normalize bank key for upsteam API mapping
+    let bankKeyForApi = bank.toLowerCase().trim().replace(/_/g, '');
+    if (bankKeyForApi === 'cbebirr') bankKeyForApi = 'cbe_birr'; // Ensure consistency if API expects underscore
+
+    const finalReceiverAccount = receiver_account; // Use the destructured receiver_account
+
     const apiPayload = {
-      bank: bank.toLowerCase(),
+      bank: bankKeyForApi,
       transaction_id,
-      receiver_account
+      receiver_account: finalReceiverAccount
     };
 
     console.log("[verify-payment] Calling API:", apiPayload);
@@ -424,10 +431,13 @@ serve(async (req) => {
     }
 
     return new Response(JSON.stringify({
-      success: data.success,
-      validated: data.validated,
+      success: data.validated || false,
+      validated: data.validated || false,
       amount_found: data.amount,
       message: data.message || (data.validated ? "Transaction Found and Valid." : "Transaction not found or invalid."),
+      receiver_account: finalReceiverAccount,
+      bank_key: bank,
+      api_response: data, // Return full response for debugging
       action_taken: actionTaken,
       receipt: receiptData,
       raw: data

@@ -421,7 +421,116 @@ serve(async (req) => {
 
         const body = await req.json();
         const { message, session_id, table_number, table_id, organization_id, organization_name, branch_id: clientBranchId, branch_name, is_verified } = body;
+
+        // ── DIRECT ACTION: Skip AI entirely for cart-based orders ──
+        if (body.action === 'place_order') {
+            console.log('[DirectAction] place_order triggered');
+            const directItems = body.items || [];
+            const directTableId = body.table_id || table_id || '';
+            let directOrgId = body.organization_id || organizationId || '';
+            let directBranchId = body.branch_id || branchId || '';
+            let resolvedTable = body.table_number || '';
+
+            // Resolve org, branch, and table_number from table_id
+            if (directTableId) {
+                const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(directTableId);
+                if (isUuid) {
+                    const { data: tData } = await supabase
+                        .from('tables')
+                        .select('table_number, branch_id, organization_id')
+                        .eq('id', directTableId)
+                        .maybeSingle();
+                    if (tData) {
+                        resolvedTable = resolvedTable || tData.table_number;
+                        directBranchId = directBranchId || tData.branch_id;
+                        directOrgId = directOrgId || tData.organization_id;
+                        console.log(`[DirectAction] Resolved from table: org=${directOrgId}, branch=${directBranchId}, table=${resolvedTable}`);
+                    }
+                }
+            }
+
+            if (!directOrgId || !directBranchId) {
+                return new Response(JSON.stringify({ success: false, error: 'Missing organization or branch context.' }), { headers: corsHeaders });
+            }
+
+            try {
+                const result = await executeMcpTool(supabase, 'place_order', {
+                    items: directItems,
+                    table_number: resolvedTable,
+                    table_id: directTableId,
+                    session_id: body.session_id || '',
+                }, directOrgId, directBranchId, resolvedTable);
+
+                return new Response(JSON.stringify({ success: true, result }), { headers: corsHeaders });
+            } catch (err: any) {
+                console.error('[DirectAction] place_order failed:', err.message);
+                return new Response(JSON.stringify({ success: false, error: err.message }), { headers: corsHeaders });
+            }
+        }
+
+        // ── DIRECT ACTION: Verify Payment (Legacy - now handled by central verify-payment function) ──
+        if (body.action === 'verify_payment') {
+            return new Response(JSON.stringify({ success: false, error: 'This action is deprecated. The frontend should call the central verify-payment function directly.' }), { headers: corsHeaders });
+        }
+
+        // ── DIRECT ACTION: Complete Order (legacy fallback) ──
+        if (body.action === 'complete_order') {
+            console.log('[DirectAction] complete_order triggered');
+            const orderId = body.order_id || '';
+
+            if (!orderId) {
+                return new Response(JSON.stringify({ success: false, error: 'Missing order_id.' }), { headers: corsHeaders });
+            }
+
+            const { data: orderData } = await supabase
+                .from('orders')
+                .select('organization_id, branch_id')
+                .eq('id', orderId)
+                .maybeSingle();
+
+            const compOrgId = orderData?.organization_id || organizationId;
+            const compBranchId = orderData?.branch_id || branchId;
+
+            try {
+                const result = await executeMcpTool(supabase, 'complete_order', {
+                    order_id: orderId,
+                }, compOrgId, compBranchId, '');
+
+                return new Response(JSON.stringify({ success: true, result }), { headers: corsHeaders });
+            } catch (err: any) {
+                console.error('[DirectAction] complete_order failed:', err.message);
+                return new Response(JSON.stringify({ success: false, error: err.message }), { headers: corsHeaders });
+            }
+        }
+
+        // ── DIRECT ACTION: Get Banks ──
+        if (body.action === 'get_banks') {
+            console.log('[DirectAction] get_banks triggered');
+            const directTableId = body.table_id || '';
+            let resolveOrgId = organizationId || '';
+
+            if (directTableId) {
+                const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(directTableId);
+                if (isUuid) {
+                    const { data: tData } = await supabase.from('tables').select('organization_id').eq('id', directTableId).maybeSingle();
+                    if (tData) resolveOrgId = tData.organization_id;
+                }
+            }
+
+            const { data: banks } = await supabase
+                .from('bank_settings')
+                .select('bank_key, account_number')
+                .eq('organization_id', resolveOrgId)
+                .eq('is_active', true);
+
+            return new Response(JSON.stringify({
+                success: true,
+                banks: (banks || []).filter((b: any) => b.account_number),
+            }), { headers: corsHeaders });
+        }
+
         let resolvedTableNumber = table_number;
+
         let prefetchedMetadata: any = {};
         let shouldShortcutVerifiedTable = false;
 
@@ -679,6 +788,9 @@ serve(async (req) => {
 - Table (Claimed): ${activeTable}
 
 ${orgPrompt || DEFAULT_SYSTEM_PROMPT}
+
+${RICH_UI_INSTRUCTIONS}
+${PROFESSIONALISM_PROTOCOL}
 
 ${personalContext}
 ${customerContext}
@@ -974,15 +1086,26 @@ ${customerContext}
             if (assistantMessage.tool_calls && assistantMessage.tool_calls.length > 0) {
                 messages.push(assistantMessage);
                 for (const toolCall of assistantMessage.tool_calls) {
-                    const toolName = toolCall.function.name;
+                    const toolName = toolCall.id ? toolCall.function.name : '';
                     let toolParams = {};
                     try { toolParams = JSON.parse(toolCall.function.arguments); } catch { }
 
                     let toolResult: any;
-                    try {
-                        toolResult = await executeMcpTool(supabase, toolName, toolParams, organizationId, branchId || "", resolvedTableNumber || "");
-                    } catch (err: any) {
-                        toolResult = { error: err.message };
+
+                    // --- INTERNAL VALIDATION: Prevent Ghost Orders ---
+                    if ((toolName === 'place_order' || toolName === 'update_order') && (!(toolParams as any).items || (toolParams as any).items.length === 0)) {
+                        console.error(`[CustomerAgent] LLM tried calling ${toolName} with empty items! Blocked.`);
+                        toolResult = {
+                            success: false,
+                            error: "CRITICAL: 'items' array is required and cannot be empty. Please identify exactly which items the user wants before ordering."
+                        };
+                    } else {
+                        try {
+                            toolResult = await executeMcpTool(supabase, toolName, toolParams, organizationId, branchId || "", resolvedTableNumber || "");
+                        } catch (err: any) {
+                            console.error(`[CustomerAgent] Tool ${toolName} failed:`, err.message);
+                            toolResult = { error: err.message, success: false };
+                        }
                     }
 
                     messages.push({
@@ -1039,6 +1162,24 @@ ${customerContext}
             }
 
             finalResponse = assistantMessage.content || "I'm not sure how to help with that.";
+
+            // If a tool failed, append the error to finalResponse for visibility (Internal Debug)
+            const lastMessage = messages[messages.length - 1];
+            if (lastMessage && lastMessage.role === 'tool') {
+                const tr = JSON.parse(lastMessage.content);
+                if (tr.success === false) {
+                    const toolErr = tr.error;
+                    const failedToolName = lastMessage.name;
+                    
+                    // Find the tool call that matches this result to see the params
+                    const toolCall = messages.find(m => m.role === 'assistant' && 
+                        m.tool_calls?.find(tc => tc.id === lastMessage.tool_call_id));
+                    const tcItem = toolCall?.tool_calls?.find(tc => tc.id === lastMessage.tool_call_id);
+                    const sentParams = tcItem?.function?.arguments || "{}";
+
+                    finalResponse += `\n\n[System Note: ${failedToolName} failed with error: ${toolErr}. Params sent: ${sentParams}]`;
+                }
+            }
             break;
         }
 

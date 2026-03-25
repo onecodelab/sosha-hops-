@@ -75,7 +75,7 @@ export const InviteStaffModal: React.FC<InviteStaffModalProps> = ({ isOpen, onCl
    return (
       <Dialog isOpen={isOpen} onClose={onClose} title="Invite New Staff">
          <div className="p-1">
-            <div className="bg-blue-500/10 border border-blue-500/20 p-4 rounded-lg mb-6 flex gap-3">
+            <div className="bg-primary/5 border border-primary/20 p-4 rounded-lg mb-6 flex gap-3">
                <div className="p-2 bg-blue-500/20 rounded-full h-fit">
                   <Send className="w-4 h-4 text-blue-400" />
                </div>
@@ -124,7 +124,7 @@ export const InviteStaffModal: React.FC<InviteStaffModalProps> = ({ isOpen, onCl
                            onClick={() => setRole(r)}
                            className={cn(
                               "py-2 px-3 rounded-lg border text-sm font-bold capitalize transition-all",
-                              role === r ? "bg-primary text-black border-primary" : "bg-black/20 border-gray-700 text-gray-400 hover:border-gray-500"
+                              role === r ? "bg-primary text-black border-primary" : "bg-primary/5 border-primary/15 text-gray-400 hover:border-primary/30"
                            )}
                         >
                            {r}
@@ -140,7 +140,7 @@ export const InviteStaffModal: React.FC<InviteStaffModalProps> = ({ isOpen, onCl
                      <select
                         value={selectedBranchId}
                         onChange={(e) => setSelectedBranchId(e.target.value)}
-                        className="w-full h-11 bg-black/20 border border-gray-700 rounded-lg px-9 text-sm text-white focus:outline-none appearance-none"
+                        className="w-full h-11 bg-primary/5 border border-primary/15 rounded-lg px-9 text-sm text-white focus:outline-none appearance-none"
                         required
                      >
                         <option value="">Select a Branch</option>
@@ -152,7 +152,7 @@ export const InviteStaffModal: React.FC<InviteStaffModalProps> = ({ isOpen, onCl
                </div>
 
                {/* Compensation Section */}
-               <div className="pt-4 border-t border-white/5 space-y-4">
+               <div className="pt-4 border-t border-primary/10 space-y-4">
                   <h4 className="text-[10px] font-black text-primary uppercase tracking-[0.2em]">Compensation</h4>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                      <div className="space-y-2">
@@ -169,7 +169,7 @@ export const InviteStaffModal: React.FC<InviteStaffModalProps> = ({ isOpen, onCl
                            <select
                               value={payPeriod}
                               onChange={(e) => setPayPeriod(e.target.value as any)}
-                              className="w-full h-11 bg-black/20 border border-gray-700 rounded-lg px-9 text-sm text-white focus:outline-none appearance-none"
+                              className="w-full h-11 bg-primary/5 border border-primary/15 rounded-lg px-9 text-sm text-white focus:outline-none appearance-none"
                            >
                               <option value="monthly">Monthly</option>
                               <option value="weekly">Weekly</option>

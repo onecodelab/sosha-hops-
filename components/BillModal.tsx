@@ -448,7 +448,7 @@ export const BillModal: React.FC<BillModalProps> = ({
 
   return (
     <Dialog isOpen={isOpen} onClose={onClose} title={view === 'payment' ? "Checkout Station" : "Order Summary"} maxWidth="max-w-md" showTitle={!isMobile}>
-      <div className="flex flex-col p-1 min-h-[400px] bg-zinc-950/50 rounded-[1.5rem] border border-white/5">
+      <div className="flex flex-col p-1 min-h-[400px] bg-zinc-950/50 rounded-[1.5rem] border border-primary/10">
         {view === 'bill' && (
           <div className="animate-in fade-in zoom-in-95 duration-300">
             <div className="bg-white text-black p-4 rounded-lg shadow-inner mx-auto w-full max-w-[280px] sm:max-w-[320px] scale-[0.78] sm:scale-100 origin-top transition-transform mb-[-5rem] sm:mb-0 print:shadow-none print:px-0 print:scale-100" style={{ fontFamily: "'Courier New', Courier, monospace" }}>
@@ -570,10 +570,10 @@ export const BillModal: React.FC<BillModalProps> = ({
                 Checkout All <ChevronRight className="ml-2 w-5 h-5" />
               </Button>
               <div className="grid grid-cols-2 gap-2 order-2 md:order-1 md:col-start-1">
-                <Button variant="outline" onClick={() => window.print()} className="h-12 bg-white/5 border-white/10 rounded-xl font-bold">
+                <Button variant="outline" onClick={() => window.print()} className="h-12 bg-primary/5 border-primary/20 rounded-xl font-bold">
                   <Printer className="w-4 h-4 mr-2" /> Print Bill
                 </Button>
-                <Button onClick={() => setView('split')} className="h-12 bg-white/10 text-white font-black uppercase rounded-xl border border-white/10 hover:bg-white/20">
+                <Button onClick={() => setView('split')} className="h-12 bg-primary/10 text-white font-black uppercase rounded-xl border border-primary/20 hover:bg-primary/20">
                   Split
                 </Button>
               </div>
@@ -585,7 +585,7 @@ export const BillModal: React.FC<BillModalProps> = ({
           <div className="space-y-4 animate-in fade-in duration-200">
             <div className="flex items-center justify-between px-2">
               <button onClick={() => setView('bill')} className="flex items-center gap-1.5 text-zinc-400 hover:text-primary text-[9px] font-black uppercase tracking-[0.2em] transition-all group">
-                <div className="w-7 h-7 rounded-full bg-white/5 flex items-center justify-center group-hover:bg-primary/20 group-hover:text-primary transition-all">
+                <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 group-hover:text-primary transition-all">
                    <ArrowLeft className="w-3.5 h-3.5" />
                 </div>
                 Back
@@ -596,7 +596,7 @@ export const BillModal: React.FC<BillModalProps> = ({
                </div>
             </div>
 
-            <div className="bg-zinc-900/80 p-4 rounded-xl border border-white/10 text-center relative overflow-hidden shadow-lg group">
+            <div className="bg-zinc-900/80 p-4 rounded-xl border border-primary/20 text-center relative overflow-hidden shadow-lg group">
                <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-transparent opacity-30" />
                <p className="text-[9px] font-black text-zinc-500 uppercase tracking-widest mb-1 relative z-10">Amount to Collect</p>
                <div className="flex items-baseline justify-center gap-2 relative z-10">
@@ -614,7 +614,7 @@ export const BillModal: React.FC<BillModalProps> = ({
                     "h-11 rounded-lg border flex items-center justify-center gap-2 transition-colors text-[9px] font-black uppercase tracking-widest",
                     paymentMethod === 'cash' 
                       ? "bg-primary text-black border-primary shadow-lg" 
-                      : "bg-white/5 border-white/10 text-zinc-500 hover:bg-white/10"
+                      : "bg-primary/5 border-primary/10 text-zinc-500 hover:bg-primary/10"
                   )}
                >
                   <Banknote className="w-3.5 h-3.5" />
@@ -640,7 +640,7 @@ export const BillModal: React.FC<BillModalProps> = ({
                   </button>
                ))}
             </div>
-            <div className="space-y-3 bg-zinc-900/30 p-4 rounded-xl border border-white/5 relative">
+            <div className="space-y-3 bg-zinc-900/30 p-4 rounded-xl border border-primary/10 relative">
                <div className="space-y-1.5">
                   <div className="flex justify-between items-center px-1">
                      <label className="text-[9px] font-black text-zinc-500 uppercase tracking-widest">Transaction Method</label>
@@ -655,8 +655,8 @@ export const BillModal: React.FC<BillModalProps> = ({
                         placeholder={(BANK_CONFIG as any)[paymentMethod]?.placeholder || "Manual ID..."}
                         value={refNumber}
                         onChange={e => { setRefNumber(e.target.value); setIsVerified(false); }}
-                        className={cn(
-                          "bg-black/40 border-white/10 font-mono text-white h-9 text-[11px] rounded transition-all pl-3 pr-8",
+                         className={cn(
+                          "bg-black/40 border-primary/20 font-mono text-white h-9 text-[11px] rounded transition-all pl-3 pr-8",
                           isVerified && "border-green-500/50 text-green-400"
                         )}
                         disabled={paymentMethod === 'cash'}
@@ -666,7 +666,7 @@ export const BillModal: React.FC<BillModalProps> = ({
                </div>
 
                {(BANK_CONFIG as any)[paymentMethod]?.receiver && (
-                  <div className={cn("p-2 rounded-lg flex items-center justify-between border transition-all", isVerified ? "bg-green-500/5 border-green-500/20" : "bg-primary/5 border-primary/20")}>
+                  <div className="p-2 rounded-lg flex items-center justify-between border border-primary/20">
                     <div className="flex items-center gap-2">
                        <ShieldCheck className={cn("w-3.5 h-3.5", isVerified ? "text-green-500" : "text-primary")} />
                        <span className="text-[8px] text-zinc-400 font-black uppercase">To Account:</span>
@@ -684,8 +684,8 @@ export const BillModal: React.FC<BillModalProps> = ({
                         type="number"
                         value={amountPaid}
                         onChange={e => { setAmountPaid(e.target.value); setIsVerified(false); }}
-                        className={cn(
-                          "bg-black/40 border-white/10 font-mono font-black h-11 text-lg rounded-lg transition-all px-3",
+                         className={cn(
+                          "bg-black/40 border-primary/20 font-mono font-black h-11 text-lg rounded-lg transition-all px-3",
                           isVerified ? "text-green-400 border-green-500/20" : "text-primary border-primary/10"
                         )}
                      />
@@ -709,7 +709,7 @@ export const BillModal: React.FC<BillModalProps> = ({
                       <span className="text-zinc-500 font-bold">Paid via Bank:</span>
                       <span className="text-green-400 font-mono">ETB {amountPaid}</span>
                     </div>
-                    <div className="h-px bg-white/5 my-1" />
+                    <div className="h-px bg-primary/10 my-1" />
                     <div className="flex justify-between text-sm">
                       <span className="text-white font-black uppercase tracking-tighter">Tip for Staff:</span>
                       <span className="text-green-400 font-black font-mono">ETB {(parseFloat(amountPaid) - order.total_amount).toFixed(2)}</span>

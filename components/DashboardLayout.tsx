@@ -68,7 +68,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   const displayName = profile?.full_name || profile?.name || profile?.email?.split('@')[0] || 'User';
 
   return (
-    <div className="flex h-screen bg-background text-foreground overflow-hidden selection:bg-primary selection:text-black">
+    <div className="flex h-screen bg-background text-foreground overflow-y-hidden overflow-x-clip selection:bg-primary selection:text-black">
       <LeafBubbleBackground />
       <div className="fixed inset-0 z-0 transition-colors duration-500 pointer-events-none">
         <BackgroundMascots variant={mascotVariant} />

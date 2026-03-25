@@ -71,12 +71,12 @@ const TrackingWidget: React.FC<{ status: 'placed' | 'preparing' | 'ready' | 'del
     const currentIndex = stages.findIndex(s => s.key === status);
 
     return (
-        <div className="mt-2 p-3 rounded-xl bg-white/5 border border-white/[0.08] w-full">
+        <div className="mt-2 p-3 rounded-xl bg-primary/5 border border-primary/10 w-full">
             <div className="flex justify-between items-center mb-4">
                 <span className="text-[9px] font-black uppercase tracking-widest text-emerald-500">Live Status</span>
             </div>
             <div className="relative flex justify-between">
-                <div className="absolute top-3 left-0 w-full h-[1px] bg-white/5" />
+                <div className="absolute top-3 left-0 w-full h-[1px] bg-primary/10" />
                 <div className="absolute top-3 left-0 h-[1px] bg-emerald-500 transition-all duration-1000" style={{ width: `${(currentIndex / (stages.length - 1)) * 100}%` }} />
                 {stages.map((stage, i) => (
                     <div key={stage.key} className="relative z-10 flex flex-col items-center gap-1">
@@ -116,7 +116,7 @@ const BillSplitter: React.FC<{ total: number }> = ({ total }) => {
             <input
                 type="range" min="2" max="10"
                 value={people} onChange={(e) => setPeople(parseInt(e.target.value))}
-                className="w-full accent-amber-500 bg-white/10 rounded-lg appearance-none h-1"
+                className="w-full accent-amber-500 bg-primary/10 rounded-lg appearance-none h-1"
             />
         </div>
     );
@@ -128,7 +128,7 @@ const StarRating: React.FC = () => {
     if (submitted) return <div className="mt-2 text-[10px] text-emerald-400 font-bold">Thanks for rating!</div>;
 
     return (
-        <div className="mt-2 p-3 rounded-xl bg-white/5 border border-white/[0.08] inline-block">
+        <div className="mt-2 p-3 rounded-xl bg-primary/5 border border-primary/10 inline-block">
             <div className="flex gap-1.5">
                 {[1, 2, 3, 4, 5].map((s) => (
                     <button key={s} onClick={() => { setRating(s); setTimeout(() => setSubmitted(true), 800); }}>
@@ -282,10 +282,10 @@ export const ChatWidget: React.FC = () => {
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: 20, scale: 0.95 }}
                         transition={{ duration: 0.25, ease: [0.2, 0, 0, 1] }}
-                        className="fixed bottom-5 right-5 z-50 w-[360px] h-[520px] md:w-[400px] md:h-[560px] bg-[#0a0a0a] border border-white/[0.08] rounded-2xl flex flex-col overflow-hidden"
+                        className="fixed bottom-5 right-5 z-50 w-[360px] h-[520px] md:w-[400px] md:h-[560px] bg-[#0a0a0a] border border-primary/10 rounded-2xl flex flex-col overflow-hidden"
                     >
                         {/* Header */}
-                        <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.06] bg-black/40">
+                        <div className="flex items-center justify-between px-4 py-3 border-b border-primary/10 bg-black/40">
                             <div className="flex items-center gap-2.5">
                                 <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500/20 to-emerald-600/30 border border-emerald-500/30 flex items-center justify-center">
                                     <Sparkles className="w-4 h-4 text-emerald-400" />
@@ -295,7 +295,7 @@ export const ChatWidget: React.FC = () => {
                                     <span className="text-[9px] text-emerald-400 font-mono">● Online</span>
                                 </div>
                             </div>
-                            <button onClick={() => setIsOpen(false)} className="p-1.5 rounded-lg hover:bg-white/5 text-gray-500 hover:text-white transition-colors">
+                            <button onClick={() => setIsOpen(false)} className="p-1.5 rounded-lg hover:bg-primary/5 text-gray-500 hover:text-white transition-colors">
                                 <X className="w-4 h-4" />
                             </button>
                         </div>
@@ -357,7 +357,7 @@ export const ChatWidget: React.FC = () => {
                                             "px-4 py-3 rounded-2xl text-[13px] leading-relaxed",
                                             msg.role === 'user'
                                                 ? "bg-gradient-to-br from-amber-400 to-amber-600 text-black rounded-tr-md font-medium"
-                                                : "bg-[#1a1a1a] text-gray-200 rounded-tl-md border border-white/[0.08]"
+                                                : "bg-[#1a1a1a] text-gray-200 rounded-tl-md border border-primary/10"
                                         )}>
                                             <div className="whitespace-pre-wrap">{msg.content}</div>
                                         </div>
@@ -376,7 +376,7 @@ export const ChatWidget: React.FC = () => {
 
                             {isTyping && (
                                 <div className="flex items-center gap-2">
-                                    <div className="bg-[#1a1a1a] border border-white/[0.06] rounded-xl px-3 py-2">
+                                    <div className="bg-[#1a1a1a] border border-primary/10 rounded-xl px-3 py-2">
                                         <Loader2 className="w-3 h-3 text-emerald-400 animate-spin" />
                                     </div>
                                 </div>
@@ -384,7 +384,7 @@ export const ChatWidget: React.FC = () => {
                         </div>
 
                         {/* Input */}
-                        <div className="p-3 border-t border-white/[0.06] bg-black/30">
+                        <div className="p-3 border-t border-primary/10 bg-black/30">
                             <div className="flex items-center gap-2">
                                 <input
                                     ref={inputRef}
@@ -392,7 +392,7 @@ export const ChatWidget: React.FC = () => {
                                     onChange={e => setInputValue(e.target.value)}
                                     onKeyDown={e => e.key === 'Enter' && handleSend()}
                                     placeholder="Type a message..."
-                                    className="flex-1 bg-[#111] border border-white/[0.08] rounded-xl px-3 py-2.5 text-xs text-white placeholder:text-gray-600 outline-none focus:border-emerald-500/30"
+                                    className="flex-1 bg-[#111] border border-primary/10 rounded-xl px-3 py-2.5 text-xs text-white placeholder:text-gray-600 outline-none focus:border-emerald-500/30"
                                 />
                                 <button
                                     onClick={handleSend}
@@ -401,7 +401,7 @@ export const ChatWidget: React.FC = () => {
                                         "p-2 rounded-xl transition-all",
                                         inputValue.trim()
                                             ? "bg-emerald-500 text-white hover:bg-emerald-400 active:scale-95"
-                                            : "bg-white/5 text-gray-600"
+                                            : "bg-primary/5 text-gray-600"
                                     )}
                                 >
                                     <ArrowUp className="w-3.5 h-3.5" />

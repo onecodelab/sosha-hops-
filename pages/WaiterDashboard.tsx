@@ -45,7 +45,7 @@ const WaiterDashboard: React.FC = () => {
   const [selectedClaimTable, setSelectedClaimTable] = useState<string | null>(null);
   const [claiming, setClaiming] = useState(false);
   const [isSyncingTables, setIsSyncingTables] = useState(false);
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+
 
   const fetchTables = useCallback(async () => {
     if (!activeBranchId) {
@@ -93,7 +93,6 @@ const WaiterDashboard: React.FC = () => {
   const handleTableAction = (table: Table) => {
     setSelectedTableData({ id: table.id, number: table.table_number });
     setAppendOrderId(table.current_order_id || null);
-    setIsSidebarCollapsed(true);
     setIsCreateOpen(true);
   };
 
@@ -107,10 +106,8 @@ const WaiterDashboard: React.FC = () => {
     } else if (action === 'pay') {
       if (target) {
         setActiveBillOrder(target);
-        setIsSidebarCollapsed(true);
         setIsBillModalOpen(true);
       } else {
-        setIsSidebarCollapsed(true);
         setIsPaymentOpen(true);
       }
     } else if (action === 'served' && target) {
@@ -158,8 +155,6 @@ const WaiterDashboard: React.FC = () => {
 
   useLayoutConfig({
     title: "Waiter Station",
-    isSidebarCollapsed: isSidebarCollapsed,
-    onSidebarCollapseChange: setIsSidebarCollapsed,
     subtitle: (
       <span className="flex items-center gap-1.5 uppercase font-black tracking-widest text-[10px]">
         <span className="text-zinc-500">Floor •</span>
@@ -172,7 +167,6 @@ const WaiterDashboard: React.FC = () => {
           onClick={() => {
             setSelectedTableData(null);
             setAppendOrderId(null);
-            setIsSidebarCollapsed(true);
             setIsCreateOpen(true);
           }}
           className="bg-primary hover:bg-primary/90 text-black h-10 px-6 font-black uppercase text-[10px] rounded-xl flex items-center gap-2 shadow-lg shadow-primary/20 hover:shadow-primary/40 transition-all hover:scale-[1.05] active:scale-[0.95]"

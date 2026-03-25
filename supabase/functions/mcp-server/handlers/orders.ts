@@ -231,3 +231,149 @@ export async function verifyPayment(context: ToolContext) {
         message: "Payment reference recorded. A staff member will verify it shortly.",
     };
 }
+
+export async function completeOrder(context: ToolContext) {
+    const orderId = getString(context.params.order_id);
+    const amountPaid = getNumber(context.params.amount_paid);
+    const now = new Date().toISOString();
+    const todayStr = now.split('T')[0];
+
+    // 1. Fetch Order and associated Table
+    const { data: order, error: orderErr } = await context.supabase
+        .from('orders')
+        .select(`
+            id, order_number, total_amount, table_id, organization_id, branch_id, waiter_id,
+            waiter:profiles!orders_waiter_id_fkey (full_name)
+        `)
+        .eq('id', orderId)
+        .single();
+
+    if (orderErr || !order) throw new Error("Order not found or access denied.");
+
+    let actualPaid = amountPaid;
+    let refValue: string | null = null;
+    let bankValue: string | null = 'digital';
+
+    if (!actualPaid) {
+        const { data: py } = await context.supabase
+            .from('payments')
+            .select('amount, reference, bank_key')
+            .eq('order_id', orderId)
+            .eq('status', 'verified')
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+        
+        actualPaid = py?.amount || order.total_amount;
+        refValue = py?.reference || null;
+        bankValue = py?.bank_key || 'digital';
+    }
+
+    const subtotal = order.total_amount / 1.15;
+    const vat = order.total_amount - subtotal;
+    const tin = "0043819230";
+
+    const trueTip = Math.max(0, actualPaid - order.total_amount);
+    const trueShortage = Math.max(0, order.total_amount - actualPaid);
+
+    const qrData = {
+        v: "1.0",
+        oid: order.id,
+        onum: order.order_number,
+        tin: tin,
+        tot: order.total_amount,
+        vat: parseFloat(vat.toFixed(2)),
+        ts: now
+    };
+
+    // 2. Update Order Status
+    const { error: updateErr } = await context.supabase
+        .from('orders')
+        .update({
+            status: 'closed',
+            payment_status: 'paid',
+            payment_method: bankValue,
+            transaction_reference: refValue,
+            amount_paid: actualPaid,
+            tip_amount: trueTip,
+            paid_at: now,
+            closed_at: now,
+            completed_at: now,
+            last_updated: now,
+            subtotal_amount: parseFloat(subtotal.toFixed(2)),
+            vat_amount: parseFloat(vat.toFixed(2)),
+            vat_rate: 15.0,
+            qr_verification_code: btoa(JSON.stringify(qrData))
+        })
+        .eq('id', orderId);
+
+    if (updateErr) throw updateErr;
+
+    // 3. Handle Tip Ledger
+    if (trueTip > 0 && order.waiter_id) {
+        await context.supabase.from('tips_ledger').insert({
+            staff_id: order.waiter_id,
+            order_id: order.id,
+            amount: trueTip,
+            tip_type: 'digital',
+            organization_id: order.organization_id,
+            created_at: now
+        });
+    }
+
+    // 4. Update Staff Performance
+    if (order.waiter_id) {
+        const { data: perf } = await context.supabase
+            .from('staff_performance_daily')
+            .select('id, revenue_attributed, total_shortage, shortages_count, orders_completed')
+            .eq('staff_id', order.waiter_id)
+            .eq('date', todayStr)
+            .maybeSingle();
+
+        if (perf) {
+            await context.supabase.from('staff_performance_daily').update({
+                revenue_attributed: (perf.revenue_attributed || 0) + (order.total_amount - trueShortage),
+                total_shortage: (perf.total_shortage || 0) + trueShortage,
+                shortages_count: (perf.shortages_count || 0) + (trueShortage > 0 ? 1 : 0),
+                orders_completed: (perf.orders_completed || 0) + 1
+            }).eq('id', perf.id);
+        } else {
+            await context.supabase.from('staff_performance_daily').insert({
+                staff_id: order.waiter_id,
+                staff_name: order.waiter?.full_name || 'Staff',
+                date: todayStr,
+                revenue_attributed: order.total_amount - trueShortage,
+                total_shortage: trueShortage,
+                shortages_count: trueShortage > 0 ? 1 : 0,
+                orders_completed: 1,
+                organization_id: order.organization_id,
+                branch_id: order.branch_id
+            });
+        }
+    }
+
+    // 5. Handle Table and Session Cleanup
+    if (order.table_id) {
+        await context.supabase
+            .from('table_sessions')
+            .update({ is_active: false, closed_at: now })
+            .eq('table_id', order.table_id)
+            .eq('is_active', true);
+
+        await context.supabase
+            .from('tables')
+            .update({
+                status: 'available',
+                current_order_id: null,
+                current_session_id: null,
+                last_updated: now
+            })
+            .eq('id', order.table_id);
+    }
+
+    return {
+        success: true,
+        order_id: orderId,
+        message: "Order completed, tips logged, and table freed successfully."
+    };
+}
