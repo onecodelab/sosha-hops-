@@ -181,15 +181,24 @@ export async function verifyPayment(context: ToolContext) {
     const orderId = getString(context.params.order_id);
     const branchId = resolveBranchId(context);
 
+    // 1. Check for existing payment with this reference
     const { data: existing } = await context.supabase
         .from('payments')
-        .select('id')
+        .select('id, order_id, status')
         .eq('reference', reference)
         .eq('organization_id', context.organizationId)
         .maybeSingle();
 
     if (existing) {
-        return { verified: false, reason: "This reference has already been used. Please double check your payment or contact staff." };
+        // IDEMPOTENCY: If this reference was already used for THIS order, allow it.
+        if (orderId && existing.order_id === orderId) {
+            return {
+                verified: existing.status === 'verified' ? true : 'pending',
+                reference,
+                message: existing.status === 'verified' ? "Payment already verified." : "Payment is already being processed."
+            };
+        }
+        return { verified: false, reason: "This reference has already been used on another order. Please double check your payment or contact staff." };
     }
 
     let orderAmount = 0;
