@@ -14,9 +14,11 @@ const TOOL_DEFINITIONS = [
                 properties: {
                     query: { type: "string", description: "Search for a specific menu item by name" },
                     category: { type: "string", description: "Filter by a SPECIFIC category like 'Drinks', 'burgers', 'fish', 'Breakfast'. Leave empty to show all items." },
-                },
-            },
-        },
+                    must_have_tag: { type: "string", description: "Filter by a specific dietary or semantic tag (e.g. 'halal', 'vegan', 'spicy'). Optional." },
+                    must_exclude_tag: { type: "string", description: "Exclude a specific tag (e.g. 'halal', 'nuts'). Optional." }
+                }
+            }
+        }
     },
     {
         type: "function",
@@ -314,13 +316,44 @@ async function executeMcpTool(
         if (catStr) dbQuery = dbQuery.ilike("category", `%${catStr}%`);
         if (queryStr) dbQuery = dbQuery.ilike("name", `%${queryStr}%`);
 
-        const { data: menuData, error: menuErr } = await dbQuery.limit(20);
+        const { data: menuData, error: menuErr } = await dbQuery.limit(100);
         if (menuErr) {
             console.error("[MCP-LOCAL-MENU] Error:", menuErr);
             return { error: menuErr.message };
         }
 
-        const items = menuData || [];
+        let items = menuData || [];
+
+        // Apply Semantic JS-based Case-Insensitive Filtering
+        if (toolParams?.must_have_tag) {
+            const reqTag = toolParams.must_have_tag.toLowerCase().trim();
+            items = items.filter((item: any) => {
+                const tags = [
+                    ...(item.dietary_tags || []),
+                    ...(item.ingredients_list || []),
+                    item.spice_level,
+                    item.portion_size
+                ].filter(Boolean).map((t: string) => t.toLowerCase());
+                
+                return tags.some((t: string) => t.includes(reqTag));
+            });
+        }
+
+        if (toolParams?.must_exclude_tag) {
+            const exTag = toolParams.must_exclude_tag.toLowerCase().trim();
+            items = items.filter((item: any) => {
+                const tags = [
+                    ...(item.dietary_tags || []),
+                    ...(item.ingredients_list || []),
+                    item.spice_level,
+                    item.portion_size
+                ].filter(Boolean).map((t: string) => t.toLowerCase());
+                
+                return !tags.some((t: string) => t.includes(exTag));
+            });
+        }
+
+        items = items.slice(0, 20); // Re-enforce UI pagination limit after semantic mapping
         console.log(`[MCP-LOCAL-MENU] Found ${items.length} items.`);
 
         // If category filter returned 0 results, retry without category
