@@ -150,9 +150,15 @@ const MenuCard: React.FC<{ item: MenuItem; index: number; onAdd: (item: MenuItem
     );
 };
 
-const MenuCarousel: React.FC<{ items: MenuItem[]; onAddToCart: (item: MenuItem) => void }> = ({ items, onAddToCart }) => {
+const MenuCarousel: React.FC<{ items: MenuItem[]; onAddToCart: (item: MenuItem[] | MenuItem) => void; isFallback?: boolean }> = ({ items, onAddToCart, isFallback }) => {
     return (
         <div className="w-full mt-2 -mx-1 px-1">
+            {isFallback && (
+                <div className="mb-3 flex items-center gap-2 px-1">
+                    <Sparkles className="w-4 h-4 text-amber-500 animate-pulse" />
+                    <span className="text-[10px] font-black uppercase tracking-widest text-amber-500/80">House Favorites For You</span>
+                </div>
+            )}
             <div className="flex gap-3 overflow-x-auto pb-4 scrollbar-hide no-scrollbar snap-x snap-mandatory">
                 {items.map((item, i) => (
                     <div key={item.id} className="snap-start first:pl-2 last:pr-2">
@@ -772,7 +778,11 @@ const MessageBubble: React.FC<{ msg: ChatMessage; onQuickAction: (p: string, s?:
             {/* Attachments Section */}
             {msg.attachments?.type === 'menu' && msg.attachments.data?.length > 0 && (
                 <div className="w-full max-w-[95%] pl-9">
-                    <MenuCarousel items={msg.attachments.data} onAddToCart={onAddToCart} />
+                    <MenuCarousel 
+                        items={msg.attachments.data} 
+                        onAddToCart={onAddToCart} 
+                        isFallback={msg.metadata?.attachments?.is_fallback || msg.metadata?.is_fallback} 
+                    />
                 </div>
             )}
         </div>
@@ -897,6 +907,7 @@ const CustomerChatPage: React.FC = () => {
     const [isPlacingOrder, setIsPlacingOrder] = useState(false);
     const [sessionCompleted, setSessionCompleted] = useState(false);
     const [ratingSubmitted, setRatingSubmitted] = useState(false);
+    const [latestOrderId, setLatestOrderId] = useState<string | null>(null);
 
     // Active order tracking
     interface ActiveOrder {
@@ -1367,26 +1378,40 @@ const CustomerChatPage: React.FC = () => {
 
     // Poll active order status every 10s
     useEffect(() => {
-        if (!tableId) return;
+        if (!tableId || sessionCompleted) return;
+        
         const fetchOrder = async () => {
             try {
                 const { data } = await supabase
                     .from('orders')
-                    .select('id, order_number, status, total_amount')
+                    .select('id, order_number, status, total_amount, created_at')
                     .eq('table_id', tableId)
                     .in('status', ['pending', 'accepted', 'preparing', 'ready', 'served'])
                     .order('created_at', { ascending: false })
                     .limit(1)
                     .maybeSingle();
-                setActiveOrder(data || null);
 
-                // Fetch banks when order is served (for payment card)
-                if (data?.status === 'served' && branchBanks.length === 0) {
-                    const { data: bankData } = await supabase.functions.invoke('customer-intelligence', {
-                        body: { action: 'get_banks', table_id: tableId },
-                    });
-                    if (bankData?.success && bankData?.banks) {
-                        setBranchBanks(bankData.banks);
+                // If we previously had an order but now don't (it was closed/served),
+                // trigger session completion automatically.
+                if (!data && activeOrder) {
+                    console.log('Order closed by server/waiter, triggering rating...');
+                    setLatestOrderId(activeOrder.id);
+                    setSessionCompleted(true);
+                    setActiveOrder(null);
+                    return;
+                }
+
+                if (data) {
+                    setActiveOrder(data);
+
+                    // Fetch banks when order is served (for payment card)
+                    if (data?.status === 'served' && branchBanks.length === 0) {
+                        const { data: bankData } = await supabase.functions.invoke('customer-intelligence', {
+                            body: { action: 'get_banks', table_id: tableId },
+                        });
+                        if (bankData?.success && bankData?.banks) {
+                            setBranchBanks(bankData.banks);
+                        }
                     }
                 }
             } catch (e) { console.error('Order poll failed:', e); }
@@ -1394,7 +1419,7 @@ const CustomerChatPage: React.FC = () => {
         fetchOrder();
         const interval = setInterval(fetchOrder, 10000);
         return () => clearInterval(interval);
-    }, [tableId, branchBanks.length]);
+    }, [tableId, branchBanks.length, activeOrder?.id, sessionCompleted]);
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
         if (e.key === 'Enter' && !e.shiftKey) {
@@ -1483,7 +1508,7 @@ const CustomerChatPage: React.FC = () => {
             </div>
 
             {/* ─── PINNED ORDER STATUS / PAYMENT ─── */}
-            {activeOrder && (
+            {activeOrder && !sessionCompleted && (
                 <div className="flex-none px-4 py-2 border-b border-border bg-background/80 backdrop-blur-sm">
                     <div className="max-w-2xl mx-auto">
                         {activeOrder.status === 'served' ? (
@@ -1493,6 +1518,7 @@ const CustomerChatPage: React.FC = () => {
                                 total={activeOrder.total_amount}
                                 banks={branchBanks}
                                 onPaymentSubmitted={() => {
+                                    if (activeOrder) setLatestOrderId(activeOrder.id);
                                     setActiveOrder(null);
                                     setCart([]);
                                     localStorage.removeItem(cartStorageKey);
@@ -1745,10 +1771,24 @@ const CustomerChatPage: React.FC = () => {
 
                             <RatingInteraction
                                 className="mt-4"
-                                onChange={(val) => {
+                                onChange={async (val) => {
+                                    // 1. Submit to DB (Don't wait to show transition)
+                                    try {
+                                        supabase.from('customer_feedback').insert({
+                                            rating: val,
+                                            order_id: latestOrderId,
+                                            organization_id: activeOrgId || null,
+                                            branch_id: branchId || null,
+                                            table_id: tableId || null,
+                                        }).then(({ error }) => {
+                                            if (error) console.error('Feedback save failed:', error);
+                                        });
+                                    } catch (e) {
+                                        console.error('Feedback fetch error:', e);
+                                    }
+
                                     setTimeout(() => {
                                         setRatingSubmitted(true);
-                                        // Send to DB if you wish; simply locking session now
                                         if (tableId) {
                                             localStorage.removeItem(`baro_session_${tableId}`);
                                         }

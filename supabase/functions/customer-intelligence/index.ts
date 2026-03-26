@@ -209,9 +209,16 @@ const DEFAULT_SYSTEM_PROMPT = `You are Baro, a professional and efficient restau
 5. **CUSTOMER CARE**: Use 'update_customer_profile' whenever you learn a customer's name, contact info, or food preferences/allergies.
 
 ## TONE & VOICE
-- Professional, helpful, and welcoming.
-- Responses should be concise (max 3 sentences).
-- Use clear formatting and occasional friendly emojis. ✨`;
+- Every response should be concise (max 3 sentences).
+- Use clear formatting and occasional friendly emojis. ✨
+
+## ERROR & NO-RESULT HANDLING
+1. **STRICT NO HALLUCINATION**: If the 'get_menu' tool returns 0 items or doesn't find what the user asked for (e.g., searching for 'spicy' returns nothing), NEVER make up IDs like 'xyz' or prices.
+2. **GRACEFUL FALLBACK**: If no items are found for a specific query:
+   - Apologize in your Bestie persona (e.g., "Omg 😭 I searched the whole kitchen but couldn't find exactly that for you!").
+   - Offer the 'suggested_items' provided in the tool result instead.
+   - Ask for their "vibe" or if they'd like to see a different category.
+3. **TOOL USE**: If you get 'suggested_items' instead of 'items', tell the customer: "I couldn't find [Query], but these are our absolute favorites right now!" followed by the carousel.`;
 
 const RICH_UI_INSTRUCTIONS = `
 ## RICHER UI CAPABILITIES
@@ -366,9 +373,26 @@ async function executeMcpTool(
             if (targetBranch) retryQuery = retryQuery.eq("branch_id", targetBranch);
             if (queryStr) retryQuery = retryQuery.ilike("name", `%${queryStr}%`);
             const { data: retryData } = await retryQuery.limit(20);
-            const retryItems = retryData || [];
-            console.log(`[MCP-LOCAL-MENU] Retry found ${retryItems.length} items.`);
-            return { items: retryItems };
+            items = retryData || [];
+            console.log(`[MCP-LOCAL-MENU] Retry found ${items.length} items.`);
+        }
+
+        // ── FINAL FALLBACK: Suggested Items if still 0 ──
+        if (items.length === 0) {
+            console.log(`[MCP-LOCAL-MENU] Absolute 0 results. Fetching top 5 suggestions...`);
+            const { data: suggestions } = await supabase
+                .from("view_menu_details")
+                .select("id, name, price, category, image_url, is_available, description, dietary_tags, spice_level, portion_size")
+                .eq("organization_id", organizationId)
+                .eq("is_available", true)
+                .order("price", { ascending: false }) // Fallback to premium items as suggestions
+                .limit(5);
+            
+            return { 
+                items: [], 
+                suggested_items: suggestions || [],
+                message: "No exact matches found for your query. Here are some house favorites instead." 
+            };
         }
 
         return { items };
@@ -1217,10 +1241,15 @@ ${customerContext}
 
                     // Capture results for UI
                     if (toolName === 'get_menu') {
+                        const itemsToShow = (toolResult.items && toolResult.items.length > 0) 
+                            ? toolResult.items 
+                            : (toolResult.suggested_items || []);
+                            
                         attachments = {
                             type: 'menu',
-                            data: toolResult.items || [],
-                            debug: toolResult.debug
+                            data: itemsToShow,
+                            debug: toolResult.debug,
+                            is_fallback: !toolResult.items || toolResult.items.length === 0
                         };
                     } else if (toolName === 'list_tables') {
                         const matchedTable = matchTableCandidate(message, toolResult.tables || []);
