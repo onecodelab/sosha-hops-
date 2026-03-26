@@ -91,6 +91,12 @@ const MenuCard: React.FC<{ item: MenuItem; index: number; onAdd: (item: MenuItem
                 getCardTheme(index)
             )}
         >
+            {/* Elegant Minimalist Watermark Art */}
+            <div className="absolute -top-8 -right-8 text-foreground/[0.03] dark:text-foreground/[0.05] pointer-events-none transition-transform duration-700 group-hover:rotate-12 group-hover:scale-110">
+                <Sparkles className="w-36 h-36" strokeWidth={0.5} />
+            </div>
+            <div className="absolute -bottom-10 -left-10 text-foreground/[0.02] dark:text-foreground/[0.04] pointer-events-none rounded-full blur-2xl w-32 h-32 bg-current" />
+
             {/* Image Section - Floating */}
             <div className="flex-1 flex items-center justify-center relative z-10 -mt-2">
                 <motion.div
