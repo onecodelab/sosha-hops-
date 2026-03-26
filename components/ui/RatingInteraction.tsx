@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { cn } from "@/lib/utils"
+import { cn } from "../ui"
 
 interface RatingInteractionProps {
   onChange?: (rating: number) => void

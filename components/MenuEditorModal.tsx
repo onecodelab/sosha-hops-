@@ -44,7 +44,6 @@ export const MenuEditorModal: React.FC<MenuEditorModalProps> = ({
 
   // Semantic Tagging State
   const [dietaryTags, setDietaryTags] = useState<string>('');
-  const [ingredientsList, setIngredientsList] = useState<string>('');
   const [spiceLevel, setSpiceLevel] = useState<string>('None');
   const [portionSize, setPortionSize] = useState<string>('Standard');
 
@@ -69,7 +68,6 @@ export const MenuEditorModal: React.FC<MenuEditorModalProps> = ({
           setImageUrl(editingItem.image_url || '');
           setIsAvailable(editingItem.is_available);
           setDietaryTags((editingItem.dietary_tags || []).join(', '));
-          setIngredientsList((editingItem.ingredients_list || []).join(', '));
           setSpiceLevel(editingItem.spice_level || 'None');
           setPortionSize(editingItem.portion_size || 'Standard');
           fetchRecipeCost(editingItem.id);
@@ -82,7 +80,6 @@ export const MenuEditorModal: React.FC<MenuEditorModalProps> = ({
           setIsAvailable(true);
           setRecipeCost(0);
           setDietaryTags('');
-          setIngredientsList('');
           setSpiceLevel('None');
           setPortionSize('Standard');
           setIsAddingCategory(false);
@@ -275,7 +272,6 @@ export const MenuEditorModal: React.FC<MenuEditorModalProps> = ({
         image_url: imageUrl.trim() || null,
         status: isAvailable ? 'available' : 'unavailable',
         dietary_tags: dietaryTags.split(',').map(s => s.trim()).filter(Boolean),
-        ingredients_list: ingredientsList.split(',').map(s => s.trim()).filter(Boolean),
         spice_level: spiceLevel,
         portion_size: portionSize,
         ...(internalItem?.id ? { id: internalItem.id } : { branch_id: activeBranchId || null }),
@@ -596,15 +592,6 @@ export const MenuEditorModal: React.FC<MenuEditorModalProps> = ({
                       value={dietaryTags}
                       onChange={e => setDietaryTags(e.target.value)}
                       placeholder="Vegan, Gluten-Free, Halal"
-                      className="bg-black/40 border-primary/20 h-10 text-xs"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-[9px] font-black text-gray-500 uppercase tracking-widest ml-1">Key Ingredients (Comma sep)</label>
-                    <Input
-                      value={ingredientsList}
-                      onChange={e => setIngredientsList(e.target.value)}
-                      placeholder="Chicken, Onion, Berbere"
                       className="bg-black/40 border-primary/20 h-10 text-xs"
                     />
                   </div>

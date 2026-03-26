@@ -1,16 +1,14 @@
--- Migration: 20260326_add_menu_metadata.sql
--- Purpose: Add semantic metadata columns (ingredients, spice_level, portion_size, tags) to menu to allow AI to perform contextual filtering without hallucination.
+-- Migration: 20260326_automate_ingredients.sql
+-- Purpose: Remove the manual ingredients_list column from menu, and dynamically construct it in view_menu_details from real Recipe mappings.
 
 BEGIN;
 
--- 1. Add new columns to menu table
-ALTER TABLE menu
-ADD COLUMN IF NOT EXISTS dietary_tags TEXT[] DEFAULT '{}',
-ADD COLUMN IF NOT EXISTS ingredients_list TEXT[] DEFAULT '{}',
-ADD COLUMN IF NOT EXISTS spice_level TEXT DEFAULT 'None',
-ADD COLUMN IF NOT EXISTS portion_size TEXT DEFAULT 'Standard';
+-- 1. Remove the old manual column
+ALTER TABLE menu DROP COLUMN IF EXISTS ingredients_list CASCADE;
 
--- 2. Update view_menu_details to expose these items strictly
+-- 2. Wait, dropping the column might break view_menu_details temporarily if it references it. 
+-- We will just recreate the view directly replacing m.ingredients_list with a subquery.
+
 DROP VIEW IF EXISTS view_menu_details CASCADE;
 
 CREATE OR REPLACE VIEW view_menu_details
@@ -23,7 +21,13 @@ SELECT
   m.image_url,
   m.description,
   m.dietary_tags,
-  m.ingredients_list,
+  (
+    SELECT array_agg(i.name)
+    FROM recipes r
+    JOIN recipe_ingredients ri ON r.id = ri.recipe_id
+    JOIN ingredients i ON ri.ingredient_id = i.id
+    WHERE r.menu_item_id = m.id
+  ) as ingredients_list,
   m.spice_level,
   m.portion_size,
   m.organization_id,
