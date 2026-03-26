@@ -160,8 +160,8 @@ const MenuManagement: React.FC = () => {
               <p className="font-bold uppercase tracking-widest text-[10px]">Syncing Catalog Data...</p>
             </div>
           ) : filteredItems.map(item => (
-            <Card key={item.id} className="bg-card border-primary/20 hover:border-primary/50 transition-all group overflow-hidden flex flex-col h-full rounded-[2rem] shadow-lg hover:shadow-2xl hover:shadow-primary/5">
-              <div className="h-44 overflow-hidden relative">
+            <Card key={item.id} className="bg-card border-primary/20 hover:border-primary/50 transition-all group overflow-hidden flex flex-col h-full rounded-3xl md:rounded-[2rem] shadow-lg hover:shadow-2xl hover:shadow-primary/5">
+              <div className="h-32 md:h-44 overflow-hidden relative">
                 <img
                   src={item.image_url || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=300&q=80'}
                   className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
@@ -252,37 +252,39 @@ const MenuManagement: React.FC = () => {
                   </div>
                 )}
               </div>
-              <CardContent className="p-5 flex-1 flex flex-col justify-between">
+              <CardContent className="p-4 md:p-5 flex-1 flex flex-col justify-between">
                 <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-2xl font-black text-foreground font-mono tracking-tighter">ETB {item.price.toLocaleString()}</span>
+                  <div className="flex items-center justify-between mb-2 gap-2">
+                    <span className="text-xl md:text-2xl font-black text-foreground font-mono tracking-tighter shrink-0">ETB {item.price.toLocaleString()}</span>
 
                     {/* Real Margin & Cost Logic */}
-                    <div className="flex flex-col items-end">
-                      {item.cost_per_plate !== undefined && item.cost_per_plate > 0 ? (
-                        <>
-                          <Badge className={cn(
-                            "text-[8px] font-black uppercase border",
-                            ((item.price - item.cost_per_plate) / item.price) > 0.4
-                              ? "bg-green-500/10 text-green-500 border-green-500/20"
-                              : "bg-yellow-500/10 text-yellow-500 border-yellow-500/20"
-                          )}>
-                            {(((item.price - item.cost_per_plate) / item.price) * 100).toFixed(0)}% Margin
-                          </Badge>
-                          <span className="text-[8px] text-muted mt-1 uppercase font-bold tracking-tighter">
-                            Cost: ETB {item.cost_per_plate.toFixed(2)}
-                          </span>
-                        </>
-                      ) : (
-                        <span className="text-[8px] text-red-500/50 uppercase font-black tracking-tighter italic">Cost Unknown</span>
-                      )}
-                    </div>
+                    {isPrivileged && (
+                      <div className="flex flex-col items-end">
+                        {item.cost_per_plate !== undefined && item.cost_per_plate > 0 ? (
+                          <>
+                            <Badge className={cn(
+                              "text-[8px] font-black uppercase border",
+                              ((item.price - item.cost_per_plate) / item.price) > 0.4
+                                ? "bg-green-500/10 text-green-500 border-green-500/20"
+                                : "bg-yellow-500/10 text-yellow-500 border-yellow-500/20"
+                            )}>
+                              {(((item.price - item.cost_per_plate) / item.price) * 100).toFixed(0)}% Margin
+                            </Badge>
+                            <span className="text-[8px] text-muted mt-1 uppercase font-bold tracking-tighter">
+                              Cost: ETB {item.cost_per_plate.toFixed(2)}
+                            </span>
+                          </>
+                        ) : (
+                          <span className="text-[8px] text-red-500/50 uppercase font-black tracking-tighter italic">Cost Unknown</span>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
                 {isPrivileged && (
                   <Button
                     variant="secondary"
-                    className="w-full mt-6 bg-muted/10 border-primary/20 hover:bg-muted/20 hover:text-foreground rounded-xl h-12 font-bold text-xs uppercase tracking-widest group"
+                    className="w-full mt-4 md:mt-6 bg-muted/10 border-primary/20 hover:bg-muted/20 hover:text-foreground rounded-xl h-10 md:h-12 font-bold text-[10px] md:text-xs uppercase tracking-widest group"
                     onClick={() => setSelectedDish(item)}
                   >
                     <ChefHat className="w-4 h-4 mr-2 group-hover:rotate-12 transition-transform" /> Recipe Architect

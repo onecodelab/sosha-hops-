@@ -364,64 +364,8 @@ const TestChatbotLink: React.FC<{ branchId: string }> = ({ branchId }) => {
                       </CardContent>
                    </Card>
  
-                   <Card className="bg-card backdrop-blur-xl border border-border rounded-[2.5rem] overflow-hidden relative shadow-2xl">
-                     <div className="absolute top-4 right-4 animate-pulse">
-                        <div className="px-2 py-1 rounded-full bg-primary/20 border border-primary/30 text-[8px] font-black text-primary uppercase tracking-widest">Live</div>
-                     </div>
-                      <div className="p-8 border-b border-border bg-muted/5">
-                         <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 rounded-2xl bg-purple-500/10 flex items-center justify-center border border-purple-500/20 shadow-inner">
-                               <Zap className="w-6 h-6 text-purple-400" />
-                            </div>
-                            <div>
-                               <CardTitle className="text-foreground text-xl tracking-tight">Subscription Plan</CardTitle>
-                               <p className="text-[10px] font-black text-muted uppercase tracking-widest mt-0.5 opacity-60">Manage your capabilities</p>
-                            </div>
-                         </div>
-                      </div>
-                      <CardContent className="p-8 space-y-8">
-                         <div className="flex items-center justify-between p-8 bg-gradient-to-br from-purple-500/10 to-primary/5 border border-purple-500/20 rounded-[2rem] shadow-inner relative overflow-hidden">
-                            <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 blur-3xl rounded-full" />
-                            <div className="relative z-10">
-                               <p className="text-[10px] font-black text-purple-400 uppercase tracking-widest mb-2 opacity-60">Current Plan</p>
-                               <h4 className="text-4xl font-black text-foreground uppercase tracking-tighter italic">
-                                  {orgLoading ? '...' : (org?.plan || 'Free Tier')}
-                               </h4>
-                            </div>
-                            <Sparkles className="w-12 h-12 text-primary opacity-30 relative z-10" />
-                         </div>
-
-                         <div className="space-y-4">
-                            <div className="flex items-center gap-3 text-[10px] font-black text-muted uppercase tracking-[0.2em] opacity-60">
-                               <CheckCircle2 className="w-4 h-4 text-emerald-500" /> Multi-branch operations enabled
-                            </div>
-                            <div className="flex items-center gap-3 text-[10px] font-black text-muted uppercase tracking-[0.2em] opacity-60">
-                               <CheckCircle2 className="w-4 h-4 text-emerald-500" /> Real-time verification queue active
-                            </div>
-                         </div>
-
-                         <Button
-                            variant="outline"
-                            onClick={() => showToast("Stripe Portal integration coming soon!", "warning")}
-                            className="w-full h-14 border-border hover:bg-muted/5 font-black uppercase tracking-widest text-[11px] rounded-2xl flex items-center gap-3 shadow-sm"
-                         >
-                            <CreditCard className="w-5 h-5 text-muted opacity-40" /> Manage Billing & Invoices
-                         </Button>
-                     </CardContent>
-                  </Card>
-               </div>
-            )}
-
-            {/* Info Card */}
-             <Card className="bg-card backdrop-blur-xl border border-dashed border-border rounded-[2.5rem] overflow-hidden opacity-80">
-                <div className="p-16 flex flex-col justify-center items-center text-center">
-                   <Building2 className="w-16 h-16 text-primary opacity-20 mb-8" />
-                   <h3 className="text-foreground font-black uppercase tracking-widest italic text-xl">Centralized Logic / Isolated Execution</h3>
-                   <p className="text-xs text-muted max-w-lg mt-4 leading-relaxed font-bold uppercase tracking-widest opacity-40">
-                      Global definitions for <span className="text-primary">Ingredients</span> and <span className="text-primary">Recipes</span> are shared across all branches. Operational data such as stock levels, orders, and staff are strictly isolated within each branch environment.
-                   </p>
                 </div>
-             </Card>
+            )}
 
          </div>
       </>
@@ -685,19 +629,22 @@ const BotSettingsSection: React.FC<{ isEditable: boolean; organizationId?: strin
    const [isUploading, setIsUploading] = useState(false);
    const fileInputRef = useRef<HTMLInputElement>(null);
 
-   const DEFAULT_PROMPT = `You are a smart, friendly restaurant assistant. Your vibe is professional but Gen-Z friendly.
-Start the conversation with: "slay first, eat second — jk eat first, chat with me to orderrr 🫶🔥"
+   const DEFAULT_PROMPT = `You are Baro, a professional and efficient restaurant assistant. 🍽️
 
-## YOUR RULES
-1. ALWAYS use the 'get_menu' tool when a customer asks about food, menu, or what's available. NEVER guess menu items.
-2. Check the CONTEXT below for the 'Table Number'. If it is 'Unknown', you MUST ask the customer for their table number before placing an order. If it is already known, do not ask; proceed with the known table number.
-3. When a customer shares their name, phone, or mentions any food preference or allergy, IMMEDIATELY call 'update_customer_profile' to remember it.
-4. If they want to add more items to an existing order, use 'update_order' instead of 'place_order'.
-5. When asked for the bill or how to pay, call 'get_branch_info' to get payment methods, then 'get_order_status' to get the total.
-6. When they share a payment reference number, call 'verify_payment'.
-7. Be warm, helpful, and concise. Use emojis like 🫶, 🔥, and ✨.
-8. Format menu items clearly with names and prices.
-9. Always confirm the order before placing it.`;
+## YOUR CORE RULES
+1. **VISUAL MENU ONLY**: ALWAYS use the 'get_menu' tool to show items. NEVER list items, descriptions, or prices in plain text.
+2. **SMART TABLE RECOGNITION**: Check the "Table (Claimed)" in the current context. If it says "Unknown", you must ask the customer for their table number. If it is already known, simply confirm and proceed.
+3. **ACCURATE ORDERING**: 
+   - Use 'place_order' for new orders.
+   - Use 'update_order' to add items to an existing order (Check "Active Order ID" in context).
+   - ALWAYS confirm the full list of items and special instructions (notes) before finalizing any order.
+4. **PAYMENT & ASSISTANCE**: Help customers with their bill using 'get_branch_info' and 'get_order_status'. Verify payments immediately using 'verify_payment'.
+5. **CUSTOMER CARE**: Use 'update_customer_profile' whenever you learn a customer's name, contact info, or food preferences/allergies.
+
+## TONE & VOICE
+- Professional, helpful, and welcoming.
+- Responses should be concise (max 3 sentences).
+- Use clear formatting and occasional friendly emojis. ✨`;
 
    // Load existing prompt from organizations table
    const { data: orgData, isLoading } = useQuery({
@@ -879,20 +826,7 @@ Start the conversation with: "slay first, eat second — jk eat first, chat with
              </div>
           </div>
 
-         {/* Available Tools Reference */}
-          <div className="p-6 bg-muted/5 border border-border rounded-[2rem] shadow-inner">
-             <p className="text-[10px] font-black text-muted uppercase tracking-[0.2em] mb-4 ml-1 opacity-60">Available Tools (Reference)</p>
-             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                {['get_menu', 'place_order', 'update_order', 'get_order_status', 'verify_payment', 'get_branch_info', 'update_customer_profile'].map(tool => (
-                   <div key={tool} className="px-4 py-3 bg-card border border-border rounded-xl shadow-sm hover:border-primary/20 transition-all group">
-                      <code className="text-[10px] text-emerald-500 font-mono font-black group-hover:text-emerald-400">{tool}</code>
-                   </div>
-                ))}
-             </div>
-            <p className="text-[9px] text-gray-600 mt-3 leading-relaxed">
-               These tools are automatically available to the chatbot. Reference them in your prompt to control when and how the bot uses them.
-            </p>
-         </div>
+
 
          {isEditable && (
             <Button

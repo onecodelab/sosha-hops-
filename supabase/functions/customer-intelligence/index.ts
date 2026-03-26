@@ -73,7 +73,8 @@ const TOOL_DEFINITIONS = [
                         items: {
                             type: "object",
                             properties: {
-                                menu_item_id: { type: "string" },
+                                menu_item_id: { type: "string", description: "The UUID of the menu item" },
+                                name: { type: "string", description: "The exact name of the item (use if UUID unknown)" },
                                 quantity: { type: "number" },
                                 notes: { type: "string" },
                             },
@@ -193,24 +194,22 @@ const TOOL_DEFINITIONS = [
 ];
 
 // ─── DEFAULT SYSTEM PROMPT (CADE BESTIE ENERGY) ───
-const DEFAULT_SYSTEM_PROMPT = `You are CADE, a smart, high-energy, and friendly restaurant assistant for the restaurant in the CONTEXT. You help customers browse the menu, place orders, track their food, and handle payments with "bestie" energy.
+const DEFAULT_SYSTEM_PROMPT = `You are Baro, a professional and efficient restaurant assistant. 🍽️
 
-# STRICT OPERATIONAL RULES:
-1. MENU FIRST: ALWAYS use the 'get_menu' tool when a customer asks about food, the menu, or what's available. NEVER guess or hallucinate menu items.
-2. TABLE NUMBER: Check the TABLE (CLAIMED) in the CONTEXT. If it is "Unknown", you MUST ask for the table number before placing any order. If it's already known, DO NOT ASK—just confirm it and move on. No table, no food. fr.
-3. CUSTOMER MEMORY: When a customer shares their name, phone, or any food preference/allergy, IMMEDIATELY call 'update_customer_profile'.
-4. ORDER UPDATES: Use 'update_order' to add items to an existing order.
-5. PAYMENT & BILLING: For bills, call 'get_branch_info' then 'get_order_status' for the total.
-6. VERIFICATION: For payment references, call 'verify_payment' immediately.
-7. VOICE & TONE: Be warm, helpful, and concise. Use Gen Z slang (slaps, bet, fr, main character) naturally but keep it brief. Emojis strictly allowed. ✨
-8. NO TEXT MENUS: NEVER list food items or prices in plain text. ALWAYS use 'get_menu' to show the visual carousel.
-9. CONFIRMATION: Always confirm the full order details before calling 'place_order'.
+## YOUR CORE RULES
+1. **VISUAL MENU ONLY**: ALWAYS use the 'get_menu' tool to show items. NEVER list items, descriptions, or prices in plain text.
+2. **SMART TABLE RECOGNITION**: Check the "Table (Claimed)" in the current context. If it says "Unknown", you must ask the customer for their table number. If it is already known, simply confirm and proceed.
+3. **ACCURATE ORDERING**: 
+   - Use 'place_order' for new orders.
+   - Use 'update_order' to add items to an existing order (Check "Active Order ID" in context).
+   - ALWAYS confirm the full list of items and special instructions (notes) before finalizing any order.
+4. **PAYMENT & ASSISTANCE**: Help customers with their bill using 'get_branch_info' and 'get_order_status'. Verify payments immediately using 'verify_payment'.
+5. **CUSTOMER CARE**: Use 'update_customer_profile' whenever you learn a customer's name, contact info, or food preferences/allergies.
 
-# VOICE:
-- Use Gen Z slang (slaps, bet, fr, main character, no cap) but keep it brief.
-- Responses MUST be under 3 sentences. No long intros. Just hype + data.
-- Example: "Ayy! Table 5? Slaps. fr. Here's the fire menu for you: [Calling get_menu]. What we locking in? bet."
-`;
+## TONE & VOICE
+- Professional, helpful, and welcoming.
+- Responses should be concise (max 3 sentences).
+- Use clear formatting and occasional friendly emojis. ✨`;
 
 const RICH_UI_INSTRUCTIONS = `
 ## RICHER UI CAPABILITIES
@@ -228,7 +227,6 @@ Supported elements:
 3. **SHORT RESPONSES**: Your text response should only be a short greeting.
 4. **COMPACT SUMMARY**: When an item is added, ONLY send a short confirmation: "Added Item Name! ✅ Your total is now ETB Total."
 5. **CONTEXTUAL QUICK REPLIES**: Always provide interactive buttons based on the user's current flow:
-   - *Discovery Phase*: [{"label": "🍔 Food Menu", "prompt": "Show me the menu"}, {"label": "🤩 What's Popular?", "prompt": "Show me popular items"}]
    - *Selection Phase*: [{"label": "🚀 Confirm Order", "prompt": "Confirm my order"}, {"label": "🛒 View Cart", "prompt": "Show my cart"}]
    - *Post-Placement*: [{"label": "📡 Track My Order", "prompt": "Where is my food?"}, {"label": "🧾 Request Bill", "prompt": "Show my bill"}]
 
@@ -423,7 +421,51 @@ serve(async (req) => {
         const { message, session_id, table_number, table_id, organization_id, organization_name, branch_id: clientBranchId, branch_name, is_verified } = body;
 
         // ── DIRECT ACTION: Skip AI entirely for cart-based orders ──
-        if (body.action === 'place_order') {
+            // --- DIRECT ACTION: Fetch Categories (Waiter-Consistent) ---
+            if (body.action === 'get_categories') {
+                const finalOrgId = organization_id || organizationId;
+                const finalBranchId = clientBranchId || branchId;
+
+                const { data: categories, error } = await supabase
+                    .from('view_menu_details')
+                    .select('category')
+                    .eq('organization_id', finalOrgId)
+                    .eq('branch_id', finalBranchId)
+                    .eq('is_available', true)
+                    .not('category', 'is', null);
+
+                if (error) throw error;
+                
+                const uniqueCategories = Array.from(new Set(categories.map(c => c.category)))
+                    .filter(c => c && c.toLowerCase() !== 'test' && c.toLowerCase() !== 'none')
+                    .sort();
+
+                return new Response(JSON.stringify({
+                    success: true,
+                    categories: uniqueCategories
+                }), {
+                    headers: { ...corsHeaders, "Content-Type": "application/json" },
+                    status: 200,
+                });
+            }
+
+            // --- DIRECT ACTION: Fetch Category Menu ---
+            if (body.action === 'get_menu' && body.category) {
+                const finalOrgId = organization_id || organizationId;
+                const finalBranchId = clientBranchId || branchId;
+                
+                const menuResult = await executeMcpTool(supabase, "get_menu", { category: body.category }, finalOrgId, finalBranchId, null);
+                return new Response(JSON.stringify({
+                    success: true,
+                    items: menuResult.items || [],
+                    category: body.category
+                }), {
+                    headers: { ...corsHeaders, "Content-Type": "application/json" },
+                    status: 200,
+                });
+            }
+
+            if (body.action === 'place_order') {
             console.log('[DirectAction] place_order triggered');
             const directItems = body.items || [];
             const directTableId = body.table_id || table_id || '';
@@ -781,11 +823,36 @@ serve(async (req) => {
             console.warn("[CustomerAgent] Customer profiling failed:", e);
         }
 
+        // ── STEP 1.7: Fetch Active Order Context ──
+        let activeOrderId = "";
+        if (hasUsableTableContext(resolvedTableNumber) && branchId) {
+            try {
+                const { data: activeOrder } = await supabase
+                    .from("orders")
+                    .select("id")
+                    .eq("organization_id", organizationId)
+                    .eq("branch_id", branchId)
+                    .eq("table_number", resolvedTableNumber)
+                    .in("status", ["pending", "accepted", "preparing", "ready", "served"])
+                    .order("created_at", { ascending: false })
+                    .limit(1)
+                    .maybeSingle();
+                
+                if (activeOrder) {
+                    activeOrderId = activeOrder.id;
+                    console.log(`[CustomerAgent] Found active order ${activeOrderId} for table ${resolvedTableNumber}`);
+                }
+            } catch (e) {
+                console.warn("[CustomerAgent] Active order lookup failed:", e);
+            }
+        }
+
         const systemPrompt = `You are CADE, the digital assistant for ${orgName}.
 
 ## CURRENT SESSION CONTEXT
 - Restaurant: ${orgName}
 - Table (Claimed): ${activeTable}
+- Active Order ID: ${activeOrderId || 'None (No active order found)'}
 
 ${orgPrompt || DEFAULT_SYSTEM_PROMPT}
 
@@ -1248,25 +1315,13 @@ ${customerContext}
         }
 
         // Auto-Injection Fallbacks
+        // Auto-Injection Fallbacks
         if (!richMetadata.buttons && !richMetadata.tracking) {
             const lowerResp = finalResponse.toLowerCase();
             const lowerMsg = message.toLowerCase();
 
-            // If it's a greeting or table request, provide minimal buttons
-            if (lowerResp.includes("welcome") || lowerResp.includes("table number")) {
-                richMetadata.buttons = [
-                    { label: "✨ Best Offers", prompt: "Show me the best offers" },
-                    { label: "🍹 Drinks", prompt: "Show me the drinks menu" },
-                    { label: "🍕 Food Menu", prompt: "Show me the food menu" }
-                ];
-            } else if (attachments?.type === 'menu' || lowerResp.includes("menu") || lowerResp.includes("set")) {
-                richMetadata.buttons = [
-                    { label: "🤩 What's Popular?", prompt: "Show me popular items" },
-                    { label: "🍹 Cold Drinks", prompt: "Show me drinks" },
-                    { label: "☕ Coffee", prompt: "I'd like coffee" },
-                    { label: "🛒 View Cart", prompt: "Show my cart" }
-                ];
-            } else if (lowerResp.includes("order") || lowerResp.includes("status")) {
+            // Only provide contextual buttons, NOT generic menu categories
+            if (lowerResp.includes("order") || lowerResp.includes("status")) {
                 richMetadata.buttons = [
                     { label: "📍 Track Order", prompt: "Check my order status" },
                     { label: "➕ Add More", prompt: "I want to add more food" }
@@ -1275,12 +1330,6 @@ ${customerContext}
                 richMetadata.buttons = [
                     { label: "➗ Split Bill", prompt: "How can I split the bill?" },
                     { label: "💳 Pay Total", prompt: "I want to pay the bill" }
-                ];
-            } else {
-                richMetadata.buttons = [
-                    { label: "✨ Best Offers", prompt: "Show me the best offers" },
-                    { label: "🍕 Food Menu", prompt: "Show me the menu" },
-                    { label: "🍹 Drinks", prompt: "Show me the drinks menu" }
                 ];
             }
         }

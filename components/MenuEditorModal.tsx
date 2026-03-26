@@ -383,7 +383,7 @@ export const MenuEditorModal: React.FC<MenuEditorModalProps> = ({
                   value={name}
                   onChange={e => setName(e.target.value)}
                   placeholder="e.g. Doro Wat"
-                  className="bg-black/40 border-primary/20 h-12"
+                  className="bg-black/40 border-primary/20 h-10 md:h-12 text-sm md:text-base"
                 />
               </div>
               <div className="grid grid-cols-2 gap-4">
@@ -438,7 +438,7 @@ export const MenuEditorModal: React.FC<MenuEditorModalProps> = ({
                         value={newCategoryName}
                         onChange={e => setNewCategoryName(e.target.value)}
                         placeholder={isEditingCategory ? "Rename category..." : "Type category name..."}
-                        className="bg-black/40 border-primary/30 h-11 pr-10"
+                        className="bg-black/40 border-primary/30 h-10 md:h-11 pr-10 text-sm"
                         autoFocus
                       />
                       <BookOpen className="absolute right-3 top-3.5 w-4 h-4 text-primary opacity-40" />
@@ -448,7 +448,7 @@ export const MenuEditorModal: React.FC<MenuEditorModalProps> = ({
                       <select
                         value={categoryId}
                         onChange={e => setCategoryId(e.target.value)}
-                        className="w-full h-11 bg-black/40 border border-primary/15 rounded-lg px-3 text-sm text-white outline-none focus:border-primary/50 appearance-none transition-all"
+                        className="w-full h-10 md:h-11 bg-black/40 border border-primary/15 rounded-lg px-3 text-xs md:text-sm text-white outline-none focus:border-primary/50 appearance-none transition-all"
                       >
                         <option value="" disabled>Select category...</option>
                         {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -489,7 +489,7 @@ export const MenuEditorModal: React.FC<MenuEditorModalProps> = ({
                         type="number"
                         value={price}
                         onChange={e => setPrice(parseFloat(e.target.value) || 0)}
-                        className="font-mono text-primary font-bold bg-black/40 border-primary/20 h-11 transition-all group-focus-within:border-primary/40"
+                        className="font-mono text-primary font-bold bg-black/40 border-primary/20 h-10 md:h-11 text-sm md:text-base transition-all group-focus-within:border-primary/40"
                       />
                       {recipeCost > 0 && (
                         <div className="absolute right-3 top-2.5 text-[8px] font-black text-gray-600 uppercase">
@@ -511,7 +511,7 @@ export const MenuEditorModal: React.FC<MenuEditorModalProps> = ({
                 </div>
 
                 <div className={cn(
-                  "relative group overflow-hidden rounded-[1.5rem] border-2 border-dashed transition-all duration-500 bg-black/40 h-40 flex flex-col items-center justify-center",
+                  "relative group overflow-hidden rounded-[1.5rem] border-2 border-dashed transition-all duration-500 bg-black/40 h-32 md:h-40 flex flex-col items-center justify-center",
                    imageUrl ? "border-primary/20 bg-primary/5" : "border-primary/20 hover:border-primary/30"
                 )}>
                   {imageUrl ? (

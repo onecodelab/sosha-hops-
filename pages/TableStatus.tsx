@@ -322,20 +322,25 @@ const TableStatus: React.FC = () => {
          <div className="space-y-6 animate-in fade-in duration-500 pb-20">
 
             <div className="flex flex-col gap-4 bg-card/60 backdrop-blur-xl p-4 md:p-6 rounded-[2rem] border border-primary/20 shadow-2xl">
-               {/* Zone Filter - Clean horizontal scroll */}
-               <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
-                  {['all', 'indoor', 'outdoor', 'vip', 'bar'].map(z => (
-                     <button
-                        key={z}
-                        onClick={() => setZoneFilter(z as any)}
-                        className={cn(
-                           "px-5 py-2 text-[9px] font-black uppercase tracking-widest rounded-xl transition-all whitespace-nowrap border shrink-0",
-                           zoneFilter === z ? "bg-primary text-black border-primary shadow-lg" : "bg-muted/5 text-muted border-white/5 hover:text-foreground hover:bg-muted/10"
-                        )}
-                     >
-                        {t(`tableStatus.filters.${z}`)}
-                     </button>
-                  ))}
+               {/* Zone Filter and Refresh Button Row */}
+               <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1 flex-1">
+                     {['all', 'indoor', 'outdoor', 'vip', 'bar'].map(z => (
+                        <button
+                           key={z}
+                           onClick={() => setZoneFilter(z as any)}
+                           className={cn(
+                              "px-5 py-2 text-[9px] font-black uppercase tracking-widest rounded-xl transition-all whitespace-nowrap border shrink-0",
+                              zoneFilter === z ? "bg-primary text-black border-primary shadow-lg" : "bg-muted/5 text-muted border-white/5 hover:text-foreground hover:bg-muted/10"
+                           )}
+                        >
+                           {t(`tableStatus.filters.${z}`)}
+                        </button>
+                     ))}
+                  </div>
+                  <Button variant="ghost" onClick={() => { refetch(); }} size="sm" className="h-9 w-9 md:h-10 md:w-10 p-0 rounded-xl bg-muted/5 border border-primary/20 text-muted hover:text-foreground transition-all shrink-0">
+                     <RefreshCw className={cn("w-3.5 h-3.5", isLoading && "animate-spin")} />
+                  </Button>
                </div>
 
                <div className="flex flex-col md:flex-row justify-between items-center gap-4">
@@ -404,20 +409,14 @@ const TableStatus: React.FC = () => {
                            </Button>
                         </div>
                      </RoleGuard>
-
-                     <Button variant="ghost" onClick={() => { refetch(); }} size="sm" className="h-10 w-10 p-0 rounded-xl bg-muted/5 border border-primary/20 text-muted hover:text-foreground transition-all shrink-0">
-                        <RefreshCw className={cn("w-3.5 h-3.5", isLoading && "animate-spin")} />
-                     </Button>
                   </div>
                </div>
             </div>
 
             {!isAnalyticsMode && (
-               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+               <div className="flex flex-wrap items-center gap-2 md:gap-4 shrink-0">
                   <StatPill label={t('tableStatus.stats.total')} value={stats.total} icon={MapPin} />
-                  <StatPill label={t('tableStatus.stats.free')} value={stats.available} icon={CheckCircle2} color="green" />
                   <StatPill label={t('tableStatus.stats.inUse')} value={stats.occupied} icon={Users} color="red" />
-                  <StatPill label={t('tableStatus.stats.dirty')} value={stats.dirty} icon={Sparkles} color="yellow" />
                   <StatPill label={t('tableStatus.stats.load')} value={`${stats.occupancy}%`} icon={TrendingUp} color="blue" />
                </div>
             )}
@@ -814,12 +813,12 @@ const StatPill = ({ label, value, icon: Icon, color }: any) => {
       blue: 'text-blue-500 border-blue-500/20 bg-blue-500/10'
    };
    return (
-      <div className={cn("px-6 py-5 rounded-[2rem] border flex flex-col gap-2 transition-all shadow-lg hover:shadow-xl", colors[color || 'default'])}>
-         <div className="flex items-center justify-between">
-            <span className="text-[10px] font-black uppercase tracking-[0.2em] opacity-40">{label}</span>
-            <Icon className="w-4 h-4 opacity-40" strokeWidth={3} />
+      <div className={cn("px-3 md:px-4 py-2 md:py-3 rounded-xl md:rounded-2xl border flex items-center gap-2 md:gap-3 transition-all shadow-md group flex-1 md:flex-none justify-center md:justify-start", colors[color || 'default'])}>
+         <Icon className="w-4 h-4 md:w-5 md:h-5 opacity-40 group-hover:opacity-100 transition-opacity shrink-0" strokeWidth={3} />
+         <div className="flex flex-col items-start justify-center gap-0.5 min-w-[3rem]">
+            <span className="text-[7px] md:text-[8px] font-black uppercase tracking-[0.2em] opacity-50 leading-none truncate w-full">{label}</span>
+            <span className="text-sm md:text-base font-black tracking-tighter text-foreground leading-none">{value}</span>
          </div>
-         <span className="text-2xl font-black tracking-tighter text-foreground">{value}</span>
       </div>
    );
 };

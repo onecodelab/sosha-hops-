@@ -333,15 +333,15 @@ const KitchenLogWaste: React.FC = () => {
                   </CardHeader>
                   <CardContent className="p-0 flex-1 overflow-auto custom-scrollbar">
                      <table className="w-full text-sm text-left">
-                        <thead className="text-xs text-gray-500 uppercase bg-black/20 border-b border-gray-800 sticky top-0 backdrop-blur-md z-10">
+                        <thead className="text-[10px] text-muted uppercase bg-muted/10 border-b border-border font-black tracking-widest sticky top-0 backdrop-blur-md z-10">
                            <tr>
-                              <th className="px-6 py-4">{t('waste.date')}</th>
-                              <th className="px-6 py-4">{t('stock.name')}</th>
-                              <th className="px-6 py-4">{t('waste.quantity')}</th>
-                              <th className="px-6 py-4">Inventory Impact</th>
-                              <th className="px-6 py-4">{t('waste.category')}</th>
-                              <th className="px-6 py-4">{t('waste.reason')}</th>
-                              <th className="px-6 py-4 text-right">{t('waste.cost')}</th>
+                              <th className="px-4 md:px-6 py-4 whitespace-nowrap">{t('waste.date')}</th>
+                              <th className="px-4 md:px-6 py-4 whitespace-nowrap">{t('stock.name')}</th>
+                              <th className="px-4 md:px-6 py-4 whitespace-nowrap">{t('waste.quantity')}</th>
+                              <th className="px-4 md:px-6 py-4 whitespace-nowrap">Inventory Impact</th>
+                              <th className="px-4 md:px-6 py-4 whitespace-nowrap">{t('waste.category')}</th>
+                              <th className="px-4 md:px-6 py-4 whitespace-nowrap">{t('waste.reason')}</th>
+                              <th className="px-4 md:px-6 py-4 text-right whitespace-nowrap">{t('waste.cost')}</th>
                            </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-800">
@@ -352,17 +352,17 @@ const KitchenLogWaste: React.FC = () => {
                               <tr><td colSpan={7} className="p-8 text-center text-gray-500">{t('stock.empty')}</td></tr>
                            )}
                            {recentLogs?.map((log) => (
-                              <tr key={log.id} className="hover:bg-white/5 transition-colors">
-                                 <td className="px-6 py-4 text-gray-400 font-mono text-xs">
-                                    {new Date(log.created_at).toLocaleDateString()} <span className="text-gray-600">{new Date(log.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                              <tr key={log.id} className="hover:bg-primary/5 transition-colors border-b border-border/40">
+                                 <td className="px-4 md:px-6 py-4 text-muted font-mono text-xs whitespace-nowrap">
+                                    {new Date(log.created_at).toLocaleDateString()} <span className="text-muted/60">{new Date(log.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                                  </td>
-                                 <td className="px-6 py-4 font-bold text-white">
+                                 <td className="px-4 md:px-6 py-4 font-black text-foreground whitespace-nowrap">
                                     {log.ingredient?.name || 'Unknown'}
                                  </td>
-                                 <td className="px-6 py-4 text-gray-300">
-                                    <span className="text-red-400 font-bold">-{log.quantity}</span> <span className="text-xs text-gray-500">{log.unit?.abbreviation || log.unit_type}</span>
+                                 <td className="px-4 md:px-6 py-4 text-[#D1D5DB] whitespace-nowrap">
+                                    <span className="text-red-400 font-bold">-{log.quantity}</span> <span className="text-xs text-muted">{log.unit?.abbreviation || log.unit_type}</span>
                                  </td>
-                                 <td className="px-6 py-4">
+                                 <td className="px-4 md:px-6 py-4 whitespace-nowrap">
                                     {(() => {
                                        if (log.inventory_impact) {
                                           return <span className="text-orange-400 font-mono">-{log.inventory_impact} <span className="text-[10px]">{log.ingredient?.units?.abbreviation}</span></span>;
@@ -380,15 +380,15 @@ const KitchenLogWaste: React.FC = () => {
                                        return <span className="text-orange-400/50 font-mono italic">Calculating...</span>;
                                     })()}
                                  </td>
-                                 <td className="px-6 py-4">
-                                    <span className="bg-red-500/10 text-red-400 border border-red-500/20 px-2 py-1 rounded text-xs capitalize">
+                                 <td className="px-4 md:px-6 py-4 whitespace-nowrap">
+                                    <span className="bg-red-500/10 text-red-400 border border-red-500/20 px-2 py-1 rounded text-[10px] font-black uppercase tracking-widest">
                                        {t(`waste.categories.${log.waste_reason}` as any)}
                                     </span>
                                  </td>
-                                 <td className="px-6 py-4 text-gray-400 text-xs max-w-[200px] truncate" title={log.notes || log.reason}>
+                                 <td className="px-4 md:px-6 py-4 text-muted text-xs max-w-[200px] truncate whitespace-nowrap" title={log.notes || log.reason}>
                                     {log.notes || log.reason}
                                  </td>
-                                 <td className="px-6 py-4 text-right font-mono text-gray-300">
+                                 <td className="px-4 md:px-6 py-4 text-right font-mono text-[#D1D5DB] whitespace-nowrap">
                                     ETB {(log.cost_snapshot || log.cost || 0).toLocaleString()}
                                  </td>
                               </tr>

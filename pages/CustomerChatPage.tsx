@@ -819,13 +819,6 @@ const DiscoverySection: React.FC<{ items: MenuItem[]; compact?: boolean; onSelec
 const CustomerChatPage: React.FC = () => {
     const { t } = useLanguage();
 
-    const QUICK_PROMPTS = [
-        { label: '✨ Best Offers', icon: <Sparkles className="w-3.5 h-3.5" />, prompt: 'Show me the best offers' },
-        { label: '🍹 Drinks', icon: <UtensilsCrossed className="w-3.5 h-3.5" />, prompt: 'Show me the drinks menu' },
-        { label: '☕ Coffee', icon: <ChefHat className="w-4 h-4" />, prompt: 'I would like to see the coffee options' },
-        { label: '🍕 Food Menu', icon: <ShoppingBag className="w-3.5 h-3.5" />, prompt: 'Show me the food menu' },
-    ];
-
     const { tableId } = useParams<{ tableId: string }>();
     const [searchParams] = useSearchParams();
     const [activeOrgId, setActiveOrgId] = useState('');
@@ -833,6 +826,8 @@ const CustomerChatPage: React.FC = () => {
     const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [inputValue, setInputValue] = useState('');
     const [isTyping, setIsTyping] = useState(false);
+    const [categories, setCategories] = useState<string[]>([]);
+    const [isFetchingCategories, setIsFetchingCategories] = useState(false);
     const [hasInteracted, setHasInteracted] = useState(false);
     const [branchName, setBranchName] = useState('');
     const [branchId, setBranchId] = useState('');
@@ -1023,13 +1018,6 @@ const CustomerChatPage: React.FC = () => {
         loadTableInfo();
     }, [tableId]);
 
-    // Initialize/Update dynamic prompts when language/defaults change
-    useEffect(() => {
-        if (dynamicPrompts.length === 0 || messages.length === 0) {
-            setDynamicPrompts(QUICK_PROMPTS.map(p => ({ label: p.label, prompt: p.prompt })));
-        }
-    }, [t, messages.length]);
-
     // Load organization name and logo
     useEffect(() => {
         const loadOrg = async () => {
@@ -1051,34 +1039,65 @@ const CustomerChatPage: React.FC = () => {
     }, [activeOrgId]);
 
     // Send message
-    const handleSend = useCallback(async (overrideMessage?: string, isSilent: boolean = false) => {
-        const msg = overrideMessage || inputValue.trim();
-        if (!msg) return;
+    const handleSend = useCallback(async (textOverride?: string, isCategoryClick = false) => {
+        const textToSend = textOverride || inputValue.trim();
+        if (!textToSend.trim() || isTyping) return;
 
-        const isInit = msg === 'init_chat';
-        if (!isInit && !isSilent) {
-            setHasInteracted(true);
-            const userMsg: ChatMessage = {
+        // 1. Add User Message (Skip if silent category browse)
+        if (textToSend !== 'init_chat' && !isCategoryClick) {
+            const userMessage: ChatMessage = {
                 id: crypto.randomUUID(),
                 role: 'user',
-                content: msg,
+                content: textToSend,
                 timestamp: new Date(),
             };
-            setMessages(prev => [...prev, userMsg]);
+            setMessages((prev) => [...prev, userMessage]);
             setInputValue('');
             if (textareaRef.current) textareaRef.current.style.height = 'auto';
-        } else if (isSilent) {
-            setIsTyping(true);
         }
         
         setIsTyping(true);
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout
+        setHasInteracted(true); // Mark interaction
 
         try {
+            // 2. Direct Action Check for Categories
+            if (isCategoryClick) {
+                const { data, error } = await supabase.functions.invoke('customer-intelligence', {
+                    body: {
+                        action: 'get_menu',
+                        category: textToSend,
+                        organization_id: activeOrgId,
+                        branch_id: branchId,
+                        session_id: sessionId,
+                    },
+                });
+
+                if (error) throw error;
+
+                if (data?.success) {
+                    const assistantMessage: ChatMessage = {
+                        id: crypto.randomUUID(),
+                        role: 'assistant',
+                        content: `Here is our ${textToSend} selection:`,
+                        timestamp: new Date(),
+                        attachments: {
+                            type: 'menu',
+                            data: data.items || []
+                        }
+                    };
+                    setMessages((prev) => [...prev, assistantMessage]);
+                    setIsTyping(false);
+                    return;
+                }
+            }
+
+            // 3. Normal AI Loop
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout
+
             const { data, error } = await supabase.functions.invoke('customer-intelligence', {
                 body: {
-                    message: msg,
+                    message: textToSend,
                     session_id: sessionId,
                     table_id: tableId,
                     customer_id: localStorage.getItem(`baro_customer_${activeOrgId}`)
@@ -1120,13 +1139,18 @@ const CustomerChatPage: React.FC = () => {
             setMessages(prev => [...prev, assistantMsg]);
             
             // Update dynamic prompts if metadata contains suggested buttons
+            // Filter out legacy generic menu buttons to prevent redundancy with category chips
+            const filterGeneric = (buttons: any[]) => buttons.filter(btn => 
+                !['best offers', 'drinks', 'food menu', 'show menu', 'popular items'].includes(btn.label?.toLowerCase().replace(/[✨🍹🍕🤩]/g, '').trim())
+            );
+
             if (data?.metadata?.buttons && Array.isArray(data.metadata.buttons)) {
-                setDynamicPrompts(data.metadata.buttons);
+                setDynamicPrompts(filterGeneric(data.metadata.buttons));
             } else if (data?.metadata?.suggested_prompts && Array.isArray(data.metadata.suggested_prompts)) {
-                setDynamicPrompts(data.metadata.suggested_prompts);
+                setDynamicPrompts(filterGeneric(data.metadata.suggested_prompts));
             }
             
-            if (isInit) {
+            if (textToSend === 'init_chat') {
                 setHasInteracted(true);
             }
         } catch (err: any) {
@@ -1134,7 +1158,7 @@ const CustomerChatPage: React.FC = () => {
             if (err.name === 'AbortError') {
                 showToast("Request timed out. Please try again.", "error");
             }
-            if (!isInit) {
+            if (textToSend !== 'init_chat') {
                 const errorMsg: ChatMessage = {
                     id: crypto.randomUUID(),
                     role: 'assistant',
@@ -1146,7 +1170,36 @@ const CustomerChatPage: React.FC = () => {
         } finally {
             setIsTyping(false);
         }
-    }, [inputValue, sessionId, tableId, topItems.length]);
+    }, [inputValue, isTyping, sessionId, tableId, activeOrgId, branchId, topItems.length]);
+
+    // --- Dynamic Category Fetching ---
+    const fetchCategories = useCallback(async () => {
+        if (!activeOrgId || !branchId || isFetchingCategories) return;
+        setIsFetchingCategories(true);
+        try {
+            const { data, error } = await supabase.functions.invoke('customer-intelligence', {
+                body: {
+                    action: 'get_categories',
+                    organization_id: activeOrgId,
+                    branch_id: branchId,
+                },
+            });
+            if (error) throw error;
+            if (data?.success && data.categories) {
+                setCategories(data.categories);
+            }
+        } catch (err) {
+            console.warn("[Chat] Category fetch failed:", err);
+        } finally {
+            setIsFetchingCategories(false);
+        }
+    }, [activeOrgId, branchId, isFetchingCategories]);
+
+    useEffect(() => {
+        if (activeOrgId && branchId) {
+            fetchCategories();
+        }
+    }, [activeOrgId, branchId, fetchCategories]);
 
     // ── Cart Functions ──
     const addToCart = useCallback((item: MenuItem) => {
@@ -1252,7 +1305,7 @@ const CustomerChatPage: React.FC = () => {
             if (!isHistoryLoading && historyLoadedRef.current && sessionId && messages.length === 0 && !isTyping && !hasInitialGreetingSent.current && tableId && isIntroCompleted) {
                 hasInitialGreetingSent.current = true;
                 try {
-                    await handleSend('init_chat', true);
+                    await handleSend('init_chat');
                 } catch (err) {
                     console.error('Initial greeting failed:', err);
                     hasInitialGreetingSent.current = false;
@@ -1526,89 +1579,80 @@ const CustomerChatPage: React.FC = () => {
 
             <div className="flex-none px-4 pb-6 pt-2 safe-area-bottom bg-background z-50">
                 <div className="max-w-2xl mx-auto">
-                    {/* Unified Suggestion Chips Area */}
-                    {(dynamicPrompts.length > 0 || (messages.length > 0 && messages[messages.length - 1].metadata?.buttons)) && (
-                        <div className={cn(
-                            "flex gap-2 overflow-x-auto no-scrollbar mb-4 transition-opacity duration-300",
-                            (!hasInteracted || isTyping) ? "opacity-50 pointer-events-none" : "opacity-100"
-                        )}>
-                            {/* Merge metadata buttons from last message if they exist */}
-                            {messages.length > 0 && messages[messages.length - 1].metadata?.buttons?.map((btn, i) => (
-                                <button
-                                    key={`msg-btn-${i}`}
-                                    disabled={!hasInteracted || isTyping}
-                                    onClick={() => handleSend(btn.prompt)}
-                                    className="flex-none px-4 py-2.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-[10px] font-black uppercase tracking-wider hover:bg-emerald-500/20 transition-all whitespace-nowrap flex items-center gap-2"
-                                >
-                                    <Sparkles className="w-3 h-3" />
-                                    {btn.label}
-                                </button>
-                            ))}
+                    {/* Dynamic Suggestion Chips Area */}
+                    <div className={cn(
+                        "flex gap-2 overflow-x-auto no-scrollbar mb-4 transition-opacity duration-300",
+                        (isTyping) ? "opacity-50 pointer-events-none" : "opacity-100"
+                    )}>
+                        {/* 1. Contextual Actions from Assistant (Metadata) */}
+                        {dynamicPrompts.map((action: any, i) => (
+                            <button
+                                key={`dyn-btn-${i}`}
+                                disabled={isTyping}
+                                onClick={() => handleSend(action.prompt)}
+                                className="flex-none px-4 py-2.5 rounded-full bg-lime-500/10 border border-lime-500/20 text-lime-600 dark:text-lime-400 text-[10px] font-black uppercase tracking-wider hover:bg-lime-500/20 transition-all whitespace-nowrap flex items-center gap-2 active:scale-95"
+                            >
+                                <Sparkles className="w-3 h-3" />
+                                {action.label}
+                            </button>
+                        ))}
 
-                            {/* Standard dynamic prompts (Categories, etc) */}
-                            {dynamicPrompts.map((action: any, i) => (
-                                <button
-                                    key={`dyn-btn-${i}`}
-                                    disabled={!hasInteracted || isTyping}
-                                    onClick={() => handleSend(action.prompt)}
-                                    className="flex-none px-4 py-2.5 rounded-full bg-lime-500/10 border border-lime-500/20 text-lime-600 dark:text-lime-400 text-[10px] font-black uppercase tracking-wider hover:bg-lime-500/20 transition-all whitespace-nowrap flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm active:scale-95"
-                                >
-                                    {action.icon}
-                                    {action.label}
-                                </button>
-                            ))}
-                        </div>
-                    )}
+                        {/* 2. Menu Navigation Categories (Direct Fetch) */}
+                        {categories.map((cat, i) => (
+                            <button
+                                key={`cat-${i}`}
+                                disabled={isTyping}
+                                onClick={() => handleSend(cat, true)}
+                                className="flex-none px-4 py-2.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-[10px] font-black uppercase tracking-wider hover:bg-emerald-500/20 transition-all whitespace-nowrap active:scale-95"
+                            >
+                                {cat}
+                            </button>
+                        ))}
+
+                        {/* 3. Minimal Fallback (Only if both empty) */}
+                        {categories.length === 0 && dynamicPrompts.length === 0 && (
+                            <div className="flex-none px-4 py-2.5 rounded-full bg-white/5 border border-white/10 text-zinc-500 text-[10px] font-black uppercase tracking-wider whitespace-nowrap animate-pulse">
+                                Loading Menu Categories...
+                            </div>
+                        )}
+                    </div>
 
                     <div className={cn(
                         "relative flex items-end rounded-3xl border transition-all duration-500",
-                        "bg-input-bg border-border",
-                        "focus-within:border-lime-500/40 focus-within:bg-card"
+                        "bg-white/5 border-white/10 focus-within:border-lime-500/40"
                     )}>
                         <textarea
                             ref={textareaRef}
                             value={inputValue}
                             onChange={e => setInputValue(e.target.value)}
                             onKeyDown={handleKeyDown}
-                            disabled={!hasInteracted || isTyping}
-                            placeholder={!hasInteracted ? "Waiting for assistant..." : (t('common.search') || "Ask me anything...")}
-                            className="flex-1 bg-transparent border-0 outline-none text-foreground text-sm placeholder:text-muted-foreground resize-none overflow-hidden px-5 py-4 leading-relaxed disabled:opacity-50 disabled:cursor-not-allowed"
+                            disabled={isTyping}
+                            placeholder={!hasInteracted ? "Waiting..." : "Ask me anything..."}
+                            className="flex-1 bg-transparent border-0 outline-none text-foreground text-sm placeholder:text-muted-foreground resize-none overflow-hidden px-5 py-4 leading-relaxed"
                             rows={1}
                             style={{ minHeight: '1.5em', maxHeight: '120px' }}
                         />
                         <button
                             onClick={() => handleSend()}
-                            disabled={!hasContent || isTyping || !hasInteracted}
+                            disabled={!hasContent || isTyping}
                             className={cn(
                                 "m-2 p-2.5 rounded-2xl transition-all duration-500 flex-shrink-0",
-                                hasContent && !isTyping && hasInteracted
-                                    ? "bg-[#84CC16] text-white hover:bg-lime-500 hover:scale-105 active:scale-95 shadow-lg shadow-lime-500/20"
-                                    : "bg-muted/10 text-muted-foreground cursor-not-allowed"
+                                hasContent && !isTyping ? "bg-[#84CC16] text-white shadow-lg shadow-lime-500/20" : "bg-white/5 text-muted-foreground"
                             )}
                         >
                             <Send className="w-4 h-4" />
                         </button>
                     </div>
-                    <div className="flex items-center justify-between mt-3 px-1">
-                        <p className="text-[8px] text-gray-700 font-mono uppercase tracking-[0.2em]">
-                            Powered by Baro AI
-                        </p>
-                        <div className="flex items-center gap-1 opacity-20">
-                            <div className="w-1 h-1 rounded-full bg-foreground" />
-                            <div className="w-1 h-1 rounded-full bg-foreground" />
-                            <div className="w-1 h-1 rounded-full bg-foreground" />
-                        </div>
-                    </div>
                 </div>
             </div>
+
             {/* Floating Cart Button */}
             {cart.length > 0 && !isCartOpen && (
                 <motion.button
-                    initial={{ scale: 0, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    exit={{ scale: 0, opacity: 0 }}
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
                     onClick={() => setIsCartOpen(true)}
-                    className="fixed bottom-24 right-5 z-50 w-14 h-14 rounded-full bg-[#84CC16] text-black shadow-2xl shadow-lime-500/40 flex items-center justify-center hover:scale-110 active:scale-95 transition-transform"
+                    className="fixed bottom-24 right-5 z-50 w-14 h-14 rounded-full bg-[#84CC16] text-black shadow-2xl flex items-center justify-center hover:scale-110 active:scale-95 transition-transform"
                 >
                     <ShoppingBag className="w-6 h-6" />
                     <span className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-red-500 text-white text-[10px] font-black flex items-center justify-center">
@@ -1617,7 +1661,6 @@ const CustomerChatPage: React.FC = () => {
                 </motion.button>
             )}
 
-            {/* Cart Drawer */}
             <AnimatePresence>
                 {isCartOpen && (
                     <CartDrawer

@@ -304,8 +304,8 @@ const AdminDashboard: React.FC = () => {
 
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-auto md:h-full md:min-h-0 md:flex-1 pb-10 md:pb-0">
                {/* Left Col: Live Production Board (Takes 4 cols) */}
-               <div className="lg:col-span-4 flex flex-col md:min-h-0 h-[500px] md:h-full shrink-0">
-                  <div className="bg-card/60 backdrop-blur-xl border border-primary/20 rounded-[2.5rem] p-8 flex flex-col h-full shadow-2xl">
+               <div className="lg:col-span-4 flex flex-col md:min-h-0 h-[500px] md:h-full shrink-0 order-last lg:order-first">
+                  <div className="bg-card/60 backdrop-blur-xl border border-primary/20 rounded-3xl md:rounded-[2.5rem] p-4 md:p-8 flex flex-col h-full shadow-2xl">
                      <div className="flex items-center justify-between mb-8">
                         <h3 className="text-[10px] font-black text-muted uppercase tracking-[0.2em] flex items-center gap-3 opacity-60">
                            <LayoutList className="w-4 h-4 text-primary" strokeWidth={3} /> {t('adminDashboard.liveSystemProduction')}
@@ -355,9 +355,9 @@ const AdminDashboard: React.FC = () => {
                </div>
 
                {/* Right Col: Transaction Audit (Takes 8 cols) */}
-               <div className="lg:col-span-8 flex flex-col md:min-h-0 h-[650px] md:h-full shrink-0">
-                  <Card className="bg-card/60 backdrop-blur-xl border border-primary/20 rounded-[2.5rem] flex-1 flex flex-col min-h-0 p-0 overflow-hidden shadow-2xl">
-                     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-8 gap-6 shrink-0 border-b border-primary/20 bg-muted/5">
+               <div className="lg:col-span-8 flex flex-col md:min-h-0 h-[650px] md:h-full shrink-0 order-first lg:order-last">
+                  <Card className="bg-card/60 backdrop-blur-xl border border-primary/20 rounded-3xl md:rounded-[2.5rem] flex-1 flex flex-col min-h-0 p-0 overflow-hidden shadow-2xl">
+                     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 md:p-8 gap-4 md:gap-6 shrink-0 border-b border-primary/20 bg-muted/5">
                         <h3 className="flex items-center gap-3 text-[10px] font-black text-muted uppercase tracking-[0.2em] opacity-60">
                            <ClipboardList className="w-4 h-4 text-primary" strokeWidth={3} /> {t('adminDashboard.finalizedNodeAudit')}
                         </h3>
@@ -414,11 +414,11 @@ const AdminDashboard: React.FC = () => {
                         <table className="w-full text-left border-collapse">
                            <thead className="sticky top-0 bg-muted/5 border-b border-primary/20 text-[9px] font-black uppercase text-muted tracking-widest z-10 backdrop-blur-xl">
                               <tr>
-                                 <th className="px-6 py-4">{t('adminDashboard.identVector')}</th>
-                                 <th className="px-6 py-4">{t('adminDashboard.spatialNode')}</th>
-                                 <th className="px-6 py-4 hidden sm:table-cell">{t('adminDashboard.humanOrigin')}</th>
-                                 <th className="px-6 py-4 text-right">{t('adminDashboard.grossVal')}</th>
-                                 <th className="px-6 py-4 text-right">{t('adminDashboard.status')}</th>
+                                 <th className="px-3 md:px-6 py-3 md:py-4">{t('adminDashboard.identVector')}</th>
+                                 <th className="px-3 md:px-6 py-3 md:py-4">{t('adminDashboard.spatialNode')}</th>
+                                 <th className="px-3 md:px-6 py-3 md:py-4 hidden sm:table-cell">{t('adminDashboard.humanOrigin')}</th>
+                                 <th className="px-3 md:px-6 py-3 md:py-4 text-right">{t('adminDashboard.grossVal')}</th>
+                                 <th className="px-3 md:px-6 py-3 md:py-4 text-right">{t('adminDashboard.status')}</th>
                               </tr>
                            </thead>
                            <tbody className="divide-y divide-primary/20">
@@ -428,38 +428,38 @@ const AdminDashboard: React.FC = () => {
                                     onClick={() => handleRowClick(order)}
                                     className="group hover:bg-muted/5 transition-all cursor-pointer"
                                  >
-                                    <td className="px-6 py-5">
+                                    <td className="px-3 md:px-6 py-4 md:py-5">
                                        <div className="flex flex-col">
-                                          <span className="font-mono text-xs font-black text-foreground group-hover:text-primary transition-colors">
+                                          <span className="font-mono text-xs font-black text-foreground group-hover:text-primary transition-colors whitespace-nowrap">
                                              #{order.order_number || order.id.slice(0, 4).toUpperCase()}
                                           </span>
-                                          <span className="text-[9px] text-muted font-black opacity-40 uppercase tracking-widest">
+                                          <span className="text-[9px] text-muted font-black opacity-40 uppercase tracking-widest whitespace-nowrap">
                                              {new Date(order.closed_at || order.paid_at || order.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                           </span>
                                        </div>
                                     </td>
-                                    <td className="px-6 py-5">
+                                    <td className="px-3 md:px-6 py-4 md:py-5">
                                        <div className="flex flex-col items-start gap-1">
-                                          <span className="font-black text-foreground text-xs uppercase italic group-hover:text-primary">T-{order.table_number}</span>
-                                          <span className="px-2 py-0.5 text-[8px] bg-primary/5 text-primary border border-primary/10 rounded-full font-black uppercase tracking-tighter opacity-70">{order.order_type || t('adminDashboard.dineIn')}</span>
+                                          <span className="font-black text-foreground text-xs uppercase italic group-hover:text-primary whitespace-nowrap">T-{order.table_number}</span>
+                                          <span className="px-2 py-0.5 text-[8px] bg-primary/5 text-primary border border-primary/10 rounded-full font-black uppercase tracking-tighter opacity-70 whitespace-nowrap">{order.order_type || t('adminDashboard.dineIn')}</span>
                                        </div>
                                     </td>
-                                    <td className="px-6 py-5 hidden sm:table-cell">
+                                    <td className="px-3 md:px-6 py-4 md:py-5 hidden sm:table-cell">
                                        <div className="flex flex-col">
-                                          <span className="text-[10px] text-foreground font-black uppercase italic group-hover:text-primary">{order.waiter?.full_name || t('adminDashboard.systemNode')}</span>
-                                          <span className="text-[8px] text-muted font-black uppercase tracking-[0.2em] opacity-40">{(order as any).waiter?.role || (order.closed_by_user ? t('adminDashboard.adminRole') : t('adminDashboard.staffRole'))}</span>
+                                          <span className="text-[10px] text-foreground font-black uppercase italic group-hover:text-primary whitespace-nowrap">{order.waiter?.full_name || t('adminDashboard.systemNode')}</span>
+                                          <span className="text-[8px] text-muted font-black uppercase tracking-[0.2em] opacity-40 whitespace-nowrap">{(order as any).waiter?.role || (order.closed_by_user ? t('adminDashboard.adminRole') : t('adminDashboard.staffRole'))}</span>
                                        </div>
                                     </td>
-                                    <td className="px-6 py-5 text-right font-mono font-black text-foreground text-sm">
+                                    <td className="px-3 md:px-6 py-4 md:py-5 text-right font-mono font-black text-foreground text-sm whitespace-nowrap">
                                        <span className="text-[9px] mr-1 opacity-20 font-sans NOT-italic">{t('adminDashboard.etb')}</span>
                                        {order.total_amount.toLocaleString()}
                                     </td>
-                                    <td className="px-6 py-5 text-right">
-                                       <div className="flex items-center justify-end gap-3">
+                                    <td className="px-3 md:px-6 py-4 md:py-5 text-right">
+                                       <div className="flex items-center justify-end gap-2 md:gap-3">
                                           {order.payment_method && (
-                                             <span className="text-[9px] font-black uppercase text-muted bg-muted/10 px-3 py-1 rounded-full border border-primary/20">{order.payment_method}</span>
+                                             <span className="text-[9px] font-black uppercase text-muted bg-muted/10 px-3 py-1 rounded-full border border-primary/20 whitespace-nowrap">{order.payment_method}</span>
                                           )}
-                                          <span className={cn("text-[9px] uppercase font-black px-3 py-1 rounded-full border tracking-[0.1em]",
+                                          <span className={cn("text-[9px] uppercase font-black px-3 py-1 rounded-full border tracking-[0.1em] whitespace-nowrap",
                                              order.status === 'paid' ? "text-emerald-500 bg-emerald-500/10 border-emerald-500/20" :
                                                 order.status === 'served' ? "text-purple-500 bg-purple-500/10 border-purple-500/20" : "text-muted bg-muted/5 border-primary/20"
                                           )}>

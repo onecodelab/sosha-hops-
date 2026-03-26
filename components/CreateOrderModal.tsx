@@ -489,7 +489,7 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
 
   return (
     <Dialog isOpen={isOpen} onClose={onClose} title={internalAppendId ? `Add to Bill: T-${tableNumber}` : (tableNumber ? `New Order: T-${tableNumber}` : "New Order Entry")} maxWidth="max-w-6xl">
-      <div className="flex flex-col md:flex-row h-[75vh] md:h-[80vh] bg-card text-foreground overflow-hidden rounded-b-3xl md:rounded-3xl relative">
+      <div className="flex flex-col md:flex-row h-[65vh] md:h-[80vh] bg-card text-foreground overflow-hidden rounded-b-3xl md:rounded-3xl relative">
 
         {/* LEFT PANEL: Tables & Menu */}
         <div className="flex-1 flex flex-col border-r border-border bg-muted/5 overflow-hidden relative">
@@ -502,14 +502,14 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
                 <label className="text-[9px] font-black text-muted uppercase tracking-widest ml-1 flex items-center gap-2">
                   <Armchair className="w-3 h-3" /> {tableId ? `Assigned: Table ${tableNumber}` : 'Select Table'}
                 </label>
-                <div className="flex flex-wrap gap-1.5 max-h-20 md:max-h-24 overflow-y-auto custom-scrollbar p-1">
+                <div className="flex flex-wrap gap-1 max-h-16 md:max-h-24 overflow-y-auto custom-scrollbar p-1">
                   {(!initialTableId && !internalAppendId) ? (
                     tables.map(t => (
                       <button
                         key={t.id}
                         onClick={() => handleTableChange(t.id)}
                         className={cn(
-                          "px-2.5 h-7 md:px-3 md:h-8 rounded-lg text-[9px] font-black uppercase transition-all border shrink-0 flex items-center justify-center min-w-[2.5rem] md:min-w-[3rem]",
+                          "px-2 h-6 md:px-3 md:h-8 rounded-[0.4rem] md:rounded-lg text-[8px] md:text-[9px] font-black uppercase transition-all border shrink-0 flex items-center justify-center min-w-[2rem] md:min-w-[3rem]",
                           tableId === t.id
                             ? "bg-primary text-black border-primary shadow-[0_0_15px_rgba(251,191,36,0.2)]"
                             : "bg-muted/10 text-muted border-border hover:border-muted hover:text-foreground",
@@ -536,14 +536,14 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
                   <Input
                     value={searchTerm}
                     onChange={e => setSearchTerm(e.target.value)}
-                    className="pl-9 h-9 text-xs bg-muted/10 border-border rounded-xl focus:bg-muted/20 text-foreground placeholder:text-muted/60"
+                    className="pl-9 h-8 md:h-9 text-[10px] md:text-xs bg-muted/10 border-border rounded-lg md:rounded-xl focus:bg-muted/20 text-foreground placeholder:text-muted/60"
                     placeholder="Search menu..."
                   />
                 </div>
                 <div className="flex gap-1.5 overflow-x-auto no-scrollbar max-w-[50%]">
-                  <button onClick={() => setSelectedCategory('All')} className={cn("px-3 h-9 rounded-lg text-[9px] font-black uppercase tracking-widest border transition-all", selectedCategory === 'All' ? "bg-foreground text-background border-foreground" : "bg-transparent text-muted border-border hover:border-muted")}>ALL</button>
+                  <button onClick={() => setSelectedCategory('All')} className={cn("px-2 h-8 md:px-3 md:h-9 rounded-[0.4rem] md:rounded-lg text-[8px] md:text-[9px] font-black uppercase border transition-all", selectedCategory === 'All' ? "bg-foreground text-background border-foreground" : "bg-transparent text-muted border-border hover:border-muted")}>ALL</button>
                   {categories.map(cat => (
-                    <button key={cat} onClick={() => setSelectedCategory(cat)} className={cn("px-3 h-9 rounded-lg text-[9px] font-black uppercase tracking-widest border transition-all whitespace-nowrap", selectedCategory === cat ? "bg-foreground text-background border-foreground" : "bg-transparent text-muted border-border hover:border-muted")}>{cat}</button>
+                    <button key={cat} onClick={() => setSelectedCategory(cat)} className={cn("px-2 h-8 md:px-3 md:h-9 rounded-[0.4rem] md:rounded-lg text-[8px] md:text-[9px] font-black uppercase border transition-all whitespace-nowrap", selectedCategory === cat ? "bg-foreground text-background border-foreground" : "bg-transparent text-muted border-border hover:border-muted")}>{cat}</button>
                   ))}
                 </div>
               </div>
@@ -551,35 +551,35 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
           </div>
 
           {/* Menu List */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-2 custom-scrollbar pb-32 md:pb-4">
-            {menuLoading ? <Loader2 className="w-6 h-6 animate-spin mx-auto mt-10 text-primary" /> : filteredMenu.map(dish => {
+          <div className="flex-1 overflow-y-auto p-2 md:p-4 md:space-y-2 grid grid-cols-2 lg:grid-cols-1 gap-2 custom-scrollbar pb-32 md:pb-4">
+            {menuLoading ? <Loader2 className="w-6 h-6 animate-spin mx-auto mt-10 text-primary col-span-full" /> : filteredMenu.map(dish => {
               const neededIngredients = inventoryMapping[dish.id] || [];
               const redisAvailable = neededIngredients.every(ingId => (stockMap[ingId] ?? 1) > 0);
               const isActuallyAvailable = dish.is_available && redisAvailable;
 
               return (
-                <div key={dish.id} onClick={() => isActuallyAvailable && addToCart(dish)} className={cn("group p-3 border rounded-2xl flex items-center justify-between transition-all cursor-pointer active:scale-[0.98]", !isActuallyAvailable ? "bg-red-900/10 border-red-900/20 opacity-60 grayscale" : "bg-card border-border hover:bg-muted/10 hover:border-muted")}>
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-xl bg-card border border-border flex items-center justify-center overflow-hidden shrink-0 relative">
-                      {dish.image_url ? <img src={dish.image_url} className="w-full h-full object-cover" /> : <Utensils className="w-5 h-5 text-muted" />}
+                <div key={dish.id} onClick={() => isActuallyAvailable && addToCart(dish)} className={cn("group p-2 md:p-3 border rounded-xl md:rounded-2xl flex items-center justify-between transition-all cursor-pointer active:scale-[0.98]", !isActuallyAvailable ? "bg-red-900/10 border-red-900/20 opacity-60 grayscale" : "bg-card border-border hover:bg-muted/10 hover:border-muted")}>
+                  <div className="flex items-center gap-2 md:gap-4 overflow-hidden">
+                    <div className="w-10 h-10 md:w-12 md:h-12 rounded-lg md:rounded-xl bg-card border border-border flex items-center justify-center overflow-hidden shrink-0 relative">
+                      {dish.image_url ? <img src={dish.image_url} className="w-full h-full object-cover" /> : <Utensils className="w-4 h-4 md:w-5 md:h-5 text-muted" />}
                     </div>
-                    <div className="flex flex-col">
-                      <h4 className="text-sm font-bold text-foreground group-hover:text-primary transition-colors">
+                    <div className="flex flex-col pr-1 overflow-hidden">
+                      <h4 className="text-[11px] md:text-sm font-bold text-foreground group-hover:text-primary transition-colors leading-tight truncate">
                         {dish.name}
                       </h4>
-                      <p className="text-[10px] font-black text-muted uppercase tracking-wider mt-0.5">ETB {dish.price.toLocaleString()}</p>
+                      <p className="text-[9px] md:text-[10px] font-black text-muted uppercase mt-0.5 whitespace-nowrap">ETB {dish.price.toLocaleString()}</p>
                     </div>
                   </div>
                   <button
                     disabled={!isActuallyAvailable}
-                    className={cn("w-8 h-8 rounded-full flex items-center justify-center transition-all", !isActuallyAvailable ? "hidden" : "bg-muted/10 text-foreground group-hover:bg-primary group-hover:text-black")}
+                    className={cn("w-6 h-6 md:w-8 md:h-8 rounded-full flex flex-shrink-0 items-center justify-center transition-all", !isActuallyAvailable ? "hidden" : "bg-muted/10 text-foreground group-hover:bg-primary group-hover:text-black")}
                   >
-                    <Plus className="w-4 h-4" />
+                    <Plus className="w-3 h-3 md:w-4 md:h-4" />
                   </button>
                 </div>
               );
             })}
-            {filteredMenu.length === 0 && <div className="text-center py-20 text-[10px] uppercase tracking-widest text-zinc-700">No items found</div>}
+            {filteredMenu.length === 0 && <div className="text-center py-20 text-[10px] uppercase tracking-widest text-zinc-700 col-span-full">No items found</div>}
           </div>
         </div>
 

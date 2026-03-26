@@ -301,7 +301,7 @@ export const RecipeEditor: React.FC<RecipeEditorProps> = ({ dish, onSaved }) => 
           onChange={e => setSearchTerm(e.target.value)}
           onFocus={() => setIsFocused(true)}
           onBlur={() => setTimeout(() => setIsFocused(false), 200)}
-          className="pl-12 bg-black/40 border-white/10 h-12 rounded-2xl focus:border-primary/50"
+          className="pl-12 bg-black/40 border-white/10 h-10 md:h-12 text-sm md:text-base rounded-2xl focus:border-primary/50"
         />
 
         {isFocused && searchTerm && (
@@ -331,13 +331,13 @@ export const RecipeEditor: React.FC<RecipeEditorProps> = ({ dish, onSaved }) => 
       <div className="rounded-[2rem] bg-black/30 border border-white/5 overflow-hidden">
         <div className="max-h-[350px] overflow-y-auto custom-scrollbar">
           <table className="w-full text-sm text-left">
-            <thead className="bg-black/60 text-[10px] font-black uppercase text-gray-500 tracking-widest sticky top-0 z-10 border-b border-white/5">
+            <thead className="bg-black/60 text-[9px] md:text-[10px] font-black uppercase text-gray-500 tracking-widest sticky top-0 z-10 border-b border-white/5">
               <tr>
-                <th className="px-4 py-5">Ingredient</th>
-                <th className="px-4 py-5 text-center">Portion</th>
-                <th className="px-4 py-5 text-center whitespace-nowrap">Impact Flag</th>
-                <th className="px-4 py-5 text-right">Cost (ETB)</th>
-                <th className="px-4 py-5 w-10"></th>
+                <th className="px-3 md:px-4 py-3 md:py-5">Ingredient</th>
+                <th className="px-3 md:px-4 py-3 md:py-5 text-center">Portion</th>
+                <th className="px-3 md:px-4 py-3 md:py-5 text-center whitespace-nowrap">Impact Flag</th>
+                <th className="px-3 md:px-4 py-3 md:py-5 text-right whitespace-nowrap">Cost (ETB)</th>
+                <th className="px-3 md:px-4 py-3 md:py-5 w-10"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5">
@@ -435,7 +435,7 @@ export const RecipeEditor: React.FC<RecipeEditorProps> = ({ dish, onSaved }) => 
         <Button
           onClick={handleCommit}
           disabled={saving}
-          className="w-full bg-primary text-black font-black h-16 rounded-2xl shadow-xl shadow-primary/20 text-xs uppercase tracking-[0.2em] transition-all hover:scale-[1.01] active:scale-95"
+          className="w-full bg-primary text-black font-black h-12 md:h-16 rounded-2xl shadow-xl shadow-primary/20 text-[10px] md:text-xs uppercase tracking-[0.2em] transition-all hover:scale-[1.01] active:scale-95"
         >
           {saving ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : <Save className="w-5 h-5 mr-2" />}
           Commit Recipe Logic

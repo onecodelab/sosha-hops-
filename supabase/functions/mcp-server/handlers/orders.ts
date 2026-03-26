@@ -78,7 +78,10 @@ export async function updateOrder(context: ToolContext) {
         throw new Error("Cannot update a completed or cancelled order.");
     }
 
-    const newItemIds = newItems.map((item) => item.menu_item_id);
+    const newItemIdsRaw = getArray<JsonRecord>(context.params.new_items);
+    const resolvedItems = await resolveOrderItemsByNameOrId(context, newItemIdsRaw);
+    const newItemIds = resolvedItems.map((item) => item.menu_item_id);
+
     const { data: newMenuData, error: newMenuErr } = await context.supabase
         .from('menu')
         .select('id, name, price, organization_id')
@@ -88,7 +91,7 @@ export async function updateOrder(context: ToolContext) {
     if (newMenuErr) throw newMenuErr;
 
     let addedSubtotal = 0;
-    const newOrderItems = newItems.map((item) => {
+    const newOrderItems = resolvedItems.map((item) => {
         const match = newMenuData?.find((menuItem: any) => menuItem.id === item.menu_item_id);
         if (!match) throw new Error(`Menu item ${item.menu_item_id} not found.`);
 

@@ -141,14 +141,14 @@ const ManagerDashboard: React.FC = () => {
             </div>
 
             <BaroCard indicatorColor="blue" className="shadow-2xl">
-               <div className="flex items-center justify-between mb-8 pl-1">
-                  <div className="flex items-center gap-4">
-                     <div className="p-3 bg-blue-500/10 rounded-2xl">
-                        <List className="w-6 h-6 text-blue-500" strokeWidth={3} />
+               <div className="flex items-center justify-between mb-6 md:mb-8 pl-1">
+                  <div className="flex items-center gap-3 md:gap-4">
+                     <div className="p-2 md:p-3 bg-blue-500/10 rounded-2xl shrink-0">
+                        <List className="w-5 h-5 md:w-6 md:h-6 text-blue-500" strokeWidth={3} />
                      </div>
-                     <BaroCardTitle>Active Traffic Monitor</BaroCardTitle>
+                     <BaroCardTitle className="text-sm md:text-lg shrink min-w-0">Active Traffic Monitor</BaroCardTitle>
                   </div>
-                  <Badge className="bg-blue-500/10 text-blue-500 border-blue-500/20 px-4 py-1.5 font-mono text-xs font-black shadow-lg">
+                  <Badge className="bg-blue-500/10 text-blue-500 border-blue-500/20 px-2 md:px-4 py-1.5 font-mono text-[10px] md:text-xs font-black shadow-lg shrink-0 ml-2">
                      {liveActiveOrders.length} FLOWING
                   </Badge>
                </div>
@@ -157,9 +157,9 @@ const ManagerDashboard: React.FC = () => {
                      <p className="font-black text-[10px] uppercase tracking-widest">No active traffic monitored</p>
                   </div>
                ) : (
-                  <div className="flex gap-6 overflow-x-auto pb-6 custom-scrollbar snap-x">
+                  <div className="flex gap-4 md:gap-6 overflow-x-auto pb-6 snap-x snap-mandatory no-scrollbar -mx-2 px-2 md:mx-0 md:px-0">
                      {liveActiveOrders.map(order => (
-                        <div key={order.id} className="min-w-[340px] snap-start">
+                        <div key={order.id} className="w-[85vw] md:w-[340px] shrink-0 snap-center">
                            <OrderCard order={order} role="manager" onAction={handleOrderAction} />
                         </div>
                      ))}

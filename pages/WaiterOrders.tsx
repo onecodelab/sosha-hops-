@@ -152,16 +152,16 @@ const WaiterOrders: React.FC = () => {
                         </div>
                     </CardHeader>
                     <CardContent className="p-0 flex-1 overflow-x-auto custom-scrollbar">
-                        <table className="w-full text-sm text-left">
+                        <table className="w-full text-sm text-left whitespace-nowrap">
                             <thead className="text-[10px] text-muted uppercase bg-muted/10 border-b border-border font-black tracking-[0.2em]">
                                 <tr>
-                                    <th className="px-8 py-5">Sync ID</th>
-                                    <th className="px-8 py-5">Station</th>
-                                    <th className="px-8 py-5">Timestamp</th>
-                                    <th className="px-8 py-5">Flow</th>
-                                    <th className="px-8 py-5 text-right">Value</th>
-                                    <th className="px-8 py-5 text-center">Protocol</th>
-                                    <th className="px-8 py-5 text-right w-20">Actions</th>
+                                    <th className="px-4 md:px-8 py-3 md:py-5">Sync ID</th>
+                                    <th className="px-4 md:px-8 py-3 md:py-5">Station</th>
+                                    <th className="px-4 md:px-8 py-3 md:py-5">Timestamp</th>
+                                    <th className="px-4 md:px-8 py-3 md:py-5">Flow</th>
+                                    <th className="px-4 md:px-8 py-3 md:py-5 text-right">Value</th>
+                                    <th className="px-4 md:px-8 py-3 md:py-5 text-center">Protocol</th>
+                                    <th className="px-4 md:px-8 py-3 md:py-5 text-right w-20">Actions</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-border/40">
@@ -171,29 +171,29 @@ const WaiterOrders: React.FC = () => {
                                     <tr><td colSpan={7} className="p-24 text-center text-muted uppercase font-black tracking-[0.4em] text-xs">No records initialized</td></tr>
                                 ) : filteredOrders.map((order) => (
                                     <tr key={order.id} className="hover:bg-primary/[0.02] transition-colors group">
-                                        <td className="px-8 py-5 font-mono font-black text-foreground text-xs uppercase opacity-80">{order.order_number}</td>
-                                        <td className="px-8 py-5">
+                                        <td className="px-4 md:px-8 py-3 md:py-5 font-mono font-black text-foreground text-xs uppercase opacity-80">{order.order_number}</td>
+                                        <td className="px-4 md:px-8 py-3 md:py-5">
                                             <Badge className="bg-muted/10 border-border text-foreground font-black px-3 py-1 rounded-lg shadow-sm">#{order.table_number}</Badge>
                                         </td>
-                                        <td className="px-8 py-5">
+                                        <td className="px-4 md:px-8 py-3 md:py-5">
                                             <div className="flex flex-col">
                                                 <span className="text-foreground font-black text-xs uppercase">{format(new Date(order.created_at), 'MMM dd')}</span>
                                                 <span className="text-[9px] text-muted font-black uppercase tracking-widest mt-1">{format(new Date(order.created_at), 'hh:mm a')}</span>
                                             </div>
                                         </td>
-                                        <td className="px-8 py-5">
+                                        <td className="px-4 md:px-8 py-3 md:py-5">
                                             <div className="flex items-center gap-3 text-muted">
                                                 <CreditCard className="w-4 h-4 opacity-30" strokeWidth={3} />
                                                 <span className="text-[9px] font-black uppercase tracking-[0.2em]">{order.payment_method || 'CASH'}</span>
                                             </div>
                                         </td>
-                                        <td className="px-8 py-5 text-right font-mono text-foreground font-black text-sm">
+                                        <td className="px-4 md:px-8 py-3 md:py-5 text-right font-mono text-foreground font-black text-sm">
                                             ETB {order.total_amount?.toLocaleString() || '0'}
                                         </td>
-                                        <td className="px-8 py-5 text-center">
+                                        <td className="px-4 md:px-8 py-3 md:py-5 text-center">
                                             {getStatusBadge(order)}
                                         </td>
-                                        <td className="px-8 py-5 text-right relative">
+                                        <td className="px-4 md:px-8 py-3 md:py-5 text-right relative">
                                             <button
                                                 onClick={(e) => { e.stopPropagation(); setActiveDropdown(activeDropdown === order.id ? null : order.id); }}
                                                 className="p-2.5 bg-muted/5 hover:bg-primary/10 rounded-xl text-muted hover:text-primary transition-all shadow-inner"
