@@ -62,15 +62,15 @@ const getSessionId = (tableId: string): string => {
 
 /* ─── MENU CAROUSEL ─── */
 /* ─── HELPERS ─── */
-const getPastelColor = (index: number) => {
-    const colors = [
-        'bg-[#E0F2FE]', // Light Blue
-        'bg-[#FEE2E2]', // Light Red
-        'bg-[#F3E8FF]', // Light Purple
-        'bg-[#DCFCE7]', // Light Green
-        'bg-[#FEF3C7]', // Light Yellow
+const getCardTheme = (index: number) => {
+    const themes = [
+        'bg-[#1A1A1A] border border-emerald-500/20 shadow-[0_0_15px_rgba(16,185,129,0.05)]',
+        'bg-[#1A1A1A] border border-blue-500/20 shadow-[0_0_15px_rgba(59,130,246,0.05)]',
+        'bg-[#1A1A1A] border border-amber-500/20 shadow-[0_0_15px_rgba(245,158,11,0.05)]',
+        'bg-[#1A1A1A] border border-rose-500/20 shadow-[0_0_15px_rgba(244,63,94,0.05)]',
+        'bg-[#1A1A1A] border border-purple-500/20 shadow-[0_0_15px_rgba(168,85,247,0.05)]',
     ];
-    return colors[index % colors.length];
+    return themes[index % themes.length];
 };
 
 const FreshLeaf: React.FC<{ className?: string }> = ({ className }) => (
@@ -87,13 +87,13 @@ const MenuCard: React.FC<{ item: MenuItem; index: number; onAdd: (item: MenuItem
         <motion.div
             whileHover={{ y: -5 }}
             className={cn(
-                "relative w-40 h-52 rounded-[2rem] overflow-hidden shadow-sm flex flex-col p-4 group",
-                getPastelColor(index)
+                "relative w-40 h-52 rounded-[2rem] overflow-hidden flex flex-col p-4 group transition-all duration-300",
+                getCardTheme(index)
             )}
         >
             {/* Decorative Leaves */}
-            <FreshLeaf className="absolute -top-2 -right-2 w-12 h-12 text-black/5 rotate-12" />
-            <FreshLeaf className="absolute bottom-10 -left-4 w-16 h-16 text-black/5 -rotate-45" />
+            <FreshLeaf className="absolute -top-2 -right-2 w-12 h-12 text-white/5 rotate-12" />
+            <FreshLeaf className="absolute bottom-10 -left-4 w-16 h-16 text-white/5 -rotate-45" />
 
             {/* Image Section - Floating */}
             <div className="flex-1 flex items-center justify-center relative z-10 -mt-2">
@@ -109,8 +109,8 @@ const MenuCard: React.FC<{ item: MenuItem; index: number; onAdd: (item: MenuItem
                             className="w-full h-full object-contain drop-shadow-2xl"
                         />
                     ) : (
-                        <div className="w-full h-full flex items-center justify-center bg-black/5 rounded-full">
-                            <UtensilsCrossed className="w-12 h-12 text-black/20" />
+                        <div className="w-full h-full flex items-center justify-center bg-white/5 border border-white/10 rounded-full">
+                            <UtensilsCrossed className="w-10 h-10 text-muted-foreground/30" />
                         </div>
                     )}
                 </motion.div>
@@ -118,7 +118,7 @@ const MenuCard: React.FC<{ item: MenuItem; index: number; onAdd: (item: MenuItem
 
             {/* Title - Centered Inside */}
             <div className="text-center mb-3 relative z-10 px-1">
-                <h3 className="text-gray-900 text-[13px] font-black leading-tight line-clamp-2 uppercase tracking-tight">
+                <h3 className="text-foreground text-[13px] font-black leading-tight line-clamp-2 uppercase tracking-tight">
                     {item.name}
                 </h3>
             </div>
@@ -126,8 +126,8 @@ const MenuCard: React.FC<{ item: MenuItem; index: number; onAdd: (item: MenuItem
             {/* Footer: Price & Add Button */}
             <div className="flex items-center justify-between relative z-10">
                 <div className="flex items-baseline gap-0.5">
-                    <span className="text-[8px] font-bold text-gray-900">ETB</span>
-                    <span className="text-base font-black text-gray-900 leading-none">
+                    <span className="text-[8px] font-bold text-muted-foreground">ETB</span>
+                    <span className="text-base font-black text-foreground leading-none">
                         {item.price.toLocaleString()}
                     </span>
                 </div>
