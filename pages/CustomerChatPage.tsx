@@ -1513,14 +1513,14 @@ const CustomerChatPage: React.FC = () => {
             {/* ─── PERSISTENT DISCOVERY SECTION REMOVED ─── */}
 
             {/* ─── SCROLLABLE CHAT AREA ─── */}
-            <div ref={scrollRef} className="flex-1 overflow-y-auto pt-24 sm:pt-28">
-                <div className="max-w-2xl mx-auto px-4 pb-4">
+            <div ref={scrollRef} className="flex-1 overflow-y-auto pt-4 pb-4">
+                <div className="max-w-2xl mx-auto px-4">
                     {!isIntroCompleted ? (
                         <motion.div
                             initial={{ opacity: 0, scale: 0.95 }}
                             animate={{ opacity: 1, scale: 1 }}
                             exit={{ opacity: 0, scale: 1.05 }}
-                            className="flex flex-col items-center justify-start pt-[8vh] md:pt-[15vh] min-h-[65vh] text-center px-4"
+                            className="flex flex-col items-center justify-start pt-6 md:pt-[8vh] min-h-[60vh] text-center px-4"
                         >
                             <div className="relative w-28 h-28 md:w-32 md:h-32 mx-auto mb-8">
                                 {/* Glowing ambient light */}
