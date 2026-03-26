@@ -418,7 +418,7 @@ serve(async (req) => {
         let branchId = identity?.branchId;
 
         const body = await req.json();
-        const { message, session_id, table_number, table_id, organization_id, organization_name, branch_id: clientBranchId, branch_name, is_verified } = body;
+        const { message, session_id, table_number, table_id, organization_id, organization_name, branch_id: clientBranchId, branch_name, is_verified, active_order_id } = body;
 
         // ── DIRECT ACTION: Skip AI entirely for cart-based orders ──
             // --- DIRECT ACTION: Fetch Categories (Waiter-Consistent) ---
@@ -824,10 +824,10 @@ serve(async (req) => {
         }
 
         // ── STEP 1.7: Fetch Active Order Context ──
-        let activeOrderId = "";
-        if (hasUsableTableContext(resolvedTableNumber) && branchId) {
+        let activeOrderId = active_order_id || "";
+        if (!activeOrderId && hasUsableTableContext(resolvedTableNumber) && branchId) {
             try {
-                const { data: activeOrder } = await supabase
+                const { data: dbOrder } = await supabase
                     .from("orders")
                     .select("id")
                     .eq("organization_id", organizationId)
@@ -838,12 +838,12 @@ serve(async (req) => {
                     .limit(1)
                     .maybeSingle();
                 
-                if (activeOrder) {
-                    activeOrderId = activeOrder.id;
-                    console.log(`[CustomerAgent] Found active order ${activeOrderId} for table ${resolvedTableNumber}`);
+                if (dbOrder) {
+                    activeOrderId = dbOrder.id;
+                    console.log(`[CustomerAgent] Fallback found active order ${activeOrderId} for table ${resolvedTableNumber}`);
                 }
             } catch (e) {
-                console.warn("[CustomerAgent] Active order lookup failed:", e);
+                console.warn("[CustomerAgent] Active order fallback lookup failed:", e);
             }
         }
 

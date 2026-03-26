@@ -1146,7 +1146,8 @@ const CustomerChatPage: React.FC = () => {
                     message: textToSend,
                     session_id: sessionId,
                     table_id: tableId,
-                    customer_id: localStorage.getItem(`baro_customer_${activeOrgId}`)
+                    customer_id: localStorage.getItem(`baro_customer_${activeOrgId}`),
+                    active_order_id: activeOrder?.id || null
                 }
             });
 
