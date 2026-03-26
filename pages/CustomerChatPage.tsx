@@ -73,11 +73,11 @@ const getCardTheme = (index: number) => {
     return themes[index % themes.length];
 };
 
-const FreshLeaf: React.FC<{ className?: string }> = ({ className }) => (
+const AbstractWave: React.FC<{ className?: string }> = ({ className }) => (
     <svg className={className} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M2 22C2 22 2 18 7 18C12 18 16 22 16 22" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-        <path d="M12 2C12 2 12 10 7 14C2 18 2 22 2 22" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-        <path d="M12 2C12 2 12 10 17 14C22 18 22 22 22 22" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+        <path d="M6 22C6 17 12 15 12 10C12 5 6 3 6 2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+        <path d="M14 22C14 15 22 13 22 8C22 4 14 2 14 2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+        <path d="M2 22C2 18 5 17 5 14C5 11 2 9 2 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
     </svg>
 );
 
@@ -91,11 +91,9 @@ const MenuCard: React.FC<{ item: MenuItem; index: number; onAdd: (item: MenuItem
                 getCardTheme(index)
             )}
         >
-            {/* Elegant Minimalist Watermark Art */}
-            <div className="absolute -top-8 -right-8 text-foreground/[0.03] dark:text-foreground/[0.05] pointer-events-none transition-transform duration-700 group-hover:rotate-12 group-hover:scale-110">
-                <Sparkles className="w-36 h-36" strokeWidth={0.5} />
-            </div>
-            <div className="absolute -bottom-10 -left-10 text-foreground/[0.02] dark:text-foreground/[0.04] pointer-events-none rounded-full blur-2xl w-32 h-32 bg-current" />
+            {/* Elegant Minimalist Abstract Aroma Art */}
+            <AbstractWave className="absolute -top-6 -right-6 w-24 h-24 text-foreground/5 dark:text-foreground/5 rotate-12 pointer-events-none transition-transform duration-700 group-hover:scale-110" />
+            <AbstractWave className="absolute -bottom-6 -left-6 w-28 h-28 text-foreground/5 dark:text-foreground/5 -rotate-[20deg] pointer-events-none" />
 
             {/* Image Section - Floating */}
             <div className="flex-1 flex items-center justify-center relative z-10 -mt-2">
