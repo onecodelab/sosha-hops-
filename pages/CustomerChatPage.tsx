@@ -524,6 +524,8 @@ const StepperIndicator: React.FC<{
 );
 
 const TrackingWidget: React.FC<{ status: 'placed' | 'preparing' | 'ready' | 'delivered'; orderNumber?: string; compact?: boolean }> = ({ status, orderNumber, compact }) => {
+    const [isExpanded, setIsExpanded] = useState(!compact);
+    
     const stages = [
         { key: 'placed', title: 'Placed', desc: 'Order received' },
         { key: 'preparing', title: 'Preparing', desc: 'In kitchen' },
@@ -532,37 +534,75 @@ const TrackingWidget: React.FC<{ status: 'placed' | 'preparing' | 'ready' | 'del
     ];
 
     const currentIndex = stages.findIndex(s => s.key === status);
+    const activeStage = stages[currentIndex >= 0 ? currentIndex : 0];
 
     return (
-        <div className={cn("w-full py-6 relative z-10", compact ? 'max-w-full' : 'max-w-md mx-auto')}>
-            <StepperNav>
-                {stages.map((stage, i) => {
-                    const completed = i < currentIndex || (status === 'delivered' && i <= currentIndex);
-                    const active = i === currentIndex;
-                    const isLast = i === stages.length - 1;
+        <div className={cn("w-full relative z-10 transition-all", compact ? 'pt-2 pb-0 px-2' : 'py-6 max-w-md mx-auto')}>
+            {compact && (
+                <div 
+                    onClick={() => setIsExpanded(!isExpanded)}
+                    className="flex flex-row items-center justify-between cursor-pointer rounded-2xl bg-muted/5 border border-border px-4 py-3 hover:bg-muted/10 transition-colors shadow-sm"
+                >
+                    <div className="flex items-center gap-4">
+                        {/* Status Pulsing Dot */}
+                        <div className="relative flex h-3 w-3">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-lime-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-3 w-3 bg-[#84CC16]"></span>
+                        </div>
+                        <div className="flex flex-col">
+                            <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest leading-none mb-1">Status</span>
+                            <span className="text-[11px] font-black text-foreground uppercase tracking-wide leading-none">{activeStage.title}</span>
+                        </div>
+                    </div>
+                    
+                    <div className="flex items-center gap-3">
+                        {orderNumber && <span className="text-[10px] font-bold uppercase tracking-widest text-[#84CC16] bg-lime-500/10 border border-lime-500/20 px-2 py-1 rounded-md">#{orderNumber}</span>}
+                        <div className={cn("w-6 h-6 rounded-full bg-muted/10 flex items-center justify-center transition-transform duration-300", isExpanded ? "rotate-180" : "rotate-0")}>
+                            <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                        </div>
+                    </div>
+                </div>
+            )}
+            
+            <AnimatePresence>
+                {(!compact || isExpanded) && (
+                    <motion.div
+                        initial={compact ? { height: 0, opacity: 0 } : false}
+                        animate={{ height: "auto", opacity: 1 }}
+                        exit={compact ? { height: 0, opacity: 0 } : undefined}
+                        className={cn("overflow-hidden", compact && "pt-6 pb-2")}
+                    >
+                        <StepperNav>
+                            {stages.map((stage, i) => {
+                                const completed = i < currentIndex || (status === 'delivered' && i <= currentIndex);
+                                const active = i === currentIndex;
+                                const isLast = i === stages.length - 1;
 
-                    return (
-                        <StepperItem key={stage.key} step={i + 1} active={active} completed={completed} isLast={isLast}>
-                            <div className="flex flex-col items-center gap-2.5 relative z-10">
-                                <StepperIndicator active={active} completed={completed}>
-                                    {i + 1}
-                                </StepperIndicator>
-                                <div className="text-center">
-                                    <p className={cn(
-                                        "text-[9px] font-black uppercase tracking-tight transition-colors duration-500",
-                                        active ? "text-foreground" : completed ? "text-lime-400" : "text-muted-foreground"
-                                    )}>
-                                        {stage.title}
-                                    </p>
-                                    <p className="text-[7px] text-muted-foreground/30 font-medium uppercase tracking-[0.05em] mt-0.5 leading-none">
-                                        {stage.desc}
-                                    </p>
-                                </div>
-                            </div>
-                        </StepperItem>
-                    );
-                })}
-            </StepperNav>
+                                return (
+                                    <StepperItem key={stage.key} step={i + 1} active={active} completed={completed} isLast={isLast}>
+                                        <div className="flex flex-col items-center gap-2.5 relative z-10">
+                                            <StepperIndicator active={active} completed={completed}>
+                                                {i + 1}
+                                            </StepperIndicator>
+                                            <div className="text-center">
+                                                <p className={cn(
+                                                    "text-[9px] font-black uppercase tracking-tight transition-colors duration-500",
+                                                    active ? "text-foreground" : completed ? "text-[#84CC16]" : "text-muted-foreground"
+                                                )}>
+                                                    {stage.title}
+                                                </p>
+                                                <p className="text-[7px] text-muted-foreground/50 font-medium uppercase tracking-[0.05em] mt-0.5 leading-none">
+                                                    {stage.desc}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </StepperItem>
+                                );
+                            })}
+                        </StepperNav>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 };
