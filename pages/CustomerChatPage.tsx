@@ -98,13 +98,6 @@ const MenuCard: React.FC<{ item: MenuItem; index: number; onAdd: (item: MenuItem
             {/* Ambient Element Glow */}
             <div className="absolute top-[45%] left-1/2 -translate-x-1/2 -translate-y-1/2 w-28 h-28 bg-lime-500/20 blur-[30px] rounded-full pointer-events-none transition-opacity duration-500 group-hover:opacity-100 opacity-60" />
 
-            {/* Top Action Badge Overlay */}
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 translate-y-3 z-20 cursor-pointer" onClick={() => onAdd(item)}>
-                <div className="bg-[#1A1A1A] border border-lime-500 text-lime-400 text-[8px] font-black uppercase tracking-widest px-3 py-1 rounded-full shadow-[0_0_15px_rgba(132,204,22,0.6)] animate-pulse flex items-center gap-1 whitespace-nowrap group-hover:-translate-y-1 transition-all duration-300">
-                    👆 Click Me
-                </div>
-            </div>
-
             {/* Image Section - Framed Circular Plate */}
             <div className="flex-1 flex items-center justify-center relative z-10 mt-3 mb-2">
                 <motion.div
