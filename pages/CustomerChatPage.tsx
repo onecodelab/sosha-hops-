@@ -134,9 +134,10 @@ const MenuCard: React.FC<{ item: MenuItem; index: number; onAdd: (item: MenuItem
 
                 <button
                     onClick={() => onAdd(item)}
-                    className="w-8 h-8 rounded-full bg-[#84CC16] flex items-center justify-center text-white shadow-lg shadow-lime-500/30 hover:bg-lime-500 active:scale-90 transition-all"
+                    className="h-8 px-3 rounded-full bg-[#84CC16] flex items-center justify-center gap-1.5 text-black shadow-lg shadow-lime-500/30 hover:bg-lime-500 active:scale-90 transition-all"
                 >
-                    <ShoppingBag className="w-4 h-4" />
+                    <ShoppingBag className="w-3.5 h-3.5" />
+                    <span className="text-[10px] font-black uppercase tracking-widest">Add</span>
                 </button>
             </div>
         </motion.div>
