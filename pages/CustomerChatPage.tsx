@@ -91,28 +91,40 @@ const MenuCard: React.FC<{ item: MenuItem; index: number; onAdd: (item: MenuItem
                 getCardTheme(index)
             )}
         >
-            {/* Elegant Minimalist Abstract Aroma Art */}
-            <AbstractWave className="absolute -top-6 -right-6 w-24 h-24 text-foreground/5 dark:text-foreground/5 rotate-12 pointer-events-none transition-transform duration-700 group-hover:scale-110" />
-            <AbstractWave className="absolute -bottom-6 -left-6 w-28 h-28 text-foreground/5 dark:text-foreground/5 -rotate-[20deg] pointer-events-none" />
+            {/* Radiant Concentric Rings (Background Art) */}
+            <div className="absolute top-[45%] left-1/2 -translate-x-1/2 -translate-y-1/2 w-[140%] aspect-square border border-foreground/[0.04] rounded-full pointer-events-none transition-transform duration-700 group-hover:scale-110" />
+            <div className="absolute top-[45%] left-1/2 -translate-x-1/2 -translate-y-1/2 w-[180%] aspect-square border border-foreground/[0.02] rounded-full pointer-events-none transition-transform duration-1000 group-hover:scale-110" />
 
-            {/* Image Section - Floating */}
-            <div className="flex-1 flex items-center justify-center relative z-10 -mt-2">
+            {/* Ambient Element Glow */}
+            <div className="absolute top-[45%] left-1/2 -translate-x-1/2 -translate-y-1/2 w-28 h-28 bg-lime-500/20 blur-[30px] rounded-full pointer-events-none transition-opacity duration-500 group-hover:opacity-100 opacity-60" />
+
+            {/* Top Action Badge Overlay */}
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 translate-y-3 z-20 cursor-pointer" onClick={() => onAdd(item)}>
+                <div className="bg-[#1A1A1A] border border-lime-500 text-lime-400 text-[8px] font-black uppercase tracking-widest px-3 py-1 rounded-full shadow-[0_0_15px_rgba(132,204,22,0.6)] animate-pulse flex items-center gap-1 whitespace-nowrap group-hover:-translate-y-1 transition-all duration-300">
+                    👆 Click Me
+                </div>
+            </div>
+
+            {/* Image Section - Framed Circular Plate */}
+            <div className="flex-1 flex items-center justify-center relative z-10 mt-3 mb-2">
                 <motion.div
-                    animate={{ y: [0, -6, 0] }}
-                    transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-                    className="w-28 h-28"
+                    animate={{ rotate: 360 }}
+                    transition={{ duration: 40, repeat: Infinity, ease: "linear" }}
+                    className="w-24 h-24 rounded-full p-1 border border-lime-500/30 bg-gradient-to-br from-card to-muted shadow-xl relative group-hover:border-lime-500/60 transition-colors"
                 >
-                    {item.image_url ? (
-                        <img
-                            src={item.image_url}
-                            alt={item.name}
-                            className="w-full h-full object-contain drop-shadow-2xl"
-                        />
-                    ) : (
-                        <div className="w-full h-full flex items-center justify-center bg-muted/50 border border-border rounded-full">
-                            <UtensilsCrossed className="w-10 h-10 text-muted-foreground/30" />
-                        </div>
-                    )}
+                    <div className="w-full h-full rounded-full overflow-hidden bg-background">
+                        {item.image_url ? (
+                            <img
+                                src={item.image_url}
+                                alt={item.name}
+                                className="w-full h-full object-cover scale-110"
+                            />
+                        ) : (
+                            <div className="w-full h-full flex flex-col items-center justify-center">
+                                <UtensilsCrossed className="w-8 h-8 text-muted-foreground/30" />
+                            </div>
+                        )}
+                    </div>
                 </motion.div>
             </div>
 
