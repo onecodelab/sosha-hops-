@@ -1474,9 +1474,9 @@ const CustomerChatPage: React.FC = () => {
                             initial={{ opacity: 0, scale: 0.95 }}
                             animate={{ opacity: 1, scale: 1 }}
                             exit={{ opacity: 0, scale: 1.05 }}
-                            className="flex flex-col items-center justify-center min-h-[70vh] text-center px-4"
+                            className="flex flex-col items-center justify-start pt-[8vh] md:pt-[15vh] min-h-[65vh] text-center px-4"
                         >
-                            <div className="relative w-32 h-32 mx-auto mb-8">
+                            <div className="relative w-28 h-28 md:w-32 md:h-32 mx-auto mb-8">
                                 {/* Glowing ambient light */}
                                 <motion.div 
                                     animate={{ 
