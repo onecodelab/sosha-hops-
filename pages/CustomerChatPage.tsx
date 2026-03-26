@@ -64,11 +64,11 @@ const getSessionId = (tableId: string): string => {
 /* ─── HELPERS ─── */
 const getCardTheme = (index: number) => {
     const themes = [
-        'bg-[#1A1A1A] border border-emerald-500/20 shadow-[0_0_15px_rgba(16,185,129,0.05)]',
-        'bg-[#1A1A1A] border border-blue-500/20 shadow-[0_0_15px_rgba(59,130,246,0.05)]',
-        'bg-[#1A1A1A] border border-amber-500/20 shadow-[0_0_15px_rgba(245,158,11,0.05)]',
-        'bg-[#1A1A1A] border border-rose-500/20 shadow-[0_0_15px_rgba(244,63,94,0.05)]',
-        'bg-[#1A1A1A] border border-purple-500/20 shadow-[0_0_15px_rgba(168,85,247,0.05)]',
+        'bg-card border border-emerald-500/20 shadow-[0_0_15px_rgba(16,185,129,0.05)]',
+        'bg-card border border-blue-500/20 shadow-[0_0_15px_rgba(59,130,246,0.05)]',
+        'bg-card border border-amber-500/20 shadow-[0_0_15px_rgba(245,158,11,0.05)]',
+        'bg-card border border-rose-500/20 shadow-[0_0_15px_rgba(244,63,94,0.05)]',
+        'bg-card border border-purple-500/20 shadow-[0_0_15px_rgba(168,85,247,0.05)]',
     ];
     return themes[index % themes.length];
 };
@@ -91,10 +91,6 @@ const MenuCard: React.FC<{ item: MenuItem; index: number; onAdd: (item: MenuItem
                 getCardTheme(index)
             )}
         >
-            {/* Decorative Leaves */}
-            <FreshLeaf className="absolute -top-2 -right-2 w-12 h-12 text-white/5 rotate-12" />
-            <FreshLeaf className="absolute bottom-10 -left-4 w-16 h-16 text-white/5 -rotate-45" />
-
             {/* Image Section - Floating */}
             <div className="flex-1 flex items-center justify-center relative z-10 -mt-2">
                 <motion.div
@@ -109,7 +105,7 @@ const MenuCard: React.FC<{ item: MenuItem; index: number; onAdd: (item: MenuItem
                             className="w-full h-full object-contain drop-shadow-2xl"
                         />
                     ) : (
-                        <div className="w-full h-full flex items-center justify-center bg-white/5 border border-white/10 rounded-full">
+                        <div className="w-full h-full flex items-center justify-center bg-muted/50 border border-border rounded-full">
                             <UtensilsCrossed className="w-10 h-10 text-muted-foreground/30" />
                         </div>
                     )}
