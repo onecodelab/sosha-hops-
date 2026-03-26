@@ -8,7 +8,7 @@ const TOOL_DEFINITIONS = [
         type: "function",
         function: {
             name: "get_menu",
-            description: "Get the restaurant's menu items. Call with NO parameters to show the full menu. Only use 'category' for specific sub-categories like 'Drinks', 'burgers', 'fish'. Do NOT pass generic terms like 'food' or 'menu' as category.",
+            description: "Get the restaurant's menu items. Returns full item metadata including tags, spice levels, and ingredients. Use 'category' for specific sub-categories. If the user asks for 'something cheap' to EAT, do NOT return drinks! Filter the results to only include real meals.",
             parameters: {
                 type: "object",
                 properties: {
@@ -304,7 +304,7 @@ async function executeMcpTool(
 
         let dbQuery = supabase
             .from("view_menu_details")
-            .select("id, name, price, category, image_url, is_available, description")
+            .select("id, name, price, category, image_url, is_available, description, dietary_tags, ingredients_list, spice_level, portion_size")
             .eq("organization_id", organizationId);
 
         if (targetBranch) {
@@ -328,7 +328,7 @@ async function executeMcpTool(
             console.log(`[MCP-LOCAL-MENU] Category "${catStr}" returned 0 items. Retrying without category filter...`);
             let retryQuery = supabase
                 .from("view_menu_details")
-                .select("id, name, price, category, image_url, is_available, description")
+                .select("id, name, price, category, image_url, is_available, description, dietary_tags, ingredients_list, spice_level, portion_size")
                 .eq("organization_id", organizationId);
             if (targetBranch) retryQuery = retryQuery.eq("branch_id", targetBranch);
             if (queryStr) retryQuery = retryQuery.ilike("name", `%${queryStr}%`);

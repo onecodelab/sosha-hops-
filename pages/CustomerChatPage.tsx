@@ -11,6 +11,7 @@ import { supabase } from '../supabase';
 import ThemeToggle from '../components/ThemeToggle';
 import { LanguageSwitcher } from '../components/LanguageSwitcher';
 import { useLanguage } from '../contexts/LanguageContext';
+import { RatingInteraction } from '../components/ui/RatingInteraction';
 
 /* ─── TYPES ─── */
 interface ChatMessage {
@@ -894,6 +895,8 @@ const CustomerChatPage: React.FC = () => {
     });
     const [isCartOpen, setIsCartOpen] = useState(false);
     const [isPlacingOrder, setIsPlacingOrder] = useState(false);
+    const [sessionCompleted, setSessionCompleted] = useState(false);
+    const [ratingSubmitted, setRatingSubmitted] = useState(false);
 
     // Active order tracking
     interface ActiveOrder {
@@ -1493,11 +1496,7 @@ const CustomerChatPage: React.FC = () => {
                                     setActiveOrder(null);
                                     setCart([]);
                                     localStorage.removeItem(cartStorageKey);
-                                    if (tableId) {
-                                        localStorage.removeItem(`baro_session_${tableId}`);
-                                    }
-                                    showToast('Thank you! Session completed. 🥂', 'success');
-                                    setTimeout(() => window.location.reload(), 3000);
+                                    setSessionCompleted(true);
                                 }}
                             />
                         ) : (
@@ -1718,6 +1717,48 @@ const CustomerChatPage: React.FC = () => {
                         onClose={() => setIsCartOpen(false)}
                         isPlacing={isPlacingOrder}
                     />
+                )}
+
+                {/* --- RATING OVERLAY ON SESSION COMPLETE --- */}
+                {sessionCompleted && !ratingSubmitted && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-[100] bg-background/95 backdrop-blur-xl flex flex-col items-center justify-center p-6 text-center"
+                    >
+                        <motion.div
+                            initial={{ y: 20, opacity: 0, scale: 0.9 }}
+                            animate={{ y: 0, opacity: 1, scale: 1 }}
+                            transition={{ delay: 0.1, duration: 0.4 }}
+                            className="bg-card w-full max-w-sm rounded-[2rem] p-8 border border-border shadow-2xl flex flex-col items-center gap-6"
+                        >
+                            <div className="w-16 h-16 rounded-3xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mb-2">
+                                <CheckCircle2 className="w-8 h-8 text-emerald-500" />
+                            </div>
+                            <div>
+                                <h2 className="text-2xl font-black mb-2 uppercase tracking-wide">Thank You! 🥂</h2>
+                                <p className="text-muted-foreground text-sm">
+                                    Your order is complete. How was your experience today?
+                                </p>
+                            </div>
+
+                            <RatingInteraction
+                                className="mt-4"
+                                onChange={(val) => {
+                                    setTimeout(() => {
+                                        setRatingSubmitted(true);
+                                        // Send to DB if you wish; simply locking session now
+                                        if (tableId) {
+                                            localStorage.removeItem(`baro_session_${tableId}`);
+                                        }
+                                        showToast('Thank you for your feedback! 🫶', 'success');
+                                        setTimeout(() => window.location.reload(), 2000);
+                                    }, 800);
+                                }}
+                            />
+                        </motion.div>
+                    </motion.div>
                 )}
             </AnimatePresence>
         </div>

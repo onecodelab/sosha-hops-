@@ -41,6 +41,10 @@ export interface MenuDish {
   stock_quantity: number;
   is_available: boolean;
   cost_per_plate?: number;
+  dietary_tags?: string[];
+  ingredients_list?: string[];
+  spice_level?: string;
+  portion_size?: string;
   availability_reason?: string;
   recipe_id?: string | null;
   created_at: string;

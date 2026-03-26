@@ -42,6 +42,12 @@ export const MenuEditorModal: React.FC<MenuEditorModalProps> = ({
   const [isAvailable, setIsAvailable] = useState(true);
   const [recipeCost, setRecipeCost] = useState(0);
 
+  // Semantic Tagging State
+  const [dietaryTags, setDietaryTags] = useState<string>('');
+  const [ingredientsList, setIngredientsList] = useState<string>('');
+  const [spiceLevel, setSpiceLevel] = useState<string>('None');
+  const [portionSize, setPortionSize] = useState<string>('Standard');
+
   // Manual Category State
   const [isAddingCategory, setIsAddingCategory] = useState(false);
   const [isEditingCategory, setIsEditingCategory] = useState(false);
@@ -62,6 +68,10 @@ export const MenuEditorModal: React.FC<MenuEditorModalProps> = ({
           setPrice(editingItem.price);
           setImageUrl(editingItem.image_url || '');
           setIsAvailable(editingItem.is_available);
+          setDietaryTags((editingItem.dietary_tags || []).join(', '));
+          setIngredientsList((editingItem.ingredients_list || []).join(', '));
+          setSpiceLevel(editingItem.spice_level || 'None');
+          setPortionSize(editingItem.portion_size || 'Standard');
           fetchRecipeCost(editingItem.id);
         } else {
           setInternalItem(null);
@@ -71,6 +81,10 @@ export const MenuEditorModal: React.FC<MenuEditorModalProps> = ({
           setImageUrl('');
           setIsAvailable(true);
           setRecipeCost(0);
+          setDietaryTags('');
+          setIngredientsList('');
+          setSpiceLevel('None');
+          setPortionSize('Standard');
           setIsAddingCategory(false);
           setIsEditingCategory(false);
           setNewCategoryName('');
@@ -260,6 +274,10 @@ export const MenuEditorModal: React.FC<MenuEditorModalProps> = ({
         price: parseFloat(price.toString()),
         image_url: imageUrl.trim() || null,
         status: isAvailable ? 'available' : 'unavailable',
+        dietary_tags: dietaryTags.split(',').map(s => s.trim()).filter(Boolean),
+        ingredients_list: ingredientsList.split(',').map(s => s.trim()).filter(Boolean),
+        spice_level: spiceLevel,
+        portion_size: portionSize,
         ...(internalItem?.id ? { id: internalItem.id } : { branch_id: activeBranchId || null }),
         ...(internalItem?.id ? {} : { organization_id: userProfile?.organization_id })
       };
@@ -569,6 +587,61 @@ export const MenuEditorModal: React.FC<MenuEditorModalProps> = ({
                   />
                 </div>
               </div>
+              <div className="pt-4 border-t border-primary/10">
+                <label className="text-[10px] font-black text-primary uppercase tracking-[0.2em] mb-4 block">Semantic Agent Tags</label>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-[9px] font-black text-gray-500 uppercase tracking-widest ml-1">Dietary Tags (Comma sep)</label>
+                    <Input
+                      value={dietaryTags}
+                      onChange={e => setDietaryTags(e.target.value)}
+                      placeholder="Vegan, Gluten-Free, Halal"
+                      className="bg-black/40 border-primary/20 h-10 text-xs"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[9px] font-black text-gray-500 uppercase tracking-widest ml-1">Key Ingredients (Comma sep)</label>
+                    <Input
+                      value={ingredientsList}
+                      onChange={e => setIngredientsList(e.target.value)}
+                      placeholder="Chicken, Onion, Berbere"
+                      className="bg-black/40 border-primary/20 h-10 text-xs"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[9px] font-black text-gray-500 uppercase tracking-widest ml-1">Spice Level</label>
+                    <div className="relative">
+                      <select
+                        value={spiceLevel}
+                        onChange={e => setSpiceLevel(e.target.value)}
+                        className="w-full h-10 bg-black/40 border border-primary/15 rounded-lg px-3 text-xs text-white outline-none focus:border-primary/50 appearance-none"
+                      >
+                        <option value="None">None</option>
+                        <option value="Mild">Mild</option>
+                        <option value="Medium">Medium</option>
+                        <option value="Hot">Hot</option>
+                        <option value="Extra Hot">Extra Hot (Volcano)</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[9px] font-black text-gray-500 uppercase tracking-widest ml-1">Meal Size</label>
+                    <div className="relative">
+                      <select
+                        value={portionSize}
+                        onChange={e => setPortionSize(e.target.value)}
+                        className="w-full h-10 bg-black/40 border border-primary/15 rounded-lg px-3 text-xs text-white outline-none focus:border-primary/50 appearance-none"
+                      >
+                        <option value="Standard">Standard / Entree</option>
+                        <option value="Light">Light / Appetizer</option>
+                        <option value="Large">Large / Sharing</option>
+                        <option value="Bite">Bite Size / Snack</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               <div className="flex items-center justify-between p-4 bg-primary/5 rounded-2xl border border-primary/10">
                 <span className="text-sm font-bold text-gray-300">Available for Order</span>
                 <button
