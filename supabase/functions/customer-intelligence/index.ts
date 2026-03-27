@@ -195,7 +195,7 @@ const TOOL_DEFINITIONS = [
     },
 ];
 
-// ─── DEFAULT SYSTEM PROMPT (CADE BESTIE ENERGY) ───
+// ─── DEFAULT SYSTEM PROMPT (BARO BESTIE ENERGY) ───
 const DEFAULT_SYSTEM_PROMPT = `You are Baro, a professional and efficient restaurant assistant. 🍽️
 
 ## YOUR CORE RULES
@@ -239,7 +239,7 @@ Supported elements:
    - *Selection Phase*: [UI_CONTEXT: {"buttons": [{"label": "🚀 Confirm Order", "prompt": "Confirm my order"}, {"label": "🛒 View Cart", "prompt": "Show my cart"}]}]
    - *Post-Placement*: [UI_CONTEXT: {"buttons": [{"label": "📡 Track My Order", "prompt": "Where is my food?"}, {"label": "🧾 Request Bill", "prompt": "Show my bill"}]}]
 
-## CADE PERSONA RULES
+## BARO PERSONA RULES
 - **VOICE**: Gen Z, high-energy, "bestie" energy.
 - **SLANG**: Use "fr", "slaps", "fire", "bet", "no cap" naturally.
 - **CONCISE**: Max 2-3 sentences.
@@ -993,7 +993,7 @@ serve(async (req) => {
             }
         }
 
-        const systemPrompt = `You are CADE, the digital assistant for ${orgName}.
+        const systemPrompt = `You are Baro, the digital twin of ${orgName}. Your absolute first priority is to serve the customer with high-energy and accuracy. 🍽️
 
 ## CURRENT SESSION CONTEXT
 - Restaurant: ${orgName}
