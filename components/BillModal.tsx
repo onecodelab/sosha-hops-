@@ -296,7 +296,7 @@ export const BillModal: React.FC<BillModalProps> = ({
   const locationName = branchData?.name || 'Main Branch';
 
   const getDynamicReceiver = (bank: string) => {
-    const setting = bankSettings.find((s: any) => s.bank_key === bank);
+    const setting = activeBanks.find((s: any) => s.bank_key === bank);
     return setting?.account_number || "";
   };
 
@@ -451,7 +451,7 @@ export const BillModal: React.FC<BillModalProps> = ({
       <div className="flex flex-col p-0 md:p-1 min-h-[300px] md:min-h-[400px] bg-zinc-950/50 rounded-xl md:rounded-[1.5rem] border border-primary/10">
         {view === 'bill' && (
           <div className="animate-in fade-in zoom-in-95 duration-300">
-            <div className="bg-white text-black p-3 md:p-4 rounded-lg shadow-inner mx-auto w-[90%] md:w-full max-w-[260px] md:max-w-[320px] scale-[0.85] sm:scale-100 origin-top transition-transform mb-[-3rem] sm:mb-0 print:shadow-none print:px-0 print:scale-100" style={{ fontFamily: "'Courier New', Courier, monospace" }}>
+            <div data-printable-receipt className="bg-white text-black p-3 md:p-4 rounded-lg shadow-inner mx-auto w-[90%] md:w-full max-w-[260px] md:max-w-[320px] scale-[0.85] sm:scale-100 origin-top transition-transform mb-[-3rem] sm:mb-0" style={{ fontFamily: "'Courier New', Courier, monospace" }}>
               {/* TIN */}
               <div className="text-center mb-1">
                 <p className="text-[10px] tracking-wider font-mono">TIN: 0043819230</p>
@@ -534,6 +534,7 @@ export const BillModal: React.FC<BillModalProps> = ({
 
               {/* Universal QR Section */}
               <div className="flex flex-col items-center gap-1 mt-1 font-mono">
+                {activeBanks.length > 0 && (
                 <div className="text-center flex flex-col items-center bg-gray-50 p-2 rounded-lg border border-gray-100">
                   <QRCodeSVG
                     value={buildUniversalMerchantQR(
@@ -549,6 +550,7 @@ export const BillModal: React.FC<BillModalProps> = ({
                     level="M"
                   />
                 </div>
+                )}
 
                 {/* Human Readable Accounts (for manual entry if scan fails) */}
                 <div className="w-full space-y-1 px-4">
@@ -752,7 +754,7 @@ export const BillModal: React.FC<BillModalProps> = ({
 
         {view === 'receipt' && (
           <div className="animate-in fade-in zoom-in-95 duration-300 flex flex-col items-center">
-            <div className="bg-white text-black p-4 rounded-lg shadow-inner mx-auto w-full max-w-[280px] sm:max-w-[320px] mt-4 scale-[0.78] sm:scale-100 origin-top transition-transform mb-[-5rem] sm:mb-0 print:shadow-none print:px-0 print:scale-100" style={{ fontFamily: "'Courier New', Courier, monospace" }}>
+            <div data-printable-receipt className="bg-white text-black p-4 rounded-lg shadow-inner mx-auto w-full max-w-[280px] sm:max-w-[320px] mt-4 scale-[0.78] sm:scale-100 origin-top transition-transform mb-[-5rem] sm:mb-0" style={{ fontFamily: "'Courier New', Courier, monospace" }}>
               {/* TIN */}
               <div className="text-center mb-1">
                 <p className="text-[10px] tracking-wider font-mono">TIN: 0043819230</p>
@@ -835,6 +837,7 @@ export const BillModal: React.FC<BillModalProps> = ({
 
               {/* Universal QR Footer for Paid Receipt */}
               <div className="flex flex-col items-center gap-1 mt-1 font-mono">
+                {activeBanks.length > 0 && (
                 <div className="text-center flex flex-col items-center">
                    <QRCodeSVG
                     value={buildUniversalMerchantQR(
@@ -852,6 +855,7 @@ export const BillModal: React.FC<BillModalProps> = ({
                   />
                   <span className="font-black text-[7px] tracking-widest uppercase text-gray-500">Invoice Authenticity QR</span>
                 </div>
+                )}
 
                 <p className="text-[9px] text-gray-500 text-center mt-4 font-mono">FG{order.id.slice(0, 8).toUpperCase()}</p>
                 <p className="text-[9px] text-gray-400 text-center mt-1 tracking-wider font-mono">Powered by Baro OS</p>

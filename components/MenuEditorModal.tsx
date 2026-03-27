@@ -55,7 +55,7 @@ export const MenuEditorModal: React.FC<MenuEditorModalProps> = ({
   // Initialize state when modal opens or editingItem changes
   useEffect(() => {
     if (isOpen) {
-      fetchCategories();
+      fetchCategories(editingItem);
 
       // If modal just opened OR a different item was selected for editing
       if (!wasOpen.current || (editingItem && editingItem.id !== internalItem?.id)) {
@@ -120,9 +120,25 @@ export const MenuEditorModal: React.FC<MenuEditorModalProps> = ({
     }
   };
 
-  const fetchCategories = async () => {
+  const fetchCategories = async (currentItem?: MenuItem | null) => {
     const { data } = await supabase.from('categories').select('*').order('name');
-    if (data) setCategories(data);
+    if (data) {
+      setCategories(data);
+      // Auto-resolve missing category_id by matching the category name string
+      if (currentItem) {
+        const existingCatId = currentItem.category_id;
+        if (existingCatId) {
+          setCategoryId(existingCatId);
+        } else if (currentItem.category) {
+          const match = data.find(c => c.name === currentItem.category);
+          if (match) {
+            setCategoryId(match.id);
+          } else {
+            setCategoryId('');
+          }
+        }
+      }
+    }
   };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -619,6 +635,8 @@ export const MenuEditorModal: React.FC<MenuEditorModalProps> = ({
                           onChange={e => setPortionSize(e.target.value)}
                           className="w-full h-10 bg-black/60 border border-primary/20 rounded-lg px-3 text-xs text-white outline-none focus:border-primary/50 appearance-none"
                         >
+                          <option value="Half" className="bg-[#0A0A0A] text-white">Half Portion</option>
+                          <option value="Full" className="bg-[#0A0A0A] text-white">Full Portion</option>
                           <option value="1 Person" className="bg-[#0A0A0A] text-white">1 Person</option>
                           <option value="2 People" className="bg-[#0A0A0A] text-white">2 People</option>
                           <option value="3 People" className="bg-[#0A0A0A] text-white">3 People</option>

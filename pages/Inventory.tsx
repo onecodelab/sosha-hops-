@@ -836,6 +836,8 @@ const Inventory: React.FC = () => {
                         >
                           <option value="None" className="bg-[#0A0A0A] text-white">None (Bulk Tracking Only)</option>
                           <option value="Piece" className="bg-[#0A0A0A] text-white">Piece</option>
+                          <option value="Half" className="bg-[#0A0A0A] text-white">Half</option>
+                          <option value="Full" className="bg-[#0A0A0A] text-white">Full</option>
                           <option value="Cup" className="bg-[#0A0A0A] text-white">Cup</option>
                           <option value="Bag" className="bg-[#0A0A0A] text-white">Bag (e.g. 25kg Sack)</option>
                           <option value="Bottle" className="bg-[#0A0A0A] text-white">Bottle</option>

@@ -558,17 +558,18 @@ serve(async (req) => {
                     table_number: resolvedTable,
                     table_id: directTableId,
                     session_id: body.session_id || '',
+                    source: 'chatbot' // Track origin for trigger-based billing
                 }, directOrgId, directBranchId, resolvedTable);
 
-                // --- CREDIT DEDUCTION ---
+                // --- CREDIT DEDUCTION (Intelligence Fee) ---
                 try {
                     await Promise.all([
-                        supabase.rpc('increment_org_credits', { org_id: directOrgId, amount: 20 }),
+                        supabase.rpc('increment_org_credits', { org_id: directOrgId, amount: 1 }),
                         supabase.from("credit_usage_logs").insert({
                             organization_id: directOrgId,
-                            action_type: "direct_order",
-                            amount: 20,
-                            metadata: { session_id: body.session_id, table: resolvedTable, is_direct: true }
+                            action_type: "direct_order_intelligence",
+                            amount: 1,
+                            metadata: { session_id: body.session_id, table: resolvedTable, is_direct: true, note: 'Base 1-credit fee. 20-credit order fee pending waiter approval.' }
                         })
                     ]);
                 } catch (ce) {
@@ -1527,9 +1528,11 @@ ${customerContext}
 
         clearTimeout(globalTimeout);
 
-        // ── STEP 8: Credit Deduction ──
+        // ── STEP 8: Credit Deduction (Message Complexity Fee) ──
         try {
-            const creditAmount = wasOrderAction ? 20 : 1;
+            // All intelligence turns now cost 1 credit. 20-credit order conversion fees
+            // are now handled by database triggers upon waiter approval.
+            const creditAmount = 1; 
             await Promise.all([
                 // Increment used count
                 supabase.rpc('increment_org_credits', { 
@@ -1539,9 +1542,14 @@ ${customerContext}
                 // Log usage
                 supabase.from("credit_usage_logs").insert({
                     organization_id: organizationId,
-                    action_type: wasOrderAction ? "successful_order" : "chat_message",
+                    action_type: wasOrderAction ? "successful_order_attempt" : "chat_message",
                     amount: creditAmount,
-                    metadata: { session_id, table: resolvedTableNumber, is_order: wasOrderAction }
+                    metadata: { 
+                        session_id, 
+                        table: resolvedTableNumber, 
+                        is_order_attempt: wasOrderAction,
+                        note: wasOrderAction ? 'Base 1-credit fee. 20-credit order fee pending waiter approval.' : undefined
+                    }
                 })
             ]);
         } catch (e) {
