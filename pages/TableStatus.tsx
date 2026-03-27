@@ -67,29 +67,42 @@ const TableStatus: React.FC = () => {
    // 1. Fetch Live Data (Filtered by Active Branch)
    const { data: tables, isLoading, refetch } = useQuery({
       queryKey: ['live-floor-detailed', activeBranchId],
-      queryFn: async () => {
-         let query = supabase
-            .from('tables')
-            .select(`
-          *,
-          current_order:orders!current_order_id(status, payment_status),
-          sessions:table_sessions(id, seated_at, is_active)
-        `)
-            .order('table_number', { ascending: true });
+        queryFn: async () => {
+          let selectString = `
+            *,
+            current_order:orders!current_order_id(status, payment_status),
+            sessions:table_sessions(id, seated_at, is_active)
+          `;
 
-         // Filter by branch if one is selected
-         if (activeBranchId) {
-            query = query.eq('branch_id', activeBranchId);
-         }
+          let { data, error } = await supabase
+             .from('tables')
+             .select(selectString)
+             .eq('branch_id', activeBranchId)
+             .order('table_number', { ascending: true });
 
-         const { data, error } = await query;
-         if (error) throw error;
-         return (data || []).map(t => ({
-            ...t,
-            active_session: Array.isArray(t.sessions) ? t.sessions.find((s: any) => s.is_active) : null,
-            needs_cleanup: t.status === 'occupied' && t.current_order?.status === 'paid'
-         }));
-      },
+          // Fallback if qr_token or map positions missing
+          if (error && (error.message.includes('qr_token') || error.message.includes('pos_x'))) {
+            selectString = `
+              id, table_number, capacity, shape, status, branch_id, organization_id, zone, capacity_min, capacity_max,
+              current_order:orders!current_order_id(status, payment_status),
+              sessions:table_sessions(id, seated_at, is_active)
+            `;
+            const { data: retryData, error: retryError } = await supabase
+               .from('tables')
+               .select(selectString)
+               .eq('branch_id', activeBranchId)
+               .order('table_number', { ascending: true });
+            data = retryData;
+            error = retryError;
+          }
+
+          if (error) throw error;
+          return (data || []).map(t => ({
+             ...t,
+             active_session: Array.isArray(t.sessions) ? t.sessions.find((s: any) => s.is_active) : null,
+             needs_cleanup: t.status === 'occupied' && t.current_order?.status === 'paid'
+          }));
+        },
       enabled: !!activeBranchId
    });
 
@@ -209,7 +222,7 @@ const TableStatus: React.FC = () => {
       }
       setIsAddingTable(true);
       try {
-         const { error } = await supabase.from('tables').insert({
+          const payload = {
             table_number: newTableData.table_number.trim(),
             zone: newTableData.zone,
             capacity_min: newTableData.capacity_min,
@@ -220,8 +233,18 @@ const TableStatus: React.FC = () => {
             branch_id: activeBranchId,
             organization_id: profile?.organization_id,
             qr_token: generateToken()
-          });
-         if (error) throw error;
+          };
+
+          let { error } = await supabase.from('tables').insert(payload);
+
+          // Fallback for missing columns
+          if (error && (error.message.includes('qr_token') || error.message.includes('pos_x'))) {
+            const { qr_token, pos_x, pos_y, ...clean } = payload as any;
+            const { error: retryError } = await supabase.from('tables').insert(clean);
+            error = retryError;
+          }
+
+          if (error) throw error;
          showToast(`Table ${newTableData.table_number} created successfully!`, 'success');
          setIsAddTableModalOpen(false);
          refetch();
@@ -236,18 +259,31 @@ const TableStatus: React.FC = () => {
       if (!editingTableId) return;
       setIsAddingTable(true);
       try {
-         const { error } = await supabase
+         const payload = {
+            table_number: newTableData.table_number.trim(),
+            zone: newTableData.zone,
+            capacity_min: newTableData.capacity_min,
+            capacity_max: newTableData.capacity_max,
+            pos_x: newTableData.pos_x,
+            pos_y: newTableData.pos_y
+         };
+         
+         let { error } = await supabase
             .from('tables')
-            .update({
-               table_number: newTableData.table_number.trim(),
-               zone: newTableData.zone,
-               capacity_min: newTableData.capacity_min,
-               capacity_max: newTableData.capacity_max,
-               pos_x: newTableData.pos_x,
-               pos_y: newTableData.pos_y
-            })
+            .update(payload)
             .eq('id', editingTableId)
             .eq('organization_id', profile?.organization_id);
+
+         // Fallback for missing position columns
+         if (error && error.message.includes('pos_x')) {
+            const { pos_x, pos_y, ...clean } = payload as any;
+            const { error: retryError } = await supabase
+               .from('tables')
+               .update(clean)
+               .eq('id', editingTableId)
+               .eq('organization_id', profile?.organization_id);
+            error = retryError;
+         }
 
          if (error) throw error;
          showToast('Table updated successfully', 'success');

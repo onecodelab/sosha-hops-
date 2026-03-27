@@ -189,11 +189,11 @@ export const Dialog: React.FC<DialogProps> = ({ isOpen, onClose, title, children
             <div className="absolute top-0 inset-x-0 h-32 bg-gradient-to-b from-muted-foreground/10 to-transparent pointer-events-none opacity-50" />
             
             {showTitle && (
-              <div className="flex items-center justify-between px-6 py-5 md:px-10 md:py-8 border-b border-border/50 bg-card/40 backdrop-blur-xl relative z-10 shrink-0">
+              <div className="flex items-center justify-between px-6 py-5 md:px-10 md:py-8 border-b border-primary/20 bg-card/40 backdrop-blur-xl relative z-10 shrink-0">
                 <h2 className="text-lg md:text-xl font-black text-foreground tracking-tighter uppercase">{title}</h2>
                 <button 
                   onClick={onClose} 
-                  className="w-10 h-10 flex items-center justify-center rounded-xl bg-white/5 border border-white/10 text-muted hover:text-foreground hover:bg-white/10 hover:shadow-lg transition-all duration-500 hover:rotate-90 group"
+                  className="w-10 h-10 flex items-center justify-center rounded-xl bg-primary/5 border border-primary/20 text-muted hover:text-foreground hover:bg-primary/10 hover:shadow-lg transition-all duration-500 hover:rotate-90 group"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="group-hover:scale-110"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                 </button>

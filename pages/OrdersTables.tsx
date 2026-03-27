@@ -7,7 +7,8 @@ import {
 import { Card, CardContent, CardHeader, CardTitle, cn, showToast, Badge } from '../components/ui';
 import {
    ClipboardList, Clock, AlertOctagon, TrendingUp, DollarSign,
-   Armchair, Utensils, Truck, CheckCircle2, AlertTriangle, ArrowRight, Loader2
+   Armchair, Utensils, Truck, CheckCircle2, AlertTriangle, ArrowRight, Loader2,
+   Star, MessageSquare, Quote
 } from 'lucide-react';
 import { supabase } from '../supabase';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -40,7 +41,7 @@ const OrdersTables: React.FC = () => {
       toServed: 0,
       total: 0
    });
-   const [recentOrders, setRecentOrders] = useState<any[]>([]);
+   const [feedback, setFeedback] = useState<any[]>([]);
 
    useEffect(() => {
       fetchData();
@@ -48,7 +49,6 @@ const OrdersTables: React.FC = () => {
       // Subscribe to updates
       const sub = supabase.channel('orders_tables_analytics')
          .on('postgres_changes', {
-            event: '*',
             schema: 'public',
             table: 'orders',
             filter: activeBranchId ? `branch_id=eq.${activeBranchId}` : undefined
@@ -258,9 +258,19 @@ const OrdersTables: React.FC = () => {
             total: tk + tr + ts
          });
 
-
-         // --- Update State ---
-         setRecentOrders(safeOrders.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).slice(0, 15));
+         // --- Process Feedback ---
+         let feedbackQuery = supabase
+            .from('customer_feedback')
+            .select('*, orders(id, order_number)')
+            .order('created_at', { ascending: false })
+            .limit(10);
+         
+         if (activeBranchId) {
+            feedbackQuery = feedbackQuery.eq('branch_id', activeBranchId);
+         }
+         
+         const { data: feedbackData } = await feedbackQuery;
+         setFeedback(feedbackData || []);
       } catch (err) {
          console.error("Orders Analytics Error:", err);
          showToast("Failed to load analytics data", "error");
@@ -329,7 +339,7 @@ const OrdersTables: React.FC = () => {
                         <p className="text-[10px] font-black text-muted uppercase tracking-[0.2em] opacity-60">{t('ordersTables.avgOrderValue')}</p>
                         <h3 className="text-3xl font-black text-foreground mt-2 tracking-tighter">
                            <span className="text-sm mr-1 opacity-40">{t('adminDashboard.etb')}</span>
-                           {kpi.avgValue}
+                           {kpi.avgValue.toLocaleString()}
                         </h3>
                         <div className="text-[10px] text-emerald-500 font-black mt-2 flex items-center gap-1 uppercase tracking-widest">
                            <TrendingUp className="w-3 h-3" strokeWidth={3} /> {t('ordersTables.perTicket')}
@@ -486,214 +496,84 @@ const OrdersTables: React.FC = () => {
                </Card>
             </div>
 
-            {/* Live Order Feed - NEW Section */}
+            {/* Customer Feedback Feed */}
             <Card className="bg-card/60 backdrop-blur-xl border border-border rounded-[2.5rem] shadow-2xl overflow-hidden">
                <CardHeader className="p-8 border-b border-border bg-muted/5 flex flex-row items-center justify-between">
                   <CardTitle className="text-[10px] font-black text-foreground uppercase tracking-[0.2em] flex items-center gap-3">
-                     <ClipboardList className="w-4 h-4 text-primary" strokeWidth={3} /> Live Order Feed
+                     <Star className="w-4 h-4 text-emerald-500" strokeWidth={3} /> Customer Feedback
                   </CardTitle>
-                  <Badge variant="glass" className="text-[9px] font-black tracking-[0.1em]">{recentOrders.length} Recent Activity</Badge>
+                  <Badge variant="glass" className="text-[9px] font-black tracking-[0.1em]">{feedback.length} Latest Responses</Badge>
                </CardHeader>
                <CardContent className="p-0">
                   <div className="overflow-x-auto custom-scrollbar">
                      <table className="w-full text-left border-collapse">
                         <thead className="text-[9px] font-black text-muted uppercase bg-muted/5 border-b border-border sticky top-0 backdrop-blur-xl z-10 tracking-widest ">
                            <tr>
-                              <th className="px-8 py-5">Order #</th>
-                              <th className="px-8 py-5">Origin</th>
-                              <th className="px-8 py-5">Value</th>
-                              <th className="px-8 py-5">Status</th>
+                              <th className="px-8 py-5">Guest</th>
+                              <th className="px-8 py-5">Rating</th>
+                              <th className="px-8 py-5">Ref / Table</th>
                               <th className="px-8 py-5">Time</th>
                            </tr>
                         </thead>
                         <tbody className="divide-y divide-border">
-                           {recentOrders.length === 0 && (
-                              <tr>
-                                 <td colSpan={5} className="p-10 text-center text-muted uppercase font-black text-[10px] tracking-widest opacity-40 italic">
-                                    No transaction records found for this period.
-                                 </td>
-                              </tr>
+                           {feedback.length === 0 && (
+                               <tr>
+                                  <td colSpan={4} className="p-10 text-center text-muted uppercase font-black text-[10px] tracking-widest opacity-40 italic">
+                                     No customer feedback recorded yet.
+                                  </td>
+                               </tr>
                            )}
-                           {recentOrders.map((o) => (
-                              <tr key={o.id} className="hover:bg-primary/5 transition-colors group">
-                                 <td className="px-8 py-5">
-                                    <div className="font-black text-foreground uppercase italic group-hover:text-primary transition-all">#{o.id.slice(0, 8)}</div>
-                                    <div className="text-[9px] text-muted font-bold tracking-widest opacity-40 mt-0.5">{o.customer_name || 'Guest User'}</div>
-                                 </td>
-                                 <td className="px-8 py-5">
-                                    <div className="flex items-center gap-2">
-                                       <Badge variant="outline" className="h-6 font-black bg-white/5 border-primary/20 text-primary">Table {o.table_number || 'N/A'}</Badge>
-                                       <span className="text-[10px] text-muted font-black opacity-40 uppercase">{o.order_type || 'Dine-in'}</span>
-                                    </div>
-                                 </td>
-                                 <td className="px-8 py-5">
-                                    <div className="font-mono text-foreground font-black text-base italic">
-                                       <span className="text-[10px] mr-1 opacity-30 font-sans NOT-italic">ETB</span>
-                                       {o.total_amount?.toLocaleString()}
-                                    </div>
-                                 </td>
-                                 <td className="px-8 py-5">
-                                    <Badge 
-                                       className={cn(
-                                          "font-black text-[9px] tracking-[0.15em] px-3 py-1 uppercase rounded-lg border-none",
-                                          o.status === 'paid' ? "bg-emerald-500/10 text-emerald-500" :
-                                          o.status === 'cancelled' ? "bg-red-500/10 text-red-500" :
-                                          o.status === 'ready' ? "bg-primary/10 text-primary animate-pulse" :
-                                          "bg-blue-500/10 text-blue-500"
-                                       )}
-                                    >
-                                       {o.status}
-                                    </Badge>
-                                 </td>
-                                 <td className="px-8 py-5">
-                                    <div className="font-mono text-[10px] text-muted font-black uppercase tracking-widest">
-                                       {new Date(o.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                    </div>
-                                    <div className="text-[8px] text-muted/40 font-black tracking-tighter mt-0.5">
-                                       {new Date(o.created_at).toLocaleDateString()}
-                                    </div>
-                                 </td>
-                              </tr>
+                           {feedback.map((f) => (
+                               <tr key={f.id} className="hover:bg-primary/5 transition-colors group">
+                                  <td className="px-8 py-5">
+                                     <div className="font-black text-foreground uppercase italic group-hover:text-primary transition-all">
+                                        {f.customer_name || 'Guest User'}
+                                     </div>
+                                  </td>
+                                  <td className="px-8 py-5">
+                                     <div className="flex items-center gap-1.5">
+                                        {[...Array(5)].map((_, i) => (
+                                            <Star 
+                                                key={i + 1} 
+                                                className={cn(
+                                                    "w-3.5 h-3.5",
+                                                    (i + 1) <= f.rating ? "text-amber-400 fill-amber-400" : "text-muted opacity-20"
+                                                )} 
+                                            />
+                                        ))}
+                                     </div>
+                                  </td>
+                                  <td className="px-8 py-5">
+                                     <div className="flex flex-col gap-0.5">
+                                        {f.orders ? (
+                                            <span className="text-[10px] font-black text-foreground uppercase italic tracking-wider group-hover:text-primary transition-colors">
+                                                #{f.orders.order_number || f.orders.id.slice(0, 8)}
+                                            </span>
+                                        ) : (
+                                            <span className="text-[10px] text-muted-foreground uppercase italic opacity-40">Direct Chat</span>
+                                        )}
+                                        {f.table_id && (
+                                            <Badge variant="outline" className="w-fit h-4 text-[8px] font-black bg-white/5 border-primary/20 text-primary uppercase">
+                                                Table Connection
+                                            </Badge>
+                                        )}
+                                     </div>
+                                  </td>
+                                  <td className="px-8 py-5">
+                                     <div className="font-mono text-[10px] text-muted font-black uppercase tracking-widest">
+                                        {new Date(f.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                     </div>
+                                     <div className="text-[8px] text-muted/40 font-black tracking-tighter mt-0.5">
+                                        {new Date(f.created_at).toLocaleDateString()}
+                                     </div>
+                                  </td>
+                               </tr>
                            ))}
                         </tbody>
                      </table>
                   </div>
                </CardContent>
             </Card>
-
-            {/* Simplified Service Tracking */}
-            <Card className="bg-card/60 backdrop-blur-xl border border-border rounded-[2.5rem] shadow-2xl overflow-hidden">
-               <CardHeader className="p-8 border-b border-border bg-muted/5 flex flex-row items-center justify-between">
-                  <CardTitle className="text-[10px] font-black text-foreground uppercase tracking-[0.2em] flex items-center gap-3">
-                     <Clock className="w-4 h-4 text-primary" strokeWidth={3} /> {t('ordersTables.flowTitle')}
-                  </CardTitle>
-                  <div className="flex items-center gap-3">
-                     <span className="text-[9px] font-black text-muted uppercase tracking-[0.3em]">{t('ordersTables.totalLatency')}</span>
-                     <span className="text-xl font-black text-foreground italic font-mono">{serviceFlow.total} {t('ordersTables.min')}</span>
-                  </div>
-               </CardHeader>
-               <CardContent className="p-10">
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-                     <div className="relative p-6 bg-muted/5 rounded-3xl border border-border flex flex-col items-center text-center group">
-                        <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center mb-3">
-                           <ClipboardList className="w-5 h-5 text-primary" strokeWidth={3} />
-                        </div>
-                        <p className="text-[10px] font-black text-foreground uppercase tracking-wider">{t('ordersTables.orderOrigin')}</p>
-                        <ArrowRight className="hidden md:block absolute top-1/2 -right-4 w-4 h-4 text-primary opacity-30" />
-                     </div>
-                     <div className="relative p-6 bg-muted/5 rounded-3xl border border-border flex flex-col items-center text-center group">
-                        <div className="w-12 h-12 rounded-2xl bg-purple-500/10 flex items-center justify-center mb-3">
-                           <CheckCircle2 className="w-5 h-5 text-purple-500" strokeWidth={3} />
-                        </div>
-                        <p className="text-[10px] font-black text-foreground uppercase tracking-wider">{t('ordersTables.kitchenSync')}</p>
-                        <p className="text-[10px] text-primary font-black mt-1 font-mono">{serviceFlow.toKitchen} {t('ordersTables.min')}</p>
-                        <ArrowRight className="hidden md:block absolute top-1/2 -right-4 w-4 h-4 text-primary opacity-30" />
-                     </div>
-                     <div className="relative p-6 bg-muted/5 rounded-3xl border border-border flex flex-col items-center text-center group">
-                        <div className="w-12 h-12 rounded-2xl bg-orange-500/10 flex items-center justify-center mb-3">
-                           <Utensils className="w-5 h-5 text-orange-500" strokeWidth={3} />
-                        </div>
-                        <p className="text-[10px] font-black text-foreground uppercase tracking-wider">{t('ordersTables.productionReady')}</p>
-                        <p className="text-[10px] text-primary font-black mt-1 font-mono">{serviceFlow.toReady} {t('ordersTables.min')}</p>
-                        <ArrowRight className="hidden md:block absolute top-1/2 -right-4 w-4 h-4 text-primary opacity-30" />
-                     </div>
-                     <div className="relative p-6 bg-muted/5 rounded-3xl border border-border flex flex-col items-center text-center group">
-                        <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 flex items-center justify-center mb-3">
-                           <CheckCircle2 className="w-5 h-5 text-emerald-500" strokeWidth={3} />
-                        </div>
-                        <p className="text-[10px] font-black text-foreground uppercase tracking-wider">{t('ordersTables.settleVector')}</p>
-                        <p className="text-[10px] text-primary font-black mt-1 font-mono">{serviceFlow.toServed} {t('ordersTables.min')}</p>
-                     </div>
-                  </div>
-               </CardContent>
-            </Card>
-
-            {/* Bottom Section: Tables & Staff */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-
-               {/* Table Stats */}
-               <Card className="bg-card/60 backdrop-blur-xl border border-border rounded-[2.5rem] shadow-2xl overflow-hidden">
-                  <CardHeader className="p-8 border-b border-border bg-muted/5">
-                     <CardTitle className="text-[10px] font-black text-foreground uppercase tracking-[0.2em] flex items-center gap-3">
-                        <Armchair className="w-4 h-4 text-primary" strokeWidth={3} /> {t('ordersTables.spatialAnalytics')}
-                     </CardTitle>
-                  </CardHeader>
-                  <CardContent className="p-0">
-                     <div className="overflow-x-auto max-h-[400px] custom-scrollbar">
-                        <table className="w-full text-sm text-left border-collapse">
-                           <thead className="text-[9px] font-black text-muted uppercase bg-muted/5 border-b border-border sticky top-0 backdrop-blur-xl z-10 tracking-widest">
-                              <tr>
-                                 <th className="px-8 py-5">{t('ordersTables.nodeIdent')}</th>
-                                 <th className="px-8 py-5">{t('ordersTables.sessions')}</th>
-                                 <th className="px-8 py-5">{t('ordersTables.latency')}</th>
-                                 <th className="px-8 py-5 text-right">{t('ordersTables.grossRev')}</th>
-                              </tr>
-                           </thead>
-                           <tbody className="divide-y divide-border">
-                              {tableStats.length === 0 && <tr><td colSpan={4} className="p-8 text-center text-muted uppercase font-black text-[10px] tracking-widest opacity-40">{t('ordersTables.noSpatialLoad')}</td></tr>}
-                              {tableStats.map((table) => (
-                                 <tr key={table.id} className="hover:bg-muted/5 transition-colors group">
-                                    <td className="px-8 py-5 font-black text-foreground italic group-hover:text-primary transition-colors text-lg">{table.id}</td>
-                                    <td className="px-8 py-5 font-mono text-xs text-muted font-black uppercase">
-                                       {table.usage} <span className="opacity-40">{t('ordersTables.txn')}</span>
-                                    </td>
-                                    <td className="px-8 py-5 font-mono text-xs text-muted font-black">{table.avgTurnover}</td>
-                                    <td className="px-8 py-5 text-right font-mono text-foreground font-black text-base">
-                                       <span className="text-[10px] mr-1 opacity-30 font-sans NOT-italic">{t('adminDashboard.etb')}</span>
-                                       {table.revenue.toLocaleString()}
-                                    </td>
-                                 </tr>
-                              ))}
-                           </tbody>
-                        </table>
-                     </div>
-                  </CardContent>
-               </Card>
-
-               {/* Staff Performance Context */}
-               <Card className="bg-card/60 backdrop-blur-xl border border-border rounded-[2.5rem] shadow-2xl overflow-hidden">
-                  <CardHeader className="p-8 border-b border-border bg-muted/5">
-                     <CardTitle className="text-[10px] font-black text-foreground uppercase tracking-[0.2em] flex items-center gap-3">
-                        <CheckCircle2 className="w-4 h-4 text-emerald-500" strokeWidth={3} /> {t('ordersTables.humanEfficiency')}
-                     </CardTitle>
-                  </CardHeader>
-                  <CardContent className="p-0">
-                     <div className="overflow-x-auto max-h-[400px] custom-scrollbar">
-                        <table className="w-full text-sm text-left border-collapse">
-                           <thead className="text-[9px] font-black text-muted uppercase bg-muted/5 border-b border-border sticky top-0 backdrop-blur-xl z-10 tracking-widest">
-                              <tr>
-                                 <th className="px-8 py-5">{t('ordersTables.humanNode')}</th>
-                                 <th className="px-8 py-5">{t('ordersTables.volume')}</th>
-                                 <th className="px-8 py-5">{t('ordersTables.speedCoeff')}</th>
-                                 <th className="px-8 py-5 text-right">{t('ordersTables.errVector')}</th>
-                              </tr>
-                           </thead>
-                           <tbody className="divide-y divide-border">
-                              {staffStats.length === 0 && <tr><td colSpan={4} className="p-8 text-center text-muted uppercase font-black text-[10px] tracking-widest opacity-40">{t('ordersTables.noHumanNodes')}</td></tr>}
-                              {staffStats.map((staff) => (
-                                 <tr key={staff.name} className="hover:bg-muted/5 transition-colors group">
-                                    <td className="px-8 py-5">
-                                       <div className="font-black text-foreground uppercase italic group-hover:text-primary transition-colors">{staff.name}</div>
-                                       <div className="text-[9px] text-muted font-black uppercase tracking-widest opacity-40 mt-1">{staff.role}</div>
-                                    </td>
-                                    <td className="px-8 py-5 font-mono text-xs text-muted font-black">{staff.orders}</td>
-                                    <td className="px-8 py-5 font-mono text-xs text-muted font-black">{staff.speed}</td>
-                                    <td className="px-8 py-5 text-right">
-                                       {staff.errors === 0 ? (
-                                          <Badge className="bg-emerald-500/10 text-emerald-500 border-none font-black text-[9px] tracking-[0.2em] px-3 py-1">{t('ordersTables.ultraPerfect')}</Badge>
-                                       ) : (
-                                          <Badge className="bg-red-500/10 text-red-500 border-none font-black text-[9px] tracking-[0.2em] px-3 py-1">{staff.errors} {t('ordersTables.vErrors')}</Badge>
-                                       )}
-                                    </td>
-                                 </tr>
-                              ))}
-                           </tbody>
-                        </table>
-                     </div>
-                  </CardContent>
-               </Card>
-
-            </div>
 
          </div>
       </>

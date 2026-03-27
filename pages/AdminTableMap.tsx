@@ -17,8 +17,8 @@ interface Table {
   id: string;
   table_number: string;
   capacity: number;
-  x_position: number;
-  y_position: number;
+  pos_x: number;
+  pos_y: number;
   shape: 'square' | 'round' | 'rectangle';
   status: string;
   branch_id: string;
@@ -48,7 +48,17 @@ const AdminTableMap: React.FC = () => {
   const fetchTables = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase.from('tables').select('*');
+      let { data, error } = await supabase.from('tables').select('*');
+      
+      // Fallback for missing columns
+      if (error && (error.message.includes('qr_token') || error.message.includes('pos_x'))) {
+        const { data: retryData, error: retryError } = await supabase
+          .from('tables')
+          .select('id, table_number, capacity, shape, status, branch_id, organization_id');
+        data = retryData;
+        error = retryError;
+      }
+
       if (error) throw error;
       setTables(data || []);
     } catch (err: any) {
@@ -82,8 +92,8 @@ const AdminTableMap: React.FC = () => {
       table_number: `T${nextNum}`,
       capacity: shape === 'rectangle' ? 6 : (shape === 'square' ? 4 : 2),
       shape,
-      x_position: CANVAS_WIDTH / 2 - 50,
-      y_position: CANVAS_HEIGHT / 2 - 50,
+      pos_x: CANVAS_WIDTH / 2 - 50,
+      pos_y: CANVAS_HEIGHT / 2 - 50,
       status: 'available',
       branch_id: activeBranchId,
       organization_id: profile?.organization_id,
@@ -91,7 +101,19 @@ const AdminTableMap: React.FC = () => {
     };
 
     try {
-      const { data, error } = await supabase.from('tables').insert(newTable).select().single();
+      const payload = { ...newTable };
+      let { data, error } = await supabase.from('tables').insert(payload).select().single();
+
+      // Fallback for missing column
+      if (error && error.message.includes('qr_token')) {
+        delete (payload as any).qr_token;
+        delete (payload as any).pos_x;
+        delete (payload as any).pos_y;
+        const { data: retryData, error: retryError } = await supabase.from('tables').insert(payload).select().single();
+        data = retryData;
+        error = retryError;
+      }
+
       if (error) throw error;
       setTables([...tables, data]);
       setSelectedId(data.id);
@@ -140,7 +162,18 @@ const AdminTableMap: React.FC = () => {
         return;
       }
 
-      const { error } = await supabase.from('tables').upsert(tablesToSave);
+      let { error } = await supabase.from('tables').upsert(tablesToSave);
+
+      // Fallback for missing column during upsert
+      if (error && (error.message.includes('qr_token') || error.message.includes('pos_x'))) {
+        const fallbackTables = tablesToSave.map(t => {
+          const { qr_token, pos_x, pos_y, ...clean } = t as any;
+          return clean;
+        });
+        const { error: retryErr } = await supabase.from('tables').upsert(fallbackTables);
+        error = retryErr;
+      }
+
       if (error) throw error;
 
       showToast(t('tableMap.saveSuccess'), "success");
@@ -218,14 +251,14 @@ const AdminTableMap: React.FC = () => {
                   drag
                   dragMomentum={false}
                   dragConstraints={canvasRef}
-                  initial={{ x: table.x_position, y: table.y_position }}
+                  initial={{ x: table.pos_x, y: table.pos_y }}
                   onDragEnd={(_, info) => {
                     // Update local state with new coordinates
                     const rect = canvasRef.current?.getBoundingClientRect();
                     if (rect) {
                       handleUpdateTable(table.id, {
-                        x_position: table.x_position + info.offset.x,
-                        y_position: table.y_position + info.offset.y
+                         pos_x: table.pos_x + info.offset.x,
+                        pos_y: table.pos_y + info.offset.y
                       });
                     }
                   }}

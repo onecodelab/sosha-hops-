@@ -598,32 +598,34 @@ export const MenuEditorModal: React.FC<MenuEditorModalProps> = ({
                   <div className="space-y-2">
                     <label className="text-[9px] font-black text-gray-500 uppercase tracking-widest ml-1">Spice Level</label>
                     <div className="relative">
-                      <select
-                        value={spiceLevel}
-                        onChange={e => setSpiceLevel(e.target.value)}
-                        className="w-full h-10 bg-black/40 border border-primary/15 rounded-lg px-3 text-xs text-white outline-none focus:border-primary/50 appearance-none"
-                      >
-                        <option value="None">None</option>
-                        <option value="Mild">Mild</option>
-                        <option value="Medium">Medium</option>
-                        <option value="Hot">Hot</option>
-                        <option value="Extra Hot">Extra Hot (Volcano)</option>
-                      </select>
+                        <select
+                          value={spiceLevel}
+                          onChange={e => setSpiceLevel(e.target.value)}
+                          className="w-full h-10 bg-black/60 border border-primary/20 rounded-lg px-3 text-xs text-white outline-none focus:border-primary/50 appearance-none"
+                        >
+                          <option value="None" className="bg-[#0A0A0A] text-white">None</option>
+                          <option value="Mild" className="bg-[#0A0A0A] text-white">Mild</option>
+                          <option value="Medium" className="bg-[#0A0A0A] text-white">Medium</option>
+                          <option value="Hot" className="bg-[#0A0A0A] text-white">Hot</option>
+                          <option value="Extra Hot" className="bg-[#0A0A0A] text-white">Extra Hot (Volcano)</option>
+                        </select>
                     </div>
                   </div>
                   <div className="space-y-2">
                     <label className="text-[9px] font-black text-gray-500 uppercase tracking-widest ml-1">Meal Size</label>
                     <div className="relative">
-                      <select
-                        value={portionSize}
-                        onChange={e => setPortionSize(e.target.value)}
-                        className="w-full h-10 bg-black/40 border border-primary/15 rounded-lg px-3 text-xs text-white outline-none focus:border-primary/50 appearance-none"
-                      >
-                        <option value="Standard">Standard / Entree</option>
-                        <option value="Light">Light / Appetizer</option>
-                        <option value="Large">Large / Sharing</option>
-                        <option value="Bite">Bite Size / Snack</option>
-                      </select>
+                        <select
+                          value={portionSize}
+                          onChange={e => setPortionSize(e.target.value)}
+                          className="w-full h-10 bg-black/60 border border-primary/20 rounded-lg px-3 text-xs text-white outline-none focus:border-primary/50 appearance-none"
+                        >
+                          <option value="1 Person" className="bg-[#0A0A0A] text-white">1 Person</option>
+                          <option value="2 People" className="bg-[#0A0A0A] text-white">2 People</option>
+                          <option value="3 People" className="bg-[#0A0A0A] text-white">3 People</option>
+                          <option value="4 People" className="bg-[#0A0A0A] text-white">4 People</option>
+                          <option value="Sharing" className="bg-[#0A0A0A] text-white">Sharing / Group (5+ People)</option>
+                          <option value="Bite" className="bg-[#0A0A0A] text-white">Bite Size / Snack</option>
+                        </select>
                     </div>
                   </div>
                 </div>

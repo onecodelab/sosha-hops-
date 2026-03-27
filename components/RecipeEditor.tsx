@@ -20,6 +20,7 @@ interface LocalMapping {
   inventory_unit_name: string; // For display
   cost_per_unit: number;    // Cost per Inventory Unit
   weight_per_unit: number;  // Grams/ML per piece
+  yield_unit_name: string;  // Custom name (e.g. Cup)
   out_of_stock_impact: 'kills_dish' | 'disable_variant' | 'optional';
 }
 
@@ -41,21 +42,36 @@ export const RecipeEditor: React.FC<RecipeEditorProps> = ({ dish, onSaved }) => 
       setErrorState(null);
       try {
         // 1. Fetch master ingredient names, units, and COSTS
-        const { data: ingData, error: ingError } = await supabase
+        let { data: ingData, error: ingError } = await supabase
           .from('ingredients')
           .select(`
-            id, name, cost_per_unit, weight_per_unit,
-            unit_id, units(id, abbreviation, name)
+            id, name, cost_per_unit, weight_per_unit, yield_unit_name,
+            unit_id, units(id, abbreviation, name, type)
           `)
           .eq('is_active', true)
           .order('name');
 
-        // 1b. Fetch Units
-        const { data: unitData } = await supabase.from('units').select('*').order('name');
-        if (unitData) setUnits(unitData);
+        // Fallback if yield_unit_name doesn't exist yet (migration not applied)
+        if (ingError && ingError.message.includes('yield_unit_name')) {
+          console.warn("Backwards Compatibility: ingredients.yield_unit_name missing from schema. Falling back...");
+          const { data: retryData, error: retryError } = await supabase
+            .from('ingredients')
+            .select(`
+              id, name, cost_per_unit, weight_per_unit,
+              unit_id, units(id, abbreviation, name, type)
+            `)
+            .eq('is_active', true)
+            .order('name');
+          ingData = retryData;
+          ingError = retryError;
+        }
 
         if (ingError) throw new Error(`Ingredients Table Error: ${ingError.message}`);
         if (ingData) setAllIngredients(ingData as any[]);
+
+        // 1b. Fetch Units
+        const { data: unitData } = await supabase.from('units').select('*').order('name');
+        if (unitData) setUnits(unitData);
 
         // 2. Ensure Recipe Header exists for this dish
         let { data: existingRecipe, error: recFetchError } = await supabase
@@ -110,16 +126,32 @@ export const RecipeEditor: React.FC<RecipeEditorProps> = ({ dish, onSaved }) => 
         setRecipeId(currentId);
 
         // 3. Load existing ingredients linked to this recipe
-        const { data: mappings, error: mapError } = await supabase
+        let { data: mappings, error: mapError } = await supabase
           .from('recipe_ingredients')
           .select(`
             ingredient_id,
             quantity_needed,
             unit_id,
             out_of_stock_impact,
-            ingredient:ingredients(name, unit_id, cost_per_unit, weight_per_unit, units(*))
+            ingredient:ingredients(name, unit_id, cost_per_unit, weight_per_unit, yield_unit_name, units(*))
           `)
           .eq('recipe_id', currentId);
+
+        // Fallback for missing yield_unit_name
+        if (mapError && mapError.message.includes('yield_unit_name')) {
+          const { data: retryData, error: retryError } = await supabase
+            .from('recipe_ingredients')
+            .select(`
+              ingredient_id,
+              quantity_needed,
+              unit_id,
+              out_of_stock_impact,
+              ingredient:ingredients(name, unit_id, cost_per_unit, weight_per_unit, units(*))
+            `)
+            .eq('recipe_id', currentId);
+          mappings = retryData as any;
+          mapError = retryError;
+        }
 
         if (mapError) throw new Error(`Mapping Table Error: ${mapError.message}`);
 
@@ -133,6 +165,7 @@ export const RecipeEditor: React.FC<RecipeEditorProps> = ({ dish, onSaved }) => 
             inventory_unit_name: m.ingredient?.units?.abbreviation || 'unit',
             cost_per_unit: m.ingredient?.cost_per_unit || 0,
             weight_per_unit: m.ingredient?.weight_per_unit || 1,
+            yield_unit_name: m.ingredient?.yield_unit_name || 'None',
             out_of_stock_impact: m.out_of_stock_impact || 'kills_dish'
           })));
         }
@@ -164,6 +197,7 @@ export const RecipeEditor: React.FC<RecipeEditorProps> = ({ dish, onSaved }) => 
       inventory_unit_name: item.units?.abbreviation || 'unit',
       cost_per_unit: item.cost_per_unit || 0,
       weight_per_unit: item.weight_per_unit || 1,
+      yield_unit_name: item.yield_unit_name || 'Piece',
       out_of_stock_impact: 'kills_dish'
     }]);
     setSearchTerm('');
@@ -364,11 +398,25 @@ export const RecipeEditor: React.FC<RecipeEditorProps> = ({ dish, onSaved }) => 
                         <select
                           value={m.unit_id}
                           onChange={e => updateUnit(m.ingredient_id, e.target.value)}
-                          className="bg-black/60 border border-white/10 rounded-lg px-2 py-0.5 text-[9px] text-gray-400 outline-none focus:border-primary/50"
+                          className="w-full bg-black/60 border border-primary/20 rounded-lg px-2 py-1 text-[10px] text-white outline-none focus:border-primary/50 appearance-none"
                         >
-                          {units.map(u => (
-                            <option key={u.id} value={u.id}>{u.abbreviation}</option>
-                          ))}
+                          {(() => {
+                            const uniqueOptions = new Map();
+                            units
+                              .filter(u => u.type !== 'count' || (m.yield_unit_name && m.yield_unit_name !== 'None'))
+                              .forEach(u => {
+                                const label = u.type === 'count' ? m.yield_unit_name : u.abbreviation;
+                                if (!uniqueOptions.has(label)) {
+                                  uniqueOptions.set(label, u.id);
+                                }
+                              });
+                            
+                            return Array.from(uniqueOptions.entries()).map(([label, id]) => (
+                              <option key={id} value={id} className="bg-[#0A0A0A] text-white">
+                                {label}
+                              </option>
+                            ));
+                          })()}
                         </select>
                       </div>
                     </td>
@@ -376,11 +424,11 @@ export const RecipeEditor: React.FC<RecipeEditorProps> = ({ dish, onSaved }) => 
                       <select
                         value={m.out_of_stock_impact}
                         onChange={e => updateImpact(m.ingredient_id, e.target.value)}
-                        className="bg-black/60 border border-white/10 rounded-lg px-2 py-1 text-[10px] text-gray-300 outline-none focus:border-primary/50 w-full"
+                        className="bg-black/60 border border-primary/20 rounded-lg px-2 py-1 text-[10px] text-white outline-none focus:border-primary/50 w-full appearance-none"
                       >
-                        <option value="kills_dish">Kills entire dish</option>
-                        <option value="disable_variant">Disables variant</option>
-                        <option value="optional">Optional ingredient</option>
+                        <option value="kills_dish" className="bg-[#0A0A0A] text-white">Kills Entire Dish</option>
+                        <option value="removes_option" className="bg-[#0A0A0A] text-white">Removes Choice</option>
+                        <option value="warning_only" className="bg-[#0A0A0A] text-white">Warning Only</option>
                       </select>
                     </td>
                     <td className="px-4 py-4 text-right font-mono text-white text-xs">

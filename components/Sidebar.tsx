@@ -126,11 +126,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, setIsCollapsed, h
         return (
             <aside
                 className={cn(
-                    "hidden md:flex flex-col relative z-20 bg-card border-r border-border/10 transition-[width,background-color,border-color] duration-500 ease-in-out",
+                    "hidden md:flex flex-col relative z-20 bg-card border-r border-primary/5 transition-[width,background-color,border-color] duration-500 ease-in-out",
                     isCollapsed ? "w-20" : "w-72"
                 )}
             >
-                <div className="flex-none flex flex-col justify-center px-6 h-16 md:h-20 lg:h-24 border-b border-border/10 transition-colors duration-500">
+                <div className="flex-none flex flex-col justify-center px-6 h-16 md:h-20 lg:h-24 border-b border-primary/5 transition-colors duration-500">
                     {!isCollapsed ? (
                         <div className="flex flex-col gap-1 animate-in fade-in duration-500">
                             <div className="h-10 w-full max-w-[140px] cursor-pointer" onClick={() => navigate('/')}>
@@ -211,11 +211,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, setIsCollapsed, h
     return (
         <aside
             className={cn(
-                "hidden md:flex flex-col relative z-20 bg-card border-r border-border/10 transition-[width,background-color,border-color] duration-500 ease-in-out",
+                "hidden md:flex flex-col relative z-20 bg-card border-r border-primary/5 transition-[width,background-color,border-color] duration-500 ease-in-out",
                 isCollapsed ? "w-[72px]" : "w-64"
             )}
         >
-            <div className={cn("flex-none h-16 md:h-20 lg:h-24 flex items-center border-b border-border/10 transition-colors duration-500", isCollapsed ? "justify-center" : "px-6")}>
+            <div className={cn("flex-none h-16 md:h-20 lg:h-24 flex items-center border-b border-primary/5 transition-colors duration-500", isCollapsed ? "justify-center" : "px-6")}>
                 <div className="relative group cursor-pointer" onClick={() => navigate('/app')}>
                     <div className="absolute -inset-4 bg-primary/10 rounded-full blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
                     <BaroLogo variant={isCollapsed ? "compact" : "full"} className="relative z-10" />
@@ -231,12 +231,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, setIsCollapsed, h
                             className={cn(
                                 "w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl border transition-all duration-300",
                                 isOwnerOrAdmin
-                                    ? "bg-primary/5 border-primary/20 hover:border-primary/40 hover:bg-primary/10"
-                                    : "bg-primary/5 border-primary/10 cursor-default"
+                                    ? "bg-primary/5 border-primary/10 hover:border-primary/20 hover:bg-primary/10"
+                                    : "bg-primary/5 border-primary/5 cursor-default"
                             )}
                         >
                             <div className="flex items-center gap-2.5 overflow-hidden">
-                                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 border border-primary/10">
+                                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 border border-primary/5">
                                     <MapPin className={cn("w-4 h-4", isOwnerOrAdmin ? "text-primary" : "text-muted")} />
                                 </div>
                                 <div className="flex flex-col items-start leading-tight overflow-hidden text-left">
@@ -252,7 +252,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, setIsCollapsed, h
                         </button>
 
                         {isBranchSelectorOpen && isOwnerOrAdmin && (
-                            <div className="absolute top-full left-0 right-0 mt-3 py-2 bg-card border border-primary/20 rounded-2xl shadow-2xl z-[100] animate-in fade-in zoom-in-95 duration-200 backdrop-blur-3xl">
+                            <div className="absolute top-full left-0 right-0 mt-3 py-2 bg-card border border-primary/10 rounded-2xl shadow-2xl z-[100] animate-in fade-in zoom-in-95 duration-200 backdrop-blur-3xl">
                                 {branches.map((branch) => (
                                     <button
                                         key={branch.id}
@@ -373,7 +373,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, setIsCollapsed, h
                 </button>
                 
                 {!isCollapsed && (
-                    <div className="pt-4 px-3 flex items-center justify-between border-t border-primary/10 mt-4">
+                    <div className="pt-4 px-3 flex items-center justify-between border-t border-primary/5 mt-4">
                         <span className="text-[10px] font-black text-muted/30 uppercase tracking-widest">Baro OS 1.2.4</span>
                         <div className="flex gap-1">
                             <div className="w-1 h-1 rounded-full bg-primary/20" />
@@ -388,7 +388,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, setIsCollapsed, h
                 onClick={() => setIsCollapsed(!isCollapsed)}
                 className="absolute -right-3 h-16 md:h-20 lg:h-24 flex items-center justify-center z-[60] group overflow-hidden"
             >
-                <div className="w-6 h-6 bg-card border border-primary/20 rounded-full flex items-center justify-center text-muted hover:text-primary transition-all shadow-sm relative z-10">
+                <div className="w-6 h-6 bg-card border border-primary/10 rounded-full flex items-center justify-center text-muted hover:text-primary transition-all shadow-sm relative z-10">
                     <div className="absolute inset-0 bg-primary/10 translate-y-full group-hover:translate-y-0 transition-transform -z-1" />
                     {isCollapsed ? <ChevronRight className="w-3 h-3" /> : <ChevronLeft className="w-3 h-3" />}
                 </div>

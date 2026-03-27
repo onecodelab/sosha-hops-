@@ -560,6 +560,21 @@ serve(async (req) => {
                     session_id: body.session_id || '',
                 }, directOrgId, directBranchId, resolvedTable);
 
+                // --- CREDIT DEDUCTION ---
+                try {
+                    await Promise.all([
+                        supabase.rpc('increment_org_credits', { org_id: directOrgId, amount: 20 }),
+                        supabase.from("credit_usage_logs").insert({
+                            organization_id: directOrgId,
+                            action_type: "direct_order",
+                            amount: 20,
+                            metadata: { session_id: body.session_id, table: resolvedTable, is_direct: true }
+                        })
+                    ]);
+                } catch (ce) {
+                    console.warn('[DirectAction] Credit update failed:', ce);
+                }
+
                 return new Response(JSON.stringify({ success: true, result }), { headers: corsHeaders });
             } catch (err: any) {
                 console.error('[DirectAction] place_order failed:', err.message);
@@ -594,6 +609,10 @@ serve(async (req) => {
                 const result = await executeMcpTool(supabase, 'complete_order', {
                     order_id: orderId,
                 }, compOrgId, compBranchId, '');
+
+                // --- CREDIT DEDUCTION (Optional, maybe not for completion? but user said "Each successfull order") ---
+                // If it's the final step of a sale, we might want to charge. 
+                // But place_order already charged. Let's stick to place/update.
 
                 return new Response(JSON.stringify({ success: true, result }), { headers: corsHeaders });
             } catch (err: any) {
@@ -789,22 +808,92 @@ serve(async (req) => {
             );
         }
 
-        // ── STEP 1: Load Organization Context ──
+        // ── STEP 1: Load Organization Context & Credits ──
         let orgPrompt = "";
         let orgName = organization_name || "Unknown";
+        let creditsInfo: { used: number; max: number; reset_date: string } | null = null;
+        
+        let orgData: any = null;
         try {
-            const { data: orgData } = await supabase
+            const { data } = await supabase
                 .from("organizations")
-                .select("chatbot_system_prompt, name")
+                .select("chatbot_system_prompt, name, used_monthly_credits, max_monthly_credits, credit_reset_date, max_branches, plan_tier")
                 .eq("id", organizationId)
                 .single();
+            orgData = data;
 
-            if (orgData?.chatbot_system_prompt?.trim()) {
-                orgPrompt = orgData.chatbot_system_prompt;
+            if (orgData) {
+                if (orgData.chatbot_system_prompt?.trim()) orgPrompt = orgData.chatbot_system_prompt;
+                if (orgData.name) orgName = orgData.name;
+                
+                // Credit Reset Logic
+                const now = new Date();
+                const resetDate = new Date(orgData.credit_reset_date || now);
+                
+                if (now > resetDate) {
+                    console.log(`[CustomerAgent] Credits reset for org ${organizationId}`);
+                    const newResetDate = new Date();
+                    newResetDate.setDate(newResetDate.getDate() + 30);
+                    
+                    await supabase
+                        .from("organizations")
+                        .update({ 
+                            used_monthly_credits: 0, 
+                            credit_reset_date: newResetDate.toISOString() 
+                        })
+                        .eq("id", organizationId);
+                    
+                    creditsInfo = { used: 0, max: orgData.max_monthly_credits || 100, reset_date: newResetDate.toISOString() };
+                } else {
+                    creditsInfo = { 
+                        used: orgData.used_monthly_credits || 0, 
+                        max: orgData.max_monthly_credits || 100,
+                        reset_date: orgData.credit_reset_date
+                    };
+                }
             }
-            if (orgData?.name) orgName = orgData.name;
         } catch (e) {
             console.warn("[CustomerAgent] Org config load failed:", e);
+        }
+
+        // ── STEP 1.1: Credit Enforcement ──
+        if (creditsInfo && creditsInfo.used >= creditsInfo.max) {
+            console.warn(`[CustomerAgent] Credit limit reached for org ${organizationId} (${creditsInfo.used}/${creditsInfo.max})`);
+            return new Response(
+                JSON.stringify({
+                    text: "Hey bestie! 🌟 CADE is currently taking a small beauty sleep because our monthly message budget is full! 💅 Check back soon or browse the menu manually. (Admin: Upgrade your plan for unlimited vibes!)",
+                    metadata: {
+                        is_error: true,
+                        error_type: "insufficient_credits",
+                        credits: creditsInfo
+                    }
+                }),
+                { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            );
+        }
+
+        // ── STEP 1.2: Branch Enforcement ──
+        if (orgData && branchId) {
+            const { count: branchCount } = await supabase
+                .from("branches")
+                .select("*", { count: 'exact', head: true })
+                .eq("organization_id", organizationId);
+            
+            const maxBranchesAllowed = orgData.max_branches || 1;
+            if (branchCount > maxBranchesAllowed && orgData.plan_tier === 'basic') {
+                 console.warn(`[CustomerAgent] Branch limit exceeded for org ${organizationId} (${branchCount}/${maxBranchesAllowed})`);
+                 return new Response(
+                    JSON.stringify({
+                        text: "Bestie, your restaurant is growing too fast! 🚀 You've reached the branch limit for your current plan. Please upgrade to the Standard plan to manage multiple branches with CADE!",
+                        metadata: {
+                            is_error: true,
+                            error_type: "branch_limit_exceeded",
+                            limit: maxBranchesAllowed
+                        }
+                    }),
+                    { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+                );
+            }
         }
 
         const activeBranchName = branch_name || "Unknown";
@@ -999,6 +1088,7 @@ ${customerContext}
             finalResponse = `Ayy! Table ${resolvedTableNumber}? Slaps. fr. Welcome to ${orgName}! 🌟 Let's get it! Here's the fire menu:`;
         }
 
+        let wasOrderAction = false;
         while (!finalResponse && loopCount < MAX_LOOPS) {
             loopCount++;
             let llmResult: any;
@@ -1286,6 +1376,10 @@ ${customerContext}
                                 .eq("session_id", session_id);
                         }
                     }
+
+                    if (toolName === 'place_order' || toolName === 'update_order') {
+                        wasOrderAction = true;
+                    }
                 }
                 continue;
             }
@@ -1432,6 +1526,27 @@ ${customerContext}
         }
 
         clearTimeout(globalTimeout);
+
+        // ── STEP 8: Credit Deduction ──
+        try {
+            const creditAmount = wasOrderAction ? 20 : 1;
+            await Promise.all([
+                // Increment used count
+                supabase.rpc('increment_org_credits', { 
+                    org_id: organizationId, 
+                    amount: creditAmount 
+                }),
+                // Log usage
+                supabase.from("credit_usage_logs").insert({
+                    organization_id: organizationId,
+                    action_type: wasOrderAction ? "successful_order" : "chat_message",
+                    amount: creditAmount,
+                    metadata: { session_id, table: resolvedTableNumber, is_order: wasOrderAction }
+                })
+            ]);
+        } catch (e) {
+            console.warn("[CustomerAgent] Post-processing credit update failed:", e);
+        }
 
         return new Response(JSON.stringify({
             text: finalResponse,

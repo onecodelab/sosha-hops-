@@ -84,7 +84,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
 
       {/* Mobile Header */}
       {!config.fullScreen && (
-        <div className="md:hidden fixed top-0 left-0 right-0 h-16 bg-background/80 backdrop-blur-3xl border-b border-border/10 shadow-xl z-[100] px-4 flex items-center justify-between">
+        <div className="md:hidden fixed top-0 left-0 right-0 h-16 bg-background/80 backdrop-blur-3xl border-b border-primary/5 shadow-xl z-[100] px-4 flex items-center justify-between">
           
           <div className="absolute inset-0 bg-gradient-to-r from-primary/5 via-transparent to-transparent pointer-events-none overflow-hidden rounded-b-xl" />
           

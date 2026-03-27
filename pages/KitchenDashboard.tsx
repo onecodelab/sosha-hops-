@@ -122,7 +122,7 @@ const KitchenDashboard: React.FC = () => {
                   <Terminal className="w-3 h-3" /> Schema Error: {error.slice(0, 30)}...
                </div>
             )}
-            <Button onClick={fetchOrders} variant="outline" size="sm" className="bg-white/5 border-white/10 h-10 px-4">
+            <Button onClick={fetchOrders} variant="outline" size="sm" className="bg-primary/5 border-primary/20 h-10 px-4">
                <RefreshCw className={cn("w-4 h-4 mr-2", isSyncing && "animate-spin")} />
                Force Reload
             </Button>
@@ -135,7 +135,7 @@ const KitchenDashboard: React.FC = () => {
          <div className="flex-1 min-h-0 animate-in fade-in duration-700">
             <div className="flex lg:grid overflow-x-auto lg:overflow-visible lg:grid-cols-3 gap-4 md:gap-6 h-full min-h-0 snap-x snap-mandatory no-scrollbar lg:custom-scrollbar pb-2 -mx-4 px-4 lg:-mx-0 lg:px-0">
                {/* INCOMING */}
-               <div className="w-[85vw] lg:w-auto shrink-0 snap-center flex flex-col min-h-0 bg-card/60 backdrop-blur-xl border border-border rounded-[2rem] overflow-hidden shadow-2xl relative group hover:border-yellow-500/30 transition-all h-full">
+               <div className="w-[85vw] lg:w-auto shrink-0 snap-center flex flex-col min-h-0 bg-card/60 backdrop-blur-xl border border-primary/20 rounded-[2rem] overflow-hidden shadow-2xl relative group hover:border-yellow-500/30 transition-all h-full">
                   <div className="absolute inset-0 bg-gradient-to-br from-yellow-500/5 to-transparent pointer-events-none" />
                   <div className="px-5 py-4 border-b border-border bg-muted/5 flex items-center justify-between relative z-10 shrink-0">
                      <div className="flex items-center gap-3">
@@ -162,7 +162,7 @@ const KitchenDashboard: React.FC = () => {
                </div>
 
                {/* ACCEPTED (PREPARING) */}
-               <div className="w-[85vw] lg:w-auto shrink-0 snap-center flex flex-col min-h-0 bg-card/60 backdrop-blur-xl border border-border rounded-[2rem] overflow-hidden shadow-2xl relative group hover:border-orange-500/30 transition-all h-full">
+               <div className="w-[85vw] lg:w-auto shrink-0 snap-center flex flex-col min-h-0 bg-card/60 backdrop-blur-xl border border-primary/20 rounded-[2rem] overflow-hidden shadow-2xl relative group hover:border-orange-500/30 transition-all h-full">
                   <div className="absolute inset-0 bg-gradient-to-br from-orange-500/5 to-transparent pointer-events-none" />
                   <div className="px-5 py-4 border-b border-border bg-muted/5 flex items-center justify-between relative z-10 shrink-0">
                      <div className="flex items-center gap-3">
@@ -189,7 +189,7 @@ const KitchenDashboard: React.FC = () => {
                </div>
 
                {/* PREPARED (READY) */}
-               <div className="w-[85vw] lg:w-auto shrink-0 snap-center flex flex-col min-h-0 bg-card/60 backdrop-blur-xl border border-border rounded-[2rem] overflow-hidden shadow-2xl relative group hover:border-emerald-500/30 transition-all h-full">
+               <div className="w-[85vw] lg:w-auto shrink-0 snap-center flex flex-col min-h-0 bg-card/60 backdrop-blur-xl border border-primary/20 rounded-[2rem] overflow-hidden shadow-2xl relative group hover:border-emerald-500/30 transition-all h-full">
                   <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-transparent pointer-events-none" />
                   <div className="px-5 py-4 border-b border-border bg-muted/5 flex items-center justify-between relative z-10 shrink-0">
                      <div className="flex items-center gap-3">

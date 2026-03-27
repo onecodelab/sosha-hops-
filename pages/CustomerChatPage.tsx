@@ -4,7 +4,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
     Send, Loader2, UtensilsCrossed, ArrowUp, ShoppingBag,
     Receipt, CreditCard, MessageCircle, Sparkles, X, ChevronDown,
-    CheckCircle2, Timer, ChefHat, PackageCheck, Star, Users, Trash2
+    CheckCircle2, Timer, ChefHat, PackageCheck, Star, Users, Trash2,
+    Leaf as FreshLeaf
 } from 'lucide-react';
 import { cn, showToast, Button } from '../components/ui';
 import { supabase } from '../supabase';
@@ -12,6 +13,17 @@ import ThemeToggle from '../components/ThemeToggle';
 import { LanguageSwitcher } from '../components/LanguageSwitcher';
 import { useLanguage } from '../contexts/LanguageContext';
 import { RatingInteraction } from '../components/ui/RatingInteraction';
+
+const getPastelColor = (index: number) => {
+    const colors = [
+        'bg-[#F0FFF4]', // Mint
+        'bg-[#FFF5F5]', // Rose
+        'bg-[#F0F5FF]', // Sky
+        'bg-[#FFF9F0]', // Peach
+        'bg-[#F5F3FF]', // Lavender
+    ];
+    return colors[index % colors.length];
+};
 
 /* ─── TYPES ─── */
 interface ChatMessage {

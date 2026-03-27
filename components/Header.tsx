@@ -27,7 +27,7 @@ export const Header: React.FC<HeaderProps> = ({
     const { t } = useLanguage();
 
     return (
-        <header className="flex-none h-16 md:h-20 lg:h-24 flex items-center justify-between px-4 md:px-8 border-b border-primary/10 bg-background/80 backdrop-blur-xl transition-all duration-500 relative z-30 shadow-sm">
+        <header className="flex-none h-16 md:h-20 lg:h-24 flex items-center justify-between px-4 md:px-8 border-b border-primary/5 bg-background/80 backdrop-blur-xl transition-all duration-500 relative z-30 shadow-sm">
             <div className="flex flex-col flex-1 overflow-hidden pr-2">
                 <h2 className="text-lg md:text-xl lg:text-2xl font-black tracking-tight text-foreground truncate">{title || t('nav.overview')}</h2>
                 {subtitle && <p className="hidden lg:block text-[10px] font-black text-muted-foreground uppercase tracking-widest leading-none mt-1 truncate">{subtitle}</p>}
