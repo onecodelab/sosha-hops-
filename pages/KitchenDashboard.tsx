@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { OrderCard } from '../components/OrderCard';
 import { orderService } from '../services/orderService';
+import { enrichOrdersWithProfiles } from '../utils/orderProfileEnrichment';
 
 const KitchenDashboard: React.FC = () => {
    const { activeBranchId } = useBranch();
@@ -40,7 +41,6 @@ const KitchenDashboard: React.FC = () => {
             .from('orders')
             .select(`
                *,
-               waiter:profiles!orders_waiter_id_fkey (full_name),
                order_items (
                   id,
                   quantity,
@@ -58,7 +58,7 @@ const KitchenDashboard: React.FC = () => {
          const { data, error: fetchErr } = await query.order('created_at', { ascending: true });
 
          if (fetchErr) throw fetchErr;
-         setOrders(data || []);
+         setOrders(await enrichOrdersWithProfiles((data || []) as Order[]));
          setError(null);
       } catch (err: any) {
          console.error("Kitchen fetch error:", err);

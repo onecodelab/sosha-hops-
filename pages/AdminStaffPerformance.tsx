@@ -15,6 +15,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { StaffOrderHistory } from '../components/StaffOrderHistory';
 import { OrderDetailsModal } from '../components/OrderDetailsModal';
 import { Order, UserProfile } from '../types';
+import { enrichOrdersWithProfiles } from '../utils/orderProfileEnrichment';
 
 interface PerformanceMetric {
    staff_id: string;
@@ -112,7 +113,6 @@ const AdminStaffPerformance: React.FC = () => {
             .from('orders')
             .select(`
                *,
-               waiter:profiles!orders_waiter_id_fkey (id, full_name, role),
                order_items (
                   id,
                   quantity,
@@ -124,7 +124,7 @@ const AdminStaffPerformance: React.FC = () => {
             .order('created_at', { ascending: false });
 
          if (error) throw error;
-         setStaffOrders(data as unknown as Order[] || []);
+         setStaffOrders(await enrichOrdersWithProfiles((data || []) as Order[]));
       } catch (err: any) {
          showToast("Failed to load history", "error");
       } finally {

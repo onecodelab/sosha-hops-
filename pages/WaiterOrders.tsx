@@ -13,6 +13,7 @@ import { useBranch } from '../contexts/BranchContext';
 import { Order } from '../types';
 import { OrderDetailsModal } from '../components/OrderDetailsModal';
 import { format } from 'date-fns';
+import { enrichOrdersWithProfiles } from '../utils/orderProfileEnrichment';
 
 const WaiterOrders: React.FC = () => {
     const { user } = useAuth();
@@ -31,7 +32,6 @@ const WaiterOrders: React.FC = () => {
                 .from('orders')
                 .select(`
                *,
-               waiter:profiles!orders_waiter_id_fkey (id, full_name, role),
                order_items (
                   id,
                   quantity,
@@ -45,7 +45,7 @@ const WaiterOrders: React.FC = () => {
                 .order('created_at', { ascending: false });
 
             if (error) throw error;
-            return data as unknown as Order[];
+            return enrichOrdersWithProfiles((data || []) as unknown as Order[]);
         },
         enabled: !!user?.id && !!activeBranchId
     });

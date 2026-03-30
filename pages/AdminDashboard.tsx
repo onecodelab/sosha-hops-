@@ -47,6 +47,28 @@ const AdminDashboard: React.FC = () => {
    const fetchDashboardData = useCallback(async () => {
       if (!activeBranchId) return;
       try {
+         const enrichOrdersWithProfiles = async (orders: any[]) => {
+            const profileIds = Array.from(new Set(
+               orders.flatMap((order) => [order.waiter_id, order.closed_by_id]).filter(Boolean)
+            ));
+
+            if (profileIds.length === 0) return orders;
+
+            const { data: profiles, error: profileErr } = await supabase
+               .from('profiles')
+               .select('id, full_name, role')
+               .in('id', profileIds);
+
+            if (profileErr) throw profileErr;
+
+            const profileMap = new Map((profiles || []).map((profile: any) => [profile.id, profile]));
+            return orders.map((order) => ({
+               ...order,
+               waiter: order.waiter_id ? profileMap.get(order.waiter_id) || null : null,
+               closed_by_user: order.closed_by_id ? profileMap.get(order.closed_by_id) || null : null,
+            }));
+         };
+
          let dateLimit = new Date();
          if (dateFilter === 'yesterday') {
             dateLimit.setDate(dateLimit.getDate() - 1);
@@ -70,7 +92,6 @@ const AdminDashboard: React.FC = () => {
             .from('orders')
             .select(`
           *, 
-          waiter:profiles!orders_waiter_id_fkey (id, full_name),
           order_items (
             id,
             quantity, 
@@ -85,6 +106,7 @@ const AdminDashboard: React.FC = () => {
             .order('created_at', { ascending: false });
 
          if (activeErr) throw activeErr;
+         const activeWithProfiles = await enrichOrdersWithProfiles(active || []);
 
          // Define date boundaries precisely
          const now = new Date();
@@ -112,8 +134,6 @@ const AdminDashboard: React.FC = () => {
 
          const richFields = `
              *, 
-             waiter:profiles!orders_waiter_id_fkey (full_name, role),
-             closed_by_user:profiles!orders_closed_by_id_fkey (full_name, role),
              order_items (
                 id,
                 quantity,
@@ -125,7 +145,6 @@ const AdminDashboard: React.FC = () => {
 
          const fallbackFields = `
              *, 
-             waiter:profiles!orders_waiter_id_fkey (full_name, role),
              order_items (
                 id,
                 quantity,
@@ -140,13 +159,13 @@ const AdminDashboard: React.FC = () => {
             // 1. Try with rich relationships (including closed_by)
             const { data: feed, error: feedErr } = await fetchWithFields(richFields);
             if (feedErr) throw feedErr;
-            feedData = feed || [];
+            feedData = await enrichOrdersWithProfiles(feed || []);
          } catch (richErr: any) {
             console.log("Rich query failed, trying simple query:", richErr.message);
             // 2. Fallback to simple (no closed_by join)
             const { data: simpleFeed, error: simpleErr } = await fetchWithFields(fallbackFields);
             if (!simpleErr) {
-               feedData = simpleFeed || [];
+               feedData = await enrichOrdersWithProfiles(simpleFeed || []);
             } else {
                console.error("Simple query also failed:", simpleErr);
             }
@@ -161,10 +180,10 @@ const AdminDashboard: React.FC = () => {
 
          setStats({
             totalRevenue: rev?.reduce((acc, o) => acc + (o.total_amount || 0), 0) || 0,
-            activeOrdersCount: active?.filter(o => !['served', 'paid'].includes(o.status)).length || 0
+            activeOrdersCount: activeWithProfiles?.filter(o => !['served', 'paid'].includes(o.status)).length || 0
          });
 
-         setActiveOrders((active || []) as Order[]);
+         setActiveOrders(activeWithProfiles as Order[]);
          setAllRecentOrders(feedData);
       } catch (err: any) {
          console.error(err);

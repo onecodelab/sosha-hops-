@@ -13,6 +13,7 @@ import {
 import { Order } from '../types';
 import { PaymentVerificationModal, FloatingPaymentButton } from '../components/PaymentVerificationModal';
 import { OrderCard } from '../components/OrderCard';
+import { enrichOrdersWithProfiles } from '../utils/orderProfileEnrichment';
 
 const ManagerDashboard: React.FC = () => {
    const [loading, setLoading] = useState(true);
@@ -31,17 +32,16 @@ const ManagerDashboard: React.FC = () => {
             .from('orders')
             .select(`
             *, 
-            waiter:profiles!orders_waiter_id_fkey (full_name),
             order_items (
                quantity, 
                special_instructions,
                menu_item:menu!menu_item_id (name)
             )
           `)
-            .gte('created_at', `${todayStr}T00:00:00`)
+          .gte('created_at', `${todayStr}T00:00:00`)
             .order('created_at', { ascending: false });
 
-         setOrders(todayOrders as Order[] || []);
+         setOrders(await enrichOrdersWithProfiles((todayOrders || []) as Order[]));
 
          const { data: allStaff } = await supabase.from('profiles').select('*').in('role', ['waiter', 'kitchen', 'manager', 'security']);
 

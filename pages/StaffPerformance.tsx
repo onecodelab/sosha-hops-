@@ -11,6 +11,7 @@ import { Role, Order } from '../types';
 import { useBranch } from '../contexts/BranchContext';
 import { StaffOrderHistory } from '../components/StaffOrderHistory';
 import { OrderDetailsModal } from '../components/OrderDetailsModal';
+import { enrichOrdersWithProfiles } from '../utils/orderProfileEnrichment';
 
 const StaffPerformance: React.FC = () => {
    const { activeBranchId } = useBranch();
@@ -74,7 +75,6 @@ const StaffPerformance: React.FC = () => {
             .from('orders')
             .select(`
                *,
-               waiter:profiles!orders_waiter_id_fkey (id, full_name, role),
                order_items (
                   id,
                   quantity,
@@ -86,7 +86,7 @@ const StaffPerformance: React.FC = () => {
             .order('created_at', { ascending: false });
 
          if (error) throw error;
-         setStaffOrders(data as unknown as Order[] || []);
+         setStaffOrders(await enrichOrdersWithProfiles((data || []) as Order[]));
       } catch (err: any) {
          showToast("Failed to load history", "error");
       } finally {

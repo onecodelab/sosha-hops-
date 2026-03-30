@@ -1,5 +1,6 @@
 import { supabase } from '../supabase';
 import { Order, OrderStatus, PaymentMethod } from '../types';
+import { enrichOrdersWithProfiles } from '../utils/orderProfileEnrichment';
 
 export const orderService = {
     /**
@@ -12,7 +13,6 @@ export const orderService = {
             .from('orders')
             .select(`
         *,
-        waiter:profiles!orders_waiter_id_fkey (full_name),
         order_items (
           id, quantity, price, created_at, special_instructions,
           menu_item:menu!menu_item_id (name, image_url)
@@ -33,7 +33,7 @@ export const orderService = {
 
         const { data, error } = await query;
         if (error) throw error;
-        return data as Order[];
+        return enrichOrdersWithProfiles((data || []) as Order[]);
     },
 
     async claimChatbotOrder(orderId: string, waiterId: string, tableId: string): Promise<void> {

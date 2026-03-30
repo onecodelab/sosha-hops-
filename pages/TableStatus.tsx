@@ -24,6 +24,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { FloorMapCanvas } from '../components/FloorMapCanvas';
 import { TableOrderHistory } from '../components/TableOrderHistory';
 import { OrderDetailsModal } from '../components/OrderDetailsModal';
+import { enrichOrdersWithProfiles } from '../utils/orderProfileEnrichment';
 
 const TableStatus: React.FC = () => {
    const navigate = useNavigate();
@@ -323,7 +324,6 @@ const TableStatus: React.FC = () => {
             .from('orders')
             .select(`
                *,
-               waiter:profiles!orders_waiter_id_fkey (id, full_name, role),
                order_items (
                   id,
                   quantity,
@@ -335,7 +335,7 @@ const TableStatus: React.FC = () => {
             .order('created_at', { ascending: false });
 
          if (error) throw error;
-         setTableOrders(data as unknown as Order[] || []);
+         setTableOrders(await enrichOrdersWithProfiles((data || []) as Order[]));
       } catch (err: any) {
          showToast("Failed to load table history", "error");
       } finally {
