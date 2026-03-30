@@ -55,7 +55,8 @@ const Inventory: React.FC = () => {
     cost_per_unit: 0,
     expiry_days: 0,
     unit_id: '',
-    weight_per_unit: 1
+    weight_per_unit: 1,
+    yield_unit_name: 'None'
   });
 
   const [sortField, setSortField] = useState<SortField>('name');
@@ -116,7 +117,24 @@ const Inventory: React.FC = () => {
         query = query.eq('branch_inventory.branch_id', activeBranchId);
       }
 
-      const { data, error } = await query;
+      let { data, error } = await query;
+      
+      // Fallback if yield_unit_name is missing (migration not applied)
+      if (error && error.message.includes('yield_unit_name')) {
+         let retryQuery = supabase
+          .from('ingredients')
+          .select(`
+            id, name, category, sku, unit_id, cost_per_unit, expiry_days, weight_per_unit, unit_type,
+            units(id, abbreviation, name),
+            branch_inventory!left(current_stock, par_min, par_max, last_updated)
+          `)
+          .eq('is_active', true);
+        if (activeBranchId) retryQuery = retryQuery.eq('branch_inventory.branch_id', activeBranchId);
+        const { data: retryData, error: retryError } = await retryQuery;
+        data = retryData;
+        error = retryError;
+      }
+
       if (error) throw error;
 
       // Transform data to flatten branch_inventory
@@ -155,7 +173,8 @@ const Inventory: React.FC = () => {
       cost_per_unit: 0,
       expiry_days: 0,
       unit_id: units[0]?.id || '',
-      weight_per_unit: 1
+      weight_per_unit: 1,
+      yield_unit_name: 'None'
     });
     setLinkedRecipes([]);
     setIsModalOpen(true);
@@ -193,7 +212,8 @@ const Inventory: React.FC = () => {
       cost_per_unit: Number(ingredient.cost_per_unit) || 0,
       expiry_days: Number(ingredient.expiry_days) || 0,
       unit_id: ingredient.unit_id || (units.find(u => u.abbreviation === ingredient.unit_type)?.id || ''),
-      weight_per_unit: Number(ingredient.weight_per_unit) || 1
+      weight_per_unit: Number(ingredient.weight_per_unit) || 1,
+      yield_unit_name: ingredient.yield_unit_name || 'None'
     });
 
     try {
@@ -231,9 +251,7 @@ const Inventory: React.FC = () => {
       if (isAddingNew) {
         const newSku = formData.sku || `ING-${formData.name.replace(/\s+/g, '-').substring(0, 8).toUpperCase()}-${Math.floor(Math.random() * 1000)}`;
         const selectedUnit = units.find(u => u.id === formData.unit_id);
-        const { data: newIng, error: insertErr } = await supabase
-          .from('ingredients')
-          .insert({
+        const insertPayload = {
             name: formData.name,
             sku: newSku,
             category: formData.category,
@@ -241,10 +259,26 @@ const Inventory: React.FC = () => {
             expiry_days: Math.floor(Number(formData.expiry_days)),
             unit_id: formData.unit_id,
             unit_type: selectedUnit?.abbreviation || '',
-            weight_per_unit: Number(formData.weight_per_unit),
+            weight_per_unit: formData.yield_unit_name === 'None' ? 1 : Number(formData.weight_per_unit),
+            yield_unit_name: formData.yield_unit_name === 'None' ? null : formData.yield_unit_name,
             organization_id: organizationId,
             is_active: true
-          }).select('id').single();
+          };
+
+        let { data: newIng, error: insertErr } = await supabase
+          .from('ingredients')
+          .insert(insertPayload).select('id').single();
+
+        // Fallback for missing column
+        if (insertErr && insertErr.message.includes('yield_unit_name')) {
+          delete (insertPayload as any).yield_unit_name;
+          delete (insertPayload as any).weight_per_unit;
+          const { data: retryIng, error: retryErr } = await supabase
+            .from('ingredients')
+            .insert(insertPayload).select('id').single();
+          newIng = retryIng;
+          insertErr = retryErr;
+        }
 
         if (insertErr) throw insertErr;
         targetIngredientId = newIng.id;
@@ -256,14 +290,26 @@ const Inventory: React.FC = () => {
           expiry_days: Math.floor(Number(formData.expiry_days)),
           unit_id: formData.unit_id,
           unit_type: selectedUnit?.abbreviation || '',
-          weight_per_unit: Number(formData.weight_per_unit),
+          weight_per_unit: formData.yield_unit_name === 'None' ? 1 : Number(formData.weight_per_unit),
+          yield_unit_name: formData.yield_unit_name === 'None' ? null : formData.yield_unit_name,
           updated_at: new Date().toISOString()
         };
 
-        const { error: globalErr } = await supabase
+        let { error: globalErr } = await supabase
           .from('ingredients')
           .update(globalUpdate)
           .eq('id', targetIngredientId);
+
+        // Fallback for missing column
+        if (globalErr && globalErr.message.includes('yield_unit_name')) {
+          delete (globalUpdate as any).yield_unit_name;
+          delete (globalUpdate as any).weight_per_unit;
+          const { error: retryErr } = await supabase
+            .from('ingredients')
+            .update(globalUpdate)
+            .eq('id', targetIngredientId);
+          globalErr = retryErr;
+        }
 
         if (globalErr) throw globalErr;
       }
@@ -435,67 +481,69 @@ const Inventory: React.FC = () => {
     <>
       <div className="space-y-6 animate-in fade-in duration-500">
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="bg-card/60 backdrop-blur-xl border border-border p-8 rounded-[2.5rem] shadow-2xl relative group overflow-hidden">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-6">
+          <div className="bg-card/60 backdrop-blur-xl border border-border p-4 md:p-8 rounded-3xl md:rounded-[2.5rem] shadow-2xl relative group overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent pointer-events-none" />
-            <div className="relative z-10 flex flex-col gap-2">
-              <p className="text-[10px] font-black text-muted uppercase tracking-[0.2em]">Total Asset Valuation</p>
-              <h3 className="text-4xl font-black text-foreground tracking-tighter">
-                <span className="text-xs font-black mr-1 opacity-40">ETB</span>
+            <div className="relative z-10 flex flex-col gap-1 md:gap-2">
+              <p className="text-[9px] md:text-[10px] font-black text-muted uppercase tracking-[0.2em]">Total Asset Valuation</p>
+              <h3 className="text-3xl md:text-4xl font-black text-foreground tracking-tighter">
+                <span className="text-[10px] md:text-xs font-black mr-1 opacity-40">ETB</span>
                 {(stats.totalValue || 0).toLocaleString()}
               </h3>
             </div>
-            <div className="absolute top-6 right-6 p-4 bg-primary/10 rounded-2xl group-hover:scale-110 transition-transform">
-              <DollarSign className="w-6 h-6 text-primary" strokeWidth={3} />
+            <div className="absolute top-3 right-3 md:top-6 md:right-6 p-2 md:p-4 bg-primary/10 rounded-xl md:rounded-2xl group-hover:scale-110 transition-transform">
+              <DollarSign className="w-5 h-5 md:w-6 md:h-6 text-primary" strokeWidth={3} />
             </div>
           </div>
           <div className={cn(
-            "p-8 rounded-[2.5rem] border shadow-2xl transition-all relative group overflow-hidden",
+            "p-4 md:p-8 rounded-3xl md:rounded-[2.5rem] border shadow-2xl transition-all relative group overflow-hidden",
             stats.lowStockCount > 0 ? "bg-red-500/5 border-red-500/20" : "bg-card/60 backdrop-blur-xl border-border"
           )}>
             {stats.lowStockCount > 0 && <div className="absolute inset-0 bg-gradient-to-br from-red-500/10 to-transparent pointer-events-none" />}
-            <div className="relative z-10 flex flex-col gap-2">
-              <p className="text-[10px] font-black text-muted uppercase tracking-[0.2em]">Re-order Alerts</p>
-              <h3 className={cn("text-4xl font-black tracking-tighter", stats.lowStockCount > 0 ? "text-red-500" : "text-foreground")}>
-                {stats.lowStockCount} <span className="text-xs font-black opacity-40">Low SKUs</span>
+            <div className="relative z-10 flex flex-col gap-1 md:gap-2">
+              <p className="text-[9px] md:text-[10px] font-black text-muted uppercase tracking-[0.2em]">Re-order Alerts</p>
+              <h3 className={cn("text-3xl md:text-4xl font-black tracking-tighter", stats.lowStockCount > 0 ? "text-red-500" : "text-foreground")}>
+                {stats.lowStockCount} <span className="text-[10px] md:text-xs font-black opacity-40">Low SKUs</span>
               </h3>
             </div>
-            <div className={cn("absolute top-6 right-6 p-4 rounded-2xl group-hover:scale-110 transition-transform", stats.lowStockCount > 0 ? "bg-red-500/10" : "bg-muted/10")}>
-              <AlertTriangle className={cn("w-6 h-6", stats.lowStockCount > 0 ? "text-red-500" : "text-muted")} strokeWidth={3} />
+            <div className={cn("absolute top-3 right-3 md:top-6 md:right-6 p-2 md:p-4 rounded-xl md:rounded-2xl group-hover:scale-110 transition-transform", stats.lowStockCount > 0 ? "bg-red-500/10" : "bg-muted/10")}>
+              <AlertTriangle className={cn("w-5 h-5 md:w-6 md:h-6", stats.lowStockCount > 0 ? "text-red-500" : "text-muted")} strokeWidth={3} />
             </div>
           </div>
         </div>
 
-        <div className="flex flex-col md:flex-row justify-between gap-6 bg-card/60 backdrop-blur-xl p-6 rounded-[2.5rem] border border-border shadow-2xl">
+        <div className="flex flex-col md:flex-row justify-between gap-3 md:gap-6 bg-card/60 backdrop-blur-xl p-3 md:p-6 rounded-[2rem] md:rounded-[2.5rem] border border-border shadow-2xl">
           <div className="relative w-full md:w-96 group">
-            <Search className="absolute left-6 top-1/2 -translate-y-1/2 h-4 w-4 text-muted group-focus-within:text-primary transition-colors" />
+            <Search className="absolute left-4 md:left-6 top-1/2 -translate-y-1/2 h-4 w-4 text-muted group-focus-within:text-primary transition-colors" />
             <Input
               placeholder="Search by name or SKU..."
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
-              className="pl-14 bg-muted/10 border-border h-14 rounded-2xl focus:border-primary/50 text-sm font-bold shadow-inner"
+              className="pl-10 md:pl-14 bg-muted/10 border-border h-12 md:h-14 rounded-2xl focus:border-primary/50 text-sm font-bold shadow-inner"
             />
           </div>
-          <div className="flex items-center gap-4 w-full md:w-auto mt-4 md:mt-0 bg-primary/5 p-2 rounded-2xl border border-primary/20">
-            <Button onClick={handleAddClick} className="h-14 px-8 rounded-2xl bg-orange-600 text-white font-black uppercase tracking-[0.2em] shadow-2xl hover:bg-orange-700 active:scale-95 transition-all w-full md:w-auto border-4 border-white/20">
-              <Plus className="w-6 h-6 mr-3" strokeWidth={4} /> ADD NEW ITEM
-            </Button>
-            <Button onClick={fetchInventory} variant="ghost" className="h-14 w-14 shrink-0 p-0 rounded-2xl bg-muted/5 border border-border text-muted hover:text-foreground transition-all">
-              <RefreshCw className={cn("h-6 w-6", loading && "animate-spin")} strokeWidth={3} />
+          <div className="flex items-center gap-2 md:gap-4 w-full md:w-auto mt-1 md:mt-0 bg-primary/5 p-1.5 md:p-2 rounded-2xl border border-primary/20">
+            {isOwnerOrAdmin && (
+              <Button onClick={handleAddClick} className="h-12 md:h-14 flex-1 md:flex-none px-4 md:px-8 rounded-xl md:rounded-2xl bg-orange-600 text-white font-black uppercase tracking-[0.2em] shadow-lg hover:bg-orange-700 active:scale-95 transition-all text-[10px] md:text-sm whitespace-nowrap border-4 border-white/20">
+                <Plus className="w-4 h-4 md:w-6 md:h-6 mr-1.5 md:mr-3" strokeWidth={4} /> ADD NEW ITEM
+              </Button>
+            )}
+            <Button onClick={fetchInventory} variant="ghost" className="h-12 w-12 md:h-14 md:w-14 shrink-0 p-0 rounded-xl md:rounded-2xl bg-muted/5 border border-border text-muted hover:text-foreground transition-all">
+              <RefreshCw className={cn("h-4 w-4 md:h-6 md:w-6", loading && "animate-spin")} strokeWidth={3} />
             </Button>
           </div>
         </div>
 
-        <div className="bg-card/60 backdrop-blur-xl border border-border rounded-[2.5rem] overflow-hidden shadow-2xl">
+        <div className="bg-card/60 backdrop-blur-xl border border-border rounded-3xl md:rounded-[2.5rem] overflow-hidden shadow-2xl">
           <div className="overflow-x-auto custom-scrollbar">
             <table className="w-full text-sm text-left">
               <thead className="text-[10px] text-muted uppercase bg-muted/10 border-b border-border font-black tracking-[0.2em] backdrop-blur-md">
                 <tr>
-                  <th className="px-8 py-6 text-left w-[25%]">Asset Node</th>
-                  {canViewStock && <th className="px-8 py-6 text-center w-[15%]">Stock Health</th>}
-                  {canViewCost && <th className="px-8 py-6 text-right w-[25%]">Risk & Valuation</th>}
-                  <th className="px-8 py-6 text-left w-[25%]">Intelligence</th>
-                  <th className="px-8 py-6 text-right w-[15%]">Actions</th>
+                  <th className="px-4 md:px-8 py-4 md:py-6 whitespace-nowrap text-left min-w-[200px]">Asset Node</th>
+                  {canViewStock && <th className="px-4 md:px-8 py-4 md:py-6 whitespace-nowrap text-center min-w-[120px]">Stock Health</th>}
+                  {canViewCost && <th className="px-4 md:px-8 py-4 md:py-6 whitespace-nowrap text-right min-w-[150px]">Risk & Valuation</th>}
+                  <th className="px-4 md:px-8 py-4 md:py-6 whitespace-nowrap text-left min-w-[200px]">Intelligence</th>
+                  {isOwnerOrAdmin && <th className="px-4 md:px-8 py-4 md:py-6 whitespace-nowrap text-right min-w-[120px]">Actions</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/40">
@@ -511,32 +559,32 @@ const Inventory: React.FC = () => {
                     <tr key={item.id} className="hover:bg-primary/[0.02] transition-colors group">
 
                       {/* 1. Item Details */}
-                      <td className="px-8 py-6">
+                      <td className="px-4 md:px-8 py-4 md:py-6">
                         <div className="flex flex-col">
-                          <span className="font-black text-foreground text-base tracking-tight">{item.name || 'Unnamed'}</span>
-                          <div className="flex items-center gap-3 mt-1.5">
-                            <span className="text-[10px] text-muted font-black bg-muted/10 px-2 py-0.5 rounded-lg uppercase tracking-widest shadow-inner">{item.sku || '---'}</span>
-                            <span className="text-[10px] text-muted font-black uppercase tracking-widest opacity-60">per {item.units?.abbreviation || item.unit_type || 'unit'}</span>
+                          <span className="font-black text-foreground text-sm md:text-base tracking-tight whitespace-nowrap">{item.name || 'Unnamed'}</span>
+                          <div className="flex items-center gap-3 mt-1.5 flex-wrap md:flex-nowrap">
+                            <span className="text-[9px] md:text-[10px] text-muted font-black bg-muted/10 px-2 py-0.5 rounded-lg uppercase tracking-wider shadow-inner whitespace-nowrap">{item.sku || '---'}</span>
+                            <span className="text-[9px] md:text-[10px] text-muted font-black uppercase tracking-wider opacity-60 whitespace-nowrap">per {item.units?.abbreviation || item.unit_type || 'unit'}</span>
                           </div>
                         </div>
                       </td>
 
                       {/* 2. Supply Health (Days Left + Stock) */}
                       {canViewStock && (
-                        <td className="px-8 py-6 text-center">
+                        <td className="px-4 md:px-8 py-4 md:py-6 text-center">
                           <div className="flex flex-col items-center gap-1">
                             <div className="flex items-baseline gap-2">
                               <span
                                 className={cn(
-                                  "text-2xl font-black tracking-tighter",
+                                  "text-xl md:text-2xl font-black tracking-tighter",
                                   daysLeft < 3 ? "text-red-500 drop-shadow-[0_0_10px_rgba(239,68,68,0.4)]" :
                                     daysLeft < 7 ? "text-amber-500" : "text-emerald-500"
                                 )}>
                                 {daysLeft > 90 ? '90+' : Math.round(daysLeft)}
                               </span>
-                              <span className="text-[10px] font-black text-muted uppercase tracking-widest opacity-40">Days</span>
+                              <span className="text-[9px] md:text-[10px] font-black text-muted uppercase tracking-widest opacity-40">Days</span>
                             </div>
-                            <span className="text-[10px] font-black text-muted uppercase tracking-widest opacity-60">
+                            <span className="text-[9px] md:text-[10px] font-black text-muted uppercase tracking-widest opacity-60 whitespace-nowrap">
                               {stockVal.toLocaleString()} {item.units?.abbreviation || item.unit_type}
                             </span>
                           </div>
@@ -545,66 +593,69 @@ const Inventory: React.FC = () => {
 
                       {/* 3. Financial & Risk */}
                       {canViewCost && (
-                        <td className="px-8 py-6 text-right">
+                        <td className="px-4 md:px-8 py-4 md:py-6 text-right">
                           <div className="flex flex-col items-end gap-2">
-                            <span className="font-black text-foreground text-base tracking-tight">
-                              <span className="text-[10px] font-black mr-1 opacity-40">ETB</span>
+                            <span className="font-black text-foreground text-sm md:text-base tracking-tight whitespace-nowrap">
+                              <span className="text-[9px] md:text-[10px] font-black mr-1 opacity-40">ETB</span>
                               {totalVal.toLocaleString()}
                             </span>
                             {riskVal > 0 ? (
-                              <div className="flex items-center gap-2 px-3 py-1 rounded-xl bg-red-500/10 border border-red-500/20 shadow-sm animate-pulse">
-                                <AlertTriangle className="w-3.5 h-3.5 text-red-500" strokeWidth={3} />
-                                <span className="text-[9px] font-black text-red-500 uppercase tracking-[0.2em]">
+                              <div className="flex items-center gap-2 px-2 py-1 rounded-xl bg-red-500/10 border border-red-500/20 shadow-sm animate-pulse whitespace-nowrap">
+                                <AlertTriangle className="w-3 h-3 md:w-3.5 md:h-3.5 text-red-500" strokeWidth={3} />
+                                <span className="text-[8px] md:text-[9px] font-black text-red-500 uppercase tracking-[0.2em]">
                                   Risk: {riskVal.toLocaleString()}
                                 </span>
                               </div>
                             ) : (
-                              <span className="text-[9px] font-black text-emerald-500/40 uppercase tracking-[0.2em]">Asset Secured</span>
+                              <span className="text-[8px] md:text-[9px] font-black text-emerald-500/40 uppercase tracking-[0.2em] whitespace-nowrap">Asset Secured</span>
                             )}
                           </div>
                         </td>
                       )}
 
                       {/* 4. Intelligence & Status */}
-                      <td className="px-8 py-6">
+                      <td className="px-4 md:px-8 py-4 md:py-6">
                         <div className="flex flex-wrap gap-2">
                           {getSmartLabels(item).map((label, idx) => (
-                            <span key={idx} className={cn("px-4 py-1.5 rounded-xl border text-[9px] font-black uppercase tracking-widest shadow-lg", label.color)}>
+                            <span key={idx} className={cn("px-3 border md:px-4 py-1 md:py-1.5 rounded-lg md:rounded-xl text-[8px] md:text-[9px] font-black uppercase tracking-widest shadow-lg whitespace-nowrap", label.color)}>
                               {label.text}
                             </span>
                           ))}
                           {getSmartLabels(item).length === 0 && (
-                            <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-xl bg-emerald-500/5 border border-emerald-500/20 text-emerald-500 text-[9px] font-black uppercase tracking-widest shadow-lg">
-                              <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_10px_rgba(16,185,129,0.5)]" /> Optimized
+                            <span className="inline-flex items-center gap-2 px-3 md:px-4 py-1 md:py-1.5 rounded-lg md:rounded-xl bg-emerald-500/5 border border-emerald-500/20 text-emerald-500 text-[8px] md:text-[9px] font-black uppercase tracking-widest shadow-lg whitespace-nowrap">
+                              <div className="w-1.5 h-1.5 md:w-2 md:h-2 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_10px_rgba(16,185,129,0.5)]" /> Optimized
                             </span>
                           )}
                         </div>
                       </td>
 
                       {/* 5. Action */}
-                      <td className="px-8 py-6 text-right">
-                        <div className="flex items-center justify-end gap-3 min-w-[100px]">
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => handleEditClick(item)}
-                            className="h-12 w-12 p-0 rounded-2xl bg-muted/5 border border-border text-muted hover:text-primary transition-all shadow-inner"
-                            title="Edit Item"
-                          >
-                            <Edit3 className="w-5 h-5" strokeWidth={3} />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => handleDelete(item)}
-                            className="h-12 w-12 p-0 rounded-2xl bg-red-500/5 border border-red-500/20 text-red-500/70 hover:text-red-500 hover:bg-red-500/10 transition-all shadow-inner"
-                            title="Delete Item"
-                          >
-                            <Trash2 className="w-5 h-5" strokeWidth={3} />
-                          </Button>
-                        </div>
-                      </td>
+                      {isOwnerOrAdmin && (
+                        <td className="px-4 md:px-8 py-4 md:py-6 text-right">
+                          <div className="flex items-center justify-end gap-2 md:gap-3 min-w-[80px]">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleEditClick(item)}
+                              className="h-10 w-10 md:h-12 md:w-12 p-0 rounded-xl md:rounded-2xl bg-muted/5 border border-border text-muted hover:text-primary transition-all shadow-inner"
+                              title="Edit Item"
+                            >
+                              <Edit3 className="w-4 h-4 md:w-5 md:h-5" strokeWidth={3} />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleDelete(item)}
+                              className="h-10 w-10 md:h-12 md:w-12 p-0 rounded-xl md:rounded-2xl bg-red-500/5 border border-red-500/20 text-red-500/70 hover:text-red-500 hover:bg-red-500/10 transition-all shadow-inner"
+                              title="Delete Item"
+                            >
+                              <Trash2 className="w-4 h-4 md:w-5 md:h-5" strokeWidth={3} />
+                            </Button>
+                          </div>
+                        </td>
+                      )}
                     </tr>
+
                   )
                 })}
                 {processedInventory.length === 0 && !loading && (
@@ -622,9 +673,9 @@ const Inventory: React.FC = () => {
       </div>
 
       <Dialog isOpen={isModalOpen} onClose={() => !submitting && setIsModalOpen(false)} title="Intelligence Node: Master Adjustment">
-        <div className="space-y-8 max-h-[75vh] overflow-y-auto px-1 py-2 custom-scrollbar">
+        <div className="space-y-6 md:space-y-8 max-h-[75vh] overflow-y-auto px-1 py-2 custom-scrollbar">
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-8 bg-muted/5 border border-border rounded-[2rem] shadow-inner relative overflow-hidden group">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4 p-5 md:p-8 bg-black/40 border border-primary/20 rounded-3xl md:rounded-[2rem] shadow-inner relative overflow-hidden group">
             <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent pointer-events-none" />
 
             {isAddingNew ? (
@@ -635,7 +686,7 @@ const Inventory: React.FC = () => {
                     placeholder="Ingredient Name"
                     value={formData.name}
                     onChange={e => setFormData({ ...formData, name: e.target.value })}
-                    className="bg-card border-border shadow-inner text-sm font-black w-full"
+                    className="bg-card border-primary/10 shadow-inner text-sm font-black w-full"
                   />
                 </div>
                 <div className="space-y-1.5 relative z-10">
@@ -644,7 +695,7 @@ const Inventory: React.FC = () => {
                     placeholder="Auto-generated if blank"
                     value={formData.sku}
                     onChange={e => setFormData({ ...formData, sku: e.target.value })}
-                    className="bg-card border-border shadow-inner text-sm font-mono font-black uppercase w-full"
+                    className="bg-card border-primary/10 shadow-inner text-sm font-mono font-black uppercase w-full"
                   />
                 </div>
                 <div className="space-y-1.5 relative z-10">
@@ -653,7 +704,7 @@ const Inventory: React.FC = () => {
                     placeholder="e.g. Vegetables, Meat"
                     value={formData.category}
                     onChange={e => setFormData({ ...formData, category: e.target.value })}
-                    className="bg-card border-border shadow-inner text-sm font-black w-full"
+                    className="bg-card border-primary/10 shadow-inner text-sm font-black w-full"
                   />
                 </div>
               </>
@@ -679,7 +730,7 @@ const Inventory: React.FC = () => {
               <select
                 value={formData.unit_id}
                 onChange={e => setFormData({ ...formData, unit_id: e.target.value })}
-                className="bg-card border border-border rounded-xl px-3 py-1.5 text-xs text-foreground font-black outline-none focus:border-primary/50 w-full transition-all shadow-sm h-12"
+                className="bg-card border border-primary/10 rounded-xl px-3 py-1.5 text-xs text-foreground font-black outline-none focus:border-primary/50 w-full transition-all shadow-sm h-10 md:h-12"
               >
                 <option value="" disabled>Select Unit</option>
                 {units.map(u => (
@@ -691,7 +742,7 @@ const Inventory: React.FC = () => {
 
           <div className="space-y-6">
             <h4 className="text-[10px] font-black text-foreground uppercase tracking-[0.3em] flex items-center gap-3">
-              <div className="p-2 bg-primary/10 rounded-lg">
+              <div className="p-2 bg-primary/5 rounded-lg">
                 <Scale className="w-4 h-4 text-primary" strokeWidth={3} />
               </div>
               Stock Capacity Protocol
@@ -704,7 +755,7 @@ const Inventory: React.FC = () => {
                   step="any"
                   value={formData.current_stock === 0 ? '0' : formData.current_stock}
                   onChange={e => setFormData({ ...formData, current_stock: e.target.value === '' ? '' : parseFloat(e.target.value) } as any)}
-                  className="bg-muted/10 border-border text-primary font-mono font-black h-12 rounded-xl text-lg shadow-inner"
+                  className="bg-primary/5 border-primary/10 text-primary font-mono font-black h-10 md:h-12 rounded-xl text-base md:text-lg shadow-inner"
                 />
               </div>
               <div className="space-y-2.5">
@@ -713,7 +764,7 @@ const Inventory: React.FC = () => {
                   type="number"
                   value={formData.par_min === 0 ? '0' : formData.par_min}
                   onChange={e => setFormData({ ...formData, par_min: e.target.value === '' ? '' : parseFloat(e.target.value) } as any)}
-                  className="bg-muted/10 border-border text-foreground font-mono font-black h-12 rounded-xl text-lg shadow-inner"
+                  className="bg-primary/5 border-primary/10 text-foreground font-mono font-black h-10 md:h-12 rounded-xl text-base md:text-lg shadow-inner"
                 />
               </div>
               <div className="space-y-2.5">
@@ -722,7 +773,7 @@ const Inventory: React.FC = () => {
                   type="number"
                   value={formData.par_max === 0 ? '0' : formData.par_max}
                   onChange={e => setFormData({ ...formData, par_max: e.target.value === '' ? '' : parseFloat(e.target.value) } as any)}
-                  className="bg-muted/10 border-border text-foreground font-mono font-black h-12 rounded-xl text-lg shadow-inner"
+                  className="bg-primary/5 border-primary/10 text-foreground font-mono font-black h-10 md:h-12 rounded-xl text-base md:text-lg shadow-inner"
                 />
               </div>
             </div>
@@ -730,7 +781,7 @@ const Inventory: React.FC = () => {
 
           <div className="space-y-6">
             <h4 className="text-[10px] font-black text-foreground uppercase tracking-[0.3em] flex items-center gap-3">
-              <div className="p-2 bg-emerald-500/10 rounded-lg">
+              <div className="p-2 bg-emerald-500/5 rounded-lg">
                 <DollarSign className="w-4 h-4 text-emerald-500" strokeWidth={3} />
               </div>
               Valuation & Lifecycle
@@ -745,7 +796,7 @@ const Inventory: React.FC = () => {
                     step="any"
                     value={formData.cost_per_unit === 0 ? '0' : formData.cost_per_unit}
                     onChange={e => setFormData({ ...formData, cost_per_unit: e.target.value === '' ? '' : parseFloat(e.target.value) } as any)}
-                    className="pl-12 bg-muted/10 border-border text-foreground font-mono font-black h-12 rounded-xl shadow-inner text-lg"
+                    className="pl-10 md:pl-12 bg-primary/5 border-primary/10 text-foreground font-mono font-black h-10 md:h-12 rounded-xl shadow-inner text-base md:text-lg"
                   />
                 </div>
               </div>
@@ -757,7 +808,7 @@ const Inventory: React.FC = () => {
                     type="number"
                     value={formData.expiry_days === 0 ? '0' : formData.expiry_days}
                     onChange={e => setFormData({ ...formData, expiry_days: e.target.value === '' ? '' : parseInt(e.target.value) } as any)}
-                    className="pl-12 bg-muted/10 border-border text-foreground font-mono font-black h-12 rounded-xl shadow-inner text-lg"
+                    className="pl-10 md:pl-12 bg-primary/5 border-primary/10 text-foreground font-mono font-black h-10 md:h-12 rounded-xl shadow-inner text-base md:text-lg"
                   />
                 </div>
               </div>
@@ -775,28 +826,61 @@ const Inventory: React.FC = () => {
               <div className="space-y-4 relative z-10">
                 <p className="text-[11px] text-muted font-bold leading-relaxed px-1">Configure conversion ratio: define the mass/volume equivalent for a single discrete unit.</p>
                 <div className="flex flex-col md:flex-row items-center gap-6">
-                  <div className="flex-1 w-full space-y-2">
-                    <label className="text-[9px] font-black text-muted uppercase tracking-widest px-1">Base Metric Weight (g/ml)</label>
-                    <Input
-                      type="number"
-                      value={formData.weight_per_unit}
-                      onChange={e => setFormData({ ...formData, weight_per_unit: parseFloat(e.target.value) || 1 })}
-                      className="bg-muted/10 border-border font-mono text-primary font-black h-12 rounded-xl shadow-inner text-lg"
-                    />
-                  </div>
-                  <div className="pt-2 md:pt-6 w-full md:w-auto">
-                    <div className="bg-primary/10 border border-primary/30 rounded-2xl h-14 px-6 flex items-center justify-center gap-3 shadow-lg">
-                      <span className="text-[10px] font-black text-primary uppercase">1 Piece / Unit</span>
-                      <div className="w-3 h-[1px] bg-primary/30" />
-                      <span className="text-xl font-black text-primary tracking-tighter">{formData.weight_per_unit}g/ml</span>
+                  <div className="flex-1 w-full space-y-4">
+                    <div className="space-y-2">
+                        <label className="text-[9px] font-black text-muted uppercase tracking-widest px-1">Choose Discrete Unit (e.g. Piece, Cup, Bag)</label>
+                        <select
+                          value={formData.yield_unit_name || 'None'}
+                          onChange={e => setFormData({ ...formData, yield_unit_name: e.target.value })}
+                          className="w-full bg-black/40 border border-primary/20 font-black h-10 md:h-12 rounded-xl shadow-inner text-sm px-4 outline-none focus:border-primary/50 text-white appearance-none"
+                        >
+                          <option value="None" className="bg-[#0A0A0A] text-white">None (Bulk Tracking Only)</option>
+                          <option value="Piece" className="bg-[#0A0A0A] text-white">Piece</option>
+                          <option value="Half" className="bg-[#0A0A0A] text-white">Half</option>
+                          <option value="Full" className="bg-[#0A0A0A] text-white">Full</option>
+                          <option value="Cup" className="bg-[#0A0A0A] text-white">Cup</option>
+                          <option value="Bag" className="bg-[#0A0A0A] text-white">Bag (e.g. 25kg Sack)</option>
+                          <option value="Bottle" className="bg-[#0A0A0A] text-white">Bottle</option>
+                          <option value="Scoop" className="bg-[#0A0A0A] text-white">Scoop</option>
+                          <option value="Tray" className="bg-[#0A0A0A] text-white">Tray</option>
+                          <option value="Portion" className="bg-[#0A0A0A] text-white">Portion</option>
+                          <option value="Box" className="bg-[#0A0A0A] text-white">Box</option>
+                          <option value="Can" className="bg-[#0A0A0A] text-white">Can</option>
+                          <option value="Sack" className="bg-[#0A0A0A] text-white">Sack</option>
+                          <option value="Crate" className="bg-[#0A0A0A] text-white">Crate</option>
+                          <option value="Case" className="bg-[#0A0A0A] text-white">Case</option>
+                          <option value="Pack" className="bg-[#0A0A0A] text-white">Pack</option>
+                          <option value="Bunch" className="bg-[#0A0A0A] text-white">Bunch (e.g. Greens)</option>
+                          <option value="Head" className="bg-[#0A0A0A] text-white">Head (e.g. Lettuce)</option>
+                        </select>
                     </div>
+                    {formData.yield_unit_name !== 'None' && (
+                      <div className="space-y-2 animate-in slide-in-from-top-2 duration-300">
+                          <label className="text-[9px] font-black text-muted uppercase tracking-widest px-1">Weight of 1 {formData.yield_unit_name} (g/ml)</label>
+                          <Input
+                          type="number"
+                          value={formData.weight_per_unit}
+                          onChange={e => setFormData({ ...formData, weight_per_unit: parseFloat(e.target.value) || 1 })}
+                          className="bg-muted/10 border-border font-mono text-primary font-black h-10 md:h-12 rounded-xl shadow-inner text-base md:text-lg"
+                          />
+                      </div>
+                    )}
                   </div>
+                  {formData.yield_unit_name !== 'None' && (
+                    <div className="pt-2 md:pt-6 w-full md:w-auto animate-in zoom-in-95 duration-500">
+                      <div className="bg-primary/10 border border-primary/30 rounded-xl md:rounded-2xl h-10 md:h-14 px-4 md:px-6 flex items-center justify-center gap-2 md:gap-3 shadow-lg">
+                        <span className="text-[9px] md:text-[10px] font-black text-primary uppercase">1 {formData.yield_unit_name}</span>
+                        <div className="w-2 md:w-3 h-[1px] bg-primary/30" />
+                        <span className="text-lg md:text-xl font-black text-primary tracking-tighter">{formData.weight_per_unit}g/ml</span>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
             <Button
               onClick={handleSave}
-              className="w-full bg-foreground text-background font-black h-16 rounded-[2rem] shadow-2xl text-[10px] uppercase tracking-[0.3em] transition-all hover:scale-[1.02] active:scale-95 group relative overflow-hidden"
+              className="w-full bg-foreground text-background font-black h-12 md:h-16 rounded-2xl md:rounded-[2rem] shadow-xl md:shadow-2xl text-[9px] md:text-[10px] uppercase tracking-[0.3em] transition-all hover:scale-[1.02] active:scale-95 group relative overflow-hidden"
               isLoading={submitting}
             >
               <div className="absolute inset-0 bg-gradient-to-r from-primary/0 via-primary/10 to-primary/0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />

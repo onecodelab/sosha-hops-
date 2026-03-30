@@ -296,7 +296,7 @@ export const BillModal: React.FC<BillModalProps> = ({
   const locationName = branchData?.name || 'Main Branch';
 
   const getDynamicReceiver = (bank: string) => {
-    const setting = bankSettings.find((s: any) => s.bank_key === bank);
+    const setting = activeBanks.find((s: any) => s.bank_key === bank);
     return setting?.account_number || "";
   };
 
@@ -448,10 +448,10 @@ export const BillModal: React.FC<BillModalProps> = ({
 
   return (
     <Dialog isOpen={isOpen} onClose={onClose} title={view === 'payment' ? "Checkout Station" : "Order Summary"} maxWidth="max-w-md" showTitle={!isMobile}>
-      <div className="flex flex-col p-1 min-h-[400px] bg-zinc-950/50 rounded-[1.5rem] border border-white/5">
+      <div className="flex flex-col p-0 md:p-1 min-h-[300px] md:min-h-[400px] bg-zinc-950/50 rounded-xl md:rounded-[1.5rem] border border-primary/10">
         {view === 'bill' && (
           <div className="animate-in fade-in zoom-in-95 duration-300">
-            <div className="bg-white text-black p-4 rounded-lg shadow-inner mx-auto w-full max-w-[280px] sm:max-w-[320px] scale-[0.78] sm:scale-100 origin-top transition-transform mb-[-5rem] sm:mb-0 print:shadow-none print:px-0 print:scale-100" style={{ fontFamily: "'Courier New', Courier, monospace" }}>
+            <div data-printable-receipt className="bg-white text-black p-3 md:p-4 rounded-lg shadow-inner mx-auto w-[90%] md:w-full max-w-[260px] md:max-w-[320px] scale-[0.85] sm:scale-100 origin-top transition-transform mb-[-3rem] sm:mb-0" style={{ fontFamily: "'Courier New', Courier, monospace" }}>
               {/* TIN */}
               <div className="text-center mb-1">
                 <p className="text-[10px] tracking-wider font-mono">TIN: 0043819230</p>
@@ -534,6 +534,7 @@ export const BillModal: React.FC<BillModalProps> = ({
 
               {/* Universal QR Section */}
               <div className="flex flex-col items-center gap-1 mt-1 font-mono">
+                {activeBanks.length > 0 && (
                 <div className="text-center flex flex-col items-center bg-gray-50 p-2 rounded-lg border border-gray-100">
                   <QRCodeSVG
                     value={buildUniversalMerchantQR(
@@ -549,6 +550,7 @@ export const BillModal: React.FC<BillModalProps> = ({
                     level="M"
                   />
                 </div>
+                )}
 
                 {/* Human Readable Accounts (for manual entry if scan fails) */}
                 <div className="w-full space-y-1 px-4">
@@ -570,10 +572,10 @@ export const BillModal: React.FC<BillModalProps> = ({
                 Checkout All <ChevronRight className="ml-2 w-5 h-5" />
               </Button>
               <div className="grid grid-cols-2 gap-2 order-2 md:order-1 md:col-start-1">
-                <Button variant="outline" onClick={() => window.print()} className="h-12 bg-white/5 border-white/10 rounded-xl font-bold">
+                <Button variant="outline" onClick={() => window.print()} className="h-12 bg-primary/5 border-primary/20 rounded-xl font-bold">
                   <Printer className="w-4 h-4 mr-2" /> Print Bill
                 </Button>
-                <Button onClick={() => setView('split')} className="h-12 bg-white/10 text-white font-black uppercase rounded-xl border border-white/10 hover:bg-white/20">
+                <Button onClick={() => setView('split')} className="h-12 bg-primary/10 text-white font-black uppercase rounded-xl border border-primary/20 hover:bg-primary/20">
                   Split
                 </Button>
               </div>
@@ -582,10 +584,10 @@ export const BillModal: React.FC<BillModalProps> = ({
         )}
 
         {view === 'payment' && (
-          <div className="space-y-4 animate-in fade-in duration-200">
-            <div className="flex items-center justify-between px-2">
+          <div className="space-y-2 md:space-y-4 animate-in fade-in duration-200">
+            <div className="flex items-center justify-between px-1 md:px-2">
               <button onClick={() => setView('bill')} className="flex items-center gap-1.5 text-zinc-400 hover:text-primary text-[9px] font-black uppercase tracking-[0.2em] transition-all group">
-                <div className="w-7 h-7 rounded-full bg-white/5 flex items-center justify-center group-hover:bg-primary/20 group-hover:text-primary transition-all">
+                <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 group-hover:text-primary transition-all">
                    <ArrowLeft className="w-3.5 h-3.5" />
                 </div>
                 Back
@@ -596,25 +598,25 @@ export const BillModal: React.FC<BillModalProps> = ({
                </div>
             </div>
 
-            <div className="bg-zinc-900/80 p-4 rounded-xl border border-white/10 text-center relative overflow-hidden shadow-lg group">
+            <div className="bg-zinc-900/80 p-3 md:p-4 rounded-lg md:rounded-xl border border-primary/20 text-center relative overflow-hidden shadow-lg group">
                <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-transparent opacity-30" />
-               <p className="text-[9px] font-black text-zinc-500 uppercase tracking-widest mb-1 relative z-10">Amount to Collect</p>
-               <div className="flex items-baseline justify-center gap-2 relative z-10">
-                  <span className="text-[9px] font-black text-primary/40 uppercase">ETB</span>
-                  <h3 className="text-2xl font-black text-white tracking-tighter">
+               <p className="text-[8px] md:text-[9px] font-black text-zinc-500 uppercase tracking-widest mb-0.5 md:mb-1 relative z-10">Amount to Collect</p>
+               <div className="flex items-baseline justify-center gap-1.5 md:gap-2 relative z-10">
+                  <span className="text-[8px] md:text-[9px] font-black text-primary/40 uppercase">ETB</span>
+                  <h3 className="text-xl md:text-2xl font-black text-white tracking-tighter">
                     {order.total_amount.toLocaleString()}
                   </h3>
                </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-1.5 md:gap-2">
                <button 
                   onClick={() => { setPaymentMethod('cash'); setIsVerified(false); setRefNumber(''); }} 
                   className={cn(
-                    "h-11 rounded-lg border flex items-center justify-center gap-2 transition-colors text-[9px] font-black uppercase tracking-widest",
+                    "h-9 md:h-11 rounded-md md:rounded-lg border flex items-center justify-center gap-1.5 md:gap-2 transition-colors text-[8px] md:text-[9px] font-black uppercase tracking-wide md:tracking-widest",
                     paymentMethod === 'cash' 
                       ? "bg-primary text-black border-primary shadow-lg" 
-                      : "bg-white/5 border-white/10 text-zinc-500 hover:bg-white/10"
+                      : "bg-primary/5 border-primary/10 text-zinc-500 hover:bg-primary/10"
                   )}
                >
                   <Banknote className="w-3.5 h-3.5" />
@@ -625,28 +627,28 @@ export const BillModal: React.FC<BillModalProps> = ({
                     key={key} 
                     onClick={() => { setPaymentMethod(key); setRefNumber(''); setIsVerified(false); }} 
                     className={cn(
-                      "h-11 rounded-lg border flex items-center justify-center gap-2 transition-colors text-[9px] font-black uppercase tracking-widest", 
+                      "h-9 md:h-11 rounded-md md:rounded-lg border flex items-center justify-center gap-1.5 md:gap-2 transition-colors text-[8px] md:text-[9px] font-black uppercase tracking-wide md:tracking-widest", 
                       paymentMethod === key 
                         ? (config as any).activeColor.replace('transition-all duration-500', '') 
                         : "bg-white/5 border-white/10 text-zinc-500 hover:bg-white/10"
                     )}
                   >
                      {config.imageUrl ? (
-                        <img src={config.imageUrl} alt={config.label} className={cn(config.iconSize || "w-6 h-6", "object-contain transition-transform group-hover:scale-110", paymentMethod === key && config.logoGlow)} />
+                        <img src={config.imageUrl} alt={config.label} className={cn(config.iconSize?.replace('w-10 h-10', 'w-8 h-8 md:w-10 md:h-10') || "w-5 h-5 md:w-6 md:h-6", "object-contain transition-transform group-hover:scale-110", paymentMethod === key && config.logoGlow)} />
                      ) : (
-                        <config.icon className="w-4 h-4" />
+                        <config.icon className="w-3.5 h-3.5 md:w-4 md:h-4" />
                      )}
-                     {config.label}
+                     <span className="truncate">{config.label}</span>
                   </button>
                ))}
             </div>
-            <div className="space-y-3 bg-zinc-900/30 p-4 rounded-xl border border-white/5 relative">
-               <div className="space-y-1.5">
-                  <div className="flex justify-between items-center px-1">
-                     <label className="text-[9px] font-black text-zinc-500 uppercase tracking-widest">Transaction Method</label>
+            <div className="space-y-2 md:space-y-3 bg-zinc-900/30 p-3 md:p-4 rounded-lg md:rounded-xl border border-primary/10 relative">
+               <div className="space-y-1 md:space-y-1.5">
+                  <div className="flex justify-between items-center px-0.5 md:px-1">
+                     <label className="text-[8px] md:text-[9px] font-black text-zinc-500 uppercase tracking-widest">Transaction Method</label>
                      {paymentMethod !== 'cash' && (
-                        <button onClick={() => setIsQRScannerOpen(true)} className="text-[9px] font-black text-primary uppercase flex items-center gap-1.5 hover:opacity-80">
-                           <Scan className="w-3 h-3" /> Scan Receipt
+                        <button onClick={() => setIsQRScannerOpen(true)} className="text-[8px] md:text-[9px] font-black text-primary uppercase flex items-center gap-1 hover:opacity-80">
+                           <Scan className="w-2.5 h-2.5 md:w-3 md:h-3" /> Scan Receipt
                         </button>
                      )}
                   </div>
@@ -655,8 +657,8 @@ export const BillModal: React.FC<BillModalProps> = ({
                         placeholder={(BANK_CONFIG as any)[paymentMethod]?.placeholder || "Manual ID..."}
                         value={refNumber}
                         onChange={e => { setRefNumber(e.target.value); setIsVerified(false); }}
-                        className={cn(
-                          "bg-black/40 border-white/10 font-mono text-white h-9 text-[11px] rounded transition-all pl-3 pr-8",
+                         className={cn(
+                          "bg-black/40 border-primary/20 font-mono text-white h-8 md:h-9 text-[10px] md:text-[11px] rounded transition-all pl-2 md:pl-3 pr-7 border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20",
                           isVerified && "border-green-500/50 text-green-400"
                         )}
                         disabled={paymentMethod === 'cash'}
@@ -666,7 +668,7 @@ export const BillModal: React.FC<BillModalProps> = ({
                </div>
 
                {(BANK_CONFIG as any)[paymentMethod]?.receiver && (
-                  <div className={cn("p-2 rounded-lg flex items-center justify-between border transition-all", isVerified ? "bg-green-500/5 border-green-500/20" : "bg-primary/5 border-primary/20")}>
+                  <div className="p-2 rounded-lg flex items-center justify-between border border-primary/20">
                     <div className="flex items-center gap-2">
                        <ShieldCheck className={cn("w-3.5 h-3.5", isVerified ? "text-green-500" : "text-primary")} />
                        <span className="text-[8px] text-zinc-400 font-black uppercase">To Account:</span>
@@ -678,14 +680,14 @@ export const BillModal: React.FC<BillModalProps> = ({
                )}
 
                <div className="space-y-1">
-                  <label className="text-[9px] font-black text-zinc-500 uppercase tracking-widest px-1">Input Collection (ETB)</label>
+                  <label className="text-[8px] md:text-[9px] font-black text-zinc-500 uppercase tracking-widest px-0.5 md:px-1">Input Collection (ETB)</label>
                   <div className="relative">
                      <Input
                         type="number"
                         value={amountPaid}
                         onChange={e => { setAmountPaid(e.target.value); setIsVerified(false); }}
-                        className={cn(
-                          "bg-black/40 border-white/10 font-mono font-black h-11 text-lg rounded-lg transition-all px-3",
+                         className={cn(
+                          "bg-black/40 border-primary/20 font-mono font-black h-9 md:h-11 text-base md:text-lg rounded-md md:rounded-lg transition-all px-2 md:px-3 border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20",
                           isVerified ? "text-green-400 border-green-500/20" : "text-primary border-primary/10"
                         )}
                      />
@@ -695,7 +697,7 @@ export const BillModal: React.FC<BillModalProps> = ({
 
               {/* Tip Confirmation Card */}
               {isVerified && (parseFloat(amountPaid) > order.total_amount) && (
-                <div className="bg-green-500/10 border border-green-500/30 rounded-2xl p-4 animate-in zoom-in-95 duration-300">
+                <div className="bg-green-500/10 border border-green-500/30 rounded-xl md:rounded-2xl p-3 md:p-4 animate-in zoom-in-95 duration-300">
                   <div className="flex justify-between items-center mb-3">
                     <span className="text-[10px] font-black text-green-400 uppercase tracking-widest">Tip Analysis</span>
                     <Heart className="w-3.5 h-3.5 text-green-400 fill-green-400/20" />
@@ -709,7 +711,7 @@ export const BillModal: React.FC<BillModalProps> = ({
                       <span className="text-zinc-500 font-bold">Paid via Bank:</span>
                       <span className="text-green-400 font-mono">ETB {amountPaid}</span>
                     </div>
-                    <div className="h-px bg-white/5 my-1" />
+                    <div className="h-px bg-primary/10 my-1" />
                     <div className="flex justify-between text-sm">
                       <span className="text-white font-black uppercase tracking-tighter">Tip for Staff:</span>
                       <span className="text-green-400 font-black font-mono">ETB {(parseFloat(amountPaid) - order.total_amount).toFixed(2)}</span>
@@ -723,12 +725,12 @@ export const BillModal: React.FC<BillModalProps> = ({
               onClick={isVerified || paymentMethod === 'cash' ? handleProcessPayment : () => verifyTransaction()}
               isLoading={isSubmitting || isVerifying}
               className={cn(
-                "w-full h-14 font-black uppercase tracking-[0.2em] rounded-2xl shadow-xl transition-all",
+                "w-full h-10 md:h-14 text-[9px] md:text-[11px] font-black uppercase tracking-[0.1em] md:tracking-[0.2em] rounded-lg md:rounded-2xl shadow-xl transition-all",
                 isVerified ? "bg-green-600 text-white shadow-green-500/20" : "bg-primary text-black"
               )}
             >
               {isVerifying ? (
-                <span className="flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" /> Verifying...</span>
+                <span className="flex items-center gap-1.5 md:gap-2"><Loader2 className="w-3.5 h-3.5 md:w-4 md:h-4 animate-spin" /> Verifying...</span>
               ) : (
                 paymentMethod === 'cash' ? 'Finalize Order' : (isVerified ? 'Confirm & Close' : 'Verify & Link')
               )}
@@ -752,7 +754,7 @@ export const BillModal: React.FC<BillModalProps> = ({
 
         {view === 'receipt' && (
           <div className="animate-in fade-in zoom-in-95 duration-300 flex flex-col items-center">
-            <div className="bg-white text-black p-4 rounded-lg shadow-inner mx-auto w-full max-w-[280px] sm:max-w-[320px] mt-4 scale-[0.78] sm:scale-100 origin-top transition-transform mb-[-5rem] sm:mb-0 print:shadow-none print:px-0 print:scale-100" style={{ fontFamily: "'Courier New', Courier, monospace" }}>
+            <div data-printable-receipt className="bg-white text-black p-4 rounded-lg shadow-inner mx-auto w-full max-w-[280px] sm:max-w-[320px] mt-4 scale-[0.78] sm:scale-100 origin-top transition-transform mb-[-5rem] sm:mb-0" style={{ fontFamily: "'Courier New', Courier, monospace" }}>
               {/* TIN */}
               <div className="text-center mb-1">
                 <p className="text-[10px] tracking-wider font-mono">TIN: 0043819230</p>
@@ -835,6 +837,7 @@ export const BillModal: React.FC<BillModalProps> = ({
 
               {/* Universal QR Footer for Paid Receipt */}
               <div className="flex flex-col items-center gap-1 mt-1 font-mono">
+                {activeBanks.length > 0 && (
                 <div className="text-center flex flex-col items-center">
                    <QRCodeSVG
                     value={buildUniversalMerchantQR(
@@ -852,6 +855,7 @@ export const BillModal: React.FC<BillModalProps> = ({
                   />
                   <span className="font-black text-[7px] tracking-widest uppercase text-gray-500">Invoice Authenticity QR</span>
                 </div>
+                )}
 
                 <p className="text-[9px] text-gray-500 text-center mt-4 font-mono">FG{order.id.slice(0, 8).toUpperCase()}</p>
                 <p className="text-[9px] text-gray-400 text-center mt-1 tracking-wider font-mono">Powered by Baro OS</p>

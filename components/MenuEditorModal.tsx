@@ -42,6 +42,11 @@ export const MenuEditorModal: React.FC<MenuEditorModalProps> = ({
   const [isAvailable, setIsAvailable] = useState(true);
   const [recipeCost, setRecipeCost] = useState(0);
 
+  // Semantic Tagging State
+  const [dietaryTags, setDietaryTags] = useState<string>('');
+  const [spiceLevel, setSpiceLevel] = useState<string>('None');
+  const [portionSize, setPortionSize] = useState<string>('Standard');
+
   // Manual Category State
   const [isAddingCategory, setIsAddingCategory] = useState(false);
   const [isEditingCategory, setIsEditingCategory] = useState(false);
@@ -50,7 +55,7 @@ export const MenuEditorModal: React.FC<MenuEditorModalProps> = ({
   // Initialize state when modal opens or editingItem changes
   useEffect(() => {
     if (isOpen) {
-      fetchCategories();
+      fetchCategories(editingItem);
 
       // If modal just opened OR a different item was selected for editing
       if (!wasOpen.current || (editingItem && editingItem.id !== internalItem?.id)) {
@@ -62,6 +67,9 @@ export const MenuEditorModal: React.FC<MenuEditorModalProps> = ({
           setPrice(editingItem.price);
           setImageUrl(editingItem.image_url || '');
           setIsAvailable(editingItem.is_available);
+          setDietaryTags((editingItem.dietary_tags || []).join(', '));
+          setSpiceLevel(editingItem.spice_level || 'None');
+          setPortionSize(editingItem.portion_size || 'Standard');
           fetchRecipeCost(editingItem.id);
         } else {
           setInternalItem(null);
@@ -71,6 +79,9 @@ export const MenuEditorModal: React.FC<MenuEditorModalProps> = ({
           setImageUrl('');
           setIsAvailable(true);
           setRecipeCost(0);
+          setDietaryTags('');
+          setSpiceLevel('None');
+          setPortionSize('Standard');
           setIsAddingCategory(false);
           setIsEditingCategory(false);
           setNewCategoryName('');
@@ -109,9 +120,25 @@ export const MenuEditorModal: React.FC<MenuEditorModalProps> = ({
     }
   };
 
-  const fetchCategories = async () => {
+  const fetchCategories = async (currentItem?: MenuItem | null) => {
     const { data } = await supabase.from('categories').select('*').order('name');
-    if (data) setCategories(data);
+    if (data) {
+      setCategories(data);
+      // Auto-resolve missing category_id by matching the category name string
+      if (currentItem) {
+        const existingCatId = currentItem.category_id;
+        if (existingCatId) {
+          setCategoryId(existingCatId);
+        } else if (currentItem.category) {
+          const match = data.find(c => c.name === currentItem.category);
+          if (match) {
+            setCategoryId(match.id);
+          } else {
+            setCategoryId('');
+          }
+        }
+      }
+    }
   };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -260,6 +287,9 @@ export const MenuEditorModal: React.FC<MenuEditorModalProps> = ({
         price: parseFloat(price.toString()),
         image_url: imageUrl.trim() || null,
         status: isAvailable ? 'available' : 'unavailable',
+        dietary_tags: dietaryTags.split(',').map(s => s.trim()).filter(Boolean),
+        spice_level: spiceLevel,
+        portion_size: portionSize,
         ...(internalItem?.id ? { id: internalItem.id } : { branch_id: activeBranchId || null }),
         ...(internalItem?.id ? {} : { organization_id: userProfile?.organization_id })
       };
@@ -351,7 +381,7 @@ export const MenuEditorModal: React.FC<MenuEditorModalProps> = ({
       <div className="flex flex-col gap-6">
 
         {/* Navigation Tabs */}
-        <div className="flex bg-black/40 p-1 rounded-xl border border-white/5">
+        <div className="flex bg-black/40 p-1 rounded-xl border border-primary/10">
           <button
             onClick={() => setActiveTab('basic')}
             className={cn(
@@ -383,7 +413,7 @@ export const MenuEditorModal: React.FC<MenuEditorModalProps> = ({
                   value={name}
                   onChange={e => setName(e.target.value)}
                   placeholder="e.g. Doro Wat"
-                  className="bg-black/40 border-gray-700 h-12"
+                  className="bg-black/40 border-primary/20 h-10 md:h-12 text-sm md:text-base"
                 />
               </div>
               <div className="grid grid-cols-2 gap-4">
@@ -438,7 +468,7 @@ export const MenuEditorModal: React.FC<MenuEditorModalProps> = ({
                         value={newCategoryName}
                         onChange={e => setNewCategoryName(e.target.value)}
                         placeholder={isEditingCategory ? "Rename category..." : "Type category name..."}
-                        className="bg-black/40 border-primary/30 h-11 pr-10"
+                        className="bg-black/40 border-primary/30 h-10 md:h-11 pr-10 text-sm"
                         autoFocus
                       />
                       <BookOpen className="absolute right-3 top-3.5 w-4 h-4 text-primary opacity-40" />
@@ -448,7 +478,7 @@ export const MenuEditorModal: React.FC<MenuEditorModalProps> = ({
                       <select
                         value={categoryId}
                         onChange={e => setCategoryId(e.target.value)}
-                        className="w-full h-11 bg-black/40 border border-gray-700 rounded-lg px-3 text-sm text-white outline-none focus:border-primary/50 appearance-none transition-all"
+                        className="w-full h-10 md:h-11 bg-black/40 border border-primary/15 rounded-lg px-3 text-xs md:text-sm text-white outline-none focus:border-primary/50 appearance-none transition-all"
                       >
                         <option value="" disabled>Select category...</option>
                         {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -477,7 +507,7 @@ export const MenuEditorModal: React.FC<MenuEditorModalProps> = ({
                   <RoleGuard
                     allowedRoles={['owner', 'admin']}
                     fallback={
-                      <div className="flex items-center gap-2 h-11 px-3 bg-black/60 border border-gray-800 rounded-lg">
+                      <div className="flex items-center gap-2 h-11 px-3 bg-black/60 border border-primary/15 rounded-lg">
                         <Lock className="w-4 h-4 text-gray-600" />
                         <span className="font-mono text-primary font-bold">ETB {price.toLocaleString()}</span>
                         <span className="text-[9px] text-gray-600 uppercase">(View Only)</span>
@@ -489,7 +519,7 @@ export const MenuEditorModal: React.FC<MenuEditorModalProps> = ({
                         type="number"
                         value={price}
                         onChange={e => setPrice(parseFloat(e.target.value) || 0)}
-                        className="font-mono text-primary font-bold bg-black/40 border-gray-700 h-11 transition-all group-focus-within:border-primary/40"
+                        className="font-mono text-primary font-bold bg-black/40 border-primary/20 h-10 md:h-11 text-sm md:text-base transition-all group-focus-within:border-primary/40"
                       />
                       {recipeCost > 0 && (
                         <div className="absolute right-3 top-2.5 text-[8px] font-black text-gray-600 uppercase">
@@ -511,8 +541,8 @@ export const MenuEditorModal: React.FC<MenuEditorModalProps> = ({
                 </div>
 
                 <div className={cn(
-                  "relative group overflow-hidden rounded-[1.5rem] border-2 border-dashed transition-all duration-500 bg-black/40 h-40 flex flex-col items-center justify-center",
-                  imageUrl ? "border-primary/20 bg-primary/5" : "border-gray-800 hover:border-primary/30"
+                  "relative group overflow-hidden rounded-[1.5rem] border-2 border-dashed transition-all duration-500 bg-black/40 h-32 md:h-40 flex flex-col items-center justify-center",
+                   imageUrl ? "border-primary/20 bg-primary/5" : "border-primary/20 hover:border-primary/30"
                 )}>
                   {imageUrl ? (
                     <>
@@ -545,7 +575,7 @@ export const MenuEditorModal: React.FC<MenuEditorModalProps> = ({
                       className="w-full h-full flex flex-col items-center justify-center gap-4 group/btn"
                       disabled={uploading}
                     >
-                      <div className="w-14 h-14 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center transition-all group-hover/btn:scale-110 group-hover/btn:border-primary/40 group-hover/btn:bg-primary/5">
+                      <div className="w-14 h-14 rounded-2xl bg-primary/5 border border-primary/10 flex items-center justify-center transition-all group-hover/btn:scale-110 group-hover/btn:border-primary/40 group-hover/btn:bg-primary/5">
                         {uploading ? (
                           <Loader2 className="w-7 h-7 animate-spin text-primary" />
                         ) : (
@@ -569,7 +599,57 @@ export const MenuEditorModal: React.FC<MenuEditorModalProps> = ({
                   />
                 </div>
               </div>
-              <div className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/5">
+              <div className="pt-4 border-t border-primary/10">
+                <label className="text-[10px] font-black text-primary uppercase tracking-[0.2em] mb-4 block">Semantic Agent Tags</label>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-[9px] font-black text-gray-500 uppercase tracking-widest ml-1">Dietary Tags (Comma sep)</label>
+                    <Input
+                      value={dietaryTags}
+                      onChange={e => setDietaryTags(e.target.value)}
+                      placeholder="Vegan, Gluten-Free, Halal"
+                      className="bg-black/40 border-primary/20 h-10 text-xs"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[9px] font-black text-gray-500 uppercase tracking-widest ml-1">Spice Level</label>
+                    <div className="relative">
+                        <select
+                          value={spiceLevel}
+                          onChange={e => setSpiceLevel(e.target.value)}
+                          className="w-full h-10 bg-black/60 border border-primary/20 rounded-lg px-3 text-xs text-white outline-none focus:border-primary/50 appearance-none"
+                        >
+                          <option value="None" className="bg-[#0A0A0A] text-white">None</option>
+                          <option value="Mild" className="bg-[#0A0A0A] text-white">Mild</option>
+                          <option value="Medium" className="bg-[#0A0A0A] text-white">Medium</option>
+                          <option value="Hot" className="bg-[#0A0A0A] text-white">Hot</option>
+                          <option value="Extra Hot" className="bg-[#0A0A0A] text-white">Extra Hot (Volcano)</option>
+                        </select>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[9px] font-black text-gray-500 uppercase tracking-widest ml-1">Meal Size</label>
+                    <div className="relative">
+                        <select
+                          value={portionSize}
+                          onChange={e => setPortionSize(e.target.value)}
+                          className="w-full h-10 bg-black/60 border border-primary/20 rounded-lg px-3 text-xs text-white outline-none focus:border-primary/50 appearance-none"
+                        >
+                          <option value="Half" className="bg-[#0A0A0A] text-white">Half Portion</option>
+                          <option value="Full" className="bg-[#0A0A0A] text-white">Full Portion</option>
+                          <option value="1 Person" className="bg-[#0A0A0A] text-white">1 Person</option>
+                          <option value="2 People" className="bg-[#0A0A0A] text-white">2 People</option>
+                          <option value="3 People" className="bg-[#0A0A0A] text-white">3 People</option>
+                          <option value="4 People" className="bg-[#0A0A0A] text-white">4 People</option>
+                          <option value="Sharing" className="bg-[#0A0A0A] text-white">Sharing / Group (5+ People)</option>
+                          <option value="Bite" className="bg-[#0A0A0A] text-white">Bite Size / Snack</option>
+                        </select>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between p-4 bg-primary/5 rounded-2xl border border-primary/10">
                 <span className="text-sm font-bold text-gray-300">Available for Order</span>
                 <button
                   onClick={() => setIsAvailable(!isAvailable)}

@@ -126,7 +126,7 @@ const Login: React.FC = () => {
             <h1 className="text-5xl sm:text-6xl font-black uppercase tracking-tighter italic mb-4 text-white">
               Access <span className="serif-ital text-brand-green lowercase">Terminal</span>
             </h1>
-            <div className="inline-flex items-center gap-3 bg-white/[0.03] backdrop-blur-xl py-2.5 px-6 rounded-full border border-white/10 shadow-2xl">
+            <div className="inline-flex items-center gap-3 bg-white/[0.03] backdrop-blur-xl py-2.5 px-6 rounded-full border border-primary/10 shadow-2xl">
               <ShieldCheck className="w-4 h-4 text-brand-green" />
               <span className="mono-os text-[9px] font-black uppercase tracking-[0.4em] text-white/60">
                 {displayRole} Verification
@@ -134,7 +134,7 @@ const Login: React.FC = () => {
             </div>
           </div>
 
-          <Card className="bg-black/60 border border-white/10 backdrop-blur-3xl rounded-[3rem] shadow-[0_50px_100px_rgba(0,0,0,0.8)] overflow-hidden">
+          <Card className="bg-black/60 border border-primary/10 backdrop-blur-3xl rounded-[3rem] shadow-[0_50px_100px_rgba(0,0,0,0.8)] overflow-hidden">
             <CardContent className="p-10 sm:p-12">
               <form onSubmit={handleLogin} className="space-y-8">
                 <div className="space-y-3">
@@ -148,7 +148,7 @@ const Login: React.FC = () => {
                     onChange={(e) => setEmail(e.target.value)}
                     required
                     disabled={loading}
-                    className="bg-white/5 border-white/10 text-white rounded-2xl h-16 px-8 focus:ring-brand-yellow/20 transition-all font-bold placeholder:opacity-10"
+                    className="bg-white/5 border-primary/10 text-white rounded-2xl h-16 px-8 focus:ring-brand-yellow/20 transition-all font-bold placeholder:opacity-10"
                   />
                 </div>
 
@@ -163,7 +163,7 @@ const Login: React.FC = () => {
                     required
                     disabled={loading}
                     placeholder="••••••••"
-                    className="bg-white/5 border-white/10 text-white rounded-2xl h-16 px-8 focus:ring-brand-yellow/20 transition-all font-bold placeholder:opacity-10"
+                    className="bg-white/5 border-primary/10 text-white rounded-2xl h-16 px-8 focus:ring-brand-yellow/20 transition-all font-bold placeholder:opacity-10"
                   />
                 </div>
 
@@ -186,7 +186,7 @@ const Login: React.FC = () => {
 
                 <div className="relative py-4">
                   <div className="absolute inset-0 flex items-center">
-                    <span className="w-full border-t border-white/10"></span>
+                    <span className="w-full border-t border-primary/10"></span>
                   </div>
                   <div className="relative flex justify-center text-[8px] font-black uppercase tracking-widest">
                     <span className="bg-[#0a0a0a] px-4 text-white/30 italic">Alternative Protocol</span>
@@ -198,7 +198,7 @@ const Login: React.FC = () => {
                   onClick={handleMagicLink}
                   disabled={loading || magicLinkSent}
                   className={cn(
-                    "w-full h-14 rounded-2xl border border-white/10 bg-white/5 text-[9px] font-black uppercase tracking-[0.2em] flex items-center justify-center gap-3 transition-all hover:bg-white/10 active:scale-95",
+                    "w-full h-14 rounded-2xl border border-primary/10 bg-white/5 text-[9px] font-black uppercase tracking-[0.2em] flex items-center justify-center gap-3 transition-all hover:bg-primary/10 active:scale-95",
                     magicLinkSent && "border-brand-green/30 bg-brand-green/10 text-brand-green"
                   )}
                 >
@@ -213,12 +213,12 @@ const Login: React.FC = () => {
                   )}
                 </button>
 
-                <div className="flex flex-col gap-5 pt-8 text-center border-t border-white/5 mt-8">
+                <div className="flex flex-col gap-5 pt-8 text-center border-t border-primary/10 mt-8">
                   <Link to="/onboarding" className="text-[10px] font-black uppercase tracking-widest text-white/40 hover:text-brand-yellow transition-colors">
                     New here? <span className="text-brand-yellow underline underline-offset-4 decoration-brand-yellow/30">Apply for access →</span>
                   </Link>
                   <Link to="/signup" className="text-[10px] font-black uppercase tracking-widest text-white/30 hover:text-white/50 transition-colors">
-                    Already have an org? <span className="underline underline-offset-4 decoration-white/20">Initialize Organization</span>
+                    <span className="underline underline-offset-4 decoration-primary/20">Initialize Organization</span>
                   </Link>
                   <button
                     type="button"

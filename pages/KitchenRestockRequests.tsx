@@ -273,14 +273,14 @@ const KitchenRestockRequests: React.FC = () => {
                   </CardHeader>
                   <CardContent className="p-0 flex-1 overflow-auto custom-scrollbar">
                      <table className="w-full text-sm text-left">
-                        <thead className="text-xs text-gray-500 uppercase bg-black/20 border-b border-gray-800 sticky top-0 backdrop-blur-md z-10">
+                        <thead className="text-[10px] text-muted uppercase bg-muted/10 border-b border-border font-black tracking-widest sticky top-0 backdrop-blur-md z-10">
                            <tr>
-                              <th className="px-6 py-4">{t('restock.ingredient')}</th>
-                              <th className="px-6 py-4">{t('restock.quantity')}</th>
-                              <th className="px-6 py-4">{t('restock.urgency')}</th>
-                              <th className="px-6 py-4">{t('restock.status')}</th>
-                              <th className="px-6 py-4">{t('restock.created')}</th>
-                              <th className="px-6 py-4 text-right">{t('restock.reviewedBy')}</th>
+                              <th className="px-4 md:px-6 py-4 whitespace-nowrap">{t('restock.ingredient')}</th>
+                              <th className="px-4 md:px-6 py-4 whitespace-nowrap">{t('restock.quantity')}</th>
+                              <th className="px-4 md:px-6 py-4 whitespace-nowrap">{t('restock.urgency')}</th>
+                              <th className="px-4 md:px-6 py-4 whitespace-nowrap">{t('restock.status')}</th>
+                              <th className="px-4 md:px-6 py-4 whitespace-nowrap">{t('restock.created')}</th>
+                              <th className="px-4 md:px-6 py-4 text-right whitespace-nowrap">{t('restock.reviewedBy')}</th>
                            </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-800">
@@ -291,34 +291,34 @@ const KitchenRestockRequests: React.FC = () => {
                               <tr><td colSpan={6} className="p-8 text-center text-gray-500">No requests found.</td></tr>
                            )}
                            {myRequests?.map((req) => (
-                              <tr key={req.id} className="hover:bg-white/5 transition-colors">
-                                 <td className="px-6 py-4">
-                                    <span className="font-bold text-white block">{req.ingredient?.name || 'Unknown'}</span>
-                                    <span className="text-xs text-gray-500 truncate block max-w-[150px]">{req.reason}</span>
+                              <tr key={req.id} className="hover:bg-primary/5 transition-colors border-b border-border/40">
+                                 <td className="px-4 md:px-6 py-4 whitespace-nowrap">
+                                    <span className="font-black text-foreground block">{req.ingredient?.name || 'Unknown'}</span>
+                                    <span className="text-[10px] text-muted truncate block max-w-[150px] uppercase tracking-widest">{req.reason}</span>
                                  </td>
-                                 <td className="px-6 py-4 text-gray-300">
+                                 <td className="px-4 md:px-6 py-4 text-[#D1D5DB] font-bold whitespace-nowrap">
                                     {req.requested_quantity}
-                                    <span className="text-xs text-gray-500">{req.ingredient?.units?.abbreviation || req.ingredient?.unit_type}</span>
+                                    <span className="text-xs text-muted font-normal ml-1">{req.ingredient?.units?.abbreviation || req.ingredient?.unit_type}</span>
                                  </td>
-                                 <td className="px-6 py-4">
-                                    <span className={cn("text-xs px-2 py-1 rounded border capitalize", getUrgencyColor(req.urgency))}>
+                                 <td className="px-4 md:px-6 py-4 whitespace-nowrap">
+                                    <span className={cn("text-[10px] font-black tracking-widest px-2 py-1 rounded inline-block uppercase border", getUrgencyColor(req.urgency))}>
                                        {t(`restock.urgencyLevels.${req.urgency}` as any)}
                                     </span>
                                  </td>
-                                 <td className="px-6 py-4">
+                                 <td className="px-4 md:px-6 py-4 whitespace-nowrap">
                                     {getStatusBadge(req.status)}
                                  </td>
-                                 <td className="px-6 py-4 text-gray-400 font-mono text-xs">
+                                 <td className="px-4 md:px-6 py-4 text-muted font-mono text-xs whitespace-nowrap">
                                     {new Date(req.created_at).toLocaleDateString()}
                                  </td>
-                                 <td className="px-6 py-4 text-right text-gray-400">
+                                 <td className="px-4 md:px-6 py-4 text-right text-muted whitespace-nowrap">
                                     {req.reviewed_by ? (
-                                       <div className="flex items-center justify-end gap-1 text-xs">
-                                          <CheckCircle2 className="w-3 h-3 text-green-500" />
-                                          {req.reviewer?.full_name || 'Manager'}
+                                       <div className="flex items-center justify-end gap-1.5 text-xs font-bold">
+                                          <CheckCircle2 className="w-3.5 h-3.5 text-green-500" />
+                                          <span className="text-[#D1D5DB]">{req.reviewer?.full_name || 'Manager'}</span>
                                        </div>
                                     ) : (
-                                       <span className="text-gray-600">-</span>
+                                       <span className="text-muted/50">-</span>
                                     )}
                                  </td>
                               </tr>

@@ -6,6 +6,9 @@ export interface Organization {
   name: string;
   plan?: string;
   is_active?: boolean;
+  max_monthly_credits?: number;
+  used_monthly_credits?: number;
+  credit_reset_date?: string;
 }
 
 export interface UserProfile {
@@ -41,6 +44,10 @@ export interface MenuDish {
   stock_quantity: number;
   is_available: boolean;
   cost_per_plate?: number;
+  dietary_tags?: string[];
+  ingredients_list?: string[];
+  spice_level?: string;
+  portion_size?: string;
   availability_reason?: string;
   recipe_id?: string | null;
   created_at: string;
@@ -120,6 +127,8 @@ export interface Table {
   capacity_max: number;
   zone?: string;
   qr_token?: string;
+  pos_x?: number;
+  pos_y?: number;
   current_order_id?: string | null;
   current_session_id?: string | null;
   last_updated?: string;
@@ -143,6 +152,7 @@ export interface Ingredient {
   par_max: number;
   cost_per_unit?: number;
   weight_per_unit?: number;
+  yield_unit_name?: string;
   expiry_days: number;
   is_active: boolean;
   supplier_id?: string;

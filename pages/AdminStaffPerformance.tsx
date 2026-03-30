@@ -304,14 +304,14 @@ const AdminStaffPerformance: React.FC = () => {
                <CardContent className="p-0">
                   <div className="overflow-x-auto">
                      <table className="w-full text-sm text-left">
-                        <thead className="text-xs text-gray-500 uppercase bg-black/40 font-black tracking-wider">
+                        <thead className="text-[10px] md:text-xs text-gray-500 uppercase bg-black/40 font-black tracking-wider">
                            <tr>
-                              <th className="px-6 py-4">{t('staffPerformance.rankAndStaff')}</th>
-                              <th className="px-6 py-4 text-right">{t('staffPerformance.orders')}</th>
-                              <th className="px-6 py-4 text-right">{t('staffPerformance.salesGenerated')}</th>
-                              <th className="px-6 py-4 text-center">{t('staffPerformance.efficiency')}</th>
-                              <th className="px-6 py-4">{t('staffPerformance.insight')}</th>
-                              <th className="px-6 py-4 text-right">{t('staffPerformance.action')}</th>
+                              <th className="px-3 md:px-6 py-3 md:py-4 whitespace-nowrap">{t('staffPerformance.rankAndStaff')}</th>
+                              <th className="px-3 md:px-6 py-3 md:py-4 text-right whitespace-nowrap">{t('staffPerformance.orders')}</th>
+                              <th className="px-3 md:px-6 py-3 md:py-4 text-right whitespace-nowrap">{t('staffPerformance.salesGenerated')}</th>
+                              <th className="px-3 md:px-6 py-3 md:py-4 text-center whitespace-nowrap">{t('staffPerformance.efficiency')}</th>
+                              <th className="px-3 md:px-6 py-3 md:py-4 whitespace-nowrap">{t('staffPerformance.insight')}</th>
+                              <th className="px-3 md:px-6 py-3 md:py-4 text-right whitespace-nowrap">{t('staffPerformance.action')}</th>
                            </tr>
                         </thead>
                         <tbody className="divide-y divide-primary/10">
@@ -323,10 +323,10 @@ const AdminStaffPerformance: React.FC = () => {
                               </tr>
                            ) : rankedList.map((m, idx) => (
                               <tr key={m.staff_id} className="hover:bg-white/[0.02] transition-colors group">
-                                 <td className="px-6 py-4">
-                                    <div className="flex items-center gap-3">
+                                 <td className="px-3 md:px-6 py-3 md:py-4">
+                                    <div className="flex items-center gap-2 md:gap-3">
                                        <div className={cn(
-                                          "w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black border",
+                                          "w-5 h-5 md:w-6 md:h-6 shrink-0 rounded-full flex items-center justify-center text-[9px] md:text-[10px] font-black border",
                                           idx === 0 ? "bg-yellow-500/20 text-yellow-500 border-yellow-500/50" :
                                              idx === 1 ? "bg-zinc-400/20 text-zinc-400 border-zinc-400/50" :
                                                 idx === 2 ? "bg-amber-700/20 text-amber-700 border-amber-700/50" :
@@ -334,42 +334,42 @@ const AdminStaffPerformance: React.FC = () => {
                                        )}>
                                           {idx + 1}
                                        </div>
-                                       <div>
-                                          <p className="font-bold text-white text-sm">{m.staff_name}</p>
-                                          <p className="text-[10px] text-gray-500 font-mono">{m.shifts_count} {t('staffPerformance.shifts')} • {m.hours_worked} {t('staffPerformance.hours')}</p>
+                                       <div className="flex flex-col min-w-[5rem]">
+                                          <p className="font-bold text-white text-xs md:text-sm whitespace-nowrap">{m.staff_name}</p>
+                                          <p className="text-[9px] md:text-[10px] text-gray-500 font-mono whitespace-nowrap">{m.shifts_count} {t('staffPerformance.shifts')} • {m.hours_worked} {t('staffPerformance.hours')}</p>
                                        </div>
                                     </div>
                                  </td>
-                                 <td className="px-6 py-4 text-right font-mono text-white">
+                                 <td className="px-3 md:px-6 py-3 md:py-4 text-right font-mono text-white text-xs md:text-sm">
                                     {m.total_orders.toLocaleString()}
                                  </td>
-                                 <td className="px-6 py-4 text-right">
+                                 <td className="px-3 md:px-6 py-3 md:py-4 text-right">
                                     <div className="flex flex-col items-end">
-                                       <span className="font-bold text-primary font-mono">{t('adminDashboard.etb')} {m.total_sales.toLocaleString()}</span>
-                                       {m.total_orders > 0 && <span className="text-[9px] text-gray-500">{t('staffPerformance.snapshot.aov')}: {Math.round(m.avg_order_value)}</span>}
+                                       <span className="font-bold text-primary text-xs md:text-sm font-mono whitespace-nowrap">{t('adminDashboard.etb')} {m.total_sales.toLocaleString()}</span>
+                                       {m.total_orders > 0 && <span className="text-[8px] md:text-[9px] text-gray-500 whitespace-nowrap">{t('staffPerformance.snapshot.aov')}: {Math.round(m.avg_order_value)}</span>}
                                     </div>
                                  </td>
-                                 <td className="px-6 py-4 text-center">
+                                 <td className="px-3 md:px-6 py-3 md:py-4 text-center">
                                     <div className="flex flex-col items-center gap-1">
-                                       <Badge variant="outline" className="font-mono text-[10px] border-white/10 bg-white/5">
+                                       <Badge variant="outline" className="font-mono text-[9px] md:text-[10px] border-white/10 bg-white/5 whitespace-nowrap py-0 h-4 md:h-5">
                                           {m.orders_per_shift} / shift
                                        </Badge>
-                                       <span className="text-[9px] text-gray-600 font-medium">
+                                       <span className="text-[8px] md:text-[9px] text-gray-600 font-medium whitespace-nowrap">
                                           {activeTab === 'kitchen' ? 'Throughput' : 'Processed'}
                                        </span>
                                     </div>
                                  </td>
-                                 <td className="px-6 py-4">
-                                    <div className="flex flex-wrap gap-1.5">
+                                 <td className="px-3 md:px-6 py-3 md:py-4">
+                                    <div className="flex flex-wrap gap-1 md:gap-1.5 min-w-[7rem]">
                                        {getSmartLabels(m).map((label, i) => (
-                                          <span key={i} className={cn("px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider border", label.color)}>
+                                          <span key={i} className={cn("px-1 md:px-1.5 py-0 md:py-0.5 h-4 md:h-auto flex items-center rounded text-[8px] md:text-[9px] font-black uppercase tracking-wider border whitespace-nowrap", label.color)}>
                                              {label.text}
                                           </span>
                                        ))}
                                     </div>
                                  </td>
-                                 <td className="px-6 py-4 text-right">
-                                    <div className="flex items-center justify-end gap-2">
+                                 <td className="px-3 md:px-6 py-3 md:py-4 text-right">
+                                    <div className="flex items-center justify-end gap-1 md:gap-2">
                                        <Button
                                           size="sm"
                                           variant="ghost"
@@ -377,7 +377,7 @@ const AdminStaffPerformance: React.FC = () => {
                                              setSelectedStaffHistory({ id: m.staff_id, name: m.staff_name });
                                              fetchStaffOrders(m.staff_id);
                                           }}
-                                          className="h-9 px-3 bg-primary/5 border border-primary/10 text-primary hover:bg-primary hover:text-black font-black text-[10px] uppercase tracking-widest rounded-xl transition-all"
+                                          className="h-7 md:h-9 px-2 md:px-3 bg-primary/5 border border-primary/10 text-primary hover:bg-primary hover:text-black font-black text-[9px] md:text-[10px] uppercase tracking-widest rounded-lg md:rounded-xl transition-all whitespace-nowrap"
                                        >
                                           {t('staffPerformance.viewHistory')}
                                        </Button>
@@ -385,17 +385,17 @@ const AdminStaffPerformance: React.FC = () => {
                                           size="sm"
                                           variant="ghost"
                                           onClick={() => handleOpenEdit(m.staff_id)}
-                                          className="h-9 w-9 p-0 hover:bg-white/10 rounded-xl"
+                                          className="h-7 w-7 md:h-9 md:w-9 p-0 hover:bg-white/10 rounded-lg md:rounded-xl shrink-0"
                                        >
-                                          <Edit2 className="w-4 h-4 text-gray-400" />
+                                          <Edit2 className="w-3 h-3 md:w-4 md:h-4 text-gray-400" />
                                        </Button>
                                        <Button
                                           size="sm"
                                           variant="ghost"
                                           onClick={() => setStaffToDelete(m.staff_id)}
-                                          className="h-9 w-9 p-0 hover:bg-red-500/10 hover:text-red-500 rounded-xl"
+                                          className="h-7 w-7 md:h-9 md:w-9 p-0 hover:bg-red-500/10 hover:text-red-500 rounded-lg md:rounded-xl shrink-0"
                                        >
-                                          <Trash2 className="w-4 h-4" />
+                                          <Trash2 className="w-3 h-3 md:w-4 md:h-4" />
                                        </Button>
                                     </div>
                                  </td>

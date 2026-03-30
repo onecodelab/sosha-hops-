@@ -163,23 +163,23 @@ const KitchenStockView: React.FC = () => {
           </CardHeader>
           <CardContent className="p-0 flex-1 overflow-x-auto">
             <table className="w-full text-sm text-left">
-              <thead className="text-xs text-gray-500 uppercase bg-black/40 border-b border-gray-800">
+              <thead className="text-[10px] text-muted uppercase bg-muted/10 border-b border-border font-black tracking-widest">
                 <tr>
-                  <th className="px-6 py-4 font-bold">{t('stock.sku')}</th>
-                  <th className="px-6 py-4">
-                    <button onClick={() => toggleSort('name')} className="flex items-center gap-1 hover:text-white font-bold">
+                  <th className="px-4 md:px-6 py-4 whitespace-nowrap">{t('stock.sku')}</th>
+                  <th className="px-4 md:px-6 py-4 whitespace-nowrap">
+                    <button onClick={() => toggleSort('name')} className="flex items-center gap-1 hover:text-foreground transition-colors">
                       {t('stock.name')} <ArrowUpDown className="w-3 h-3" />
                     </button>
                   </th>
-                  <th className="px-6 py-4 font-bold">{t('stock.category')}</th>
-                  <th className="px-6 py-4">
-                    <button onClick={() => toggleSort('current_stock')} className="flex items-center gap-1 hover:text-white font-bold">
+                  <th className="px-4 md:px-6 py-4 whitespace-nowrap">{t('stock.category')}</th>
+                  <th className="px-4 md:px-6 py-4 whitespace-nowrap">
+                    <button onClick={() => toggleSort('current_stock')} className="flex items-center gap-1 hover:text-foreground transition-colors">
                       {t('stock.currentStock')} <ArrowUpDown className="w-3 h-3" />
                     </button>
                   </th>
-                  <th className="px-6 py-4 font-bold">{t('stock.unit')}</th>
-                  <th className="px-6 py-4 font-bold">{t('stock.status')}</th>
-                  <th className="px-6 py-4 font-bold">{t('stock.supplier')}</th>
+                  <th className="px-4 md:px-6 py-4 whitespace-nowrap">{t('stock.unit')}</th>
+                  <th className="px-4 md:px-6 py-4 whitespace-nowrap">{t('stock.status')}</th>
+                  <th className="px-4 md:px-6 py-4 whitespace-nowrap">{t('stock.supplier')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-800">
@@ -193,18 +193,18 @@ const KitchenStockView: React.FC = () => {
                   </td></tr>
                 )}
                 {processedData.map((item) => (
-                  <tr key={item.id} className="hover:bg-white/5 transition-colors">
-                    <td className="px-6 py-4 font-mono text-gray-400">{item.sku}</td>
-                    <td className="px-6 py-4 font-bold text-white">{item.name}</td>
-                    <td className="px-6 py-4 text-gray-300">
-                      <span className="bg-gray-800 px-2 py-1 rounded text-xs border border-gray-700">{item.category}</span>
+                  <tr key={item.id} className="hover:bg-primary/5 transition-colors border-b border-border/40">
+                    <td className="px-4 md:px-6 py-4 font-mono text-muted text-xs whitespace-nowrap">{item.sku}</td>
+                    <td className="px-4 md:px-6 py-4 font-black text-foreground text-sm xl:text-base whitespace-nowrap">{item.name}</td>
+                    <td className="px-4 md:px-6 py-4 text-muted whitespace-nowrap">
+                      <span className="bg-muted/10 px-2 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest border border-border">{item.category}</span>
                     </td>
-                    <td className="px-6 py-4 text-white font-mono text-base">{(item.current_stock || 0).toLocaleString()}</td>
-                    <td className="px-6 py-4 text-gray-400">{item.units?.abbreviation || item.unit_type}</td>
-                    <td className="px-6 py-4">
+                    <td className="px-4 md:px-6 py-4 text-foreground font-mono font-black text-base whitespace-nowrap">{(item.current_stock || 0).toLocaleString()}</td>
+                    <td className="px-4 md:px-6 py-4 text-muted font-bold text-xs uppercase tracking-widest whitespace-nowrap">{item.units?.abbreviation || item.unit_type}</td>
+                    <td className="px-4 md:px-6 py-4 whitespace-nowrap">
                       {getStatusBadge(item)}
                     </td>
-                    <td className="px-6 py-4 text-blue-400">{item.supplier?.name || '-'}</td>
+                    <td className="px-4 md:px-6 py-4 text-blue-400 font-bold text-xs uppercase tracking-wider whitespace-nowrap">{item.supplier?.name || '-'}</td>
                   </tr>
                 ))}
               </tbody>

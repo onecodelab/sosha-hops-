@@ -84,7 +84,7 @@ const getTimeGreeting = () => {
 const FilePreviewCard: React.FC<{ file: AttachedFile; onRemove: (id: string) => void }> = ({ file, onRemove }) => {
     const isImage = file.type.startsWith('image/') && file.preview;
     return (
-        <div className="relative group flex-shrink-0 w-20 h-20 rounded-xl overflow-hidden border border-gray-700/50 bg-[#151515] transition-all hover:border-primary/40">
+        <div className="relative group flex-shrink-0 w-20 h-20 rounded-xl overflow-hidden border border-primary/20 bg-[#151515] transition-all hover:border-primary/40">
             {isImage ? (
                 <img src={file.preview!} alt={file.file.name} className="w-full h-full object-cover" />
             ) : (
@@ -113,7 +113,7 @@ const FilePreviewCard: React.FC<{ file: AttachedFile; onRemove: (id: string) => 
 
 /* ─── BRANCH SNAPSHOT CARD ─── */
 const BranchSnapshotCard: React.FC<{ snapshot: BranchSnapshot }> = ({ snapshot }) => (
-    <div className="bg-[#111]/80 border border-gray-800/60 rounded-xl p-4 hover:border-primary/20 transition-all group">
+    <div className="bg-[#111]/80 border border-primary/10 rounded-xl p-4 hover:border-primary/20 transition-all group">
         <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
                 <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
@@ -148,7 +148,7 @@ const BranchSnapshotCard: React.FC<{ snapshot: BranchSnapshot }> = ({ snapshot }
             </div>
         </div>
         {snapshot.topDish && (
-            <div className="mt-3 pt-3 border-t border-white/5">
+            <div className="mt-3 pt-3 border-t border-primary/10">
                 <p className="text-[9px] text-gray-500 uppercase tracking-widest">Top Performer</p>
                 <p className="text-xs text-gray-300 font-medium mt-0.5">{snapshot.topDish}</p>
             </div>
@@ -568,7 +568,7 @@ export const BaroCommandChat: React.FC = () => {
                                     className="flex flex-wrap gap-3 justify-center mb-10"
                                 >
                                     {liveMetrics.map((metric, i) => (
-                                        <div key={i} className="flex items-center gap-2 bg-[#111]/60 border border-gray-800/50 rounded-lg px-3 py-2">
+                                        <div key={i} className="flex items-center gap-2 bg-[#111]/60 border border-primary/10 rounded-lg px-3 py-2">
                                             <span className={cn("opacity-60", metric.color)}>{metric.icon}</span>
                                             <span className="text-[10px] text-gray-500 uppercase tracking-wider">{metric.label}</span>
                                             <span className={cn("text-xs font-bold font-mono", metric.color)}>{metric.value}</span>
@@ -590,7 +590,7 @@ export const BaroCommandChat: React.FC = () => {
                                     <button
                                         key={i}
                                         onClick={() => handleSend(action.prompt)}
-                                        className="inline-flex items-center gap-2 px-3.5 py-2 text-xs text-gray-400 bg-transparent border border-gray-800/60 rounded-full hover:bg-primary/5 hover:border-primary/30 hover:text-primary transition-all duration-200 group"
+                                        className="inline-flex items-center gap-2 px-3.5 py-2 text-xs text-gray-400 bg-transparent border border-primary/10 rounded-full hover:bg-primary/5 hover:border-primary/30 hover:text-primary transition-all duration-200 group"
                                     >
                                         <span className="opacity-50 group-hover:opacity-100 transition-opacity">{action.icon}</span>
                                         {action.label}
@@ -616,7 +616,7 @@ export const BaroCommandChat: React.FC = () => {
                                         <div className={cn(
                                             "w-8 h-8 rounded-xl flex-shrink-0 flex items-center justify-center mt-1 border",
                                             msg.role === 'user'
-                                                ? "bg-white/5 border-white/10"
+                                                ? "bg-primary/5 border-primary/10"
                                                 : "bg-primary/10 border-primary/20"
                                         )}>
                                             {msg.role === 'user'
@@ -628,8 +628,8 @@ export const BaroCommandChat: React.FC = () => {
                                         <div className={cn(
                                             "px-4 py-3 rounded-2xl text-sm leading-relaxed",
                                             msg.role === 'user'
-                                                ? "bg-white/5 text-white rounded-tr-md border border-white/10"
-                                                : "bg-[#111]/80 text-gray-200 rounded-tl-md border border-gray-800/50"
+                                                ? "bg-primary/5 text-white rounded-tr-md border border-primary/10"
+                                                : "bg-[#111]/80 text-gray-200 rounded-tl-md border border-primary/20"
                                         )}>
                                             <div className="whitespace-pre-wrap">
                                                 {(() => {
@@ -693,7 +693,7 @@ export const BaroCommandChat: React.FC = () => {
                                     <div className="w-8 h-8 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center">
                                         <Brain className="w-4 h-4 text-primary animate-pulse" />
                                     </div>
-                                    <div className="bg-[#111]/80 border border-gray-800/50 rounded-2xl rounded-tl-md px-4 py-3">
+                                    <div className="bg-[#111]/80 border border-primary/10 rounded-2xl rounded-tl-md px-4 py-3">
                                         <div className="flex items-center gap-2 text-xs text-primary/60 font-mono uppercase tracking-widest">
                                             <Loader2 className="w-3 h-3 animate-spin" />
                                             <span className="baro-typing-text">Analyzing your business data...</span>
@@ -711,9 +711,9 @@ export const BaroCommandChat: React.FC = () => {
                 <div className="max-w-4xl mx-auto relative">
                     <div className={cn(
                         "relative flex flex-col rounded-2xl border transition-all duration-200 cursor-text",
-                        "bg-[#0d0d0d] border-gray-800/60",
+                        "bg-[#0d0d0d] border-primary/20",
                         "shadow-[0_-4px_30px_rgba(0,0,0,0.3)]",
-                        "hover:border-gray-700/60",
+                        "hover:border-primary/40",
                         "focus-within:border-primary/30 focus-within:shadow-[0_-4px_30px_rgba(255,184,0,0.08)]",
                         isDragging && "border-primary/50 bg-primary/5"
                     )}>
@@ -754,7 +754,7 @@ export const BaroCommandChat: React.FC = () => {
                                 </button>
 
                                 {/* Branch indicator */}
-                                <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/[0.03] border border-white/5">
+                                <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-primary/5 border border-primary/10">
                                     <Store className="w-3 h-3 text-gray-500" />
                                     <span className="text-[10px] text-gray-500 font-mono uppercase tracking-wider">
                                         All Branches

@@ -45,6 +45,9 @@ export const toolValidators: Record<string, (params: JsonRecord) => void> = {
         assert(hasNonEmptyString(params.reference), "reference is required.");
         assert(hasNonEmptyString(params.bank_key), "bank_key is required.");
     },
+    complete_order: (params) => {
+        assert(hasNonEmptyString(params.order_id), "order_id is required.");
+    },
     get_branch_info: () => {},
     update_customer_profile: (params) => {
         assert(hasNonEmptyString(params.phone) || hasNonEmptyString(params.session_id), "phone or session_id is required to identify the customer.");

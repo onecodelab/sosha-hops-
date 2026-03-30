@@ -22,7 +22,7 @@ const MastercardIcon = (props: React.SVGProps<SVGSVGElement>) => (
 
 const DashedLine = () => (
     <div
-        className="w-full border-t-2 border-dashed border-white/10 my-4"
+        className="w-full border-t-2 border-dashed border-primary/10 my-4"
         aria-hidden="true"
     />
 );
@@ -174,7 +174,7 @@ const AnimatedTicket = React.forwardRef<HTMLDivElement, TicketProps>(
                 <div
                     ref={ref}
                     className={cn(
-                        "relative w-full max-w-sm bg-[#0A0A0A] border border-white/10 text-white rounded-[2.5rem] shadow-2xl font-sans z-10 overflow-hidden",
+                        "relative w-full max-w-sm bg-card border border-primary/20 text-white rounded-[2.5rem] shadow-2xl font-sans z-10 overflow-hidden",
                         "animate-in fade-in-0 zoom-in-95 duration-700",
                         className
                     )}
@@ -184,8 +184,8 @@ const AnimatedTicket = React.forwardRef<HTMLDivElement, TicketProps>(
                     <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-primary via-purple-500 to-blue-500 opacity-80" />
 
                     {/* Ticket cut-out effect */}
-                    <div className="absolute -left-4 top-[65%] -translate-y-1/2 w-8 h-8 rounded-full bg-[#050505] border-r border-white/10" />
-                    <div className="absolute -right-4 top-[65%] -translate-y-1/2 w-8 h-8 rounded-full bg-[#050505] border-l border-white/10" />
+                    <div className="absolute -left-4 top-[65%] -translate-y-1/2 w-8 h-8 rounded-full bg-background border-r border-primary/10" />
+                    <div className="absolute -right-4 top-[65%] -translate-y-1/2 w-8 h-8 rounded-full bg-background border-l border-primary/10" />
 
                     <div className="p-8 pb-4 flex flex-col items-center text-center">
                         <div className="p-4 bg-primary/10 rounded-[2rem] border border-primary/20 animate-in zoom-in-50 delay-300 duration-1000 relative">
@@ -223,7 +223,7 @@ const AnimatedTicket = React.forwardRef<HTMLDivElement, TicketProps>(
                             </div>
                         </div>
 
-                        <div className="bg-white/5 p-4 rounded-3xl border border-white/5 flex items-center justify-between">
+                        <div className="bg-primary/5 p-4 rounded-3xl border border-primary/10 flex items-center justify-between">
                             <div className="flex items-center gap-3">
                                 <div className="p-2 bg-black/40 rounded-xl border border-white/5">
                                     {paymentMethod === 'cash' ? <CheckCircle2 className="w-4 h-4 text-green-500" /> : <Activity className="w-4 h-4 text-blue-500" />}
@@ -234,7 +234,7 @@ const AnimatedTicket = React.forwardRef<HTMLDivElement, TicketProps>(
                                 </div>
                             </div>
                             {reference && (
-                                <Badge variant="outline" className="text-[8px] border-white/10 text-gray-500 font-mono">
+                                <Badge variant="outline" className="text-[8px] border-primary/20 text-gray-500 font-mono">
                                     {reference}
                                 </Badge>
                             )}

@@ -1,7 +1,7 @@
 import { updateCustomerProfile } from "./handlers/customer.ts";
 import { getFinancialSummary, getIntelligenceEvents, getInventoryRisks, getStaffPerformance } from "./handlers/intelligence.ts";
 import { getCategories, getMenu, getTopPerformingItems } from "./handlers/menu.ts";
-import { getOrderStatus, placeOrder, updateOrder, verifyPayment } from "./handlers/orders.ts";
+import { getOrderStatus, placeOrder, updateOrder, verifyPayment, completeOrder } from "./handlers/orders.ts";
 import { getBranchInfo, getTables, listTables, verifyNFCTap } from "./handlers/tables.ts";
 import { toolValidators } from "./validation.ts";
 import type { ToolDefinition } from "./types.ts";
@@ -42,6 +42,11 @@ export const toolRegistry: Record<string, ToolDefinition> = {
         name: 'verify_payment',
         handler: verifyPayment,
         validate: toolValidators.verify_payment,
+    },
+    complete_order: {
+        name: 'complete_order',
+        handler: completeOrder,
+        validate: toolValidators.complete_order,
     },
     get_branch_info: {
         name: 'get_branch_info',

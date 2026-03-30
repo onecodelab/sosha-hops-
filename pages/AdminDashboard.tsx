@@ -1,5 +1,6 @@
 
 import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
+import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useLayoutConfig } from '../contexts/LayoutContext';
 import { BaroCard, BaroCardTitle } from '../components/BaroCard';
@@ -16,11 +17,14 @@ import { OrderCard } from '../components/OrderCard';
 import { Order, UserProfile } from '../types';
 import { OrderDetailsModal } from '../components/OrderDetailsModal';
 import { useBranch } from '../contexts/BranchContext';
+import { useAuth } from '../AuthContext';
+import { Sparkles, Brain, ArrowUpRight } from 'lucide-react';
 
 const AdminDashboard: React.FC = () => {
    const { t } = useLanguage();
    const navigate = useNavigate();
    const { activeBranchId } = useBranch();
+   const { organizationId, profile } = useAuth();
    const [loading, setLoading] = useState(true);
    const [actionInProgress, setActionInProgress] = useState(false);
    const [activeOrders, setActiveOrders] = useState<Order[]>([]);
@@ -30,6 +34,7 @@ const AdminDashboard: React.FC = () => {
    const [isModalOpen, setIsModalOpen] = useState(false);
    const [isPaymentOpen, setIsPaymentOpen] = useState(false);
    const [stats, setStats] = useState({ totalRevenue: 0, activeOrdersCount: 0 });
+   const [orgCredits, setOrgCredits] = useState<{ used: number; max: number; planTier: string } | null>(null);
 
    const [transactionFilter, setTransactionFilter] = useState<'all' | 'cash' | 'digital'>('all');
    const [selectedDetailsOrder, setSelectedDetailsOrder] = useState<Order | null>(null);
@@ -168,6 +173,28 @@ const AdminDashboard: React.FC = () => {
       }
    }, [dateFilter, searchQuery]); // Added missing dependencies to prevent stale closure
 
+   const fetchOrgCredits = useCallback(async () => {
+      if (!organizationId) return;
+
+      const { data, error } = await supabase
+         .from('organizations')
+         .select('used_monthly_credits, max_monthly_credits, plan_tier')
+         .eq('id', organizationId)
+         .single();
+
+      if (data && !error) {
+         setOrgCredits({
+            used: data.used_monthly_credits || 0,
+            max: data.max_monthly_credits || 10000,
+            planTier: data.plan_tier || 'basic'
+         });
+      }
+   }, [organizationId]);
+
+   useEffect(() => {
+      fetchOrgCredits();
+   }, [fetchOrgCredits]);
+
    const debouncedSync = useCallback(() => {
       if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
       syncTimeoutRef.current = setTimeout(() => {
@@ -298,14 +325,62 @@ const AdminDashboard: React.FC = () => {
                   </div>
                </Card>
 
-               {/* Stats Row Spacing/Filler */}
-               <div className="hidden lg:block lg:col-span-2" />
+
+               {profile?.role === 'owner' && (
+                  <Card className="bg-card/60 backdrop-blur-xl border border-primary/20 rounded-[1.5rem] shadow-xl overflow-hidden group col-span-2 lg:col-span-2">
+                     <div className="p-4 flex h-full items-center">
+                        <div className="flex-1 space-y-3">
+                           <div className="flex items-center justify-between">
+                               <div className="flex items-center gap-2">
+                                   <div className="p-2 bg-primary/10 rounded-lg">
+                                       <Brain className="w-4 h-4 text-primary" />
+                                   </div>
+                                   <div>
+                                       <p className="text-[10px] font-black text-muted uppercase tracking-[0.2em] opacity-60">
+                                           {t(`adminDashboard.chatbotUsage.plans.${orgCredits?.planTier as any || 'basic'}`)}
+                                       </p>
+                                       <p className="text-xs font-bold text-foreground">{t('adminDashboard.chatbotUsage.subtitle')}</p>
+                                   </div>
+                               </div>
+                               <div className="text-right">
+                                   <span className="text-lg font-black text-foreground">{Math.floor((orgCredits?.used || 0) / 20)}</span>
+                                   <span className="text-[10px] font-bold text-muted ml-1 italic">/ {Math.floor((orgCredits?.max || 10000) / 20)} {t('adminDashboard.chatbotUsage.ordersServed')}</span>
+                               </div>
+                           </div>
+                           
+                           {/* Progress Bar */}
+                           <div className="space-y-1.5">
+                               <div className="w-full h-2 bg-white/5 rounded-full overflow-hidden border border-white/5 p-[1px]">
+                                   <motion.div 
+                                       initial={{ width: 0 }}
+                                       animate={{ width: `${Math.min(((orgCredits?.used || 0) / (orgCredits?.max || 10000)) * 100, 100)}%` }}
+                                       className={cn(
+                                           "h-full rounded-full transition-all duration-1000",
+                                           ((orgCredits?.used || 0) / (orgCredits?.max || 10000)) > 0.8 ? "bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.4)]" : 
+                                           ((orgCredits?.used || 0) / (orgCredits?.max || 10000)) > 0.5 ? "bg-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.4)]" :
+                                           "bg-primary shadow-[0_0_10px_rgba(163,230,53,0.4)]"
+                                       )}
+                                   />
+                               </div>
+                               <div className="flex justify-between items-center">
+                                   <p className="text-[9px] font-bold text-muted uppercase tracking-wider">
+                                       {((orgCredits?.used || 0) / (orgCredits?.max || 100) * 100).toFixed(0)}% {t('adminDashboard.chatbotUsage.utilized')}
+                                   </p>
+                                   <button className="text-[9px] font-black text-primary uppercase tracking-[0.2em] hover:underline flex items-center gap-1">
+                                       {t('adminDashboard.chatbotUsage.upgrade')} <ArrowUpRight className="w-2.5 h-2.5" />
+                                   </button>
+                               </div>
+                           </div>
+                        </div>
+                     </div>
+                  </Card>
+               )}
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-auto md:h-full md:min-h-0 md:flex-1 pb-10 md:pb-0">
                {/* Left Col: Live Production Board (Takes 4 cols) */}
-               <div className="lg:col-span-4 flex flex-col md:min-h-0 h-[500px] md:h-full shrink-0">
-                  <div className="bg-card/60 backdrop-blur-xl border border-primary/20 rounded-[2.5rem] p-8 flex flex-col h-full shadow-2xl">
+               <div className="lg:col-span-4 flex flex-col md:min-h-0 h-[500px] md:h-full shrink-0 order-last lg:order-first">
+                  <div className="bg-card/60 backdrop-blur-xl border border-primary/20 rounded-3xl md:rounded-[2.5rem] p-4 md:p-8 flex flex-col h-full shadow-2xl">
                      <div className="flex items-center justify-between mb-8">
                         <h3 className="text-[10px] font-black text-muted uppercase tracking-[0.2em] flex items-center gap-3 opacity-60">
                            <LayoutList className="w-4 h-4 text-primary" strokeWidth={3} /> {t('adminDashboard.liveSystemProduction')}
@@ -355,9 +430,9 @@ const AdminDashboard: React.FC = () => {
                </div>
 
                {/* Right Col: Transaction Audit (Takes 8 cols) */}
-               <div className="lg:col-span-8 flex flex-col md:min-h-0 h-[650px] md:h-full shrink-0">
-                  <Card className="bg-card/60 backdrop-blur-xl border border-primary/20 rounded-[2.5rem] flex-1 flex flex-col min-h-0 p-0 overflow-hidden shadow-2xl">
-                     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-8 gap-6 shrink-0 border-b border-primary/20 bg-muted/5">
+               <div className="lg:col-span-8 flex flex-col md:min-h-0 h-[650px] md:h-full shrink-0 order-first lg:order-last">
+                  <Card className="bg-card/60 backdrop-blur-xl border border-primary/20 rounded-3xl md:rounded-[2.5rem] flex-1 flex flex-col min-h-0 p-0 overflow-hidden shadow-2xl">
+                     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 md:p-8 gap-4 md:gap-6 shrink-0 border-b border-primary/20 bg-muted/5">
                         <h3 className="flex items-center gap-3 text-[10px] font-black text-muted uppercase tracking-[0.2em] opacity-60">
                            <ClipboardList className="w-4 h-4 text-primary" strokeWidth={3} /> {t('adminDashboard.finalizedNodeAudit')}
                         </h3>
@@ -414,11 +489,11 @@ const AdminDashboard: React.FC = () => {
                         <table className="w-full text-left border-collapse">
                            <thead className="sticky top-0 bg-muted/5 border-b border-primary/20 text-[9px] font-black uppercase text-muted tracking-widest z-10 backdrop-blur-xl">
                               <tr>
-                                 <th className="px-6 py-4">{t('adminDashboard.identVector')}</th>
-                                 <th className="px-6 py-4">{t('adminDashboard.spatialNode')}</th>
-                                 <th className="px-6 py-4 hidden sm:table-cell">{t('adminDashboard.humanOrigin')}</th>
-                                 <th className="px-6 py-4 text-right">{t('adminDashboard.grossVal')}</th>
-                                 <th className="px-6 py-4 text-right">{t('adminDashboard.status')}</th>
+                                 <th className="px-3 md:px-6 py-3 md:py-4">{t('adminDashboard.identVector')}</th>
+                                 <th className="px-3 md:px-6 py-3 md:py-4">{t('adminDashboard.spatialNode')}</th>
+                                 <th className="px-3 md:px-6 py-3 md:py-4 hidden sm:table-cell">{t('adminDashboard.humanOrigin')}</th>
+                                 <th className="px-3 md:px-6 py-3 md:py-4 text-right">{t('adminDashboard.grossVal')}</th>
+                                 <th className="px-3 md:px-6 py-3 md:py-4 text-right">{t('adminDashboard.status')}</th>
                               </tr>
                            </thead>
                            <tbody className="divide-y divide-primary/20">
@@ -428,38 +503,38 @@ const AdminDashboard: React.FC = () => {
                                     onClick={() => handleRowClick(order)}
                                     className="group hover:bg-muted/5 transition-all cursor-pointer"
                                  >
-                                    <td className="px-6 py-5">
+                                    <td className="px-3 md:px-6 py-4 md:py-5">
                                        <div className="flex flex-col">
-                                          <span className="font-mono text-xs font-black text-foreground group-hover:text-primary transition-colors">
+                                          <span className="font-mono text-xs font-black text-foreground group-hover:text-primary transition-colors whitespace-nowrap">
                                              #{order.order_number || order.id.slice(0, 4).toUpperCase()}
                                           </span>
-                                          <span className="text-[9px] text-muted font-black opacity-40 uppercase tracking-widest">
+                                          <span className="text-[9px] text-muted font-black opacity-40 uppercase tracking-widest whitespace-nowrap">
                                              {new Date(order.closed_at || order.paid_at || order.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                           </span>
                                        </div>
                                     </td>
-                                    <td className="px-6 py-5">
+                                    <td className="px-3 md:px-6 py-4 md:py-5">
                                        <div className="flex flex-col items-start gap-1">
-                                          <span className="font-black text-foreground text-xs uppercase italic group-hover:text-primary">T-{order.table_number}</span>
-                                          <span className="px-2 py-0.5 text-[8px] bg-primary/5 text-primary border border-primary/10 rounded-full font-black uppercase tracking-tighter opacity-70">{order.order_type || t('adminDashboard.dineIn')}</span>
+                                          <span className="font-black text-foreground text-xs uppercase italic group-hover:text-primary whitespace-nowrap">T-{order.table_number}</span>
+                                          <span className="px-2 py-0.5 text-[8px] bg-primary/5 text-primary border border-primary/10 rounded-full font-black uppercase tracking-tighter opacity-70 whitespace-nowrap">{order.order_type || t('adminDashboard.dineIn')}</span>
                                        </div>
                                     </td>
-                                    <td className="px-6 py-5 hidden sm:table-cell">
+                                    <td className="px-3 md:px-6 py-4 md:py-5 hidden sm:table-cell">
                                        <div className="flex flex-col">
-                                          <span className="text-[10px] text-foreground font-black uppercase italic group-hover:text-primary">{order.waiter?.full_name || t('adminDashboard.systemNode')}</span>
-                                          <span className="text-[8px] text-muted font-black uppercase tracking-[0.2em] opacity-40">{(order as any).waiter?.role || (order.closed_by_user ? t('adminDashboard.adminRole') : t('adminDashboard.staffRole'))}</span>
+                                          <span className="text-[10px] text-foreground font-black uppercase italic group-hover:text-primary whitespace-nowrap">{order.waiter?.full_name || t('adminDashboard.systemNode')}</span>
+                                          <span className="text-[8px] text-muted font-black uppercase tracking-[0.2em] opacity-40 whitespace-nowrap">{(order as any).waiter?.role || (order.closed_by_user ? t('adminDashboard.adminRole') : t('adminDashboard.staffRole'))}</span>
                                        </div>
                                     </td>
-                                    <td className="px-6 py-5 text-right font-mono font-black text-foreground text-sm">
+                                    <td className="px-3 md:px-6 py-4 md:py-5 text-right font-mono font-black text-foreground text-sm whitespace-nowrap">
                                        <span className="text-[9px] mr-1 opacity-20 font-sans NOT-italic">{t('adminDashboard.etb')}</span>
                                        {order.total_amount.toLocaleString()}
                                     </td>
-                                    <td className="px-6 py-5 text-right">
-                                       <div className="flex items-center justify-end gap-3">
+                                    <td className="px-3 md:px-6 py-4 md:py-5 text-right">
+                                       <div className="flex items-center justify-end gap-2 md:gap-3">
                                           {order.payment_method && (
-                                             <span className="text-[9px] font-black uppercase text-muted bg-muted/10 px-3 py-1 rounded-full border border-primary/20">{order.payment_method}</span>
+                                             <span className="text-[9px] font-black uppercase text-muted bg-muted/10 px-3 py-1 rounded-full border border-primary/20 whitespace-nowrap">{order.payment_method}</span>
                                           )}
-                                          <span className={cn("text-[9px] uppercase font-black px-3 py-1 rounded-full border tracking-[0.1em]",
+                                          <span className={cn("text-[9px] uppercase font-black px-3 py-1 rounded-full border tracking-[0.1em] whitespace-nowrap",
                                              order.status === 'paid' ? "text-emerald-500 bg-emerald-500/10 border-emerald-500/20" :
                                                 order.status === 'served' ? "text-purple-500 bg-purple-500/10 border-purple-500/20" : "text-muted bg-muted/5 border-primary/20"
                                           )}>

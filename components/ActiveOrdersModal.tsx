@@ -38,7 +38,7 @@ export const ActiveOrdersModal: React.FC<ActiveOrdersModalProps> = ({ isOpen, on
           orders.map((order) => {
             const status = getStatusInfo(order.status);
             return (
-              <div key={order.id} className="p-4 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 transition-all group">
+              <div key={order.id} className="p-4 rounded-2xl bg-primary/5 border border-primary/10 hover:bg-primary/10 transition-all group">
                 <div className="flex justify-between items-start mb-3">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-bold text-lg border border-primary/20">

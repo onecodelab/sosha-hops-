@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useLayoutConfig } from '../contexts/LayoutContext';
 import { Card, CardContent, CardHeader, CardTitle, Button, showToast, cn } from '../components/ui';
 import { Database, RefreshCw, AlertTriangle, Package, CheckCircle2, FlaskConical, ShieldCheck, Zap, Plus, MapPin, Building2, Trash2, Edit2, X, Check, CreditCard, Sparkles } from 'lucide-react';
@@ -378,64 +378,8 @@ const TestChatbotLink: React.FC<{ branchId: string }> = ({ branchId }) => {
                       </CardContent>
                    </Card>
  
-                   <Card className="bg-card backdrop-blur-xl border border-border rounded-[2.5rem] overflow-hidden relative shadow-2xl">
-                     <div className="absolute top-4 right-4 animate-pulse">
-                        <div className="px-2 py-1 rounded-full bg-primary/20 border border-primary/30 text-[8px] font-black text-primary uppercase tracking-widest">Live</div>
-                     </div>
-                      <div className="p-8 border-b border-border bg-muted/5">
-                         <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 rounded-2xl bg-purple-500/10 flex items-center justify-center border border-purple-500/20 shadow-inner">
-                               <Zap className="w-6 h-6 text-purple-400" />
-                            </div>
-                            <div>
-                               <CardTitle className="text-foreground text-xl tracking-tight">Subscription Plan</CardTitle>
-                               <p className="text-[10px] font-black text-muted uppercase tracking-widest mt-0.5 opacity-60">Manage your capabilities</p>
-                            </div>
-                         </div>
-                      </div>
-                      <CardContent className="p-8 space-y-8">
-                         <div className="flex items-center justify-between p-8 bg-gradient-to-br from-purple-500/10 to-primary/5 border border-purple-500/20 rounded-[2rem] shadow-inner relative overflow-hidden">
-                            <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 blur-3xl rounded-full" />
-                            <div className="relative z-10">
-                               <p className="text-[10px] font-black text-purple-400 uppercase tracking-widest mb-2 opacity-60">Current Plan</p>
-                               <h4 className="text-4xl font-black text-foreground uppercase tracking-tighter italic">
-                                  {orgLoading ? '...' : (org?.plan || 'Free Tier')}
-                               </h4>
-                            </div>
-                            <Sparkles className="w-12 h-12 text-primary opacity-30 relative z-10" />
-                         </div>
-
-                         <div className="space-y-4">
-                            <div className="flex items-center gap-3 text-[10px] font-black text-muted uppercase tracking-[0.2em] opacity-60">
-                               <CheckCircle2 className="w-4 h-4 text-emerald-500" /> Multi-branch operations enabled
-                            </div>
-                            <div className="flex items-center gap-3 text-[10px] font-black text-muted uppercase tracking-[0.2em] opacity-60">
-                               <CheckCircle2 className="w-4 h-4 text-emerald-500" /> Real-time verification queue active
-                            </div>
-                         </div>
-
-                         <Button
-                            variant="outline"
-                            onClick={() => showToast("Stripe Portal integration coming soon!", "warning")}
-                            className="w-full h-14 border-border hover:bg-muted/5 font-black uppercase tracking-widest text-[11px] rounded-2xl flex items-center gap-3 shadow-sm"
-                         >
-                            <CreditCard className="w-5 h-5 text-muted opacity-40" /> Manage Billing & Invoices
-                         </Button>
-                     </CardContent>
-                  </Card>
-               </div>
-            )}
-
-            {/* Info Card */}
-             <Card className="bg-card backdrop-blur-xl border border-dashed border-border rounded-[2.5rem] overflow-hidden opacity-80">
-                <div className="p-16 flex flex-col justify-center items-center text-center">
-                   <Building2 className="w-16 h-16 text-primary opacity-20 mb-8" />
-                   <h3 className="text-foreground font-black uppercase tracking-widest italic text-xl">Centralized Logic / Isolated Execution</h3>
-                   <p className="text-xs text-muted max-w-lg mt-4 leading-relaxed font-bold uppercase tracking-widest opacity-40">
-                      Global definitions for <span className="text-primary">Ingredients</span> and <span className="text-primary">Recipes</span> are shared across all branches. Operational data such as stock levels, orders, and staff are strictly isolated within each branch environment.
-                   </p>
                 </div>
-             </Card>
+            )}
 
          </div>
       </>
@@ -694,20 +638,27 @@ const BotSettingsSection: React.FC<{ isEditable: boolean; organizationId?: strin
    const queryClient = useQueryClient();
    const [isSaving, setIsSaving] = useState(false);
    const [systemPrompt, setSystemPrompt] = useState('');
+   const [logoUrl, setLogoUrl] = useState('');
    const [charCount, setCharCount] = useState(0);
+   const [isUploading, setIsUploading] = useState(false);
+   const fileInputRef = useRef<HTMLInputElement>(null);
 
-   const DEFAULT_PROMPT = `You are a smart, friendly restaurant assistant. You help customers browse the menu, place orders, track their food, and handle payments.
+   const DEFAULT_PROMPT = `You are Baro, a professional and efficient restaurant assistant. 🍽️
 
-## YOUR RULES
-1. ALWAYS use the 'get_menu' tool when a customer asks about food, menu, or what's available. NEVER guess menu items.
-2. Check the CONTEXT below for the 'Table Number'. If it is 'Unknown', you MUST ask the customer for their table number before placing an order. If it is already known, do not ask; proceed with the known table number.
-3. When a customer shares their name, phone, or mentions any food preference or allergy, IMMEDIATELY call 'update_customer_profile' to remember it.
-4. If they want to add more items to an existing order, use 'update_order' instead of 'place_order'.
-5. When asked for the bill or how to pay, call 'get_branch_info' to get payment methods, then 'get_order_status' to get the total.
-6. When they share a payment reference number, call 'verify_payment'.
-7. Be warm, helpful, and concise. Use emojis sparingly but naturally.
-8. Format menu items clearly with names and prices.
-9. Always confirm the order before placing it.`;
+## YOUR CORE RULES
+1. **VISUAL MENU ONLY**: ALWAYS use the 'get_menu' tool to show items. NEVER list items, descriptions, or prices in plain text.
+2. **SMART TABLE RECOGNITION**: Check the "Table (Claimed)" in the current context. If it says "Unknown", you must ask the customer for their table number. If it is already known, simply confirm and proceed.
+3. **ACCURATE ORDERING**: 
+   - Use 'place_order' for new orders.
+   - Use 'update_order' to add items to an existing order (Check "Active Order ID" in context).
+   - ALWAYS confirm the full list of items and special instructions (notes) before finalizing any order.
+4. **PAYMENT & ASSISTANCE**: Help customers with their bill using 'get_branch_info' and 'get_order_status'. Verify payments immediately using 'verify_payment'.
+5. **CUSTOMER CARE**: Use 'update_customer_profile' whenever you learn a customer's name, contact info, or food preferences/allergies.
+
+## TONE & VOICE
+- Professional, helpful, and welcoming.
+- Responses should be concise (max 3 sentences).
+- Use clear formatting and occasional friendly emojis. ✨`;
 
    // Load existing prompt from organizations table
    const { data: orgData, isLoading } = useQuery({
@@ -716,7 +667,7 @@ const BotSettingsSection: React.FC<{ isEditable: boolean; organizationId?: strin
          if (!organizationId) return null;
          const { data, error } = await supabase
             .from('organizations')
-            .select('chatbot_system_prompt')
+            .select('chatbot_system_prompt, chatbot_logo_url')
             .eq('id', organizationId)
             .single();
          if (error) throw error;
@@ -731,6 +682,7 @@ const BotSettingsSection: React.FC<{ isEditable: boolean; organizationId?: strin
          const prompt = orgData.chatbot_system_prompt || '';
          setSystemPrompt(prompt);
          setCharCount(prompt.length);
+         setLogoUrl(orgData.chatbot_logo_url || '');
       }
    }, [orgData]);
 
@@ -740,7 +692,10 @@ const BotSettingsSection: React.FC<{ isEditable: boolean; organizationId?: strin
          setIsSaving(true);
          const { error } = await supabase
             .from('organizations')
-            .update({ chatbot_system_prompt: systemPrompt })
+            .update({ 
+                chatbot_system_prompt: systemPrompt,
+                chatbot_logo_url: logoUrl
+            })
             .eq('id', organizationId);
          if (error) throw error;
       },
@@ -751,6 +706,46 @@ const BotSettingsSection: React.FC<{ isEditable: boolean; organizationId?: strin
       onError: (err: any) => showToast(err.message, "error"),
       onSettled: () => setIsSaving(false)
    });
+
+   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+       const file = e.target.files?.[0];
+       if (!file) return;
+
+       if (!file.type.startsWith('image/')) {
+           showToast("Please upload a valid image file", "error");
+           return;
+       }
+
+       if (file.size > 2 * 1024 * 1024) {
+           showToast("Image must be smaller than 2MB", "error");
+           return;
+       }
+
+       setIsUploading(true);
+       try {
+           const fileExt = file.name.split('.').pop();
+           const fileName = `chatbot_logo_${Math.random().toString(36).substring(2)}_${Date.now()}.${fileExt}`;
+           const filePath = `organization-assets/${fileName}`;
+
+           const { error: uploadError } = await supabase.storage
+               .from('menu-images') // Using existing public bucket
+               .upload(filePath, file);
+
+           if (uploadError) throw uploadError;
+
+           const { data: { publicUrl } } = supabase.storage
+               .from('menu-images')
+               .getPublicUrl(filePath);
+
+           setLogoUrl(publicUrl);
+           showToast("Logo uploaded securely! Click Deploy to save.", "success");
+       } catch (err: any) {
+           showToast(err.message || "Upload failed", "error");
+       } finally {
+           setIsUploading(false);
+           if (fileInputRef.current) fileInputRef.current.value = '';
+       }
+   };
 
    if (isLoading) return <div className="text-center py-4 text-zinc-600 animate-pulse text-[10px] font-black uppercase tracking-widest">Loading AI Configuration...</div>;
 
@@ -798,22 +793,54 @@ const BotSettingsSection: React.FC<{ isEditable: boolean; organizationId?: strin
                 placeholder={DEFAULT_PROMPT}
                 className="w-full bg-card border border-border rounded-[2rem] p-8 text-sm text-foreground focus:outline-none focus:border-primary/40 shadow-inner resize-y font-mono leading-relaxed min-h-[350px] transition-all"
              />
+
+             <div className="mt-8 space-y-2">
+                <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">Chatbot Avatar Image URL</label>
+                <div className="flex items-center gap-4">
+                    <div className="w-16 h-16 rounded-2xl bg-muted/10 border border-border flex items-center justify-center shrink-0 shadow-inner overflow-hidden relative group">
+                        {logoUrl ? (
+                            <img src={logoUrl} alt="Chatbot Avatar" className="w-full h-full object-cover" />
+                        ) : (
+                            <Zap className="w-6 h-6 text-muted/50" />
+                        )}
+                        {isEditable && (
+                           <button 
+                               onClick={() => fileInputRef.current?.click()}
+                               disabled={isUploading}
+                               className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-[8px] font-black text-white tracking-widest uppercase cursor-pointer backdrop-blur-sm"
+                           >
+                               {isUploading ? '...' : 'UPLOAD'}
+                           </button>
+                        )}
+                    </div>
+                    <div className="flex-1 flex gap-2">
+                        <input
+                            value={logoUrl}
+                            onChange={e => setLogoUrl(e.target.value)}
+                            disabled={!isEditable}
+                            placeholder="e.g. /ai-avatar.png or https://imgur.com/your-image.png"
+                            className="flex-1 w-full bg-card border border-border rounded-xl px-4 h-12 text-sm text-foreground focus:outline-none focus:border-primary/40 shadow-sm transition-all"
+                        />
+                        {isEditable && (
+                           <Button
+                               variant="outline"
+                               onClick={() => fileInputRef.current?.click()}
+                               disabled={isUploading}
+                               className="h-12 border-border hover:bg-muted/10 uppercase font-black text-[10px] tracking-widest rounded-xl px-6 shrink-0"
+                           >
+                               {isUploading ? 'Uploading...' : 'Browse'}
+                           </Button>
+                        )}
+                        <input type="file" ref={fileInputRef} onChange={handleImageUpload} accept="image/*" className="hidden" />
+                    </div>
+                </div>
+                <p className="text-[9px] text-gray-500 mt-1 ml-1 leading-relaxed max-w-lg">
+                    Provide a transparent PNG or simple image URL to replace the default AI core/sparkles with your own custom branded mascot in the Customer App.
+                </p>
+             </div>
           </div>
 
-         {/* Available Tools Reference */}
-          <div className="p-6 bg-muted/5 border border-border rounded-[2rem] shadow-inner">
-             <p className="text-[10px] font-black text-muted uppercase tracking-[0.2em] mb-4 ml-1 opacity-60">Available Tools (Reference)</p>
-             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                {['get_menu', 'place_order', 'update_order', 'get_order_status', 'verify_payment', 'get_branch_info', 'update_customer_profile'].map(tool => (
-                   <div key={tool} className="px-4 py-3 bg-card border border-border rounded-xl shadow-sm hover:border-primary/20 transition-all group">
-                      <code className="text-[10px] text-emerald-500 font-mono font-black group-hover:text-emerald-400">{tool}</code>
-                   </div>
-                ))}
-             </div>
-            <p className="text-[9px] text-gray-600 mt-3 leading-relaxed">
-               These tools are automatically available to the chatbot. Reference them in your prompt to control when and how the bot uses them.
-            </p>
-         </div>
+
 
          {isEditable && (
             <Button

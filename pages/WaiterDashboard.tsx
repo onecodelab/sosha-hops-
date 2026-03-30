@@ -45,7 +45,7 @@ const WaiterDashboard: React.FC = () => {
   const [selectedClaimTable, setSelectedClaimTable] = useState<string | null>(null);
   const [claiming, setClaiming] = useState(false);
   const [isSyncingTables, setIsSyncingTables] = useState(false);
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+
 
   const fetchTables = useCallback(async () => {
     if (!activeBranchId) {
@@ -93,7 +93,6 @@ const WaiterDashboard: React.FC = () => {
   const handleTableAction = (table: Table) => {
     setSelectedTableData({ id: table.id, number: table.table_number });
     setAppendOrderId(table.current_order_id || null);
-    setIsSidebarCollapsed(true);
     setIsCreateOpen(true);
   };
 
@@ -107,10 +106,8 @@ const WaiterDashboard: React.FC = () => {
     } else if (action === 'pay') {
       if (target) {
         setActiveBillOrder(target);
-        setIsSidebarCollapsed(true);
         setIsBillModalOpen(true);
       } else {
-        setIsSidebarCollapsed(true);
         setIsPaymentOpen(true);
       }
     } else if (action === 'served' && target) {
@@ -158,8 +155,6 @@ const WaiterDashboard: React.FC = () => {
 
   useLayoutConfig({
     title: "Waiter Station",
-    isSidebarCollapsed: isSidebarCollapsed,
-    onSidebarCollapseChange: setIsSidebarCollapsed,
     subtitle: (
       <span className="flex items-center gap-1.5 uppercase font-black tracking-widest text-[10px]">
         <span className="text-zinc-500">Floor •</span>
@@ -172,7 +167,6 @@ const WaiterDashboard: React.FC = () => {
           onClick={() => {
             setSelectedTableData(null);
             setAppendOrderId(null);
-            setIsSidebarCollapsed(true);
             setIsCreateOpen(true);
           }}
           className="bg-primary hover:bg-primary/90 text-black h-10 px-6 font-black uppercase text-[10px] rounded-xl flex items-center gap-2 shadow-lg shadow-primary/20 hover:shadow-primary/40 transition-all hover:scale-[1.05] active:scale-[0.95]"
@@ -278,12 +272,14 @@ const WaiterDashboard: React.FC = () => {
                 {readyOrders.length}
               </Badge>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            <div className="flex overflow-x-auto gap-4 pb-4 snap-x snap-mandatory custom-scrollbar relative">
               {readyOrders.map(order =>
-                <OrderCard key={order.id} order={order} role="waiter" onAction={handleOrderAction} />
+                <div key={order.id} className="w-[85vw] md:w-[350px] snap-center md:snap-start shrink-0">
+                  <OrderCard order={order} role="waiter" onAction={handleOrderAction} />
+                </div>
               )}
               {readyOrders.length === 0 && (
-                <div className="h-24 flex flex-col gap-2 items-center justify-center border border-dashed border-white/5 rounded-3xl opacity-20 text-[10px] font-black uppercase tracking-widest col-span-full">
+                <div className="flex-1 min-w-[300px] h-24 flex flex-col gap-2 items-center justify-center border border-dashed border-white/5 rounded-3xl opacity-20 text-[10px] font-black uppercase tracking-widest">
                   All orders served
                 </div>
               )}
@@ -308,9 +304,9 @@ const WaiterDashboard: React.FC = () => {
                   {orders.filter(o => o.source === 'chatbot' && !o.waiter_id).length} New
                 </Badge>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="flex overflow-x-auto gap-4 pb-4 snap-x snap-mandatory custom-scrollbar relative">
                 {orders.filter(o => o.source === 'chatbot' && !o.waiter_id).map(order => (
-                  <Card key={order.id} variant="elevated" className="p-6 border-primary/20 bg-primary/5 hover:bg-primary/10 transition-all flex flex-col gap-4">
+                  <Card key={order.id} variant="elevated" className="w-[85vw] md:w-[350px] snap-center md:snap-start shrink-0 p-6 border-primary/20 bg-primary/5 hover:bg-primary/10 transition-all flex flex-col gap-4">
                     <div className="flex justify-between items-start">
                       <div>
                         <div className="text-[10px] font-black text-primary uppercase tracking-widest mb-1">Incoming Chat Order</div>
@@ -377,10 +373,14 @@ const WaiterDashboard: React.FC = () => {
               </h3>
               <Badge variant="outline" className="bg-orange-500/10 text-orange-500 border-orange-500/20 font-mono">{kitchenPipeline.length}</Badge>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              {kitchenPipeline.map(order => <OrderCard key={order.id} order={order} role="waiter" onAction={handleOrderAction} />)}
+            <div className="flex overflow-x-auto gap-4 pb-4 snap-x snap-mandatory custom-scrollbar relative">
+              {kitchenPipeline.map(order => (
+                <div key={order.id} className="w-[85vw] md:w-[350px] snap-center md:snap-start shrink-0">
+                  <OrderCard order={order} role="waiter" onAction={handleOrderAction} />
+                </div>
+              ))}
               {kitchenPipeline.length === 0 && (
-                <div className="h-40 flex flex-col gap-2 items-center justify-center border border-dashed border-white/5 rounded-3xl opacity-20 text-[10px] font-black uppercase tracking-widest col-span-full">
+                <div className="flex-1 min-w-[300px] h-40 flex flex-col gap-2 items-center justify-center border border-dashed border-white/5 rounded-3xl opacity-20 text-[10px] font-black uppercase tracking-widest">
                   <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center"><Timer className="w-5 h-5" /></div>
                   No Pending Orders
                 </div>
@@ -402,10 +402,14 @@ const WaiterDashboard: React.FC = () => {
               </h3>
               <Badge variant="outline" className="bg-green-500/10 text-green-500 border-green-500/20 font-mono">{billingQueue.length}</Badge>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              {billingQueue.map(order => <OrderCard key={order.id} order={order} role="waiter" onAction={handleOrderAction} />)}
+            <div className="flex overflow-x-auto gap-4 pb-4 snap-x snap-mandatory custom-scrollbar relative">
+              {billingQueue.map(order => (
+                <div key={order.id} className="w-[85vw] md:w-[350px] snap-center md:snap-start shrink-0">
+                  <OrderCard order={order} role="waiter" onAction={handleOrderAction} />
+                </div>
+              ))}
               {billingQueue.length === 0 && (
-                <div className="h-40 flex flex-col gap-2 items-center justify-center border border-dashed border-white/5 rounded-3xl opacity-20 text-[10px] font-black uppercase tracking-widest col-span-full">
+                <div className="flex-1 min-w-[300px] h-40 flex flex-col gap-2 items-center justify-center border border-dashed border-white/5 rounded-3xl opacity-20 text-[10px] font-black uppercase tracking-widest">
                   <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center"><Receipt className="w-5 h-5" /></div>
                   No Active Bills
                 </div>

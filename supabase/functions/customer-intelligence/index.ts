@@ -8,15 +8,17 @@ const TOOL_DEFINITIONS = [
         type: "function",
         function: {
             name: "get_menu",
-            description: "Get the restaurant's menu items. Call with NO parameters to show the full menu. Only use 'category' for specific sub-categories like 'Drinks', 'burgers', 'fish'. Do NOT pass generic terms like 'food' or 'menu' as category.",
+            description: "Get the restaurant's menu items. Returns full item metadata including tags, spice levels, and ingredients. Use 'category' for specific sub-categories. If the user asks for 'something cheap' to EAT, do NOT return drinks! Filter the results to only include real meals.",
             parameters: {
                 type: "object",
                 properties: {
                     query: { type: "string", description: "Search for a specific menu item by name" },
                     category: { type: "string", description: "Filter by a SPECIFIC category like 'Drinks', 'burgers', 'fish', 'Breakfast'. Leave empty to show all items." },
-                },
-            },
-        },
+                    must_have_tag: { type: "string", description: "Filter by a specific dietary or semantic tag (e.g. 'halal', 'vegan', 'spicy'). Optional." },
+                    must_exclude_tag: { type: "string", description: "Exclude a specific tag (e.g. 'halal', 'nuts'). Optional." }
+                }
+            }
+        }
     },
     {
         type: "function",
@@ -73,7 +75,8 @@ const TOOL_DEFINITIONS = [
                         items: {
                             type: "object",
                             properties: {
-                                menu_item_id: { type: "string" },
+                                menu_item_id: { type: "string", description: "The UUID of the menu item" },
+                                name: { type: "string", description: "The exact name of the item (use if UUID unknown)" },
                                 quantity: { type: "number" },
                                 notes: { type: "string" },
                             },
@@ -397,7 +400,7 @@ async function executeMcpTool(
 
         let dbQuery = supabase
             .from("view_menu_details")
-            .select("id, name, price, category, image_url, is_available, description")
+            .select("id, name, price, category, image_url, is_available, description, dietary_tags, ingredients_list, spice_level, portion_size")
             .eq("organization_id", organizationId);
 
         if (targetBranch) {
@@ -407,13 +410,44 @@ async function executeMcpTool(
         if (catStr) dbQuery = dbQuery.ilike("category", `%${catStr}%`);
         if (queryStr) dbQuery = dbQuery.ilike("name", `%${queryStr}%`);
 
-        const { data: menuData, error: menuErr } = await dbQuery.limit(20);
+        const { data: menuData, error: menuErr } = await dbQuery.limit(100);
         if (menuErr) {
             console.error("[MCP-LOCAL-MENU] Error:", menuErr);
             return { error: menuErr.message };
         }
 
-        const items = menuData || [];
+        let items = menuData || [];
+
+        // Apply Semantic JS-based Case-Insensitive Filtering
+        if (toolParams?.must_have_tag) {
+            const reqTag = toolParams.must_have_tag.toLowerCase().trim();
+            items = items.filter((item: any) => {
+                const tags = [
+                    ...(item.dietary_tags || []),
+                    ...(item.ingredients_list || []),
+                    item.spice_level,
+                    item.portion_size
+                ].filter(Boolean).map((t: string) => t.toLowerCase());
+                
+                return tags.some((t: string) => t.includes(reqTag));
+            });
+        }
+
+        if (toolParams?.must_exclude_tag) {
+            const exTag = toolParams.must_exclude_tag.toLowerCase().trim();
+            items = items.filter((item: any) => {
+                const tags = [
+                    ...(item.dietary_tags || []),
+                    ...(item.ingredients_list || []),
+                    item.spice_level,
+                    item.portion_size
+                ].filter(Boolean).map((t: string) => t.toLowerCase());
+                
+                return !tags.some((t: string) => t.includes(exTag));
+            });
+        }
+
+        items = items.slice(0, 20); // Re-enforce UI pagination limit after semantic mapping
         console.log(`[MCP-LOCAL-MENU] Found ${items.length} items.`);
         
         // If category filter returned 0 results, retry without category
@@ -421,14 +455,31 @@ async function executeMcpTool(
             console.log(`[MCP-LOCAL-MENU] Category "${catStr}" returned 0 items. Retrying without category filter...`);
             let retryQuery = supabase
                 .from("view_menu_details")
-                .select("id, name, price, category, image_url, is_available, description")
+                .select("id, name, price, category, image_url, is_available, description, dietary_tags, ingredients_list, spice_level, portion_size")
                 .eq("organization_id", organizationId);
             if (targetBranch) retryQuery = retryQuery.eq("branch_id", targetBranch);
             if (queryStr) retryQuery = retryQuery.ilike("name", `%${queryStr}%`);
             const { data: retryData } = await retryQuery.limit(20);
-            const retryItems = retryData || [];
-            console.log(`[MCP-LOCAL-MENU] Retry found ${retryItems.length} items.`);
-            return { items: retryItems };
+            items = retryData || [];
+            console.log(`[MCP-LOCAL-MENU] Retry found ${items.length} items.`);
+        }
+
+        // ── FINAL FALLBACK: Suggested Items if still 0 ──
+        if (items.length === 0) {
+            console.log(`[MCP-LOCAL-MENU] Absolute 0 results. Fetching top 5 suggestions...`);
+            const { data: suggestions } = await supabase
+                .from("view_menu_details")
+                .select("id, name, price, category, image_url, is_available, description, dietary_tags, spice_level, portion_size")
+                .eq("organization_id", organizationId)
+                .eq("is_available", true)
+                .order("price", { ascending: false }) // Fallback to premium items as suggestions
+                .limit(5);
+            
+            return { 
+                items: [], 
+                suggested_items: suggestions || [],
+                message: "No exact matches found for your query. Here are some house favorites instead." 
+            };
         }
 
         return { items };
@@ -518,6 +569,7 @@ serve(async (req) => {
         let branchId = identity.branchId || clientBranchId || "";
         let resolvedBranchName = branch_name || "";
         let resolvedTableNumber = table_number;
+
         let prefetchedMetadata: any = {};
         let shouldShortcutVerifiedTable = false;
 
@@ -671,20 +723,23 @@ serve(async (req) => {
             );
         }
 
-        // ── STEP 1: Load Organization Context ──
+        // ── STEP 1: Load Organization Context & Credits ──
         let orgPrompt = "";
         let orgName = organization_name || "Unknown";
+        let creditsInfo: { used: number; max: number; reset_date: string } | null = null;
+        
+        let orgData: any = null;
         try {
-            const { data: orgData } = await supabase
+            const { data } = await supabase
                 .from("organizations")
-                .select("chatbot_system_prompt, name")
+                .select("chatbot_system_prompt, name, used_monthly_credits, max_monthly_credits, credit_reset_date, max_branches, plan_tier")
                 .eq("id", organizationId)
                 .single();
+            orgData = data;
 
             if (orgData?.chatbot_system_prompt?.trim()) {
                 orgPrompt = `\n\n## HISTORICAL CONTEXT (MAY BE OUTDATED)\n${orgData.chatbot_system_prompt}\n\n`;
             }
-            if (orgData?.name) orgName = orgData.name;
         } catch (e) {
             console.warn("[CustomerAgent] Org config load failed:", e);
         }
@@ -863,6 +918,7 @@ ${DEFAULT_SYSTEM_PROMPT}
             finalResponse = `Got it! You're at Table ${resolvedTableNumber}! ✅ Great to have you here! 🎉 Now, what can I get you today? Check out our menu:`;
         }
 
+        let wasOrderAction = false;
         while (!finalResponse && loopCount < MAX_LOOPS) {
             loopCount++;
             let llmResult: any;
@@ -1002,15 +1058,26 @@ ${DEFAULT_SYSTEM_PROMPT}
             if (assistantMessage.tool_calls && assistantMessage.tool_calls.length > 0) {
                 messages.push(assistantMessage);
                 for (const toolCall of assistantMessage.tool_calls) {
-                    const toolName = toolCall.function.name;
+                    const toolName = toolCall.id ? toolCall.function.name : '';
                     let toolParams = {};
                     try { toolParams = JSON.parse(toolCall.function.arguments); } catch {}
 
                     let toolResult: any;
-                    try {
-                        toolResult = await executeMcpTool(supabase, toolName, toolParams, organizationId, branchId || "", resolvedTableNumber || "");
-                    } catch (err: any) {
-                        toolResult = { error: err.message };
+
+                    // --- INTERNAL VALIDATION: Prevent Ghost Orders ---
+                    if ((toolName === 'place_order' || toolName === 'update_order') && (!(toolParams as any).items || (toolParams as any).items.length === 0)) {
+                        console.error(`[CustomerAgent] LLM tried calling ${toolName} with empty items! Blocked.`);
+                        toolResult = {
+                            success: false,
+                            error: "CRITICAL: 'items' array is required and cannot be empty. Please identify exactly which items the user wants before ordering."
+                        };
+                    } else {
+                        try {
+                            toolResult = await executeMcpTool(supabase, toolName, toolParams, organizationId, branchId || "", resolvedTableNumber || "");
+                        } catch (err: any) {
+                            console.error(`[CustomerAgent] Tool ${toolName} failed:`, err.message);
+                            toolResult = { error: err.message, success: false };
+                        }
                     }
 
                     messages.push({
@@ -1038,11 +1105,33 @@ ${DEFAULT_SYSTEM_PROMPT}
                     } else if (toolName === 'get_categories') {
                         richMetadata.categories = toolResult.categories || toolResult || [];
                     }
+
+                    if (toolName === 'place_order' || toolName === 'update_order') {
+                        wasOrderAction = true;
+                    }
                 }
                 continue;
             }
 
             finalResponse = assistantMessage.content || "I'm not sure how to help with that.";
+
+            // If a tool failed, append the error to finalResponse for visibility (Internal Debug)
+            const lastMessage = messages[messages.length - 1];
+            if (lastMessage && lastMessage.role === 'tool') {
+                const tr = JSON.parse(lastMessage.content);
+                if (tr.success === false) {
+                    const toolErr = tr.error;
+                    const failedToolName = lastMessage.name;
+                    
+                    // Find the tool call that matches this result to see the params
+                    const toolCall = messages.find(m => m.role === 'assistant' && 
+                        m.tool_calls?.find(tc => tc.id === lastMessage.tool_call_id));
+                    const tcItem = toolCall?.tool_calls?.find(tc => tc.id === lastMessage.tool_call_id);
+                    const sentParams = tcItem?.function?.arguments || "{}";
+
+                    finalResponse += `\n\n[System Note: ${failedToolName} failed with error: ${toolErr}. Params sent: ${sentParams}]`;
+                }
+            }
             break;
         }
 
@@ -1111,6 +1200,7 @@ ${DEFAULT_SYSTEM_PROMPT}
         }
 
         // Auto-Injection Fallbacks
+        // Auto-Injection Fallbacks
         if (!richMetadata.buttons && !richMetadata.tracking) {
             const lowerResp = finalResponse.toLowerCase();
             const lowerMsg = message.toLowerCase();
@@ -1138,12 +1228,6 @@ ${DEFAULT_SYSTEM_PROMPT}
                 richMetadata.buttons = [
                     { label: "➗ Split Bill", prompt: "How can I split the bill?" },
                     { label: "💳 Pay Total", prompt: "I want to pay the bill" }
-                ];
-            } else {
-                richMetadata.buttons = [
-                    { label: "✨ Best Offers", prompt: "Show me the best offers" },
-                    { label: "🍕 Food Menu", prompt: "Show me the menu" },
-                    { label: "🍹 Drinks", prompt: "Show me the drinks menu" }
                 ];
             }
         }

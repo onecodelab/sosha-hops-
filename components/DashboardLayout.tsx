@@ -68,7 +68,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   const displayName = profile?.full_name || profile?.name || profile?.email?.split('@')[0] || 'User';
 
   return (
-    <div className="flex h-screen bg-background text-foreground overflow-hidden selection:bg-primary selection:text-black">
+    <div className="flex h-screen bg-background text-foreground overflow-y-hidden overflow-x-clip selection:bg-primary selection:text-black">
       <LeafBubbleBackground />
       <div className="fixed inset-0 z-0 transition-colors duration-500 pointer-events-none">
         <BackgroundMascots variant={mascotVariant} />
@@ -84,7 +84,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
 
       {/* Mobile Header */}
       {!config.fullScreen && (
-        <div className="md:hidden fixed top-0 left-0 right-0 h-16 bg-background/80 backdrop-blur-3xl border-b border-border/10 shadow-xl z-[100] px-4 flex items-center justify-between">
+        <div className="md:hidden fixed top-0 left-0 right-0 h-16 bg-background/80 backdrop-blur-3xl border-b border-primary/5 shadow-xl z-[100] px-4 flex items-center justify-between">
           
           <div className="absolute inset-0 bg-gradient-to-r from-primary/5 via-transparent to-transparent pointer-events-none overflow-hidden rounded-b-xl" />
           

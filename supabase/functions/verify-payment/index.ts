@@ -86,27 +86,44 @@ serve(async (req) => {
     }
 
     // ================================================================
-    // STEP 1: GLOBAL DUPLICATE CHECK (even without order_id)
-    // The same reference must NEVER be accepted twice, period.
+    // STEP 1: DUPLICATE & IDEMPOTENCY CHECK
+    // The same reference must NEVER be used on DIFFERENT orders.
+    // However, if it's the SAME order, we should allow it (idempotency).
     // ================================================================
     const { data: existingPayment } = await supabase
       .from('order_payments')
-      .select('id, order_id')
+      .select('id, order_id, amount')
       .eq('reference', transaction_id)
       .maybeSingle();
 
     if (existingPayment) {
+      // IDEMPOTENCY: If this reference was already successfully linked to THIS order, return success.
+      if (order_id && existingPayment.order_id === order_id) {
+        console.log(`[IDEMPOTENCY] Reference ${transaction_id} already linked to order ${order_id}. Returning success.`);
+        return new Response(JSON.stringify({
+          success: true,
+          validated: true,
+          amount_found: existingPayment.amount,
+          message: "Transaction already verified for this order.",
+          action_taken: "Idempotent Success (Cached)",
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200
+        });
+      }
+
+      // ACTUAL DUPLICATE: Used on a different order.
       await logVerificationAttempt(supabase, {
         order_id: order_id || existingPayment.order_id,
         transaction_id,
         bank,
         status: 'duplicate',
-        response_data: { blocked_reason: 'Reference already used', existing_payment_id: existingPayment.id }
+        response_data: { blocked_reason: 'Reference already used on another order', existing_payment_id: existingPayment.id, other_order_id: existingPayment.order_id }
       });
 
       return new Response(JSON.stringify({
         success: false,
-        message: "This transaction reference has already been used!",
+        message: "This transaction reference has already been used on another order!",
         action_taken: "Blocked Duplicate"
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -114,26 +131,41 @@ serve(async (req) => {
       });
     }
 
-    // Also check orders.transaction_reference (belt-and-suspenders)
+    // Also check orders.transaction_reference (legacy fallback)
     const { data: existingOrderRef } = await supabase
       .from('orders')
-      .select('id')
+      .select('id, total_amount')
       .eq('transaction_reference', transaction_id)
       .maybeSingle();
 
     if (existingOrderRef) {
+      if (order_id && existingOrderRef.id === order_id) {
+        console.log(`[IDEMPOTENCY] Reference ${transaction_id} already in order ref ${order_id}. Returning success.`);
+        return new Response(JSON.stringify({
+          success: true,
+          validated: true,
+          amount_found: existingOrderRef.total_amount,
+          message: "Transaction already linked to this order.",
+          action_taken: "Idempotent Success (Legacy Ref)",
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200
+        });
+      }
+
       await logVerificationAttempt(supabase, {
         order_id: order_id || existingOrderRef.id,
         transaction_id,
         bank,
         status: 'duplicate',
-        response_data: { blocked_reason: 'Reference already on another order' }
+        response_data: { blocked_reason: 'Reference already on another order (Legacy Ref)' }
       });
 
       return new Response(JSON.stringify({
         success: false,
-        message: "This transaction reference is already linked to another order!",
-        action_taken: "Blocked Duplicate"
+        message: `This transaction reference is already linked to Order ${existingOrderRef.order_number || 'Unknown'}!`,
+        action_taken: "Blocked Duplicate",
+        linked_order_id: existingOrderRef.id
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200
@@ -226,10 +258,16 @@ serve(async (req) => {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 15000);
 
+    // Normalize bank key for upsteam API mapping
+    let bankKeyForApi = bank.toLowerCase().trim().replace(/_/g, '');
+    if (bankKeyForApi === 'cbebirr') bankKeyForApi = 'cbe_birr'; // Ensure consistency if API expects underscore
+
+    const finalReceiverAccount = receiver_account; // Use the destructured receiver_account
+
     const apiPayload = {
-      bank: bank.toLowerCase(),
+      bank: bankKeyForApi,
       transaction_id,
-      receiver_account
+      receiver_account: finalReceiverAccount
     };
 
     console.log("[verify-payment] Calling API:", apiPayload);
@@ -384,10 +422,13 @@ serve(async (req) => {
     }
 
     return new Response(JSON.stringify({
-      success: data.success,
-      validated: data.validated,
+      success: data.validated || false,
+      validated: data.validated || false,
       amount_found: data.amount,
       message: data.message || (data.validated ? "Transaction Found and Valid." : "Transaction not found or invalid."),
+      receiver_account: finalReceiverAccount,
+      bank_key: bank,
+      api_response: data, // Return full response for debugging
       action_taken: actionTaken,
       receipt: receiptData,
       raw: data
@@ -400,10 +441,12 @@ serve(async (req) => {
     console.error("[verify-payment] Fatal error:", error.message);
     return new Response(JSON.stringify({
       success: false,
-      error: error.message
+      validated: false,
+      error: error.message || "Unknown server error",
+      message: "An internal server error occurred while verifying the payment."
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      status: 400,
+      status: 200, // Return 200 to ensure the client receives JSON and not a raw 400 crash
     });
   }
 })

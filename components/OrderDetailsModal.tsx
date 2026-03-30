@@ -115,6 +115,7 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ isOpen, on
             <div className="flex flex-col">
                 {/* Receipt Paper */}
                 <div
+                    data-printable-receipt
                     id="receipt-content"
                     className="bg-white text-black font-mono text-[11px] leading-relaxed p-5 rounded-lg shadow-inner mx-auto w-full max-w-[320px]"
                     style={{ fontFamily: "'Courier New', Courier, monospace" }}
@@ -231,6 +232,7 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ isOpen, on
 
                     {/* Universal QR Footer (ERCA + ALL Banks) */}
                     <div className="flex flex-col items-center gap-4 mt-6 font-mono">
+                        {activeBanks.length > 0 && (
                         <div className="text-center flex flex-col items-center bg-gray-50 p-2 rounded-lg border border-gray-100 print:bg-transparent print:border-none">
                             <QRCodeSVG
                                 value={buildUniversalMerchantQR(
@@ -246,6 +248,7 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ isOpen, on
                                 level="M"
                             />
                         </div>
+                        )}
 
                         {/* List of Accounts for reference */}
                         <div className="w-full px-8 space-y-1">
