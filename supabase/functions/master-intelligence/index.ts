@@ -85,10 +85,15 @@ async function runReasoningLoop(
                 headers: {
                     "Content-Type": "application/json",
                     "Authorization": `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
-                    "x-org-id": organizationId,
-                    "x-branch-id": branchId || ''
                 },
-                body: JSON.stringify({ tool: name, params: { ...args, branch_id: branchId } })
+                body: JSON.stringify({
+                    tool: name,
+                    params: {
+                        ...args,
+                        organization_id: organizationId,
+                        branch_id: branchId || undefined,
+                    }
+                })
             });
 
             const toolResult = await mcpResponse.json();

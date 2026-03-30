@@ -48,6 +48,12 @@ serve(async (req) => {
             return new Response(JSON.stringify({ error: "Tenant isolation violation" }), { status: 403, headers: corsHeaders });
         }
 
+        const { data: organization } = await supabase
+            .from('organizations')
+            .select('id, name')
+            .eq('id', branch.organization_id)
+            .maybeSingle();
+
         // 2. Get active bank accounts for this organization
         const { data: bankAccounts, error: bankErr } = await supabase
             .from('bank_settings')
@@ -77,6 +83,10 @@ serve(async (req) => {
 
         return new Response(JSON.stringify({
             success: true,
+            organization: organization ? {
+                id: organization.id,
+                name: organization.name,
+            } : null,
             branch: {
                 id: branch.id,
                 name: branch.name,

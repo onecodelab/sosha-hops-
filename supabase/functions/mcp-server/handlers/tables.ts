@@ -29,7 +29,8 @@ export async function getTables(context: ToolContext) {
     const { data, error } = await context.supabase
         .from('tables')
         .select('id, table_number, pos_x, pos_y')
-        .eq('branch_id', branchId);
+        .eq('branch_id', branchId)
+        .eq('organization_id', context.organizationId);
 
     if (error) throw error;
     return { tables: data || [] };
@@ -43,7 +44,7 @@ export async function verifyNFCTap(context: ToolContext) {
 
     let tableData = null;
     try {
-        tableData = await resolveTableRecord(context.supabase, branchId, tableNumber);
+        tableData = await resolveTableRecord(context.supabase, branchId, tableNumber, context.organizationId);
     } catch (tableErr) {
         console.error("[NFC] Table lookup failed:", tableErr);
     }
@@ -79,7 +80,8 @@ export async function listTables(context: ToolContext) {
     const { data: tables, error } = await context.supabase
         .from('tables')
         .select('table_number')
-        .eq('branch_id', branchId);
+        .eq('branch_id', branchId)
+        .eq('organization_id', context.organizationId);
 
     if (error) {
         throw new Error(`Database Error listing tables: ${error.message}`);

@@ -68,6 +68,17 @@ async function verifyBranchToken(token: string): Promise<IdentityContext | null>
             return null;
         }
 
+        if (payload.exp !== undefined) {
+            const expiry = Number(payload.exp);
+            if (!Number.isFinite(expiry) || expiry <= Math.floor(Date.now() / 1000)) {
+                return null;
+            }
+        }
+
+        if (typeof payload.branch_id !== 'string' || typeof payload.organization_id !== 'string') {
+            return null;
+        }
+
         return {
             organizationId: payload.organization_id,
             branchId: payload.branch_id,

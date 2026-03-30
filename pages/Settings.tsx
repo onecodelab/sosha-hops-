@@ -53,6 +53,7 @@ const TestChatbotLink: React.FC<{ branchId: string }> = ({ branchId }) => {
    const [editName, setEditName] = useState('');
    const [editLocation, setEditLocation] = useState('');
    const [isSubmitting, setIsSubmitting] = useState(false);
+   const isOwnerOrAdmin = profile?.role === 'owner' || profile?.role === 'admin';
 
    // Fetch Organization Data
    const { data: org, isLoading: orgLoading } = useQuery({
@@ -79,6 +80,21 @@ const TestChatbotLink: React.FC<{ branchId: string }> = ({ branchId }) => {
          return data as Branch[];
       }
    });
+
+   const { data: guestChatToken } = useQuery({
+      queryKey: ['guest_chat_token', branches[0]?.id],
+      queryFn: async () => {
+         if (!branches[0]?.id) return null;
+         const { data, error } = await supabase.rpc('generate_branch_token', { p_branch_id: branches[0].id });
+         if (error) throw error;
+         return data as string | null;
+      },
+      enabled: isOwnerOrAdmin && branches.length > 0
+   });
+
+   const guestChatHref = branches.length > 0 && guestChatToken
+      ? `/order-chat/${branches[0].id}/UNKNOWN?token=${encodeURIComponent(guestChatToken)}`
+      : null;
 
    // Create Branch Mutation
    const createBranchMutation = useMutation({
@@ -139,8 +155,6 @@ const TestChatbotLink: React.FC<{ branchId: string }> = ({ branchId }) => {
          }
       }
    });
-
-   const isOwnerOrAdmin = profile?.role === 'owner' || profile?.role === 'admin';
 
    useLayoutConfig({
       title: "System Orchestration",

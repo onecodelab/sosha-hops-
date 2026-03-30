@@ -49,8 +49,43 @@ serve(async (req) => {
 
         const requestOrganizationId = params.organization_id || body.organization_id;
         const requestBranchId = params.branch_id || body.branch_id;
-        const organizationId = identityOrg && identityOrg !== 'SERVICE_ROLE' ? identityOrg : requestOrganizationId;
-        const branchId = identityBranch && identityBranch !== 'SERVICE_ROLE' ? identityBranch : requestBranchId;
+        const hasTrustedIdentity = !!identityOrg && identityOrg !== 'SERVICE_ROLE';
+        const hasTrustedBranch = !!identityBranch && identityBranch !== 'SERVICE_ROLE';
+
+        if (hasTrustedIdentity && requestOrganizationId && requestOrganizationId !== identityOrg) {
+            return jsonResponse({ error: "Tenant isolation violation", detail: "organization_id mismatch" }, 403);
+        }
+
+        if (hasTrustedBranch && requestBranchId && requestBranchId !== identityBranch) {
+            return jsonResponse({ error: "Tenant isolation violation", detail: "branch_id mismatch" }, 403);
+        }
+
+        let organizationId = hasTrustedIdentity ? identityOrg : requestOrganizationId;
+        let branchId = hasTrustedBranch ? identityBranch : requestBranchId;
+
+        if (branchId) {
+            const { data: branchRecord, error: branchError } = await supabase
+                .from('branches')
+                .select('id, organization_id')
+                .eq('id', branchId)
+                .maybeSingle();
+
+            if (branchError) {
+                return jsonResponse({ error: "Failed to validate branch context", detail: branchError.message }, 500);
+            }
+
+            if (!branchRecord) {
+                return jsonResponse({ error: "Invalid branch context", detail: "branch_id not found" }, 404);
+            }
+
+            if (!organizationId) {
+                organizationId = branchRecord.organization_id;
+            }
+
+            if (branchRecord.organization_id !== organizationId) {
+                return jsonResponse({ error: "Tenant isolation violation", detail: "branch does not belong to organization" }, 403);
+            }
+        }
 
         if (!organizationId) {
             console.error(`[MCP-ERROR] Unauthorized: Missing organizationId. Tool: ${tool}`);

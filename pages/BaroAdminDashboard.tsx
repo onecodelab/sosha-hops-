@@ -36,7 +36,18 @@ import {
 } from 'lucide-react';
 
 type ProvisionAction = 'create_owner' | 'create_supplier' | 'create_driver';
-type MainTab = 'directory' | 'provision' | 'applications';
+type MainTab = 'directory' | 'credits' | 'provision' | 'applications';
+
+interface OrganizationCreditRow {
+    id: string;
+    name: string;
+    plan: string | null;
+    is_active: boolean | null;
+    created_at: string;
+    used_monthly_credits: number | null;
+    max_monthly_credits: number | null;
+    credit_reset_at: string | null;
+}
 
 interface OnboardingApplication {
     id: string;
@@ -68,6 +79,8 @@ export const BaroAdminDashboard: React.FC = () => {
     const [copied, setCopied] = useState(false);
     const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; name: string } | null>(null);
     const [openDropdown, setOpenDropdown] = useState<string | null>(null);
+    const [creditTopUps, setCreditTopUps] = useState<Record<string, string>>({});
+    const [planSelections, setPlanSelections] = useState<Record<string, 'basic' | 'pro' | 'enterprise'>>({});
 
     const { data: accounts, isLoading: isLoadingAccounts } = useQuery({
         queryKey: ['admin-accounts'],
@@ -82,6 +95,19 @@ export const BaroAdminDashboard: React.FC = () => {
 
             if (error) throw error;
             return data;
+        }
+    });
+
+    const { data: organizations, isLoading: isLoadingOrganizations } = useQuery({
+        queryKey: ['admin-organizations'],
+        queryFn: async () => {
+            const { data, error } = await supabase
+                .from('organizations')
+                .select('id, name, plan, is_active, created_at, used_monthly_credits, max_monthly_credits, credit_reset_at')
+                .order('created_at', { ascending: false });
+
+            if (error) throw error;
+            return data as OrganizationCreditRow[];
         }
     });
 
@@ -256,6 +282,47 @@ export const BaroAdminDashboard: React.FC = () => {
         onError: (err: any) => showToast(err.message || 'Failed to setup organization', 'error'),
     });
 
+    const { mutate: topUpCredits, isPending: isTopingUpCredits } = useMutation({
+        mutationFn: async ({ organizationId, amount }: { organizationId: string; amount: number }) => {
+            const { data, error } = await supabase.rpc('admin_topup_monthly_credits', {
+                p_organization_id: organizationId,
+                p_amount: amount,
+            });
+
+            if (error) throw error;
+            if (data && data.success === false) throw new Error(data.error || 'Top up failed');
+            return data;
+        },
+        onSuccess: (_, vars) => {
+            showToast(`Added ${vars.amount} credits successfully.`, 'success');
+            queryClient.invalidateQueries({ queryKey: ['admin-organizations'] });
+            setCreditTopUps(prev => {
+                const next = { ...prev };
+                delete next[vars.organizationId];
+                return next;
+            });
+        },
+        onError: (err: any) => showToast(err.message || 'Failed to add credits', 'error'),
+    });
+
+    const { mutate: changePlan, isPending: isChangingPlan } = useMutation({
+        mutationFn: async ({ organizationId, plan }: { organizationId: string; plan: 'basic' | 'pro' | 'enterprise' }) => {
+            const { data, error } = await supabase.rpc('admin_update_organization_plan', {
+                p_organization_id: organizationId,
+                p_plan: plan,
+            });
+
+            if (error) throw error;
+            if (data && data.success === false) throw new Error(data.error || 'Plan update failed');
+            return data;
+        },
+        onSuccess: (_, vars) => {
+            showToast(`Organization switched to ${vars.plan.toUpperCase()}.`, 'success');
+            queryClient.invalidateQueries({ queryKey: ['admin-organizations'] });
+        },
+        onError: (err: any) => showToast(err.message || 'Failed to update plan', 'error'),
+    });
+
     const [setupOrgModal, setSetupOrgModal] = useState<{ id: string; name: string } | null>(null);
     const [repairOrgName, setRepairOrgName] = useState('');
 
@@ -269,6 +336,23 @@ export const BaroAdminDashboard: React.FC = () => {
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
+    };
+
+    const getCreditSummary = (org: OrganizationCreditRow) => {
+        const used = Math.max(0, Number(org.used_monthly_credits || 0));
+        const max = Math.max(0, Number(org.max_monthly_credits || 0));
+        const remaining = Math.max(0, max - used);
+        const ratio = max > 0 ? used / max : 0;
+
+        if (remaining === 0) {
+            return { label: 'At Limit', tone: 'danger' as const, ratio };
+        }
+
+        if (ratio >= 0.8) {
+            return { label: 'Warning', tone: 'warning' as const, ratio };
+        }
+
+        return { label: 'Healthy', tone: 'healthy' as const, ratio };
     };
 
     const handleProvision = async (e: React.FormEvent) => {
@@ -361,6 +445,15 @@ export const BaroAdminDashboard: React.FC = () => {
                         <Database className="w-4 h-4" /> Tenant Directory
                     </button>
                     <button
+                        onClick={() => setMainTab('credits')}
+                        className={cn(
+                            "px-8 py-3 text-[10px] font-black uppercase tracking-widest rounded-[1.1rem] transition-all flex items-center gap-3",
+                            mainTab === 'credits' ? "bg-primary text-black shadow-lg shadow-primary/20" : "text-muted hover:text-foreground"
+                        )}
+                    >
+                        <ShieldCheck className="w-4 h-4" /> Credit Control
+                    </button>
+                    <button
                         onClick={() => setMainTab('provision')}
                         className={cn(
                             "px-8 py-3 text-[10px] font-black uppercase tracking-widest rounded-[1.1rem] transition-all flex items-center gap-3",
@@ -387,6 +480,176 @@ export const BaroAdminDashboard: React.FC = () => {
                         )}
                     </button>
                 </div>
+
+                {/* ═══════════════════ CREDIT CONTROL TAB ═══════════════════ */}
+                {mainTab === 'credits' && (
+                    <div className="space-y-6 animate-in fade-in">
+                        <div className="flex items-center justify-between gap-4">
+                            <div>
+                                <h2 className="text-2xl font-black tracking-tight">Credit Control</h2>
+                                <p className="text-sm text-muted font-medium">
+                                    Monitor organization usage and top up credits for tenants that reached their monthly limit.
+                                </p>
+                            </div>
+                            <div className="bg-amber-500/10 border border-amber-500/20 rounded-2xl px-4 py-3 text-xs font-bold text-amber-400">
+                                1 message = 1 credit, 1 chatbot order = 20 credits
+                            </div>
+                        </div>
+
+                        {isLoadingOrganizations ? (
+                            <div className="py-20 text-center text-muted animate-pulse font-black uppercase tracking-widest">
+                                Loading organizations...
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                                {organizations?.map(org => {
+                                    const used = Math.max(0, Number(org.used_monthly_credits || 0));
+                                    const max = Math.max(0, Number(org.max_monthly_credits || 0));
+                                    const remaining = Math.max(0, max - used);
+                                    const summary = getCreditSummary(org);
+                                    const owner = accounts?.find(acc => acc.role === 'owner' && acc.organization_id === org.id);
+                                    const percent = max > 0 ? Math.min(100, Math.round((used / max) * 100)) : 0;
+                                    const inputValue = creditTopUps[org.id] ?? '';
+                                    const selectedPlan = planSelections[org.id] ?? (org.plan === 'pro' || org.plan === 'enterprise' ? org.plan : 'basic');
+
+                                    return (
+                                        <div key={org.id} className="bg-card/60 backdrop-blur-xl border border-border rounded-[2rem] p-6 shadow-2xl shadow-black/20">
+                                            <div className="flex items-start justify-between gap-4 mb-5">
+                                                <div>
+                                                    <div className="flex items-center gap-3 flex-wrap">
+                                                        <h3 className="text-2xl font-black tracking-tight">{org.name}</h3>
+                                                        <Badge className={cn(
+                                                            "border-none text-[9px] font-black uppercase tracking-widest px-3 py-1",
+                                                            summary.tone === 'danger' && "bg-red-500/10 text-red-400",
+                                                            summary.tone === 'warning' && "bg-amber-500/10 text-amber-400",
+                                                            summary.tone === 'healthy' && "bg-green-500/10 text-green-400"
+                                                        )}>
+                                                            {summary.label}
+                                                        </Badge>
+                                                        <Badge className="bg-primary/10 text-primary border-none text-[9px] font-black uppercase tracking-widest px-3 py-1">
+                                                            {org.plan || 'basic'}
+                                                        </Badge>
+                                                    </div>
+                                                    <p className="text-xs text-muted font-mono mt-2">
+                                                        {owner?.full_name || 'No owner found'}{owner?.email ? ` • ${owner.email}` : ''}
+                                                    </p>
+                                                </div>
+
+                                                <div className="text-right">
+                                                    <div className="text-4xl font-black tracking-tight">{used}</div>
+                                                    <div className="text-[10px] uppercase tracking-[0.35em] text-muted font-black">
+                                                        / {max || 0} credits
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div className="space-y-3">
+                                                <div className="h-3 rounded-full bg-white/5 overflow-hidden">
+                                                    <div
+                                                        className={cn(
+                                                            "h-full rounded-full transition-all duration-500",
+                                                            summary.tone === 'danger' && "bg-red-500",
+                                                            summary.tone === 'warning' && "bg-amber-500",
+                                                            summary.tone === 'healthy' && "bg-primary"
+                                                        )}
+                                                        style={{ width: `${percent}%` }}
+                                                    />
+                                                </div>
+                                                <div className="flex items-center justify-between text-xs font-black uppercase tracking-widest text-muted">
+                                                    <span>{percent}% utilized</span>
+                                                    <span>{remaining} credits remaining</span>
+                                                </div>
+                                            </div>
+
+                                            <div className="mt-6 grid grid-cols-1 md:grid-cols-[1fr_auto] gap-3 items-end">
+                                                <div className="space-y-2">
+                                                    <label className="text-[10px] font-black uppercase tracking-widest text-muted ml-1">
+                                                        Plan Access
+                                                    </label>
+                                                    <select
+                                                        value={selectedPlan}
+                                                        onChange={(e) => setPlanSelections(prev => ({ ...prev, [org.id]: e.target.value as 'basic' | 'pro' | 'enterprise' }))}
+                                                        className="w-full bg-background/70 border border-primary/20 rounded-2xl py-3 px-4 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all font-bold"
+                                                    >
+                                                        <option value="basic">Basic</option>
+                                                        <option value="pro">Pro</option>
+                                                        <option value="enterprise">Enterprise</option>
+                                                    </select>
+                                                    <p className="text-[10px] font-bold text-muted ml-1">
+                                                        Choose the plan the tenant should receive access to.
+                                                    </p>
+                                                </div>
+
+                                                <Button
+                                                    onClick={() => changePlan({ organizationId: org.id, plan: selectedPlan })}
+                                                    disabled={isChangingPlan}
+                                                    className="h-12 px-6 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-black font-black uppercase tracking-widest shadow-lg shadow-emerald-500/20"
+                                                >
+                                                    {isChangingPlan ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <ShieldCheck className="w-4 h-4 mr-2" />}
+                                                    Apply Plan
+                                                </Button>
+                                            </div>
+
+                                            <div className="mt-6 grid grid-cols-1 md:grid-cols-[1fr_auto] gap-3 items-end">
+                                                <div className="space-y-2">
+                                                    <label className="text-[10px] font-black uppercase tracking-widest text-muted ml-1">
+                                                        Add Credits
+                                                    </label>
+                                                    <input
+                                                        type="number"
+                                                        min="1"
+                                                        value={inputValue}
+                                                        onChange={(e) => setCreditTopUps(prev => ({ ...prev, [org.id]: e.target.value }))}
+                                                        placeholder="Enter credits to add"
+                                                        className="w-full bg-background/70 border border-primary/20 rounded-2xl py-3 px-4 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all font-bold placeholder:text-muted/30"
+                                                    />
+                                                </div>
+
+                                                <Button
+                                                    onClick={() => {
+                                                        const amount = Number(creditTopUps[org.id] || 0);
+                                                        if (!amount || amount <= 0) {
+                                                            showToast('Enter a valid credit amount.', 'error');
+                                                            return;
+                                                        }
+                                                        topUpCredits({ organizationId: org.id, amount });
+                                                    }}
+                                                    disabled={isTopingUpCredits}
+                                                    className="h-12 px-6 rounded-2xl bg-primary text-black font-black uppercase tracking-widest shadow-lg shadow-primary/20"
+                                                >
+                                                    {isTopingUpCredits ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <ShieldCheck className="w-4 h-4 mr-2" />}
+                                                    Top Up
+                                                </Button>
+                                            </div>
+
+                                            <div className={cn(
+                                                "mt-5 rounded-2xl border px-4 py-3 text-xs font-bold",
+                                                summary.tone === 'danger' && "border-red-500/20 bg-red-500/5 text-red-300",
+                                                summary.tone === 'warning' && "border-amber-500/20 bg-amber-500/5 text-amber-300",
+                                                summary.tone === 'healthy' && "border-green-500/20 bg-green-500/5 text-green-300"
+                                            )}>
+                                                {summary.tone === 'danger'
+                                                    ? 'This organization has reached its limit. Add credits to keep the chatbot running.'
+                                                    : summary.tone === 'warning'
+                                                        ? 'This organization is close to its limit. Top up before the chatbot stops.'
+                                                        : 'Usage is healthy for this billing cycle.'}
+                                            </div>
+
+                                            <div className="mt-4 grid grid-cols-2 gap-3 text-xs font-bold text-muted">
+                                                <div className="bg-white/5 rounded-2xl px-4 py-3">
+                                                    Reset: {org.credit_reset_at ? new Date(org.credit_reset_at).toLocaleDateString() : 'Not set'}
+                                                </div>
+                                                <div className="bg-white/5 rounded-2xl px-4 py-3">
+                                                    Remaining: {remaining}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </div>
+                )}
 
                 {/* ═══════════════════ APPLICATIONS TAB ═══════════════════ */}
                 {mainTab === 'applications' && (

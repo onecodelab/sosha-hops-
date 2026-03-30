@@ -155,35 +155,26 @@ serve(async (req) => {
         .single();
 
       if (orderErr || !orderData) {
-        if (orderErr || !orderData) {
-          await logVerificationAttempt(supabase, {
-            order_id,
-            transaction_id,
-            bank,
-            status: 'failed',
-            response_data: { error: 'Order not found' }
-          });
-          return new Response(JSON.stringify({ error: "Order not found" }), { status: 404, headers: corsHeaders });
-        }
-
-        // SACRED RULE: Tenant Isolation
-        if (orderData.organization_id !== organizationId) {
-          return new Response(JSON.stringify({ error: "Tenant isolation violation" }), { status: 403, headers: corsHeaders });
-        }
-
-        order = orderData;
-        if (!expectedAmount) {
-          expectedAmount = order.total_amount - (order.amount_paid || 0);
-        }
-
-        return new Response(JSON.stringify({
-          success: false,
-          message: "Order not found.",
-          action_taken: "Failed - Order Missing"
-        }), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 200
+        await logVerificationAttempt(supabase, {
+          order_id,
+          transaction_id,
+          bank,
+          status: 'failed',
+          response_data: { error: 'Order not found' }
         });
+        return new Response(JSON.stringify({ error: "Order not found" }), { status: 404, headers: corsHeaders });
+      }
+
+      if (orderData.organization_id !== organizationId) {
+        await logVerificationAttempt(supabase, {
+          organization_id: organizationId || undefined,
+          order_id,
+          transaction_id,
+          bank,
+          status: 'blocked_tenant_mismatch',
+          response_data: { order_organization_id: orderData.organization_id }
+        });
+        return new Response(JSON.stringify({ error: "Tenant isolation violation" }), { status: 403, headers: corsHeaders });
       }
 
       order = orderData;

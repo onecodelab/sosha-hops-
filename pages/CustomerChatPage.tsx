@@ -12,6 +12,9 @@ import ThemeToggle from '../components/ThemeToggle';
 import { LanguageSwitcher } from '../components/LanguageSwitcher';
 import { useLanguage } from '../contexts/LanguageContext';
 
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
 /* ─── TYPES ─── */
 interface ChatMessage {
     id: string;
@@ -502,6 +505,7 @@ const CustomerChatPage: React.FC = () => {
 
     const { tableId } = useParams<{ tableId: string }>();
     const [searchParams] = useSearchParams();
+    const branchToken = searchParams.get('token') || '';
     const [activeOrgId, setActiveOrgId] = useState('');
 
     const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -524,11 +528,46 @@ const CustomerChatPage: React.FC = () => {
 
     const sessionId = tableId ? getSessionId(tableId) : '';
 
+    const getEdgeAuthToken = useCallback(async () => {
+        if (branchToken) return branchToken;
+        const { data: { session } } = await supabase.auth.getSession();
+        return session?.access_token || '';
+    }, [branchToken]);
+
+    const invokeSecureFunction = useCallback(async (functionName: string, body: Record<string, unknown>, signal?: AbortSignal) => {
+        if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+            throw new Error('Supabase environment is not configured.');
+        }
+
+        const authToken = await getEdgeAuthToken();
+        if (!authToken) {
+            throw new Error('This chat link is missing a valid secure token.');
+        }
+
+        const response = await fetch(`${SUPABASE_URL}/functions/v1/${functionName}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'apikey': SUPABASE_ANON_KEY,
+                'Authorization': `Bearer ${authToken}`,
+            },
+            body: JSON.stringify(body),
+            signal,
+        });
+
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok || payload?.error) {
+            throw new Error(payload?.detail || payload?.error || `Failed to call ${functionName}.`);
+        }
+
+        return payload;
+    }, [getEdgeAuthToken]);
+
     // QR Token Verification
     useEffect(() => {
         const urlToken = searchParams.get('token');
         if (!urlToken) {
-            // No token in URL — allow access (backwards-compatible for Test Chatbot)
+            // No token in URL - allow access (backwards-compatible for Test Chatbot)
             setIsVerified(true);
             return;
         }
@@ -585,49 +624,47 @@ const CustomerChatPage: React.FC = () => {
         }
     }, [messages, isTyping]);
 
-    // Load history on mount
+    // The public chat route now relies on guarded edge functions rather than direct anon table reads.
+    // We keep this loading flag so the initial greeting waits for secure branch context.
     useEffect(() => {
-        const load = async () => {
-            if (!sessionId) {
+        if (!sessionId) {
+            setIsHistoryLoading(false);
+        }
+    }, [sessionId]);
+
+    useEffect(() => {
+        const loadBranchContext = async () => {
+            if (!branchId) {
                 setIsHistoryLoading(false);
                 return;
             }
-            try {
-                const { data, error } = await supabase
-                    .from('customer_chats')
-                    .select('*')
-                    .eq('session_id', sessionId)
-                    .order('created_at', { ascending: true })
-                    .limit(50);
 
-                if (!error && data && data.length > 0) {
-                    const mapped: ChatMessage[] = data
-                        .filter(m => m.role !== 'system')
-                        .map(m => ({
-                            id: m.id,
-                            role: m.role as any,
-                            content: m.content,
-                            timestamp: new Date(m.created_at),
-                            metadata: m.metadata,
-                            attachments: m.metadata?.attachments
-                        }));
-                    setMessages(mapped);
-                    setHasInteracted(true);
+            setIsHistoryLoading(true);
+            try {
+                const data = await invokeSecureFunction('get-branch-info', { branch_id: branchId });
+                if (data?.branch?.name) {
+                    setBranchName(data.branch.name);
                 }
-            } catch (e) {
-                console.error('History load failed:', e);
+                if (data?.organization?.name) {
+                    setOrgName(data.organization.name);
+                }
+                if (data?.organization?.id) {
+                    setActiveOrgId(data.organization.id);
+                }
+            } catch (e: any) {
+                console.error('Branch context load failed:', e);
+                showToast(e.message || 'Unable to open this chat link.', 'error');
             } finally {
                 setIsHistoryLoading(false);
             }
         };
-        load();
-    }, [sessionId]);
+        loadBranchContext();
+    }, [branchId, invokeSecureFunction]);
 
     // Load table info, then branch + org names for display
     useEffect(() => {
         const loadTableInfo = async () => {
             if (!tableId) return;
-            // 1. Get table details (branch_id, table_number)
             const { data: tableData } = await supabase
                 .from('tables')
                 .select('id, table_number, branch_id, organization_id, qr_token')
@@ -638,7 +675,6 @@ const CustomerChatPage: React.FC = () => {
             setBranchId(tableData.branch_id || '');
             if (tableData.organization_id) setActiveOrgId(tableData.organization_id);
 
-            // 2. Get branch name
             if (tableData.branch_id) {
                 const { data: branchData } = await supabase
                     .from('branches')
@@ -662,20 +698,6 @@ const CustomerChatPage: React.FC = () => {
             setDynamicPrompts(QUICK_PROMPTS.map(p => ({ label: p.label, prompt: p.prompt })));
         }
     }, [t, messages.length]);
-
-    // Load organization name
-    useEffect(() => {
-        const loadOrg = async () => {
-            if (!activeOrgId) return;
-            const { data } = await supabase
-                .from('organizations')
-                .select('name')
-                .eq('id', activeOrgId)
-                .maybeSingle();
-            if (data) setOrgName(data.name);
-        };
-        loadOrg();
-    }, [activeOrgId]);
 
     // Send message
     const handleSend = useCallback(async (overrideMessage?: string) => {
@@ -701,14 +723,17 @@ const CustomerChatPage: React.FC = () => {
         const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout
 
         try {
-            const { data, error } = await supabase.functions.invoke('customer-intelligence', {
-                body: {
-                    message: msg,
-                    session_id: sessionId,
-                    table_id: tableId,
-                    customer_id: localStorage.getItem(`baro_customer_${activeOrgId}`)
-                }
-            });
+            const data = await invokeSecureFunction('customer-intelligence', {
+                message: msg,
+                session_id: sessionId,
+                table_id: tableId,
+                table_number: tableNumber || 'Guest',
+                organization_id: activeOrgId || undefined,
+                organization_name: orgName,
+                branch_id: branchId,
+                branch_name: branchName,
+                is_verified: isVerified
+            }, controller.signal);
 
             if (data?.metadata?.customer_id) {
                 localStorage.setItem(`baro_customer_${activeOrgId}`, data.metadata.customer_id);
@@ -716,16 +741,11 @@ const CustomerChatPage: React.FC = () => {
 
             clearTimeout(timeoutId);
 
-            if (error) throw error;
-
-            const responseText = data?.text || data?.response || '⚠️ No response. Please try again.';
-            
-            // Parse attachments from API response format
+            const responseText = data?.text || '⚠️ No response. Please try again.';
             const rawItems = data?.metadata?.attachments?.items || data?.metadata?.attachments?.data;
             const parsedAttachments = rawItems && Array.isArray(rawItems) && rawItems.length > 0
                 ? { type: 'menu' as const, data: rawItems }
                 : undefined;
-
             const assistantMsg: ChatMessage = {
                 id: crypto.randomUUID(),
                 role: 'assistant',
@@ -771,13 +791,13 @@ const CustomerChatPage: React.FC = () => {
         } finally {
             setIsTyping(false);
         }
-    }, [inputValue, sessionId, tableId, topItems.length]);
+    }, [inputValue, sessionId, tableId, tableNumber, activeOrgId, branchId, topItems.length, branchName, orgName, invokeSecureFunction, isVerified]);
 
     // Proactive Greeting
     useEffect(() => {
         const sendGreeting = async () => {
             // Wait for core context to be ready
-            if (!isHistoryLoading && sessionId && messages.length === 0 && !isTyping && !hasInitialGreetingSent.current && tableId) {
+            if (!isHistoryLoading && sessionId && messages.length === 0 && !isTyping && !hasInitialGreetingSent.current && tableId && isVerified) {
                 hasInitialGreetingSent.current = true;
                 try {
                     await handleSend('init_chat');
@@ -788,7 +808,7 @@ const CustomerChatPage: React.FC = () => {
             }
         };
         sendGreeting();
-    }, [sessionId, messages.length, isTyping, handleSend, isHistoryLoading, tableId]);
+    }, [sessionId, messages.length, isTyping, handleSend, isHistoryLoading, tableId, isVerified]);
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
         if (e.key === 'Enter' && !e.shiftKey) {
