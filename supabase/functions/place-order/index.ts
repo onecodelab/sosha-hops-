@@ -41,6 +41,15 @@ serve(async (req) => {
         // If order_details is provided (Chatbot pattern), destruct from it
         if (order_details) {
             table_id = table_id || order_details.table_id;
+            if (!order_details.table_number && table_id) {
+                const { data: tableData } = await supabase
+                    .from('tables')
+                    .select('table_number')
+                    .eq('id', table_id)
+                    .maybeSingle();
+
+                order_details.table_number = tableData?.table_number || order_details.table_number;
+            }
             branch_id = branch_id || order_details.branch_id;
             telegram_id = telegram_id || order_details.telegram_id;
             source = source || order_details.source;
@@ -56,6 +65,7 @@ serve(async (req) => {
             p_items: items,
             p_order_details: {
                 table_id,
+                table_number: order_details?.table_number,
                 telegram_id,
                 source: source || 'chatbot'
             },

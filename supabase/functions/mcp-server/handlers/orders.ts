@@ -1,5 +1,5 @@
 ﻿import type { JsonRecord, ToolContext } from "../types.ts";
-import { getArray, getNumber, getString, normalizeTableNumber, requireBranchId, resolveBranchId, resolveOrderItemsByNameOrId, resolveTableId } from "../utils.ts";
+import { getArray, getNumber, getString, normalizeTableNumber, requireBranchId, resolveBranchId, resolveOrderItemsByNameOrId, resolveTableRecord } from "../utils.ts";
 
 export async function placeOrder(context: ToolContext) {
     const items = getArray<JsonRecord>(context.params.items);
@@ -9,8 +9,14 @@ export async function placeOrder(context: ToolContext) {
     const branchId = requireBranchId(context);
 
     let tableId = null;
+    let tableLabel = tableNumber;
     if (tableNumber) {
-        tableId = await resolveTableId(context.supabase, branchId, tableNumber, context.organizationId);
+        const tableRecord = await resolveTableRecord(context.supabase, branchId, tableNumber, context.organizationId);
+        if (!tableRecord) {
+            throw new Error(`Could not find table number "${tableNumber}" in this branch.`);
+        }
+        tableId = tableRecord.id;
+        tableLabel = tableRecord.table_number || tableNumber;
     }
 
     const resolvedItems = await resolveOrderItemsByNameOrId(context, items);
@@ -44,6 +50,7 @@ export async function placeOrder(context: ToolContext) {
         p_items: atomicItems,
         p_order_details: {
             table_id: tableId,
+            table_number: tableLabel,
             source: 'chatbot',
             customer_phone: customerPhone,
             session_id: sessionId,
