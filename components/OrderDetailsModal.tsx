@@ -49,6 +49,9 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ isOpen, on
         staleTime: 1000 * 60 * 30
     });
     const locationName = branchData?.name || 'Main Branch';
+    const operatorLabel = order?.source === 'chatbot' && !order?.waiter_id
+        ? 'Baro AI'
+        : order?.waiter?.full_name || profile?.full_name || user?.user_metadata?.full_name || 'Staff';
 
     // Fetch active bank settings for payment QR
     const { data: activeBanks = [] } = useQuery({
@@ -155,7 +158,7 @@ export const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({ isOpen, on
                     <div className="space-y-0.5 text-[10px] mb-2">
                         <p>Customer: <span className="font-bold uppercase">{customerName}</span></p>
                         <p>Invoice: <span className="font-bold">ORD-{order.order_number || order.id.slice(0, 8)}</span></p>
-                        <p>Operator: <span className="font-bold uppercase">{order.waiter?.full_name || profile?.full_name || user?.user_metadata?.full_name || 'Staff'}</span></p>
+                        <p>Operator: <span className="font-bold uppercase">{operatorLabel}</span></p>
                         <p>Table: <span className="font-bold">T-{order.table_number || 'N/A'}</span></p>
                     </div>
 

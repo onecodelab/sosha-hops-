@@ -65,7 +65,7 @@ export interface Order {
   order_number: string;
   table_id: string;
   table_number: string;
-  waiter_id: string;
+  waiter_id: string | null;
   branch_id: string;
   status: OrderStatus;
   source: OrderSource;
