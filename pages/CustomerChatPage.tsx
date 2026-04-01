@@ -904,7 +904,6 @@ const CustomerChatPage: React.FC = () => {
     const [inputValue, setInputValue] = useState('');
     const [isTyping, setIsTyping] = useState(false);
     const [categories, setCategories] = useState<string[]>([]);
-    const [isFetchingCategories, setIsFetchingCategories] = useState(false);
     const [hasInteracted, setHasInteracted] = useState(false);
     const [branchName, setBranchName] = useState('');
     const [branchId, setBranchId] = useState('');
@@ -1217,6 +1216,31 @@ const CustomerChatPage: React.FC = () => {
         loadTableInfo();
     }, [tableId]);
 
+    // Fetch menu categories for quick-reply chips
+    useEffect(() => {
+        const fetchCategories = async () => {
+            if (!activeOrgId) return;
+            try {
+                let query = supabase
+                    .from('view_menu_details')
+                    .select('category')
+                    .eq('organization_id', activeOrgId)
+                    .eq('is_available', true);
+                if (branchId) {
+                    query = query.eq('branch_id', branchId);
+                }
+                const { data } = await query;
+                if (data) {
+                    const unique = [...new Set(data.map((r: any) => r.category).filter(Boolean))] as string[];
+                    setCategories(unique);
+                }
+            } catch (e) {
+                console.warn('Category fetch failed:', e);
+            }
+        };
+        fetchCategories();
+    }, [activeOrgId, branchId]);
+
     // Initialize/Update dynamic prompts when language/defaults change
     useEffect(() => {
         if (dynamicPrompts.length === 0 || messages.length === 0) {
@@ -1389,7 +1413,7 @@ const CustomerChatPage: React.FC = () => {
                         </div>
                         <div className="min-w-0">
                             <h1 className="text-sm font-bold text-foreground leading-none truncate">
-                                {orgName || branchName || 'CADE'}
+                                {orgName || branchName || 'Baro'}
                             </h1>
                             <p className="text-[8px] sm:text-[10px] text-muted-foreground mt-1 font-mono uppercase tracking-[0.1em] sm:tracking-[0.2em] truncate">
                                 {branchName || 'AI Assistant'} {tableNumber && tableNumber !== 'T1' ? `• Table ${tableNumber}` : ''}
