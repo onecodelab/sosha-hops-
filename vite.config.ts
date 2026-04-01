@@ -14,6 +14,10 @@ export default defineConfig(() => {
       VitePWA({
         registerType: 'autoUpdate',
         includeAssets: ['baro-icon.png', 'pwa-192x192.png', 'pwa-512x512.png'],
+        workbox: {
+          // The customer chat bundle can exceed the default 2 MiB precache cap after production minification.
+          maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
+        },
         manifest: {
           name: 'Baro OS - Restaurant System',
           short_name: 'Baro OS',
