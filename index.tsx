@@ -4,14 +4,97 @@ import ReactDOM from 'react-dom/client';
 import App from './App';
 import './index.css';
 
+const purgeStaleBrowserState = async () => {
+  try {
+    if ('serviceWorker' in navigator) {
+      const registrations = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(registrations.map((registration) => registration.unregister()));
+    }
+  } catch (err) {
+    console.warn('Service worker cleanup skipped:', err);
+  }
+
+  try {
+    if ('caches' in window) {
+      const cacheKeys = await caches.keys();
+      await Promise.all(cacheKeys.map((key) => caches.delete(key)));
+    }
+  } catch (err) {
+    console.warn('Cache cleanup skipped:', err);
+  }
+};
+
 const rootElement = document.getElementById('root');
 if (!rootElement) {
   throw new Error("Could not find root element to mount to");
 }
 
+class AppErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { hasError: boolean }
+> {
+  state = { hasError: false };
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-background text-foreground p-6">
+          <div className="max-w-xl w-full rounded-3xl border border-border bg-card p-8 shadow-2xl">
+            <h1 className="text-2xl font-black mb-3">Baro is reloading</h1>
+            <p className="text-sm text-muted-foreground mb-6">
+              A cached app chunk failed to load. Refreshing the app will pull the latest version and clear old browser cache.
+            </p>
+            <button
+              onClick={async () => {
+                await purgeStaleBrowserState();
+                window.location.reload();
+              }}
+              className="px-5 py-3 rounded-2xl bg-[#84CC16] text-black font-bold"
+            >
+              Reload App
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
 const root = ReactDOM.createRoot(rootElement);
-root.render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>
-);
+
+const bootstrap = async () => {
+  await purgeStaleBrowserState();
+  root.render(
+    <React.StrictMode>
+      <AppErrorBoundary>
+        <App />
+      </AppErrorBoundary>
+    </React.StrictMode>
+  );
+};
+
+bootstrap().catch((err) => {
+  console.error('App bootstrap failed:', err);
+  root.render(
+    <div className="min-h-screen flex items-center justify-center bg-background text-foreground p-6">
+      <div className="max-w-xl w-full rounded-3xl border border-border bg-card p-8 shadow-2xl">
+        <h1 className="text-2xl font-black mb-3">Baro could not start</h1>
+        <p className="text-sm text-muted-foreground mb-6">
+          The browser cache looks stale. Please hard refresh once so the latest deployment can load.
+        </p>
+        <button
+          onClick={() => window.location.reload()}
+          className="px-5 py-3 rounded-2xl bg-[#84CC16] text-black font-bold"
+        >
+          Reload App
+        </button>
+      </div>
+    </div>
+  );
+});
