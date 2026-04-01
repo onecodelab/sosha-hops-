@@ -140,6 +140,33 @@ const TableStatus: React.FC = () => {
       };
    }, [refetch, activeBranchId]);
 
+   useEffect(() => {
+      if (!activeBranchId || !profile?.id) return;
+
+      const cleanupOrphanedOrders = async () => {
+         try {
+            const { data, error } = await supabase.functions.invoke('manage-floor', {
+               body: {
+                  action: 'cleanup_orphaned_orders',
+                  branch_id: activeBranchId
+               }
+            });
+
+            if (error) throw error;
+            if (data?.error) throw new Error(data.error);
+
+            if (data?.cleaned > 0) {
+               showToast(data.message, 'success');
+               refetch();
+            }
+         } catch (err) {
+            console.warn('Orphaned order cleanup skipped:', err);
+         }
+      };
+
+      cleanupOrphanedOrders();
+   }, [activeBranchId, profile?.id, refetch]);
+
    const stats = useMemo(() => {
       if (!tables) return { total: 0, available: 0, occupied: 0, dirty: 0, occupancy: 0 };
       const counts = tables.reduce((acc, t) => { acc[t.status] = (acc[t.status] || 0) + 1; return acc; }, {} as any);
@@ -178,6 +205,14 @@ const TableStatus: React.FC = () => {
       if (!confirmed) return;
 
       try {
+         // Session Health Check
+         const { data: { session } } = await supabase.auth.getSession();
+         if (!session) {
+            showToast("Session expired. Please log in again.", "error");
+            navigate('/login');
+            return;
+         }
+
          const { data, error } = await supabase.functions.invoke('manage-floor', {
             body: {
                action: 'cancel_and_release_table',
@@ -185,12 +220,20 @@ const TableStatus: React.FC = () => {
             }
          });
 
-         if (error) throw error;
-         if (data?.error) throw new Error(data.error);
+         if (error) {
+            console.error("[TableStatus] Edge Function Error:", error);
+            throw error;
+         }
+         
+         if (data?.error) {
+            console.error("[TableStatus] Edge Function Logic Error:", data);
+            throw new Error(data.details || data.error);
+         }
 
          showToast(data?.message || `Table #${table.table_number} released`, 'success');
          refetch();
       } catch (err: any) {
+         console.error("[TableStatus] handleCancelAndRelease Exception:", err);
          showToast(err.message || 'Failed to cancel and release table', 'error');
       }
    }, [isChatbotReleaseCandidate, refetch]);
@@ -335,13 +378,32 @@ const TableStatus: React.FC = () => {
       }
    };
 
-   const handleDeleteTable = async (id?: string) => {
-      const targetId = id || editingTableId;
+   const handleDeleteTable = async (tableOrId?: any) => {
+      const targetId = typeof tableOrId === 'string' ? tableOrId : (tableOrId?.id || editingTableId);
+      const targetTable = typeof tableOrId === 'string' ? tables?.find(t => t.id === tableOrId) : tableOrId;
       if (!targetId) return;
       if (!confirm('Are you sure you want to delete this table?')) return;
 
       setIsAddingTable(true);
       try {
+         if (targetTable?.status === 'occupied') {
+            const canCancelChatbotOrder = targetTable.current_order?.source === 'chatbot' || !targetTable.current_order?.waiter_id;
+
+            if (canCancelChatbotOrder) {
+               const { data, error } = await supabase.functions.invoke('manage-floor', {
+                  body: {
+                     action: 'cancel_and_release_table',
+                     table_id: targetId
+                  }
+               });
+
+               if (error) throw error;
+               if (data?.error) throw new Error(data.error);
+            } else {
+               throw new Error('Release the active staff order before deleting this table.');
+            }
+         }
+
          const { error } = await supabase.from('tables').delete().eq('id', targetId).eq('organization_id', profile?.organization_id);
          if (error) throw error;
 
@@ -588,7 +650,7 @@ const TableStatus: React.FC = () => {
                               isAnalyticsMode={isAnalyticsMode}
                               isSetupMode={isSetupMode}
                               onEdit={() => openEditModal(table)}
-                              onDelete={() => handleDeleteTable(table.id)}
+                              onDelete={() => handleDeleteTable(table)}
                               metric={metric}
                               onViewHistory={handleViewHistory}
                            />

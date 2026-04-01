@@ -33,7 +33,18 @@ export const orderService = {
 
         const { data, error } = await query;
         if (error) throw error;
-        return enrichOrdersWithProfiles((data || []) as Order[]);
+
+        const { data: branchTables, error: tablesError } = await supabase
+            .from('tables')
+            .select('id')
+            .eq('branch_id', branchId);
+
+        if (tablesError) throw tablesError;
+
+        const validTableIds = new Set((branchTables || []).map((table) => table.id));
+        const filteredOrders = (data || []).filter((order: any) => !order.table_id || validTableIds.has(order.table_id));
+
+        return enrichOrdersWithProfiles(filteredOrders as Order[]);
     },
 
     async claimChatbotOrder(orderId: string, waiterId: string, tableId: string): Promise<void> {

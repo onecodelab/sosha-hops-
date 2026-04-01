@@ -17,7 +17,6 @@ import {
 } from 'lucide-react';
 import { OrderCard } from '../components/OrderCard';
 import { orderService } from '../services/orderService';
-import { enrichOrdersWithProfiles } from '../utils/orderProfileEnrichment';
 
 const KitchenDashboard: React.FC = () => {
    const { activeBranchId } = useBranch();
@@ -37,28 +36,8 @@ const KitchenDashboard: React.FC = () => {
             return;
          }
 
-         let query = supabase
-            .from('orders')
-            .select(`
-               *,
-               order_items (
-                  id,
-                  quantity,
-                  price,
-                  special_instructions,
-                  created_at,
-                  menu_item:menu!menu_item_id (name)
-               )
-            `)
-            .eq('branch_id', activeBranchId)
-            .neq('status', 'paid')
-            .neq('status', 'closed')
-            .neq('status', 'cancelled');
-
-         const { data, error: fetchErr } = await query.order('created_at', { ascending: true });
-
-         if (fetchErr) throw fetchErr;
-         setOrders(await enrichOrdersWithProfiles((data || []) as Order[]));
+         const data = await orderService.fetchActiveOrders(activeBranchId);
+         setOrders(data);
          setError(null);
       } catch (err: any) {
          console.error("Kitchen fetch error:", err);

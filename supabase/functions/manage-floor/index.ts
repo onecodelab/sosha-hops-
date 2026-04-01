@@ -30,8 +30,15 @@ serve(async (req) => {
             return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: corsHeaders });
         }
 
-        const { action, branch_id, table_id } = await req.json();
-        // action: 'list_branches', 'view_map', 'clear_table', 'cancel_and_release_table'
+        let body: any = {};
+        try {
+            body = (await req.json()) || {};
+        } catch (e: any) {
+            console.error("[ManageFloor] Bad JSON body:", e.message);
+        }
+
+        const { action, branch_id, table_id } = body;
+        console.log(`[ManageFloor] Action: ${action}, Table: ${table_id}`);
 
         if (!action) {
             return new Response(JSON.stringify({ error: "Missing required field: action" }), { status: 400, headers: corsHeaders });
@@ -220,7 +227,80 @@ serve(async (req) => {
             });
         }
 
-        return new Response(JSON.stringify({ error: "Invalid Action" }), { status: 400, headers: corsHeaders });
+        if (action === 'cleanup_orphaned_orders') {
+            const now = new Date().toISOString();
+
+            let ordersQuery = supabase
+                .from('orders')
+                .select('id, table_id, table_number, branch_id, source, waiter_id, status, closed_at')
+                .eq('organization_id', organizationId)
+                .is('closed_at', null)
+                .neq('status', 'cancelled')
+                .neq('status', 'closed');
+
+            if (branch_id) {
+                ordersQuery = ordersQuery.eq('branch_id', branch_id);
+            }
+
+            const { data: activeOrders, error: activeOrdersErr } = await ordersQuery;
+            if (activeOrdersErr) throw activeOrdersErr;
+
+            const orphanedIds: string[] = [];
+
+            for (const order of activeOrders || []) {
+                if (!order.table_id) continue;
+
+                const { data: linkedTable, error: linkedTableErr } = await supabase
+                    .from('tables')
+                    .select('id')
+                    .eq('id', order.table_id)
+                    .maybeSingle();
+
+                if (linkedTableErr) throw linkedTableErr;
+
+                if (!linkedTable && (order.source === 'chatbot' || !order.waiter_id)) {
+                    orphanedIds.push(order.id);
+                }
+            }
+
+            if (orphanedIds.length > 0) {
+                const { error: cancelErr } = await supabase
+                    .from('orders')
+                    .update({
+                        status: 'cancelled',
+                        payment_status: 'failed',
+                        closed_at: now,
+                        completed_at: now,
+                        last_updated: now,
+                        closed_by_id: user.id
+                    })
+                    .in('id', orphanedIds);
+
+                if (cancelErr) throw cancelErr;
+            }
+
+            return new Response(JSON.stringify({
+                success: true,
+                cleaned: orphanedIds.length,
+                message: orphanedIds.length > 0
+                    ? `${orphanedIds.length} orphaned chatbot orders were cancelled.`
+                    : 'No orphaned chatbot orders found.'
+            }), {
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                status: 200
+            });
+        }
+
+        console.warn(`[ManageFloor] Unsupported action received: '${action}'`);
+        return new Response(JSON.stringify({ 
+            error: "Invalid Action",
+            received: action,
+            details: `Action '${action}' is not recognized. Supported actions: list_branches, view_map, clear_table, cancel_and_release_table, cleanup_orphaned_orders`,
+            suggestions: ["Check for typos in action name", "Ensure the Edge Function is deployed"]
+        }), { 
+            status: 400, 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        });
 
     } catch (err: any) {
         return new Response(JSON.stringify({ error: err.message }), {
