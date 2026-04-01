@@ -31,7 +31,7 @@ serve(async (req) => {
         }
 
         const { action, branch_id, table_id } = await req.json();
-        // action: 'view_map', 'close_all_tables', 'clear_table'
+        // action: 'list_branches', 'view_map', 'clear_table', 'cancel_and_release_table'
 
         if (!action) {
             return new Response(JSON.stringify({ error: "Missing required field: action" }), { status: 400, headers: corsHeaders });
@@ -106,6 +106,115 @@ serve(async (req) => {
             await supabase.from('tables').update({ status: 'available', current_order_id: null, current_session_id: null }).eq('id', table_id);
 
             return new Response(JSON.stringify({ success: true, message: `Table cleared.` }), {
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                status: 200
+            });
+        }
+
+        if (action === 'cancel_and_release_table') {
+            if (!table_id) throw new Error("Table ID required");
+
+            const { data: table, error: tableErr } = await supabase
+                .from('tables')
+                .select('id, table_number, organization_id, current_order_id, current_session_id, status')
+                .eq('id', table_id)
+                .single();
+
+            if (tableErr) throw tableErr;
+            if (table?.organization_id !== organizationId) throw new Error("Unauthorized table access");
+
+            let activeOrder: any = null;
+            if (table.current_order_id) {
+                const { data: currentOrder, error: orderErr } = await supabase
+                    .from('orders')
+                    .select('id, status, source, waiter_id, closed_at, table_id, order_number')
+                    .eq('id', table.current_order_id)
+                    .maybeSingle();
+                if (orderErr) throw orderErr;
+                activeOrder = currentOrder;
+            }
+
+            if (!activeOrder) {
+                const { data: latestOrder, error: latestErr } = await supabase
+                    .from('orders')
+                    .select('id, status, source, waiter_id, closed_at, table_id, order_number')
+                    .eq('table_id', table_id)
+                    .is('closed_at', null)
+                    .neq('status', 'cancelled')
+                    .order('created_at', { ascending: false })
+                    .limit(1)
+                    .maybeSingle();
+                if (latestErr) throw latestErr;
+                activeOrder = latestOrder;
+            }
+
+            if (!activeOrder) {
+                await supabase
+                    .from('table_sessions')
+                    .update({ is_active: false, closed_at: new Date().toISOString() })
+                    .eq('table_id', table_id)
+                    .eq('is_active', true);
+
+                await supabase
+                    .from('tables')
+                    .update({ status: 'available', current_order_id: null, current_session_id: null })
+                    .eq('id', table_id);
+
+                return new Response(JSON.stringify({
+                    success: true,
+                    message: `Table ${table.table_number} released.`
+                }), {
+                    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                    status: 200
+                });
+            }
+
+            const isChatbotOwned = activeOrder.source === 'chatbot' || !activeOrder.waiter_id;
+            if (!isChatbotOwned) {
+                return new Response(JSON.stringify({
+                    error: "Only chatbot-owned or unassigned orders can be cancelled from this action."
+                }), {
+                    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                    status: 409
+                });
+            }
+
+            const now = new Date().toISOString();
+
+            await supabase
+                .from('orders')
+                .update({
+                    status: 'cancelled',
+                    payment_status: 'failed',
+                    closed_at: now,
+                    completed_at: now,
+                    last_updated: now,
+                    closed_by_id: user.id
+                })
+                .eq('id', activeOrder.id);
+
+            await supabase
+                .from('table_sessions')
+                .update({ is_active: false, closed_at: now })
+                .eq('table_id', table_id)
+                .eq('is_active', true);
+
+            await supabase
+                .from('tables')
+                .update({
+                    status: 'available',
+                    current_order_id: null,
+                    current_session_id: null,
+                    last_updated: now
+                })
+                .eq('id', table_id);
+
+            return new Response(JSON.stringify({
+                success: true,
+                message: `Order cancelled and table ${table.table_number} released.`,
+                order_id: activeOrder.id,
+                table_number: table.table_number
+            }), {
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' },
                 status: 200
             });

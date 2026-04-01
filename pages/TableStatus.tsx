@@ -71,7 +71,7 @@ const TableStatus: React.FC = () => {
         queryFn: async () => {
           let selectString = `
             *,
-            current_order:orders!current_order_id(status, payment_status),
+            current_order:orders!current_order_id(status, payment_status, source, waiter_id, order_number),
             sessions:table_sessions(id, seated_at, is_active)
           `;
 
@@ -85,7 +85,7 @@ const TableStatus: React.FC = () => {
           if (error && (error.message.includes('qr_token') || error.message.includes('pos_x'))) {
             selectString = `
               id, table_number, capacity, shape, status, branch_id, organization_id, zone, capacity_min, capacity_max,
-              current_order:orders!current_order_id(status, payment_status),
+              current_order:orders!current_order_id(status, payment_status, source, waiter_id, order_number),
               sessions:table_sessions(id, seated_at, is_active)
             `;
             const { data: retryData, error: retryError } = await supabase
@@ -161,6 +161,40 @@ const TableStatus: React.FC = () => {
 
    const generateToken = () => crypto.randomUUID().replace(/-/g, '').slice(0, 16);
 
+   const isChatbotReleaseCandidate = useCallback((table: any) => {
+      return table?.status === 'occupied' && (table?.current_order?.source === 'chatbot' || !table?.current_order?.waiter_id);
+   }, []);
+
+   const handleCancelAndRelease = useCallback(async (table: any) => {
+      if (!table?.id) return;
+      if (!isChatbotReleaseCandidate(table)) {
+         showToast("This order is not eligible for chatbot release", "warning");
+         return;
+      }
+
+      const confirmed = window.confirm(
+         `Cancel the chatbot order on table #${table.table_number} and release the table?`
+      );
+      if (!confirmed) return;
+
+      try {
+         const { data, error } = await supabase.functions.invoke('manage-floor', {
+            body: {
+               action: 'cancel_and_release_table',
+               table_id: table.id
+            }
+         });
+
+         if (error) throw error;
+         if (data?.error) throw new Error(data.error);
+
+         showToast(data?.message || `Table #${table.table_number} released`, 'success');
+         refetch();
+      } catch (err: any) {
+         showToast(err.message || 'Failed to cancel and release table', 'error');
+      }
+   }, [isChatbotReleaseCandidate, refetch]);
+
    const handleQuickOrder = useCallback((table: any) => {
       // 1. Setup Mode Behavior
       if (isSetupMode) {
@@ -170,6 +204,10 @@ const TableStatus: React.FC = () => {
 
       // 2. Already Occupied Check
       if (table.status !== 'available') {
+         if (isChatbotReleaseCandidate(table)) {
+            handleCancelAndRelease(table);
+            return;
+         }
          showToast("This table is already occupied", "warning");
          return;
       }
@@ -179,7 +217,7 @@ const TableStatus: React.FC = () => {
       
       const chatLink = `/order-chat/${table.id}${table.qr_token ? `?token=${table.qr_token}` : ''}`;
       navigate(chatLink);
-   }, [isSetupMode, isAnalyticsMode, navigate]);
+   }, [isSetupMode, isAnalyticsMode, navigate, handleCancelAndRelease, isChatbotReleaseCandidate]);
 
 
    const openEditModal = (table: any) => {
@@ -508,26 +546,28 @@ const TableStatus: React.FC = () => {
                                      </div>
                                   </div>
                               </div>
-                              <Button
-                                 size="sm"
-                                 variant="ghost"
-                                 onClick={() => {
-                                    if (isAnalyticsMode) {
-                                       setSelectedTableHistory({ id: table.id, number: table.table_number });
-                                       fetchTableOrders(table.id);
-                                    } else {
-                                       handleQuickOrder(table);
-                                    }
-                                 }}
-                                  disabled={!isAnalyticsMode && table.status !== 'available'}
+                                 <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => {
+                                       if (isAnalyticsMode) {
+                                          setSelectedTableHistory({ id: table.id, number: table.table_number });
+                                          fetchTableOrders(table.id);
+                                       } else if (isChatbotReleaseCandidate(table)) {
+                                          handleCancelAndRelease(table);
+                                       } else {
+                                          handleQuickOrder(table);
+                                       }
+                                    }}
+                                  disabled={!isAnalyticsMode && table.status !== 'available' && !isChatbotReleaseCandidate(table)}
                                   className={cn(
                                      "h-12 w-12 rounded-2xl border transition-all flex items-center justify-center group",
-                                     (!isAnalyticsMode && table.status !== 'available') 
+                                     (!isAnalyticsMode && table.status !== 'available' && !isChatbotReleaseCandidate(table)) 
                                         ? "bg-muted/5 border-border cursor-not-allowed opacity-40" 
                                         : "bg-muted/5 border-primary/20 hover:bg-primary/10"
                                   )}
                                >
-                                  <ChevronRight className={cn("w-6 h-6 transition-colors", (!isAnalyticsMode && table.status !== 'available') ? "text-muted" : "text-muted group-hover:text-primary")} strokeWidth={3} />
+                                  <ChevronRight className={cn("w-6 h-6 transition-colors", (!isAnalyticsMode && table.status !== 'available' && !isChatbotReleaseCandidate(table)) ? "text-muted" : "text-muted group-hover:text-primary")} strokeWidth={3} />
                                </Button>
                            </div>
                         );
@@ -544,6 +584,7 @@ const TableStatus: React.FC = () => {
                               table={table}
                               currentTime={currentTime}
                               onQuickOrder={handleQuickOrder}
+                              onCancelAndRelease={handleCancelAndRelease}
                               isAnalyticsMode={isAnalyticsMode}
                               isSetupMode={isSetupMode}
                               onEdit={() => openEditModal(table)}
@@ -863,6 +904,7 @@ interface TableCardProps {
    table: any;
    currentTime: Date;
    onQuickOrder: (table: any) => void;
+   onCancelAndRelease?: (table: any) => void;
    isAnalyticsMode?: boolean;
    isSetupMode?: boolean;
    onEdit?: () => void;
@@ -871,11 +913,12 @@ interface TableCardProps {
    onViewHistory?: (tableId: string, tableNumber: string) => void;
 }
 
-const TableCard: React.FC<TableCardProps> = React.memo(({ table, currentTime, onQuickOrder, isAnalyticsMode, isSetupMode, onEdit, onDelete, metric, onViewHistory }) => {
+const TableCard: React.FC<TableCardProps> = React.memo(({ table, currentTime, onQuickOrder, onCancelAndRelease, isAnalyticsMode, isSetupMode, onEdit, onDelete, metric, onViewHistory }) => {
    const { profile } = useAuth();
    const { t } = useLanguage();
    const isOccupied = table.status === 'occupied';
    const isDirty = table.status === 'needs_cleaning';
+   const isChatbotReleaseCandidate = isOccupied && (table.current_order?.source === 'chatbot' || !table.current_order?.waiter_id);
    const elapsedMins = table.active_session ? Math.floor((currentTime.getTime() - new Date(table.active_session.seated_at).getTime()) / 60000) : 0;
 
    // Theme-aware status colors
@@ -990,18 +1033,27 @@ const TableCard: React.FC<TableCardProps> = React.memo(({ table, currentTime, on
                </div>
 
                <div className="pt-4 border-t border-border flex gap-3">
-                  <Button
-                     onClick={() => onQuickOrder(table)}
-                     disabled={table.status !== 'available'}
-                     className={cn(
-                        "flex-1 font-black rounded-2xl h-12 text-[10px] uppercase tracking-widest shadow-xl transition-all active:scale-95",
-                        table.status === 'available' 
-                           ? "bg-foreground text-background hover:bg-foreground/90" 
-                           : "bg-muted/10 text-muted border border-border cursor-not-allowed opacity-50"
-                     )}
-                  >
-                     {t('tableStatus.quickOrder')}
-                  </Button>
+                  {isChatbotReleaseCandidate ? (
+                     <Button
+                        onClick={() => onCancelAndRelease?.(table)}
+                        className="flex-1 font-black rounded-2xl h-12 text-[10px] uppercase tracking-widest shadow-xl transition-all active:scale-95 bg-red-500 text-white hover:bg-red-400"
+                     >
+                        Cancel & Release
+                     </Button>
+                  ) : (
+                     <Button
+                        onClick={() => onQuickOrder(table)}
+                        disabled={table.status !== 'available'}
+                        className={cn(
+                           "flex-1 font-black rounded-2xl h-12 text-[10px] uppercase tracking-widest shadow-xl transition-all active:scale-95",
+                           table.status === 'available' 
+                              ? "bg-foreground text-background hover:bg-foreground/90" 
+                              : "bg-muted/10 text-muted border border-border cursor-not-allowed opacity-50"
+                        )}
+                     >
+                        {t('tableStatus.quickOrder')}
+                     </Button>
+                  )}
                   <Button
                      variant="ghost"
                      size="sm"
