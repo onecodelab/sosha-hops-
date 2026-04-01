@@ -50,7 +50,7 @@ const MenuManagement: React.FC = () => {
         if (!correctCategory) continue;
 
         try {
-          const { error } = await supabase.functions.invoke('manage-menu', {
+          const { error, data: result } = await supabase.functions.invoke('manage-menu', {
             body: {
               action: 'upsert',
               item: {
@@ -58,13 +58,12 @@ const MenuManagement: React.FC = () => {
                 name: item.name,
                 price: item.price,
                 category: correctCategory,
-                category_id: item.category_id,
                 image_url: item.image_url,
                 status: item.is_available ? 'available' : 'unavailable',
               }
             }
           });
-          if (error) {
+          if (error || result?.error) {
             console.error(`[CategoryAutoFix] Failed for "${item.name}":`, error);
           } else {
             fixedCount++;
