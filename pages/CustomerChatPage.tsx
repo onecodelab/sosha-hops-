@@ -73,6 +73,15 @@ const getSessionId = (tableId: string): string => {
     return sid;
 };
 
+/* ─── DEFAULT QUICK PROMPTS ─── */
+const QUICK_PROMPTS = [
+    { label: 'Track Order', prompt: 'Track my order' },
+    { label: 'Add More', prompt: 'I want to add more items' },
+    { label: 'Recommendations', prompt: 'What do you recommend?' },
+    { label: 'Budget Meal', prompt: 'What can I get within my budget?' },
+    { label: 'Popular Items', prompt: 'Show me your most popular items' },
+];
+
 /* ─── QUICK PROMPTS ─── */
 // Moved inside component for translation support
 
@@ -1151,7 +1160,7 @@ const CustomerChatPage: React.FC = () => {
 
         try {
             const data = await invokeSecureFunction('customer-intelligence', {
-                message: msg,
+                message: textToSend,
                 session_id: sessionId,
                 table_id: tableId,
                 table_number: tableNumber || 'Guest',
