@@ -1169,13 +1169,11 @@ const CustomerChatPage: React.FC = () => {
                 branch_id: branchId,
                 branch_name: branchName,
                 is_verified: isVerified
-            }, controller.signal);
+            });
 
             if (data?.metadata?.customer_id) {
                 localStorage.setItem(`baro_customer_${activeOrgId}`, data.metadata.customer_id);
             }
-
-            clearTimeout(timeoutId);
 
             const responseText = data?.text || '⚠️ No response. Please try again.';
             const rawItems = data?.metadata?.attachments?.items || data?.metadata?.attachments?.data;
