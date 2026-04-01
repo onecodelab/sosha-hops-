@@ -27,6 +27,13 @@ const getPastelColor = (index: number) => {
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const QUICK_PROMPTS = [
+    { label: 'Track Order', prompt: 'Track my order' },
+    { label: 'Add More', prompt: 'I want to add more items' },
+    { label: 'Recommendations', prompt: 'What do you recommend?' },
+    { label: 'Budget Meal', prompt: 'What can I get within my budget?' },
+    { label: 'Popular Items', prompt: 'Show me your most popular items' },
+];
 
 /* ─── TYPES ─── */
 interface ChatMessage {
@@ -174,7 +181,7 @@ const MenuCard: React.FC<{ item: MenuItem; index: number; onAdd: (item: MenuItem
     );
 };
 
-const MenuCarousel: React.FC<{ items: MenuItem[]; onAddToCart: (item: MenuItem[] | MenuItem) => void; isFallback?: boolean }> = ({ items, onAddToCart, isFallback }) => {
+const MenuCarousel: React.FC<{ items: MenuItem[]; onAddToCart: (item: MenuItem) => void; isFallback?: boolean }> = ({ items, onAddToCart, isFallback }) => {
     return (
         <div className="w-full mt-2 -mx-1 px-1">
             {isFallback && (
@@ -192,10 +199,10 @@ const MenuCarousel: React.FC<{ items: MenuItem[]; onAddToCart: (item: MenuItem[]
                                 ...item,
                                 demand_status: item.demand_status || (Math.random() > 0.7 ? 'High Demand' : 'Low Demand')
                             }} 
-                            onAdd={() => onAddToCart(item)} 
-                        />
-                    </div>
-                ))}
+                        onAdd={() => onAddToCart(item)}
+                    />
+                </div>
+            ))}
             </div>
         </div>
     );
@@ -943,6 +950,98 @@ const CustomerChatPage: React.FC = () => {
     }
     const [activeOrder, setActiveOrder] = useState<ActiveOrder | null>(null);
     const [branchBanks, setBranchBanks] = useState<{ bank_key: string; account_number: string }[]>([]);
+
+    const generateOrderNumber = useCallback(() => {
+        const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+        const randomSuffix = Math.floor(1000 + Math.random() * 9000);
+        return `ORD-${dateStr}-${randomSuffix}`;
+    }, []);
+
+    const addToCart = useCallback((menuItem: MenuItem) => {
+        setCart(prev => {
+            const existing = prev.find(item => item.menuItem.id === menuItem.id);
+            if (existing) {
+                return prev.map(item =>
+                    item.menuItem.id === menuItem.id
+                        ? { ...item, quantity: item.quantity + 1 }
+                        : item
+                );
+            }
+
+            return [...prev, { menuItem, quantity: 1 }];
+        });
+
+        setIsCartOpen(true);
+    }, []);
+
+    const updateCartQty = useCallback((menuItemId: string, delta: number) => {
+        setCart(prev => prev.flatMap(item => {
+            if (item.menuItem.id !== menuItemId) return [item];
+            const nextQty = item.quantity + delta;
+            if (nextQty <= 0) return [];
+            return [{ ...item, quantity: nextQty }];
+        }));
+    }, []);
+
+    const removeFromCart = useCallback((menuItemId: string) => {
+        setCart(prev => prev.filter(item => item.menuItem.id !== menuItemId));
+    }, []);
+
+    const handlePlaceOrder = useCallback(async () => {
+        if (isPlacingOrder || cart.length === 0) return;
+        if (!tableId || !branchId) {
+            showToast('Please wait for the table to be verified before placing an order.', 'error');
+            return;
+        }
+
+        setIsPlacingOrder(true);
+        try {
+            const subtotal = cart.reduce((sum, item) => sum + (item.menuItem.price * item.quantity), 0);
+            const totalAmount = subtotal * 1.15;
+
+            const payload = {
+                branch_id: branchId,
+                items: cart.map(item => ({
+                    menu_item_id: item.menuItem.id,
+                    quantity: item.quantity,
+                    unit_price: item.menuItem.price,
+                    notes: '',
+                })),
+                order_details: {
+                    table_id: tableId,
+                    table_number: tableNumber || 'Guest',
+                    total_amount: totalAmount,
+                    customer_notes: '',
+                    order_number: generateOrderNumber(),
+                    source: 'chatbot',
+                },
+            };
+
+            const { data, error } = await supabase.functions.invoke('place-order', {
+                body: payload,
+            });
+
+            if (error) throw error;
+
+            const result = typeof data === 'string' ? (() => {
+                try { return JSON.parse(data); } catch { return null; }
+            })() : data;
+
+            if (!result?.success && !result?.order_id) {
+                throw new Error(result?.detail || result?.error || 'Order submission failed.');
+            }
+
+            setLatestOrderId(result.order_id || null);
+            setCart([]);
+            setIsCartOpen(false);
+            showToast('Order placed successfully!', 'success');
+        } catch (err: any) {
+            console.error('Order placement failure:', err);
+            showToast(err.message || 'Order submission failed. Please try again.', 'error');
+        } finally {
+            setIsPlacingOrder(false);
+        }
+    }, [branchId, cart, generateOrderNumber, isPlacingOrder, tableId, tableNumber]);
 
     // Sync cart to localStorage
     useEffect(() => {
