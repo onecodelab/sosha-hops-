@@ -1,6 +1,11 @@
 import { supabase } from '../supabase';
 
 type OrderLike = {
+  id?: string;
+  source?: string | null;
+  status?: string | null;
+  table_id?: string | null;
+  table_number?: string | null;
   waiter_id?: string | null;
   closed_by_id?: string | null;
 };
@@ -43,9 +48,15 @@ export async function enrichOrdersWithProfiles<T extends OrderLike>(orders: T[])
 
   const profileMap = new Map<string, ProfileLite>((profiles || []).map(profile => [profile.id, profile as ProfileLite]));
 
-  return orders.map(order => ({
-    ...order,
-    waiter: order.waiter_id ? profileMap.get(order.waiter_id) ?? null : null,
-    closed_by_user: order.closed_by_id ? profileMap.get(order.closed_by_id) ?? null : null
-  }));
+  return orders.map(order => {
+    const waiterProfile = order.waiter_id ? profileMap.get(order.waiter_id) ?? null : null;
+    const isInvalidChatbotAssignment = order.source === 'chatbot' && waiterProfile?.role !== 'waiter';
+
+    return {
+      ...order,
+      waiter_id: isInvalidChatbotAssignment ? null : order.waiter_id,
+      waiter: isInvalidChatbotAssignment ? null : waiterProfile,
+      closed_by_user: order.closed_by_id ? profileMap.get(order.closed_by_id) ?? null : null
+    };
+  });
 }

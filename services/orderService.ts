@@ -23,9 +23,10 @@ export const orderService = {
             .in('status', ['pending', 'accepted', 'preparing', 'ready', 'served', 'paid'])
             .order('created_at', { ascending: true });
 
-        // If waiterId is provided, show their assigned orders OR any unassigned chatbot orders
+        // If waiterId is provided, include all chatbot orders so we can normalize
+        // stale owner/admin attribution back into the unassigned waiter queue.
         if (waiterId) {
-            query = query.or(`waiter_id.eq.${waiterId},and(source.eq.chatbot,waiter_id.is.null)`);
+            query = query.or(`waiter_id.eq.${waiterId},source.eq.chatbot`);
         } else {
             // Show all branch active orders if no waiter ID (useful for admins/HQ)
             // But we already filter by branch_id above.
@@ -36,15 +37,43 @@ export const orderService = {
 
         const { data: branchTables, error: tablesError } = await supabase
             .from('tables')
-            .select('id')
+            .select('id, table_number, current_order_id')
             .eq('branch_id', branchId);
 
         if (tablesError) throw tablesError;
 
-        const validTableIds = new Set((branchTables || []).map((table) => table.id));
-        const filteredOrders = (data || []).filter((order: any) => !order.table_id || validTableIds.has(order.table_id));
+        const normalizeTableNumber = (value?: string | null) => (value || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+        const tableById = new Map((branchTables || []).map((table: any) => [table.id, table]));
+        const tableByNumber = new Map((branchTables || []).map((table: any) => [normalizeTableNumber(table.table_number), table]));
+        const enrichedOrders = await enrichOrdersWithProfiles((data || []) as Order[]);
 
-        return enrichOrdersWithProfiles(filteredOrders as Order[]);
+        const filteredOrders = enrichedOrders.filter((order: any) => {
+            const linkedTable = order.table_id
+                ? tableById.get(order.table_id)
+                : tableByNumber.get(normalizeTableNumber(order.table_number));
+
+            if (order.table_id && !linkedTable) {
+                return false;
+            }
+
+            if (order.source === 'chatbot') {
+                if (!linkedTable) {
+                    return false;
+                }
+
+                if (linkedTable.current_order_id && linkedTable.current_order_id !== order.id) {
+                    return false;
+                }
+            }
+
+            if (!waiterId) {
+                return true;
+            }
+
+            return order.waiter_id === waiterId || (order.source === 'chatbot' && !order.waiter_id);
+        });
+
+        return filteredOrders as Order[];
     },
 
     async claimChatbotOrder(orderId: string, waiterId: string, tableId: string): Promise<void> {

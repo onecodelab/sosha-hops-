@@ -86,7 +86,12 @@ export interface Order {
   closed_at?: string;
   closed_by_id?: string;
   payment_method?: string;
-  waiter?: { full_name: string };
+  waiter?: {
+    id?: string;
+    full_name: string;
+    role?: Role | string;
+    email?: string;
+  } | null;
   last_updated?: string;
   subtotal_amount?: number;
   vat_amount?: number;

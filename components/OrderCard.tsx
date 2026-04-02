@@ -116,7 +116,7 @@ export const OrderCard: React.FC<OrderCardProps> = ({
             {showTimer && <span className={cn("text-[9px] font-mono font-bold flex items-center", elapsed > 20 ? "text-red-500 animate-pulse" : "text-zinc-500")}>
               <Clock className="w-2.5 h-2.5 mr-1" />{elapsed}m
             </span>}
-            {order.waiter?.full_name && (
+            {order.waiter?.full_name && order.waiter?.role === 'waiter' && (
               <span className="text-[9px] font-black text-primary/70 uppercase tracking-widest flex items-center gap-1 border-l border-border pl-2">
                 <User className="w-2.5 h-2.5" /> {order.waiter.full_name}
               </span>

@@ -46,6 +46,11 @@ const WaiterDashboard: React.FC = () => {
   const [claiming, setClaiming] = useState(false);
   const [isSyncingTables, setIsSyncingTables] = useState(false);
 
+  const unassignedChatOrders = useMemo(
+    () => orders.filter(o => o.source === 'chatbot' && !o.waiter_id && o.status === 'pending'),
+    [orders]
+  );
+
 
   const fetchTables = useCallback(async () => {
     if (!activeBranchId) {
@@ -287,7 +292,7 @@ const WaiterDashboard: React.FC = () => {
           </motion.div>
 
           {/* Unassigned Chat Orders */}
-          {orders.filter(o => o.source === 'chatbot' && !o.waiter_id).length > 0 && (
+          {unassignedChatOrders.length > 0 && (
             <motion.div
               variants={{
                 hidden: { opacity: 0, y: 20 },
@@ -301,11 +306,11 @@ const WaiterDashboard: React.FC = () => {
                   <MessageSquare className="w-5 h-5 text-primary" /> Unassigned Chat Orders
                 </h3>
                 <Badge variant="glass" className="bg-primary/10 text-primary border-primary/20 font-mono">
-                  {orders.filter(o => o.source === 'chatbot' && !o.waiter_id).length} New
+                  {unassignedChatOrders.length} New
                 </Badge>
               </div>
               <div className="flex overflow-x-auto gap-4 pb-4 snap-x snap-mandatory custom-scrollbar relative">
-                {orders.filter(o => o.source === 'chatbot' && !o.waiter_id).map(order => (
+                {unassignedChatOrders.map(order => (
                   <Card key={order.id} variant="elevated" className="w-[85vw] md:w-[350px] snap-center md:snap-start shrink-0 p-6 border-primary/20 bg-primary/5 hover:bg-primary/10 transition-all flex flex-col gap-4">
                     <div className="flex justify-between items-start">
                       <div>

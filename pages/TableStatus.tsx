@@ -71,7 +71,7 @@ const TableStatus: React.FC = () => {
         queryFn: async () => {
           let selectString = `
             *,
-            current_order:orders!current_order_id(status, payment_status, source, waiter_id, order_number),
+            current_order:orders!current_order_id(id, status, payment_status, source, waiter_id, order_number),
             sessions:table_sessions(id, seated_at, is_active)
           `;
 
@@ -85,7 +85,7 @@ const TableStatus: React.FC = () => {
           if (error && (error.message.includes('qr_token') || error.message.includes('pos_x'))) {
             selectString = `
               id, table_number, capacity, shape, status, branch_id, organization_id, zone, capacity_min, capacity_max,
-              current_order:orders!current_order_id(status, payment_status, source, waiter_id, order_number),
+              current_order:orders!current_order_id(id, status, payment_status, source, waiter_id, order_number),
               sessions:table_sessions(id, seated_at, is_active)
             `;
             const { data: retryData, error: retryError } = await supabase
@@ -189,7 +189,62 @@ const TableStatus: React.FC = () => {
    const generateToken = () => crypto.randomUUID().replace(/-/g, '').slice(0, 16);
 
    const isChatbotReleaseCandidate = useCallback((table: any) => {
-      return table?.status === 'occupied' && (table?.current_order?.source === 'chatbot' || !table?.current_order?.waiter_id);
+      return table?.status === 'occupied' && table?.current_order?.source === 'chatbot';
+   }, []);
+
+   const directCancelAndRelease = useCallback(async (table: any) => {
+      const now = new Date().toISOString();
+      let activeOrder = table?.current_order;
+
+      if (!activeOrder?.id) {
+         const { data: latestOrder, error: latestErr } = await supabase
+            .from('orders')
+            .select('id, status, source, waiter_id, closed_at, table_id, order_number')
+            .eq('table_id', table.id)
+            .is('closed_at', null)
+            .neq('status', 'cancelled')
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+         if (latestErr) throw latestErr;
+         activeOrder = latestOrder;
+      }
+
+      if (activeOrder?.id) {
+         const { error: cancelErr } = await supabase
+            .from('orders')
+            .update({
+               status: 'cancelled',
+               payment_status: 'failed',
+               closed_at: now,
+               completed_at: now,
+               last_updated: now
+            })
+            .eq('id', activeOrder.id);
+
+         if (cancelErr) throw cancelErr;
+      }
+
+      const { error: sessionsErr } = await supabase
+         .from('table_sessions')
+         .update({ is_active: false, closed_at: now })
+         .eq('table_id', table.id)
+         .eq('is_active', true);
+
+      if (sessionsErr) throw sessionsErr;
+
+      const { error: tableErr } = await supabase
+         .from('tables')
+         .update({
+            status: 'available',
+            current_order_id: null,
+            current_session_id: null,
+            last_updated: now
+         })
+         .eq('id', table.id);
+
+      if (tableErr) throw tableErr;
    }, []);
 
    const handleCancelAndRelease = useCallback(async (table: any) => {
@@ -220,14 +275,12 @@ const TableStatus: React.FC = () => {
             }
          });
 
-         if (error) {
-            console.error("[TableStatus] Edge Function Error:", error);
-            throw error;
-         }
-         
-         if (data?.error) {
-            console.error("[TableStatus] Edge Function Logic Error:", data);
-            throw new Error(data.details || data.error);
+         if (error || data?.error) {
+            console.warn("[TableStatus] manage-floor fallback engaged", error || data);
+            await directCancelAndRelease(table);
+            showToast(`Table #${table.table_number} released`, 'success');
+            refetch();
+            return;
          }
 
          showToast(data?.message || `Table #${table.table_number} released`, 'success');
@@ -236,7 +289,7 @@ const TableStatus: React.FC = () => {
          console.error("[TableStatus] handleCancelAndRelease Exception:", err);
          showToast(err.message || 'Failed to cancel and release table', 'error');
       }
-   }, [isChatbotReleaseCandidate, refetch]);
+   }, [directCancelAndRelease, isChatbotReleaseCandidate, navigate, refetch]);
 
    const handleQuickOrder = useCallback((table: any) => {
       // 1. Setup Mode Behavior
@@ -387,18 +440,22 @@ const TableStatus: React.FC = () => {
       setIsAddingTable(true);
       try {
          if (targetTable?.status === 'occupied') {
-            const canCancelChatbotOrder = targetTable.current_order?.source === 'chatbot' || !targetTable.current_order?.waiter_id;
+            const canCancelChatbotOrder = targetTable.current_order?.source === 'chatbot';
 
             if (canCancelChatbotOrder) {
-               const { data, error } = await supabase.functions.invoke('manage-floor', {
-                  body: {
-                     action: 'cancel_and_release_table',
-                     table_id: targetId
-                  }
-               });
+               try {
+                  const { data, error } = await supabase.functions.invoke('manage-floor', {
+                     body: {
+                        action: 'cancel_and_release_table',
+                        table_id: targetId
+                     }
+                  });
 
-               if (error) throw error;
-               if (data?.error) throw new Error(data.error);
+                  if (error) throw error;
+                  if (data?.error) throw new Error(data.error);
+               } catch (releaseErr) {
+                  await directCancelAndRelease(targetTable);
+               }
             } else {
                throw new Error('Release the active staff order before deleting this table.');
             }
@@ -980,7 +1037,7 @@ const TableCard: React.FC<TableCardProps> = React.memo(({ table, currentTime, on
    const { t } = useLanguage();
    const isOccupied = table.status === 'occupied';
    const isDirty = table.status === 'needs_cleaning';
-   const isChatbotReleaseCandidate = isOccupied && (table.current_order?.source === 'chatbot' || !table.current_order?.waiter_id);
+   const isChatbotReleaseCandidate = isOccupied && table.current_order?.source === 'chatbot';
    const elapsedMins = table.active_session ? Math.floor((currentTime.getTime() - new Date(table.active_session.seated_at).getTime()) / 60000) : 0;
 
    // Theme-aware status colors

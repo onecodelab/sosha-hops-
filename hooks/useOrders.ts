@@ -64,12 +64,12 @@ export const useOrders = (waiterId?: string) => {
     );
 
     const readyOrders = useMemo(() =>
-        orders.filter(o => o.status === 'ready'),
+        orders.filter(o => o.status === 'ready' && !(o.source === 'chatbot' && !o.waiter_id)),
         [orders]
     );
 
     const billingQueue = useMemo(() =>
-        orders.filter(o => ['served', 'paid'].includes(o.status)),
+        orders.filter(o => ['served', 'paid'].includes(o.status) && !(o.source === 'chatbot' && !o.waiter_id)),
         [orders]
     );
 

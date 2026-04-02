@@ -88,7 +88,10 @@ const KitchenDashboard: React.FC = () => {
    const acceptedOrders = useMemo(() =>
       orders.filter(o => ['accepted', 'preparing'].includes(o.status) && !(o.source === 'chatbot' && !o.waiter_id)),
       [orders]);
-   const preparedOrders = useMemo(() => orders.filter(o => o.status === 'ready'), [orders]);
+   const preparedOrders = useMemo(() =>
+      orders.filter(o => o.status === 'ready' && !(o.source === 'chatbot' && !o.waiter_id)),
+      [orders]
+   );
 
    useLayoutConfig({
       title: "Kitchen Display",
