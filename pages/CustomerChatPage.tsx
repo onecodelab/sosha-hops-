@@ -69,6 +69,13 @@ interface CartItem {
     quantity: number;
 }
 
+interface ActiveOrder {
+    id: string;
+    order_number: string;
+    status: string;
+    total_amount: number;
+}
+
 /* ─── SESSION MANAGEMENT ─── */
 const getSessionId = (tableId: string): string => {
     const key = `baro_session_${tableId}`;
@@ -928,13 +935,6 @@ const CustomerChatPage: React.FC = () => {
     const [ratingSubmitted, setRatingSubmitted] = useState(false);
     const [latestOrderId, setLatestOrderId] = useState<string | null>(null);
 
-    // Active order tracking
-    interface ActiveOrder {
-        id: string;
-        order_number: string;
-        status: string;
-        total_amount: number;
-    }
     const [activeOrder, setActiveOrder] = useState<ActiveOrder | null>(null);
     const [branchBanks, setBranchBanks] = useState<{ bank_key: string; account_number: string }[]>([]);
 
@@ -973,6 +973,57 @@ const CustomerChatPage: React.FC = () => {
     const removeFromCart = useCallback((menuItemId: string) => {
         setCart(prev => prev.filter(item => item.menuItem.id !== menuItemId));
     }, []);
+
+    const refreshActiveOrder = useCallback(async () => {
+        if (!tableId) {
+            setActiveOrder(null);
+            return null;
+        }
+
+        const { data, error } = await supabase
+            .from('orders')
+            .select('id, order_number, status, total_amount')
+            .eq('table_id', tableId)
+            .is('closed_at', null)
+            .neq('status', 'cancelled')
+            .neq('status', 'closed')
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+        if (error) {
+            console.warn('Active order refresh failed:', error);
+            return null;
+        }
+
+        const nextOrder = data as ActiveOrder | null;
+        setActiveOrder(nextOrder);
+        if (nextOrder?.id) {
+            setLatestOrderId(nextOrder.id);
+            setSessionCompleted(false);
+        }
+        return nextOrder;
+    }, [tableId]);
+
+    const refreshBranchBanks = useCallback(async () => {
+        if (!branchId) {
+            setBranchBanks([]);
+            return;
+        }
+
+        const { data, error } = await supabase
+            .from('bank_settings')
+            .select('bank_key, account_number')
+            .eq('branch_id', branchId)
+            .eq('is_active', true);
+
+        if (error) {
+            console.warn('Branch bank fetch failed:', error);
+            return;
+        }
+
+        setBranchBanks(data || []);
+    }, [branchId]);
 
     const handlePlaceOrder = useCallback(async () => {
         if (isPlacingOrder || cart.length === 0) return;
@@ -1018,17 +1069,29 @@ const CustomerChatPage: React.FC = () => {
                 throw new Error(result?.detail || result?.error || 'Order submission failed.');
             }
 
-            setLatestOrderId(result.order_id || null);
+            const optimisticOrder: ActiveOrder = {
+                id: result.order_id || crypto.randomUUID(),
+                order_number: result.order_number || payload.order_details.order_number,
+                status: result.status || 'pending',
+                total_amount: totalAmount,
+            };
+
+            setActiveOrder(optimisticOrder);
+            setLatestOrderId(optimisticOrder.id);
+            setSessionCompleted(false);
             setCart([]);
             setIsCartOpen(false);
             showToast('Order placed successfully!', 'success');
+            window.setTimeout(() => {
+                refreshActiveOrder().catch(err => console.warn('Active order sync failed:', err));
+            }, 300);
         } catch (err: any) {
             console.error('Order placement failure:', err);
             showToast(err.message || 'Order submission failed. Please try again.', 'error');
         } finally {
             setIsPlacingOrder(false);
         }
-    }, [branchId, cart, generateOrderNumber, isPlacingOrder, tableId, tableNumber]);
+    }, [branchId, cart, generateOrderNumber, isPlacingOrder, refreshActiveOrder, tableId, tableNumber]);
 
     // Sync cart to localStorage
     useEffect(() => {
@@ -1182,6 +1245,10 @@ const CustomerChatPage: React.FC = () => {
         loadBranchContext();
     }, [branchId, invokeSecureFunction]);
 
+    useEffect(() => {
+        refreshBranchBanks().catch(err => console.warn('Branch bank bootstrap failed:', err));
+    }, [refreshBranchBanks]);
+
     // Load table info, then branch + org names for display
     useEffect(() => {
         const loadTableInfo = async () => {
@@ -1240,6 +1307,28 @@ const CustomerChatPage: React.FC = () => {
         };
         fetchCategories();
     }, [activeOrgId, branchId]);
+
+    useEffect(() => {
+        let isMounted = true;
+        let pollId: number | undefined;
+
+        const syncActiveOrder = async () => {
+            try {
+                await refreshActiveOrder();
+                if (!isMounted) return;
+            } catch (err) {
+                console.warn('Active order polling failed:', err);
+            }
+        };
+
+        syncActiveOrder();
+        pollId = window.setInterval(syncActiveOrder, 10000);
+
+        return () => {
+            isMounted = false;
+            if (pollId) window.clearInterval(pollId);
+        };
+    }, [refreshActiveOrder]);
 
     // Initialize/Update dynamic prompts when language/defaults change
     useEffect(() => {
