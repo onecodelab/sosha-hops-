@@ -50,7 +50,7 @@ serve(async (req) => {
 
         const { data: organization } = await supabase
             .from('organizations')
-            .select('id, name')
+            .select('id, name, chatbot_logo_url')
             .eq('id', branch.organization_id)
             .maybeSingle();
 
@@ -86,6 +86,7 @@ serve(async (req) => {
             organization: organization ? {
                 id: organization.id,
                 name: organization.name,
+                chatbot_logo_url: organization.chatbot_logo_url || null,
             } : null,
             branch: {
                 id: branch.id,

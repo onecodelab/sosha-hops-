@@ -1232,6 +1232,9 @@ const CustomerChatPage: React.FC = () => {
                 if (data?.organization?.name) {
                     setOrgName(data.organization.name);
                 }
+                if (data?.organization?.chatbot_logo_url) {
+                    setOrgLogoUrl(data.organization.chatbot_logo_url);
+                }
                 if (data?.organization?.id) {
                     setActiveOrgId(data.organization.id);
                 }
