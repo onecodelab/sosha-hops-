@@ -738,7 +738,7 @@ serve(async (req) => {
             orgData = data;
 
             if (orgData?.chatbot_system_prompt?.trim()) {
-                orgPrompt = `\n\n## HISTORICAL CONTEXT (MAY BE OUTDATED)\n${orgData.chatbot_system_prompt}\n\n`;
+                orgPrompt = orgData.chatbot_system_prompt.trim();
             }
         } catch (e) {
             console.warn("[CustomerAgent] Org config load failed:", e);
@@ -762,10 +762,14 @@ serve(async (req) => {
         }
 
         // ── STEP 2: Construct Final System Prompt (STRICTEST RULES LAST) ──
+        const hasCustomOrgPrompt = !!orgPrompt;
+        const baseInstructionPrompt = hasCustomOrgPrompt ? orgPrompt : DEFAULT_SYSTEM_PROMPT;
         let systemPrompt = `You are the digital assistant for ${orgName}.
-${orgPrompt}
 
-${PROFESSIONALISM_PROTOCOL}
+## PRIMARY BUSINESS INSTRUCTIONS
+${baseInstructionPrompt}
+
+${hasCustomOrgPrompt ? '' : PROFESSIONALISM_PROTOCOL}
 
 ## CURRENT SESSION CONTEXT
 - Restaurant: ${orgName}
@@ -773,8 +777,6 @@ ${PROFESSIONALISM_PROTOCOL}
 - Table (Claimed): ${activeTable}
 - Session ID: ${session_id}
 - Local Time: ${new Date().toLocaleTimeString()} (${timeOfDay})
-
-${DEFAULT_SYSTEM_PROMPT}
 
 ## HARD_RESET & FINAL INSTRUCTIONS (CRITICAL)
         - **NO ITEM NAMES**: Your text MUST NOT list specific food names, category names, or prices. The carousel handles those details.
@@ -859,38 +861,41 @@ ${DEFAULT_SYSTEM_PROMPT}
         const hasShownMenuAlready = history.some((h: any) => typeof h.content === "string" && /menu|check out our menu|check out our specials/i.test(h.content));
         const inferredIntent = inferAgentIntent(message, hasCustomerHistory, hasShownMenuAlready);
         const agentPlaybook = buildAgentPlaybook(inferredIntent);
+        const operationalPriority = `## OPERATIONAL PRIORITY
+- First choose the next best restaurant action, not a generic FAQ response.
+- If the guest is asking what to eat, use menu or top-seller tools.
+- If the guest mentions a budget, recommend the best options for that budget.
+- If the guest sounds ready to order, drive toward selection and confirmation.
+- If the guest asks about something non-menu, use search_knowledge only after checking whether a menu or order tool would be more useful.`;
 
-        const messages: any[] = [
-            { role: "system", content: `${systemPrompt}\n\n${agentPlaybook}` },
-            ...history,
-            { role: "user", content: message },
-        ];
-
-        // ── PROACTIVE GREETING TRIGGER ──
         const isGreeting = (msg: string) => {
             const lower = msg.toLowerCase().trim();
             const greetings = ['hey', 'hello', 'hi', 'start', 'menu', 'hola', 'yo', 'show me the menu', 'get started'];
             return greetings.includes(lower) || lower.length < 3;
         };
 
+        systemPrompt = `${systemPrompt}
+
+${agentPlaybook}
+
+${operationalPriority}`;
+
         if ((history.length <= 1 && isGreeting(message)) || message.toLowerCase() === 'init_chat') {
-            messages.push({ 
-                role: "system", 
-                content: `CRITICAL: First message must be 'Welcome to ${orgName}! 🌟' and ask for their table number. NEVER show the menu until you have the table number.`
-            });
+            systemPrompt = `${systemPrompt}
+
+## FIRST MESSAGE RULE
+- First message must warmly welcome the guest to ${orgName}.
+- If the table is already confirmed in context, do not ask for the table again.
+- If the table is not confirmed, ask for the table number before showing the menu.`;
         }
 
-        const availableTools = TOOL_DEFINITIONS;
+        const messages: any[] = [
+            { role: "system", content: systemPrompt },
+            ...history,
+            { role: "user", content: message },
+        ];
 
-        messages.splice(1, 0, {
-            role: "system",
-            content: `## OPERATIONAL PRIORITY
-- First choose the next best restaurant action, not a generic FAQ response.
-- If the guest is asking what to eat, use menu or top-seller tools.
-- If the guest mentions a budget, recommend the best options for that budget.
-- If the guest sounds ready to order, drive toward selection and confirmation.
-- If the guest asks about something non-menu, use search_knowledge only after checking whether a menu or order tool would be more useful.`
-        });
+        const availableTools = TOOL_DEFINITIONS;
 
         // ── STEP 4: Agentic Reasoning Loop ──
         const openRouterKey = Deno.env.get("OPENROUTER_API_KEY");
