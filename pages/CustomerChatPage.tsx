@@ -5,7 +5,7 @@ import {
     Send, Loader2, UtensilsCrossed, ArrowUp, ShoppingBag,
     Receipt, CreditCard, MessageCircle, Sparkles, X, ChevronDown,
     CheckCircle2, Timer, ChefHat, PackageCheck, Star, Users, Trash2,
-    Leaf as FreshLeaf
+    Leaf as FreshLeaf, Plus
 } from 'lucide-react';
 import { cn, showToast, Button } from '../components/ui';
 import { supabase } from '../supabase';
@@ -47,7 +47,7 @@ interface ChatMessage {
     };
     metadata?: {
         buttons?: { label: string; prompt: string }[];
-        tracking?: { status: 'placed' | 'preparing' | 'ready' | 'delivered' };
+        tracking?: { status: 'placed' | 'preparing' | 'ready' | 'delivered'; orderNumber?: string };
         pills?: string[];
         splitter?: { total: number };
         rating?: { type: 'stars' };
@@ -87,8 +87,6 @@ const getSessionId = (tableId: string): string => {
     return sid;
 };
 
-/* ─── MENU CAROUSEL ─── */
-/* ─── HELPERS ─── */
 const getCardTheme = (index: number) => {
     const themes = [
         'bg-card border border-emerald-500/20 shadow-[0_0_15px_rgba(16,185,129,0.05)]',
@@ -100,14 +98,6 @@ const getCardTheme = (index: number) => {
     return themes[index % themes.length];
 };
 
-const AbstractWave: React.FC<{ className?: string }> = ({ className }) => (
-    <svg className={className} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M6 22C6 17 12 15 12 10C12 5 6 3 6 2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-        <path d="M14 22C14 15 22 13 22 8C22 4 14 2 14 2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-        <path d="M2 22C2 18 5 17 5 14C5 11 2 9 2 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-    </svg>
-);
-
 /* ─── MENU CAROUSEL ─── */
 const MenuCard: React.FC<{ item: MenuItem; index: number; onAdd: (item: MenuItem) => void }> = ({ item, index, onAdd }) => {
     return (
@@ -118,14 +108,10 @@ const MenuCard: React.FC<{ item: MenuItem; index: number; onAdd: (item: MenuItem
                 getCardTheme(index)
             )}
         >
-            {/* Radiant Concentric Rings (Background Art) */}
             <div className="absolute top-[45%] left-1/2 -translate-x-1/2 -translate-y-1/2 w-[140%] aspect-square border border-foreground/[0.04] rounded-full pointer-events-none transition-transform duration-700 group-hover:scale-110" />
             <div className="absolute top-[45%] left-1/2 -translate-x-1/2 -translate-y-1/2 w-[180%] aspect-square border border-foreground/[0.02] rounded-full pointer-events-none transition-transform duration-1000 group-hover:scale-110" />
-
-            {/* Ambient Element Glow */}
             <div className="absolute top-[45%] left-1/2 -translate-x-1/2 -translate-y-1/2 w-28 h-28 bg-lime-500/20 blur-[30px] rounded-full pointer-events-none transition-opacity duration-500 group-hover:opacity-100 opacity-60" />
 
-            {/* Image Section - Framed Circular Plate */}
             <div className="flex-1 flex items-center justify-center relative z-10 mt-3 mb-2">
                 <motion.div
                     animate={{ rotate: 360 }}
@@ -134,11 +120,7 @@ const MenuCard: React.FC<{ item: MenuItem; index: number; onAdd: (item: MenuItem
                 >
                     <div className="w-full h-full rounded-full overflow-hidden bg-background">
                         {item.image_url ? (
-                            <img
-                                src={item.image_url}
-                                alt={item.name}
-                                className="w-full h-full object-cover scale-110"
-                            />
+                            <img src={item.image_url} alt={item.name} className="w-full h-full object-cover scale-110" />
                         ) : (
                             <div className="w-full h-full flex flex-col items-center justify-center">
                                 <UtensilsCrossed className="w-8 h-8 text-muted-foreground/30" />
@@ -148,14 +130,12 @@ const MenuCard: React.FC<{ item: MenuItem; index: number; onAdd: (item: MenuItem
                 </motion.div>
             </div>
 
-            {/* Title - Centered Inside */}
             <div className="text-center mb-3 relative z-10 px-1">
                 <h3 className="text-foreground text-[13px] font-black leading-tight line-clamp-2 uppercase tracking-tight">
                     {item.name}
                 </h3>
             </div>
 
-            {/* Footer: Price & Add Button */}
             <div className="flex items-center justify-between relative z-10">
                 <div className="flex items-baseline gap-0.5">
                     <span className="text-[8px] font-bold text-muted-foreground">ETB</span>
@@ -194,10 +174,10 @@ const MenuCarousel: React.FC<{ items: MenuItem[]; onAddToCart: (item: MenuItem) 
                                 ...item,
                                 demand_status: item.demand_status || (Math.random() > 0.7 ? 'High Demand' : 'Low Demand')
                             }} 
-                        onAdd={() => onAddToCart(item)}
-                    />
-                </div>
-            ))}
+                            onAdd={() => onAddToCart(item)}
+                        />
+                    </div>
+                ))}
             </div>
         </div>
     );
@@ -276,27 +256,6 @@ const CartDrawer: React.FC<{
     );
 };
 
-/* ─── RICH UI COMPONENTS ─── */
-const ActionButtons: React.FC<{ buttons: { label: string; prompt: string }[]; onAction: (p: string) => void }> = ({ buttons, onAction }) => (
-    <div className="flex flex-wrap gap-2 mt-3">
-        {buttons.map((btn, i) => (
-            <motion.button
-                key={i}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.1 }}
-                whileHover={{ scale: 1.05, backgroundColor: "rgba(132, 204, 22, 0.15)" }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => onAction(btn.prompt)}
-                className="px-4 py-2.5 rounded-2xl bg-lime-500/10 border border-lime-500/20 text-lime-600 dark:text-lime-400 text-[11px] font-black uppercase tracking-wider hover:border-lime-500/40 transition-all flex items-center gap-2 group relative overflow-hidden"
-            >
-                <div className="absolute inset-0 bg-lime-500/5 animate-pulse" style={{ animationDuration: '2s' }} />
-                <span className="relative z-10">{btn.label}</span>
-                <Sparkles className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
-            </motion.button>
-        ))}
-    </div>
-);
 
 const ORDER_STATUS_MAP: Record<string, string> = {
     'pending': 'placed',
@@ -308,7 +267,6 @@ const ORDER_STATUS_MAP: Record<string, string> = {
     'delivered': 'delivered',
 };
 
-/* ─── PAYMENT CARD ─── */
 const BANK_DISPLAY: Record<string, { name: string; logo?: string }> = {
     'telebirr':  { name: 'Telebirr' },
     'cbe':       { name: 'CBE' },
@@ -352,8 +310,8 @@ const PaymentCard: React.FC<{
                     bank: selectedBank,
                     transaction_id: refNumber.trim(),
                     receiver_account: selectedAccount,
-                    accountSuffix: selectedAccount,      // Added for verifier compatibility
-                    expected_receiver: selectedAccount,   // Added for verifier compatibility
+                    accountSuffix: selectedAccount,
+                    expected_receiver: selectedAccount,
                 },
             });
 
@@ -386,7 +344,6 @@ const PaymentCard: React.FC<{
         }
     };
 
-    // ── STEP: Verified ──
     if (paymentStatus === 'verified') {
         return (
             <div className="p-5 rounded-2xl bg-card border border-emerald-500/30 text-center space-y-1">
@@ -397,7 +354,6 @@ const PaymentCard: React.FC<{
         );
     }
 
-    // ── STEP: Failed/Error ──
     if (paymentStatus === 'failed' || paymentStatus === 'error') {
         return (
             <div className="p-4 rounded-2xl bg-card border border-red-500/30 space-y-3">
@@ -431,7 +387,6 @@ const PaymentCard: React.FC<{
         );
     }
 
-    // ── STEP: Verifying ──
     if (paymentStatus === 'verifying') {
         return (
             <div className="p-5 rounded-2xl bg-card border border-lime-500/20 text-center space-y-1">
@@ -444,7 +399,6 @@ const PaymentCard: React.FC<{
 
     return (
         <div className="p-4 rounded-2xl bg-card border border-border space-y-4">
-            {/* Bill Summary */}
             <div className="flex justify-between items-center">
                 <div>
                     <p className="text-[10px] font-black uppercase tracking-widest text-amber-500">Your Bill</p>
@@ -453,7 +407,6 @@ const PaymentCard: React.FC<{
                 <p className="text-2xl font-black text-foreground">ETB {total.toLocaleString()}</p>
             </div>
 
-            {/* Step 1 — Pick Bank */}
             {step === 'select_bank' && (
                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-2">
                     <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Pay with</p>
@@ -474,7 +427,6 @@ const PaymentCard: React.FC<{
                 </motion.div>
             )}
 
-            {/* Step 2 — Show Account & Guide */}
             {step === 'send_payment' && (
                 <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="space-y-3">
                     <div className="p-3 rounded-xl bg-lime-500/5 border border-lime-500/20 space-y-1">
@@ -497,7 +449,6 @@ const PaymentCard: React.FC<{
                 </motion.div>
             )}
 
-            {/* Step 3 — Enter Reference */}
             {step === 'enter_ref' && (
                 <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="space-y-3">
                     <p className="text-[10px] text-muted-foreground">Paste the <strong>transaction reference / REFID</strong> from your {BANK_DISPLAY[selectedBank]?.name} receipt:</p>
@@ -527,7 +478,6 @@ const PaymentCard: React.FC<{
     );
 };
 
-/* ─── STEPPER COMPONENTS ─── */
 const StepperNav: React.FC<{ children: React.ReactNode }> = ({ children }) => (
     <div className="flex w-full items-start justify-between relative">{children}</div>
 );
@@ -567,14 +517,12 @@ const StepperIndicator: React.FC<{
 
 const TrackingWidget: React.FC<{ status: 'placed' | 'preparing' | 'ready' | 'delivered'; orderNumber?: string; compact?: boolean }> = ({ status, orderNumber, compact }) => {
     const [isExpanded, setIsExpanded] = useState(!compact);
-    
     const stages = [
         { key: 'placed', title: 'Placed', desc: 'Order received' },
         { key: 'preparing', title: 'Preparing', desc: 'In kitchen' },
         { key: 'ready', title: 'Ready', desc: 'Ready to serve' },
         { key: 'delivered', title: 'Served', desc: 'Dining now' },
     ];
-
     const currentIndex = stages.findIndex(s => s.key === status);
     const activeStage = stages[currentIndex >= 0 ? currentIndex : 0];
 
@@ -586,7 +534,6 @@ const TrackingWidget: React.FC<{ status: 'placed' | 'preparing' | 'ready' | 'del
                     className="flex flex-row items-center justify-between cursor-pointer rounded-2xl bg-muted/5 border border-border px-4 py-3 hover:bg-muted/10 transition-colors shadow-sm"
                 >
                     <div className="flex items-center gap-4">
-                        {/* Status Pulsing Dot */}
                         <div className="relative flex h-3 w-3">
                             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-lime-400 opacity-75"></span>
                             <span className="relative inline-flex rounded-full h-3 w-3 bg-[#84CC16]"></span>
@@ -648,20 +595,6 @@ const TrackingWidget: React.FC<{ status: 'placed' | 'preparing' | 'ready' | 'del
         </div>
     );
 };
-
-const CategoryPills: React.FC<{ pills: string[]; onSelect: (p: string) => void }> = ({ pills, onSelect }) => (
-    <div className="flex gap-2 mt-3 overflow-x-auto no-scrollbar pb-1">
-        {pills.map((pill, i) => (
-            <button
-                key={i}
-                onClick={() => onSelect(`Show me ${pill}`)}
-                className="flex-none px-3 py-1 rounded-md bg-muted/5 border border-border text-[10px] font-mono uppercase tracking-widest text-gray-400 hover:text-foreground hover:border-foreground/30 transition-all"
-            >
-                {pill}
-            </button>
-        ))}
-    </div>
-);
 
 const BillSplitter: React.FC<{ total: number }> = ({ total }) => {
     const [people, setPeople] = useState(2);
@@ -736,7 +669,166 @@ const StarRating: React.FC = () => {
     );
 };
 
-/* ─── MESSAGE BUBBLE ─── */
+/* ─── NEW UBER-LIKE UI COMPONENTS ─── */
+const UberMenuCard: React.FC<{ item: MenuItem; onAdd: (item: MenuItem) => void }> = ({ item, onAdd }) => {
+    return (
+        <motion.div
+            whileTap={{ scale: 0.98 }}
+            className="bg-card border border-border rounded-2xl overflow-hidden flex flex-col group transition-all duration-300 touch-pan-y"
+        >
+            <div className="aspect-square relative overflow-hidden bg-muted/5">
+                {item.image_url ? (
+                    <img src={item.image_url} alt={item.name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
+                ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                        <UtensilsCrossed className="w-10 h-10 text-muted-foreground/20" />
+                    </div>
+                )}
+                <button
+                    onClick={(e) => { e.stopPropagation(); onAdd(item); }}
+                    className="absolute bottom-3 right-3 w-10 h-10 rounded-full bg-[#84CC16] text-black shadow-lg flex items-center justify-center hover:scale-110 active:scale-95 transition-transform"
+                >
+                    <Plus className="w-5 h-5" />
+                </button>
+            </div>
+            <div className="p-4 flex flex-col flex-1">
+                <h3 className="text-sm font-bold text-[#84CC16] line-clamp-1 mb-1">{item.name}</h3>
+                <p className="text-[10px] text-muted-foreground line-clamp-2 mb-2 h-7">{item.description}</p>
+                <div className="mt-auto flex items-center justify-between">
+                    <span className="text-sm font-black text-foreground">ETB {item.price.toLocaleString()}</span>
+                    <div className="flex items-center gap-1">
+                        <Star className="w-3 h-3 fill-amber-500 text-amber-500" />
+                        <span className="text-[10px] font-bold text-muted-foreground">5.0</span>
+                    </div>
+                </div>
+            </div>
+        </motion.div>
+    );
+};
+
+const MenuView: React.FC<{
+    items: MenuItem[];
+    categories: string[];
+    activeCategory: string;
+    onCategoryChange: (c: string) => void;
+    onAddToCart: (item: MenuItem) => void;
+}> = ({ items, categories, activeCategory, onCategoryChange, onAddToCart }) => {
+    const filteredItems = activeCategory === 'All' 
+        ? items 
+        : items.filter(item => item.category === activeCategory);
+
+    return (
+        <div className="flex-1 overflow-y-auto pb-32 pt-6 no-scrollbar">
+            {/* Categories */}
+            <div className="flex gap-2 overflow-x-auto no-scrollbar px-4 mb-8">
+                <button
+                    onClick={() => onCategoryChange('All')}
+                    className={cn(
+                        "px-6 py-3 rounded-full text-[10px] font-black uppercase tracking-widest transition-all shadow-lg shadow-black/20",
+                        activeCategory === 'All' ? "bg-[#84CC16] text-black" : "bg-card border border-border text-muted-foreground"
+                    )}
+                >
+                    All Type
+                </button>
+                {categories.map(cat => (
+                    <button
+                        key={cat}
+                        onClick={() => onCategoryChange(cat)}
+                        className={cn(
+                            "px-6 py-3 rounded-full text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap shadow-lg shadow-black/20",
+                            activeCategory === cat ? "bg-[#84CC16] text-black" : "bg-card border border-border text-muted-foreground"
+                        )}
+                    >
+                        {cat}
+                    </button>
+                ))}
+            </div>
+
+            {/* Menu Grid */}
+            <div className="px-4 mb-12">
+                <div className="flex items-center justify-between mb-6">
+                    <div className="flex flex-col">
+                        <h3 className="text-xl font-black text-foreground uppercase tracking-tight">Best Choice</h3>
+                        <div className="w-8 h-1 bg-[#84CC16] rounded-full mt-1" />
+                    </div>
+                    <button className="text-[10px] text-muted-foreground uppercase font-black tracking-widest px-3 py-1.5 rounded-full border border-border hover:bg-white/5 transition-colors">See all</button>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                    {filteredItems.map(item => (
+                        <UberMenuCard key={item.id} item={item} onAdd={onAddToCart} />
+                    ))}
+                </div>
+            </div>
+        </div>
+    );
+};
+
+const TrackingView: React.FC<{ activeOrder: ActiveOrder | null; refreshOrder: () => void }> = ({ activeOrder, refreshOrder }) => {
+    return (
+        <div className="flex-1 flex flex-col p-6 overflow-y-auto pb-24">
+            <h2 className="text-2xl font-black text-foreground mb-6 uppercase tracking-tight">Order Tracking</h2>
+            {activeOrder ? (
+                <div className="space-y-6">
+                    <div className="p-6 rounded-3xl bg-card border border-border shadow-xl">
+                        <div className="flex justify-between items-start mb-6">
+                            <div>
+                                <p className="text-[10px] font-black text-amber-500 uppercase tracking-widest mb-1">Active Order</p>
+                                <p className="text-lg font-black text-foreground">#{activeOrder.order_number}</p>
+                            </div>
+                            <button onClick={refreshOrder} className="p-2 rounded-full bg-white/5 hover:bg-white/10">
+                                <Loader2 className="w-4 h-4 text-muted-foreground" />
+                            </button>
+                        </div>
+                        <TrackingWidget status={ORDER_STATUS_MAP[activeOrder.status] as any || 'placed'} orderNumber={activeOrder.order_number} />
+                        <div className="mt-8 pt-6 border-t border-border flex justify-between items-center">
+                            <span className="text-sm font-bold text-muted-foreground uppercase">Total Amount</span>
+                            <span className="text-xl font-black text-foreground">ETB {activeOrder.total_amount.toLocaleString()}</span>
+                        </div>
+                    </div>
+                    <button className="w-full h-14 rounded-2xl bg-white/5 border border-white/10 text-foreground font-bold uppercase tracking-widest text-xs">
+                        Call Waiter 🙋
+                    </button>
+                </div>
+            ) : (
+                <div className="flex-1 flex flex-col items-center justify-center text-center opacity-50 pt-[10vh]">
+                    <div className="w-20 h-20 rounded-full bg-muted/20 flex items-center justify-center mb-4">
+                        <PackageCheck className="w-10 h-10 text-muted-foreground" />
+                    </div>
+                    <p className="text-sm font-bold text-muted-foreground uppercase tracking-widest">No Active Orders</p>
+                    <p className="text-[10px] text-muted-foreground/60 mt-1 uppercase tracking-tighter">Your recent orders will appear here</p>
+                </div>
+            )}
+        </div>
+    );
+};
+
+const BottomNav: React.FC<{
+    currentView: 'menu' | 'chat' | 'tracking';
+    onViewChange: (v: 'menu' | 'chat' | 'tracking') => void;
+}> = ({ currentView, onViewChange }) => {
+    return (
+        <div className="fixed bottom-0 inset-x-0 bg-background/90 backdrop-blur-lg border-t border-border px-6 py-3 flex items-center justify-between z-[60] safe-area-bottom">
+            <button onClick={() => onViewChange('menu')} className={cn("flex flex-col items-center gap-1 transition-colors", currentView === 'menu' ? "text-[#84CC16]" : "text-muted-foreground")}>
+                <div className={cn("p-2 rounded-full", currentView === 'menu' && "bg-[#84CC16]/10")}>
+                    <ShoppingBag className="w-5 h-5" />
+                </div>
+                <span className="text-[10px] font-bold uppercase tracking-tighter">Menu</span>
+            </button>
+            <button onClick={() => onViewChange('chat')} className={cn("flex flex-col items-center gap-1 transition-colors", currentView === 'chat' ? "text-[#84CC16]" : "text-muted-foreground")}>
+                <div className={cn("p-2 rounded-full", currentView === 'chat' && "bg-[#84CC16]/10")}>
+                    <MessageCircle className="w-5 h-5" />
+                </div>
+                <span className="text-[10px] font-bold uppercase tracking-tighter">Chat</span>
+            </button>
+            <button onClick={() => onViewChange('tracking')} className={cn("flex flex-col items-center gap-1 transition-colors", currentView === 'tracking' ? "text-[#84CC16]" : "text-muted-foreground")}>
+                <div className={cn("p-2 rounded-full", currentView === 'tracking' && "bg-[#84CC16]/10")}>
+                    <Timer className="w-5 h-5" />
+                </div>
+                <span className="text-[10px] font-bold uppercase tracking-tighter">Tracking</span>
+            </button>
+        </div>
+    );
+};
 const MessageBubble: React.FC<{ msg: ChatMessage; onQuickAction: (p: string, s?: boolean) => void; onAddToCart: (item: MenuItem) => void }> = ({ msg, onQuickAction, onAddToCart }) => {
     const isUser = msg.role === 'user';
     return (
@@ -747,7 +839,6 @@ const MessageBubble: React.FC<{ msg: ChatMessage; onQuickAction: (p: string, s?:
                 transition={{ duration: 0.25, ease: [0.2, 0, 0, 1] }}
                 className={cn("flex gap-2.5 max-w-[88%]", isUser ? "flex-row-reverse" : "")}
             >
-                {/* Avatar */}
                 <div className={cn(
                     "w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center mt-1",
                     isUser
@@ -760,7 +851,6 @@ const MessageBubble: React.FC<{ msg: ChatMessage; onQuickAction: (p: string, s?:
                     }
                 </div>
 
-                {/* Bubble */}
                 <div className={cn(
                     "px-4 py-3 rounded-2xl text-sm leading-relaxed",
                     isUser
@@ -769,11 +859,11 @@ const MessageBubble: React.FC<{ msg: ChatMessage; onQuickAction: (p: string, s?:
                 )}>
                     <div className="whitespace-pre-wrap">
                         {msg.content
-                            .replace(/\[System Note:.*$/gs, '') // Hide internal debug notes
-                            .replace(/^\|.*\|$/gm, '') // Remove markdown table rows
-                            .replace(/^[*-] .*(?:ETB|Birr|Price).*$/gmi, '') // Remove bulleted menu items
-                            .replace(/^(?:ID|Name|Category|Image URL|Availability|Description|Ref|Status):\s*.*$/gmi, '') // Strip technical fields
-                            .replace(/[\*_\[\]\(\)]/g, '') // Remove markdown special chars
+                            .replace(/\[System Note:.*$/gs, '')
+                            .replace(/^\|.*\|$/gm, '')
+                            .replace(/^[*-] .*(?:ETB|Birr|Price).*$/gmi, '')
+                            .replace(/^(?:ID|Name|Category|Image URL|Availability|Description|Ref|Status):\s*.*$/gmi, '')
+                            .replace(/[\*_\[\]\(\)]/g, '')
                             .trim()}
                     </div>
 
@@ -786,7 +876,6 @@ const MessageBubble: React.FC<{ msg: ChatMessage; onQuickAction: (p: string, s?:
                 </div>
             </motion.div>
 
-            {/* Rich Metadata Section */}
             {!isUser && msg.metadata && (
                 <div className="w-full max-w-[90%] pl-9 space-y-2">
                     {msg.metadata.tracking && (
@@ -801,13 +890,11 @@ const MessageBubble: React.FC<{ msg: ChatMessage; onQuickAction: (p: string, s?:
                 </div>
             )}
 
-            {/* Attachments Section */}
             {msg.attachments?.type === 'menu' && msg.attachments.data?.length > 0 && (
                 <div className="w-full max-w-[95%] pl-9">
                     <MenuCarousel 
                         items={msg.attachments.data} 
                         onAddToCart={onAddToCart} 
-                        isFallback={msg.metadata?.attachments?.is_fallback || msg.metadata?.is_fallback} 
                     />
                 </div>
             )}
@@ -815,98 +902,12 @@ const MessageBubble: React.FC<{ msg: ChatMessage; onQuickAction: (p: string, s?:
     );
 };
 
-/* ─── DISCOVERY SECTION (Top Performers) ─── */
-const DiscoveryItem: React.FC<{ item: MenuItem; index: number; compact?: boolean; onSelect: (n: string) => void }> = ({ item, index, compact, onSelect }) => (
-    <motion.div
-        whileHover={{ y: -5 }}
-        onClick={() => onSelect(`Tell me more about ${item.name}`)}
-        className={cn(
-            "relative rounded-[2.5rem] overflow-hidden shadow-sm flex flex-col group cursor-pointer",
-            getPastelColor(index),
-            compact ? "w-32 h-40 p-3" : "w-44 h-56 p-5"
-        )}
-    >
-        {/* Decorative Leaf */}
-        <FreshLeaf className="absolute -top-1 -right-1 w-8 h-8 text-black/5 rotate-12" />
-
-        <div className="flex-1 flex items-center justify-center relative z-10">
-            <motion.div
-                animate={{ y: [0, -5, 0] }}
-                transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-                className={compact ? "w-20 h-20" : "w-28 h-28"}
-            >
-                {item.image_url ? (
-                    <img
-                        src={item.image_url}
-                        alt={item.name}
-                        className="w-full h-full object-contain drop-shadow-xl"
-                    />
-                ) : (
-                    <UtensilsCrossed className="w-10 h-10 text-black/10" />
-                )}
-            </motion.div>
-        </div>
-        
-        <div className="text-center mb-1 relative z-10">
-            <h4 className={cn("text-gray-900 font-black leading-tight line-clamp-2 px-1", compact ? "text-[10px]" : "text-xs")}>
-                {item.name}
-            </h4>
-        </div>
-
-        <div className="flex items-center justify-between mt-auto px-1 relative z-10">
-            <p className={cn("font-black text-gray-900", compact ? "text-[11px]" : "text-sm")}>
-                ETB {item.price.toLocaleString()}
-            </p>
-            <div className={cn("rounded-full bg-white/40 flex items-center justify-center", compact ? "w-5 h-5" : "w-7 h-7")}>
-                <ChevronDown className="w-3 h-3 text-gray-900/40" />
-            </div>
-        </div>
-    </motion.div>
-);
-
-const DiscoverySection: React.FC<{ items: MenuItem[]; compact?: boolean; onSelect: (n: string) => void }> = ({ items, compact, onSelect }) => (
-    <motion.div 
-        layout
-        className={cn(
-            "w-full overflow-hidden transition-all duration-500",
-            compact ? "px-4 py-2 bg-background/40 backdrop-blur-md border-b border-border" : "py-8"
-        )}
-    >
-        <div className={cn("max-w-2xl mx-auto", compact ? "flex items-center gap-4" : "")}>
-            {!compact && (
-                <div className="text-center mb-6">
-                    <h3 className="text-lg font-bold text-white mb-1">Your Daily Offer</h3>
-                    <p className="text-xs text-gray-500 uppercase tracking-widest font-mono">Chef's Fresh Picks</p>
-                </div>
-            )}
-            {compact && (
-                <div className="flex-none pr-2 border-r border-border mr-2">
-                    <p className="text-[10px] font-black uppercase tracking-tighter text-lime-600 dark:text-lime-500 leading-tight">Top<br/>Items</p>
-                </div>
-            )}
-            <div className={cn(
-                "flex gap-3 overflow-x-auto no-scrollbar pb-2 snap-x snap-mandatory",
-                compact ? "flex-1" : "justify-center"
-            )}>
-                {items.map((item, i) => (
-                    <div key={item.id} className="snap-start">
-                        <DiscoveryItem item={item} index={i} compact={compact} onSelect={onSelect} />
-                    </div>
-                ))}
-            </div>
-        </div>
-    </motion.div>
-);
-
-/* ─── MAIN PAGE ─── */
 const CustomerChatPage: React.FC = () => {
     const { t } = useLanguage();
-
     const { tableId } = useParams<{ tableId: string }>();
     const [searchParams] = useSearchParams();
     const branchToken = searchParams.get('token') || '';
     const [activeOrgId, setActiveOrgId] = useState('');
-
     const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [inputValue, setInputValue] = useState('');
     const [isTyping, setIsTyping] = useState(false);
@@ -914,7 +915,6 @@ const CustomerChatPage: React.FC = () => {
     const [hasInteracted, setHasInteracted] = useState(false);
     const [branchName, setBranchName] = useState('');
     const [branchId, setBranchId] = useState('');
-    const [topItems, setTopItems] = useState<MenuItem[]>([]);
     const [isHistoryLoading, setIsHistoryLoading] = useState(true);
     const [isVerified, setIsVerified] = useState(false);
     const [isVerifying, setIsVerifying] = useState(false);
@@ -934,9 +934,11 @@ const CustomerChatPage: React.FC = () => {
     const [sessionCompleted, setSessionCompleted] = useState(false);
     const [ratingSubmitted, setRatingSubmitted] = useState(false);
     const [latestOrderId, setLatestOrderId] = useState<string | null>(null);
-
     const [activeOrder, setActiveOrder] = useState<ActiveOrder | null>(null);
     const [branchBanks, setBranchBanks] = useState<{ bank_key: string; account_number: string }[]>([]);
+    const [currentView, setCurrentView] = useState<'menu' | 'chat' | 'tracking'>('menu');
+    const [allItems, setAllItems] = useState<MenuItem[]>([]);
+    const [activeCategory, setActiveCategory] = useState<string>('All');
 
     const generateOrderNumber = useCallback(() => {
         const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
@@ -954,10 +956,8 @@ const CustomerChatPage: React.FC = () => {
                         : item
                 );
             }
-
             return [...prev, { menuItem, quantity: 1 }];
         });
-
         setIsCartOpen(true);
     }, []);
 
@@ -979,7 +979,6 @@ const CustomerChatPage: React.FC = () => {
             setActiveOrder(null);
             return null;
         }
-
         const { data, error } = await supabase
             .from('orders')
             .select('id, order_number, status, total_amount')
@@ -1010,18 +1009,15 @@ const CustomerChatPage: React.FC = () => {
             setBranchBanks([]);
             return;
         }
-
         const { data, error } = await supabase
             .from('bank_settings')
             .select('bank_key, account_number')
             .eq('branch_id', branchId)
             .eq('is_active', true);
-
         if (error) {
             console.warn('Branch bank fetch failed:', error);
             return;
         }
-
         setBranchBanks(data || []);
     }, [branchId]);
 
@@ -1031,12 +1027,10 @@ const CustomerChatPage: React.FC = () => {
             showToast('Please wait for the table to be verified before placing an order.', 'error');
             return;
         }
-
         setIsPlacingOrder(true);
         try {
             const subtotal = cart.reduce((sum, item) => sum + (item.menuItem.price * item.quantity), 0);
             const totalAmount = subtotal * 1.15;
-
             const payload = {
                 branch_id: branchId,
                 items: cart.map(item => ({
@@ -1054,28 +1048,20 @@ const CustomerChatPage: React.FC = () => {
                     source: 'chatbot',
                 },
             };
-
             const { data, error } = await supabase.functions.invoke('place-order', {
                 body: payload,
             });
-
             if (error) throw error;
-
-            const result = typeof data === 'string' ? (() => {
-                try { return JSON.parse(data); } catch { return null; }
-            })() : data;
-
+            const result = typeof data === 'string' ? (() => { try { return JSON.parse(data); } catch { return null; } })() : data;
             if (!result?.success && !result?.order_id) {
                 throw new Error(result?.detail || result?.error || 'Order submission failed.');
             }
-
             const optimisticOrder: ActiveOrder = {
                 id: result.order_id || crypto.randomUUID(),
                 order_number: result.order_number || payload.order_details.order_number,
                 status: result.status || 'pending',
                 total_amount: totalAmount,
             };
-
             setActiveOrder(optimisticOrder);
             setLatestOrderId(optimisticOrder.id);
             setSessionCompleted(false);
@@ -1093,7 +1079,6 @@ const CustomerChatPage: React.FC = () => {
         }
     }, [branchId, cart, generateOrderNumber, isPlacingOrder, refreshActiveOrder, tableId, tableNumber]);
 
-    // Sync cart to localStorage
     useEffect(() => {
         localStorage.setItem(cartStorageKey, JSON.stringify(cart));
     }, [cart, cartStorageKey]);
@@ -1101,15 +1086,6 @@ const CustomerChatPage: React.FC = () => {
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const scrollRef = useRef<HTMLDivElement>(null);
     const hasInitialGreetingSent = useRef(false);
-    const historyLoadedRef = useRef(false);
-
-    const [isIntroCompleted, setIsIntroCompleted] = useState(false);
-    useEffect(() => {
-        if (!isHistoryLoading && historyLoadedRef.current && messages.length > 0) {
-            setIsIntroCompleted(true);
-        }
-    }, [isHistoryLoading, messages.length]);
-
     const sessionId = tableId ? getSessionId(tableId) : '';
 
     const getEdgeAuthToken = useCallback(async () => {
@@ -1122,12 +1098,10 @@ const CustomerChatPage: React.FC = () => {
         if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
             throw new Error('Supabase environment is not configured.');
         }
-
         const authToken = await getEdgeAuthToken();
         if (!authToken) {
             throw new Error('This chat link is missing a valid secure token.');
         }
-
         const response = await fetch(`${SUPABASE_URL}/functions/v1/${functionName}`, {
             method: 'POST',
             headers: {
@@ -1138,25 +1112,20 @@ const CustomerChatPage: React.FC = () => {
             body: JSON.stringify(body),
             signal,
         });
-
         const payload = await response.json().catch(() => ({}));
         if (!response.ok || payload?.error) {
             throw new Error(payload?.detail || payload?.error || `Failed to call ${functionName}.`);
         }
-
         return payload;
     }, [getEdgeAuthToken]);
 
-    // QR Token Verification
     useEffect(() => {
         const urlToken = searchParams.get('token');
         if (!urlToken) {
-            // No token in URL - allow access (backwards-compatible for Test Chatbot)
             setIsVerified(true);
             return;
         }
         if (!tableId) return;
-
         const verifyQrToken = async () => {
             setIsVerifying(true);
             try {
@@ -1165,15 +1134,12 @@ const CustomerChatPage: React.FC = () => {
                     .select('qr_token, status')
                     .eq('id', tableId)
                     .maybeSingle();
-
                 if (!tableData) {
                     showToast('Table not found.', 'error');
                     return;
                 }
-
                 if (tableData.qr_token && tableData.qr_token === urlToken) {
                     setIsVerified(true);
-                    // Mark table as occupied if it was available
                     if (tableData.status === 'available') {
                         await supabase
                             .from('tables')
@@ -1189,11 +1155,9 @@ const CustomerChatPage: React.FC = () => {
                 setIsVerifying(false);
             }
         };
-
         verifyQrToken();
     }, [tableId, searchParams, sessionId]);
 
-    // Auto-resize textarea
     useEffect(() => {
         if (textareaRef.current) {
             textareaRef.current.style.height = 'auto';
@@ -1201,20 +1165,11 @@ const CustomerChatPage: React.FC = () => {
         }
     }, [inputValue]);
 
-    // Auto-scroll
     useEffect(() => {
         if (scrollRef.current) {
             scrollRef.current.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
         }
     }, [messages, isTyping]);
-
-    // The public chat route now relies on guarded edge functions rather than direct anon table reads.
-    // We keep this loading flag so the initial greeting waits for secure branch context.
-    useEffect(() => {
-        if (!sessionId) {
-            setIsHistoryLoading(false);
-        }
-    }, [sessionId]);
 
     useEffect(() => {
         const loadBranchContext = async () => {
@@ -1222,25 +1177,15 @@ const CustomerChatPage: React.FC = () => {
                 setIsHistoryLoading(false);
                 return;
             }
-
             setIsHistoryLoading(true);
             try {
                 const data = await invokeSecureFunction('get-branch-info', { branch_id: branchId });
-                if (data?.branch?.name) {
-                    setBranchName(data.branch.name);
-                }
-                if (data?.organization?.name) {
-                    setOrgName(data.organization.name);
-                }
-                if (data?.organization?.chatbot_logo_url) {
-                    setOrgLogoUrl(data.organization.chatbot_logo_url);
-                }
-                if (data?.organization?.id) {
-                    setActiveOrgId(data.organization.id);
-                }
+                if (data?.branch?.name) setBranchName(data.branch.name);
+                if (data?.organization?.name) setOrgName(data.organization.name);
+                if (data?.organization?.chatbot_logo_url) setOrgLogoUrl(data.organization.chatbot_logo_url);
+                if (data?.organization?.id) setActiveOrgId(data.organization.id);
             } catch (e: any) {
                 console.error('Branch context load failed:', e);
-                showToast(e.message || 'Unable to open this chat link.', 'error');
             } finally {
                 setIsHistoryLoading(false);
             }
@@ -1252,7 +1197,6 @@ const CustomerChatPage: React.FC = () => {
         refreshBranchBanks().catch(err => console.warn('Branch bank bootstrap failed:', err));
     }, [refreshBranchBanks]);
 
-    // Load table info, then branch + org names for display
     useEffect(() => {
         const loadTableInfo = async () => {
             if (!tableId) return;
@@ -1261,14 +1205,10 @@ const CustomerChatPage: React.FC = () => {
                 .select('id, table_number, branch_id, organization_id')
                 .eq('id', tableId)
                 .maybeSingle();
-            
             if (!tableData) return;
             setTableNumber(tableData.table_number || '');
             setBranchId(tableData.branch_id || '');
-            if (tableData.organization_id) {
-                setActiveOrgId(tableData.organization_id);
-            }
-
+            if (tableData.organization_id) setActiveOrgId(tableData.organization_id);
             if (tableData.branch_id) {
                 const { data: branchData } = await supabase
                     .from('branches')
@@ -1277,75 +1217,53 @@ const CustomerChatPage: React.FC = () => {
                     .maybeSingle();
                 if (branchData) {
                     setBranchName(branchData.name);
-                    if (!tableData.organization_id && branchData.organization_id) {
-                        setActiveOrgId(branchData.organization_id);
-                    }
+                    if (!tableData.organization_id && branchData.organization_id) setActiveOrgId(branchData.organization_id);
                 }
             }
         };
         loadTableInfo();
     }, [tableId]);
 
-    // Fetch menu categories for quick-reply chips
     useEffect(() => {
         const fetchCategories = async () => {
             if (!activeOrgId) return;
             try {
-                let query = supabase
-                    .from('view_menu_details')
-                    .select('category')
-                    .eq('organization_id', activeOrgId)
-                    .eq('is_available', true);
-                if (branchId) {
-                    query = query.eq('branch_id', branchId);
-                }
+                let query = supabase.from('view_menu_details').select('category').eq('organization_id', activeOrgId).eq('is_available', true);
+                if (branchId) query = query.eq('branch_id', branchId);
                 const { data } = await query;
-                if (data) {
-                    const unique = [...new Set(data.map((r: any) => r.category).filter(Boolean))] as string[];
-                    setCategories(unique);
-                }
-            } catch (e) {
-                console.warn('Category fetch failed:', e);
-            }
+                if (data) setCategories([...new Set(data.map((r: any) => r.category).filter(Boolean))] as string[]);
+            } catch (e) { console.warn('Category fetch failed:', e); }
         };
         fetchCategories();
     }, [activeOrgId, branchId]);
 
     useEffect(() => {
-        let isMounted = true;
-        let pollId: number | undefined;
-
-        const syncActiveOrder = async () => {
+        const fetchAllItems = async () => {
+            if (!activeOrgId) return;
             try {
-                await refreshActiveOrder();
-                if (!isMounted) return;
-            } catch (err) {
-                console.warn('Active order polling failed:', err);
-            }
+                let query = supabase.from('view_menu_details').select('*').eq('organization_id', activeOrgId).eq('is_available', true);
+                if (branchId) query = query.eq('branch_id', branchId);
+                const { data } = await query;
+                if (data) setAllItems(data);
+            } catch (e) { console.warn('Items fetch failed:', e); }
         };
+        fetchAllItems();
+    }, [activeOrgId, branchId]);
 
-        syncActiveOrder();
-        pollId = window.setInterval(syncActiveOrder, 10000);
-
-        return () => {
-            isMounted = false;
-            if (pollId) window.clearInterval(pollId);
-        };
+    useEffect(() => {
+        let isMounted = true;
+        let pollId = window.setInterval(async () => {
+            try {
+                if (isMounted) await refreshActiveOrder();
+            } catch (err) { console.warn('Polling error:', err); }
+        }, 10000);
+        return () => { isMounted = false; window.clearInterval(pollId); };
     }, [refreshActiveOrder]);
 
-    // Initialize/Update dynamic prompts when language/defaults change
-    useEffect(() => {
-        if (dynamicPrompts.length === 0 || messages.length === 0) {
-            setDynamicPrompts(QUICK_PROMPTS.map(p => ({ label: p.label, prompt: p.prompt })));
-        }
-    }, [t, messages.length]);
-
-    // Send message
     const handleSend = useCallback(async (textOverride?: string, isCategoryClick = false) => {
         const textToSend = textOverride || inputValue.trim();
         if (!textToSend.trim() || isTyping) return;
 
-        // 1. Add User Message (Skip if silent category browse)
         if (textToSend !== 'init_chat' && !isCategoryClick) {
             const userMessage: ChatMessage = {
                 id: crypto.randomUUID(),
@@ -1359,7 +1277,7 @@ const CustomerChatPage: React.FC = () => {
         }
         
         setIsTyping(true);
-        setHasInteracted(true); // Mark interaction
+        setHasInteracted(true);
 
         try {
             const data = await invokeSecureFunction('customer-intelligence', {
@@ -1392,65 +1310,18 @@ const CustomerChatPage: React.FC = () => {
                 attachments: parsedAttachments
             };
             
-            // Extract top performer items from metadata if present
-            if (data?.metadata?.top_performing_items) {
-                setTopItems(data.metadata.top_performing_items);
-            } else if (parsedAttachments && topItems.length === 0) {
-                setTopItems(parsedAttachments.data.slice(0, 6));
-            }
-
             setMessages(prev => [...prev, assistantMsg]);
-            
-            // Update dynamic prompts if metadata contains suggested buttons
-            // Filter out legacy generic menu buttons to prevent redundancy with category chips
-            const filterGeneric = (buttons: any[]) => buttons.filter(btn => 
-                !['best offers', 'drinks', 'food menu', 'show menu', 'popular items'].includes(btn.label?.toLowerCase().replace(/[✨🍹🍕🤩]/g, '').trim())
-            );
 
             if (data?.metadata?.buttons && Array.isArray(data.metadata.buttons)) {
-                setDynamicPrompts(filterGeneric(data.metadata.buttons));
-            } else if (data?.metadata?.suggested_prompts && Array.isArray(data.metadata.suggested_prompts)) {
-                setDynamicPrompts(filterGeneric(data.metadata.suggested_prompts));
-            }
-            
-            if (textToSend === 'init_chat') {
-                setHasInteracted(true);
+                setDynamicPrompts(data.metadata.buttons);
             }
         } catch (err: any) {
-            console.error('Chat error full details:', err);
-            if (err.name === 'AbortError') {
-                showToast("Request timed out. Please try again.", "error");
-            }
-            if (textToSend !== 'init_chat') {
-                const errorMsg: ChatMessage = {
-                    id: crypto.randomUUID(),
-                    role: 'assistant',
-                    content: `❌ ${err.message || 'Sorry, something went wrong. Please try again.'}`,
-                    timestamp: new Date(),
-                };
-                setMessages(prev => [...prev, errorMsg]);
-            }
+            console.error('Chat error:', err);
+            showToast('Unable to reach assistant.', 'error');
         } finally {
             setIsTyping(false);
         }
-    }, [inputValue, sessionId, tableId, tableNumber, activeOrgId, branchId, topItems.length, branchName, orgName, invokeSecureFunction, isVerified]);
-
-    // Proactive Greeting
-    useEffect(() => {
-        const sendGreeting = async () => {
-            // Wait for core context to be ready
-            if (!isHistoryLoading && sessionId && messages.length === 0 && !isTyping && !hasInitialGreetingSent.current && tableId && isVerified) {
-                hasInitialGreetingSent.current = true;
-                try {
-                    await handleSend('init_chat');
-                } catch (err) {
-                    console.error('Initial greeting failed:', err);
-                    hasInitialGreetingSent.current = false;
-                }
-            }
-        };
-        sendGreeting();
-    }, [sessionId, messages.length, isTyping, handleSend, isHistoryLoading, tableId, isVerified]);
+    }, [inputValue, isTyping, sessionId, tableId, tableNumber, activeOrgId, orgName, branchId, branchName, isVerified, invokeSecureFunction]);
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
         if (e.key === 'Enter' && !e.shiftKey) {
@@ -1459,303 +1330,117 @@ const CustomerChatPage: React.FC = () => {
         }
     };
 
-    const hasContent = inputValue.trim().length > 0;
-
-    if (isVerifying || (isHistoryLoading && tableId)) {
-        return (
-            <div className="w-full h-[100dvh] flex flex-col items-center justify-center bg-background text-foreground space-y-4">
-                <Loader2 className="w-10 h-10 text-emerald-500 animate-spin" />
-                <p className="text-sm font-medium animate-pulse">Verifying Table Connection...</p>
-            </div>
-        );
-    }
-
-    if (!isVerified && !isVerifying) {
-        return (
-            <div className="w-full h-[100dvh] flex flex-col items-center justify-center bg-background text-foreground p-8 text-center">
-                <div className="w-20 h-20 rounded-3xl bg-red-500/10 border border-red-500/20 flex items-center justify-center mb-6">
-                    <X className="w-10 h-10 text-red-500" />
-                </div>
-                <h1 className="text-2xl font-black mb-2">Access Denied</h1>
-                <p className="text-muted-foreground text-sm max-w-xs mx-auto">
-                    This table session is protected. Please scan the QR code on your table to start ordering.
-                </p>
-                <Button 
-                    className="mt-8 bg-foreground text-background hover:bg-foreground/90 rounded-2xl px-8"
-                    onClick={() => window.location.reload()}
-                >
-                    Try Again
-                </Button>
-            </div>
-        );
-    }
-
     return (
-        <div className="w-full h-[100dvh] flex flex-col bg-background text-foreground overflow-hidden font-sans">
-            {/* ─── HEADER ─── */}
-            <div className="flex-none px-4 py-3 border-b border-border bg-background/60 backdrop-blur-xl safe-area-top z-50">
-                <div className="max-w-2xl mx-auto flex items-center justify-between gap-1">
-                    <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-                        <div className="w-8 h-8 sm:w-9 sm:h-9 flex-none rounded-xl bg-gradient-to-br from-emerald-500/20 to-emerald-600/30 border border-emerald-500/30 flex items-center justify-center shadow-[0_0_20px_rgba(16,185,129,0.4)] overflow-hidden transition-shadow duration-500">
-                            {orgLogoUrl ? (
-                                <img src={orgLogoUrl} alt="Logo" className="w-full h-full object-cover" />
-                            ) : (
-                                <Sparkles className="w-4 h-4 sm:w-4.5 sm:h-4.5 text-emerald-400" />
+        <div className="flex flex-col h-[100dvh] bg-background overflow-hidden relative font-sans text-foreground selection:bg-[#84CC16]/30">
+            {/* Background Decorations */}
+            <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
+                <div className="absolute top-[-10%] right-[-10%] w-[50%] h-[50%] bg-[#84CC16]/5 rounded-full blur-[120px]" />
+                <div className="absolute bottom-[-10%] left-[-10%] w-[40%] h-[40%] bg-emerald-500/5 rounded-full blur-[100px]" />
+            </div>
+
+            {/* Header */}
+            <div className="flex-none px-6 py-4 flex items-center justify-between bg-background/90 backdrop-blur-lg border-b border-border z-50">
+                <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-card border border-[#84CC16]/20 flex items-center justify-center overflow-hidden">
+                        {orgLogoUrl ? <img src={orgLogoUrl} alt="Logo" className="w-full h-full object-cover" /> : <Sparkles className="w-5 h-5 text-[#84CC16]" />}
+                    </div>
+                    <div>
+                        <h1 className="text-sm font-black uppercase tracking-tight text-foreground">{orgName || 'Sosha'}</h1>
+                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{branchName || 'Restaurant'} • Table {tableNumber}</p>
+                    </div>
+                </div>
+                <div className="flex items-center gap-2">
+                    <ThemeToggle />
+                    <LanguageSwitcher />
+                </div>
+            </div>
+
+            {/* Main Content Area */}
+            <div className="flex-1 overflow-hidden relative z-10 flex flex-col">
+                {currentView === 'menu' && (
+                    <MenuView
+                        items={allItems}
+                        categories={categories}
+                        activeCategory={activeCategory}
+                        onCategoryChange={setActiveCategory}
+                        onAddToCart={addToCart}
+                    />
+                )}
+
+                {currentView === 'tracking' && (
+                    <TrackingView activeOrder={activeOrder} refreshOrder={refreshActiveOrder} />
+                )}
+
+                {currentView === 'chat' && (
+                    <div ref={scrollRef} className="h-full overflow-y-auto pb-32">
+                        <div className="max-w-2xl mx-auto p-4 space-y-6">
+                            <AnimatePresence initial={false}>
+                                {messages.map(msg => (
+                                    <MessageBubble 
+                                        key={msg.id} 
+                                        msg={msg} 
+                                        onQuickAction={handleSend}
+                                        onAddToCart={addToCart}
+                                    />
+                                ))}
+                            </AnimatePresence>
+                            {isTyping && (
+                                <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="flex items-center gap-2.5">
+                                    <div className="w-7 h-7 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
+                                        <Sparkles className="w-3.5 h-3.5 text-emerald-500 animate-pulse" />
+                                    </div>
+                                    <div className="bg-card border border-border rounded-2xl rounded-tl-md px-4 py-3 shadow-lg">
+                                        <div className="flex items-center gap-3">
+                                            <div className="flex gap-1">
+                                                <motion.div animate={{ opacity: [0, 1, 0] }} transition={{ repeat: Infinity, duration: 1.5, delay: 0 }} className="w-1 h-1 bg-emerald-400 rounded-full" />
+                                                <motion.div animate={{ opacity: [0, 1, 0] }} transition={{ repeat: Infinity, duration: 1.5, delay: 0.2 }} className="w-1 h-1 bg-emerald-400 rounded-full" />
+                                                <motion.div animate={{ opacity: [0, 1, 0] }} transition={{ repeat: Infinity, duration: 1.5, delay: 0.4 }} className="w-1 h-1 bg-emerald-400 rounded-full" />
+                                            </div>
+                                            <span className="text-[10px] text-emerald-400/60 uppercase font-bold tracking-widest">Thinking...</span>
+                                        </div>
+                                    </div>
+                                </motion.div>
                             )}
                         </div>
-                        <div className="min-w-0">
-                            <h1 className="text-sm font-bold text-foreground leading-none truncate">
-                                {orgName || branchName || 'Baro'}
-                            </h1>
-                            <p className="text-[8px] sm:text-[10px] text-muted-foreground mt-1 font-mono uppercase tracking-[0.1em] sm:tracking-[0.2em] truncate">
-                                {branchName || 'AI Assistant'} {tableNumber && tableNumber !== 'T1' ? `• Table ${tableNumber}` : ''}
-                            </p>
-                        </div>
                     </div>
-                    <div className="flex items-center gap-1 sm:gap-3 flex-none">
-                        <ThemeToggle />
-                        <LanguageSwitcher />
-                        <button
-                            onClick={() => {
-                                if (confirm("This will clear the chat display. Your order history is preserved. Continue?")) {
-                                    setMessages([]);
-                                    setHasInteracted(false);
-                                    hasInitialGreetingSent.current = false;
-                                    setCart([]);
-                                    localStorage.removeItem(cartStorageKey);
-                                }
-                            }}
-                            className="p-1.5 sm:p-2 hover:bg-red-500/10 text-muted-foreground hover:text-red-500 rounded-full transition-all flex-none"
-                            title="Clear Chat"
-                        >
-                            <Trash2 className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
-                        </button>
-                        <div className="flex items-center gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex-none">
-                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                            <span className="hidden sm:inline text-[9px] text-emerald-400 font-black uppercase tracking-widest">{t('common.online') || 'Online'}</span>
-                        </div>
-                    </div>
-                </div>
+                )}
             </div>
 
-            {/* ─── PINNED ORDER STATUS / PAYMENT ─── */}
-            {activeOrder && !sessionCompleted && (
-                <div className="flex-none px-4 py-2 border-b border-border bg-background/80 backdrop-blur-sm">
-                    <div className="max-w-2xl mx-auto">
-                        {activeOrder.status === 'served' ? (
-                            <PaymentCard
-                                orderId={activeOrder.id}
-                                orderNumber={activeOrder.order_number}
-                                total={activeOrder.total_amount}
-                                banks={branchBanks}
-                                onPaymentSubmitted={() => {
-                                    if (activeOrder) setLatestOrderId(activeOrder.id);
-                                    setActiveOrder(null);
-                                    setCart([]);
-                                    localStorage.removeItem(cartStorageKey);
-                                    setSessionCompleted(true);
-                                }}
+            {/* Persistent Input Area for Chat */}
+            {currentView === 'chat' && (
+                <div className="fixed bottom-[72px] inset-x-0 px-4 pb-4 z-50 pointer-events-none">
+                    <div className="max-w-2xl mx-auto pointer-events-auto">
+                        <div className="flex gap-2 overflow-x-auto no-scrollbar mb-4">
+                            {dynamicPrompts.map((action: any, i) => (
+                                <button key={i} onClick={() => handleSend(action.prompt)} className="flex-none px-4 py-2.5 rounded-full bg-lime-500/10 border border-lime-500/20 text-lime-600 text-[10px] font-black uppercase tracking-wider hover:bg-lime-500/20 whitespace-nowrap">{action.label}</button>
+                            ))}
+                        </div>
+                        <div className="relative flex items-end rounded-3xl border bg-background/80 backdrop-blur-xl border-border shadow-2xl focus-within:border-[#84CC16]/50 transition-all">
+                            <textarea
+                                ref={textareaRef}
+                                value={inputValue}
+                                onChange={e => setInputValue(e.target.value)}
+                                onKeyDown={handleKeyDown}
+                                placeholder="Ask me anything..."
+                                className="flex-1 bg-transparent border-0 outline-none text-foreground text-sm px-5 py-4 resize-none min-h-[56px] max-h-[120px]"
                             />
-                        ) : (
-                            <TrackingWidget
-                                status={(ORDER_STATUS_MAP[activeOrder.status] || 'placed') as any}
-                                orderNumber={activeOrder.order_number}
-                                compact
-                            />
-                        )}
+                            <button onClick={() => handleSend()} className={cn("m-2 p-2.5 rounded-2xl transition-all", inputValue.trim() ? "bg-[#84CC16] text-black shadow-lg shadow-lime-500/30" : "bg-muted/10 text-muted-foreground")}>
+                                <Send className="w-4 h-4" />
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}
 
-            {/* ─── PERSISTENT DISCOVERY SECTION REMOVED ─── */}
-
-            {/* ─── SCROLLABLE CHAT AREA ─── */}
-            <div ref={scrollRef} className="flex-1 overflow-y-auto pt-4 pb-4">
-                <div className="max-w-2xl mx-auto px-4">
-                    {!isIntroCompleted ? (
-                        <motion.div
-                            initial={{ opacity: 0, scale: 0.95 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            exit={{ opacity: 0, scale: 1.05 }}
-                            className="flex flex-col items-center justify-start pt-6 md:pt-[8vh] min-h-[60vh] text-center px-4"
-                        >
-                            <div className="relative w-28 h-28 md:w-32 md:h-32 mx-auto mb-8">
-                                {/* Glowing ambient light */}
-                                <motion.div 
-                                    animate={{ 
-                                        scale: [1, 1.2, 1],
-                                        opacity: [0.3, 0.6, 0.3]
-                                    }}
-                                    transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-                                    className="absolute -inset-4 bg-emerald-500/25 rounded-full blur-2xl z-0" 
-                                />
-                                <motion.div 
-                                    animate={{ 
-                                        scale: [1, 1.1, 1],
-                                        opacity: [0.1, 0.3, 0.1]
-                                    }}
-                                    transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-                                    className="absolute -inset-8 bg-emerald-400/10 rounded-full blur-3xl z-0" 
-                                />
-                                
-                                {/* Agentic Core replacing avatar */}
-                                <div className="relative z-10 w-full h-full rounded-full bg-card border border-emerald-500/30 shadow-[0_0_40px_rgba(16,185,129,0.3)] flex items-center justify-center overflow-hidden ring-4 ring-emerald-500/5 group">
-                                    {orgLogoUrl ? (
-                                        <img src={orgLogoUrl} alt="Logo" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
-                                    ) : (
-                                        <Sparkles className="w-12 h-12 text-emerald-400" />
-                                    )}
-                                </div>
-
-                                {/* Floating Moana Leaves/Sparkles */}
-                                <motion.div animate={{ y: [-4, 4, -4], rotate: [10, 20, 10] }} transition={{ duration: 3, repeat: Infinity }} className="absolute -top-4 -right-2 text-3xl z-20 drop-shadow-lg">🌿</motion.div>
-                                <motion.div animate={{ y: [4, -4, 4], rotate: [-10, -20, -10] }} transition={{ duration: 4, repeat: Infinity }} className="absolute bottom-2 -left-4 text-4xl z-20 drop-shadow-lg">🍃</motion.div>
-                                <motion.div animate={{ scale: [1, 1.2, 1], opacity: [0.5, 1, 0.5] }} transition={{ duration: 2, repeat: Infinity }} className="absolute top-1/2 -right-8 text-2xl z-20">🍀</motion.div>
-                            </div>
-
-                            <motion.h2 
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: 0.2 }}
-                                className="text-xl md:text-2xl font-bold text-foreground mb-10 tracking-tight leading-relaxed max-w-[340px] mx-auto normal-case"
-                            >
-                                <span className="cursive-vibe text-[#84CC16]">slay first, eat second —</span> <br/>
-                                <span className="text-emerald-500/90 font-black text-xs sm:text-sm tracking-widest uppercase">jk eat first, chat with me to orderrr 🫶🔥</span>
-                            </motion.h2>
-
-                            <motion.button
-                                initial={{ opacity: 0, y: 20 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: 0.6 }}
-                                whileHover={{ scale: 1.05 }}
-                                whileTap={{ scale: 0.95 }}
-                                onClick={() => setIsIntroCompleted(true)}
-                                className="w-full max-w-[280px] h-14 rounded-full bg-[#84CC16] hover:bg-lime-400 text-black font-black uppercase tracking-widest text-sm shadow-[0_0_30px_rgba(132,204,22,0.4)] flex items-center justify-center gap-2 relative overflow-hidden group mx-auto transition-colors"
-                            >
-                                <div className="absolute inset-0 bg-white/20 w-0 group-hover:w-full transition-all duration-300 ease-out" />
-                                <span className="relative z-10 flex items-center gap-2">Open Menu <Sparkles className="w-4 h-4" /></span>
-                            </motion.button>
-                        </motion.div>
-                    ) : !hasInteracted && messages.length === 0 ? (
-                        <div className="pt-12 pb-8 text-center">
-                            <Loader2 className="w-8 h-8 text-emerald-500 animate-spin mx-auto mb-4" />
-                            <p className="text-sm text-muted-foreground animate-pulse">Initializing Menu...</p>
-                        </div>
-                    ) : null}
-
-                    <div className={cn("space-y-6 pt-6 transition-all duration-300", (!hasInteracted && !isTyping) ? "opacity-0" : "opacity-100")}>
-                        <AnimatePresence initial={false}>
-                            {messages.map(msg => (
-                                <MessageBubble 
-                                    key={msg.id} 
-                                    msg={msg} 
-                                    onQuickAction={handleSend}
-                                    onAddToCart={addToCart}
-                                />
-                            ))}
-                        </AnimatePresence>
-
-                        {isTyping && (
-                            <motion.div
-                                initial={{ opacity: 0, y: 8 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                className="flex items-center gap-2.5"
-                            >
-                                <div className="w-7 h-7 rounded-full bg-gradient-to-br from-emerald-500/20 to-emerald-600/30 border border-emerald-500/30 flex items-center justify-center">
-                                    <Sparkles className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />
-                                </div>
-                                <div className="bg-card border border-border rounded-2xl rounded-tl-md px-4 py-3 shadow-lg">
-                                    <div className="flex items-center gap-3">
-                                        <div className="flex gap-1">
-                                            <motion.div animate={{ opacity: [0, 1, 0] }} transition={{ repeat: Infinity, duration: 1.5, delay: 0 }} className="w-1 h-1 bg-emerald-400 rounded-full" />
-                                            <motion.div animate={{ opacity: [0, 1, 0] }} transition={{ repeat: Infinity, duration: 1.5, delay: 0.2 }} className="w-1 h-1 bg-emerald-400 rounded-full" />
-                                            <motion.div animate={{ opacity: [0, 1, 0] }} transition={{ repeat: Infinity, duration: 1.5, delay: 0.4 }} className="w-1 h-1 bg-emerald-400 rounded-full" />
-                                        </div>
-                                        <span className="text-[10px] text-emerald-400/60 uppercase font-bold tracking-widest">Assistant Thinking</span>
-                                    </div>
-                                </div>
-                            </motion.div>
-                        )}
-                    </div>
-                </div>
-            </div>
-
-            <div className="flex-none px-4 pb-6 pt-2 safe-area-bottom bg-background z-50">
-                <div className="max-w-2xl mx-auto">
-                    {/* Dynamic Suggestion Chips Area */}
-                    <div className={cn(
-                        "flex gap-2 overflow-x-auto no-scrollbar mb-4 transition-opacity duration-300",
-                        (isTyping) ? "opacity-50 pointer-events-none" : "opacity-100"
-                    )}>
-                        {/* 1. Contextual Actions from Assistant (Metadata) */}
-                        {dynamicPrompts.map((action: any, i) => (
-                            <button
-                                key={`dyn-btn-${i}`}
-                                disabled={isTyping}
-                                onClick={() => handleSend(action.prompt)}
-                                className="flex-none px-4 py-2.5 rounded-full bg-lime-500/10 border border-lime-500/20 text-lime-600 dark:text-lime-400 text-[10px] font-black uppercase tracking-wider hover:bg-lime-500/20 transition-all whitespace-nowrap flex items-center gap-2 active:scale-95"
-                            >
-                                <Sparkles className="w-3 h-3" />
-                                {action.label}
-                            </button>
-                        ))}
-
-                        {/* 2. Menu Navigation Categories (Direct Fetch) */}
-                        {categories.map((cat, i) => (
-                            <button
-                                key={`cat-${i}`}
-                                disabled={isTyping}
-                                onClick={() => handleSend(cat, true)}
-                                className="flex-none px-4 py-2.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-[10px] font-black uppercase tracking-wider hover:bg-emerald-500/20 transition-all whitespace-nowrap active:scale-95"
-                            >
-                                {cat}
-                            </button>
-                        ))}
-
-                        {/* 3. Minimal Fallback (Only if both empty) */}
-                        {categories.length === 0 && dynamicPrompts.length === 0 && (
-                            <div className="flex-none px-4 py-2.5 rounded-full bg-white/5 border border-white/10 text-zinc-500 text-[10px] font-black uppercase tracking-wider whitespace-nowrap animate-pulse">
-                                Loading Menu Categories...
-                            </div>
-                        )}
-                    </div>
-
-                    <div className={cn(
-                        "relative flex items-end rounded-3xl border transition-all duration-500",
-                        "bg-white/5 border-white/10 focus-within:border-lime-500/40"
-                    )}>
-                        <textarea
-                            ref={textareaRef}
-                            value={inputValue}
-                            onChange={e => setInputValue(e.target.value)}
-                            onKeyDown={handleKeyDown}
-                            disabled={isTyping}
-                            placeholder={!hasInteracted ? "Waiting..." : "Ask me anything..."}
-                            className="flex-1 bg-transparent border-0 outline-none text-foreground text-sm placeholder:text-muted-foreground resize-none overflow-hidden px-5 py-4 leading-relaxed"
-                            rows={1}
-                            style={{ minHeight: '1.5em', maxHeight: '120px' }}
-                        />
-                        <button
-                            onClick={() => handleSend()}
-                            disabled={!hasContent || isTyping}
-                            className={cn(
-                                "m-2 p-2.5 rounded-2xl transition-all duration-500 flex-shrink-0",
-                                hasContent && !isTyping ? "bg-[#84CC16] text-white shadow-lg shadow-lime-500/20" : "bg-white/5 text-muted-foreground"
-                            )}
-                        >
-                            <Send className="w-4 h-4" />
-                        </button>
-                    </div>
-                </div>
-            </div>
+            {/* Bottom Navigation */}
+            <BottomNav currentView={currentView} onViewChange={setCurrentView} />
 
             {/* Floating Cart Button */}
             {cart.length > 0 && !isCartOpen && (
                 <motion.button
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
+                    initial={{ scale: 0 }} animate={{ scale: 1 }}
                     onClick={() => setIsCartOpen(true)}
-                    className="fixed bottom-24 right-5 z-50 w-14 h-14 rounded-full bg-[#84CC16] text-black shadow-2xl flex items-center justify-center hover:scale-110 active:scale-95 transition-transform"
+                    className="fixed bottom-24 right-5 z-[55] w-14 h-14 rounded-full bg-[#84CC16] text-black shadow-2xl flex items-center justify-center hover:scale-110 active:scale-95 transition-transform"
                 >
                     <ShoppingBag className="w-6 h-6" />
                     <span className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-red-500 text-white text-[10px] font-black flex items-center justify-center">
@@ -1764,6 +1449,7 @@ const CustomerChatPage: React.FC = () => {
                 </motion.button>
             )}
 
+            {/* Overlays */}
             <AnimatePresence>
                 {isCartOpen && (
                     <CartDrawer
@@ -1776,58 +1462,25 @@ const CustomerChatPage: React.FC = () => {
                     />
                 )}
 
-                {/* --- RATING OVERLAY ON SESSION COMPLETE --- */}
                 {sessionCompleted && !ratingSubmitted && (
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className="fixed inset-0 z-[100] bg-background/95 backdrop-blur-xl flex flex-col items-center justify-center p-6 text-center"
-                    >
-                        <motion.div
-                            initial={{ y: 20, opacity: 0, scale: 0.9 }}
-                            animate={{ y: 0, opacity: 1, scale: 1 }}
-                            transition={{ delay: 0.1, duration: 0.4 }}
-                            className="bg-card w-full max-w-sm rounded-[2rem] p-8 border border-border shadow-2xl flex flex-col items-center gap-6"
-                        >
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[100] bg-background/95 backdrop-blur-xl flex flex-col items-center justify-center p-6 text-center">
+                        <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="bg-card w-full max-w-sm rounded-[2rem] p-8 border border-border shadow-2xl flex flex-col items-center gap-6">
                             <div className="w-16 h-16 rounded-3xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mb-2">
                                 <CheckCircle2 className="w-8 h-8 text-emerald-500" />
                             </div>
                             <div>
                                 <h2 className="text-2xl font-black mb-2 uppercase tracking-wide">Thank You! 🥂</h2>
-                                <p className="text-muted-foreground text-sm">
-                                    Your order is complete. How was your experience today?
-                                </p>
+                                <p className="text-muted-foreground text-sm">Your order is complete. How was your experience today?</p>
                             </div>
-
-                            <RatingInteraction
-                                className="mt-4"
-                                onChange={async (val) => {
-                                    // 1. Submit to DB (Don't wait to show transition)
-                                    try {
-                                        supabase.from('customer_feedback').insert({
-                                            rating: val,
-                                            order_id: latestOrderId,
-                                            organization_id: activeOrgId || null,
-                                            branch_id: branchId || null,
-                                            table_id: tableId || null,
-                                        }).then(({ error }) => {
-                                            if (error) console.error('Feedback save failed:', error);
-                                        });
-                                    } catch (e) {
-                                        console.error('Feedback fetch error:', e);
-                                    }
-
-                                    setTimeout(() => {
-                                        setRatingSubmitted(true);
-                                        if (tableId) {
-                                            localStorage.removeItem(`baro_session_${tableId}`);
-                                        }
-                                        showToast('Thank you for your feedback! 🫶', 'success');
-                                        setTimeout(() => window.location.reload(), 2000);
-                                    }, 800);
-                                }}
-                            />
+                            <RatingInteraction onChange={async (val) => {
+                                try {
+                                    await supabase.from('customer_feedback').insert({ rating: val, order_id: latestOrderId, organization_id: activeOrgId, branch_id: branchId, table_id: tableId });
+                                } catch (e) { console.error(e); }
+                                setRatingSubmitted(true);
+                                if (tableId) localStorage.removeItem(`baro_session_${tableId}`);
+                                showToast('Thank you for your feedback! 🫶', 'success');
+                                setTimeout(() => window.location.reload(), 2000);
+                            }} />
                         </motion.div>
                     </motion.div>
                 )}

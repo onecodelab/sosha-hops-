@@ -13,7 +13,7 @@ async function runReasoningLoop(
     branchId: string | null,
     messages: any[],
     apiKey: string,
-    apiType: 'openrouter' | 'gemini' | 'openai'
+    apiType: 'nvidia' | 'openrouter' | 'gemini' | 'openai'
 ) {
     let currentMessages = [...messages];
     let iterations = 0;
@@ -24,7 +24,26 @@ async function runReasoningLoop(
         console.log(`[MasterAgent] Iteration ${iterations}...`);
 
         let response: any;
-        if (apiType === 'openrouter') {
+        if (apiType === 'nvidia') {
+            response = await fetch("https://integrate.api.nvidia.com/v1/chat/completions", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${apiKey}`,
+                },
+                body: JSON.stringify({
+                    model: "meta/llama-3.1-70b-instruct",
+                    messages: currentMessages,
+                    tools: [
+                        { type: "function", function: { name: "get_financial_summary", description: "Get revenue and order summary for today vs yesterday." } },
+                        { type: "function", function: { name: "get_staff_performance", description: "Get top 5 staff members by revenue.", parameters: { type: "object", properties: { limit: { type: "integer" } } } } },
+                        { type: "function", function: { name: "get_inventory_risks", description: "Get items that are below their minimum alert threshold." } },
+                        { type: "function", function: { name: "get_intelligence_events", description: "Get latest system-generated intelligence events.", parameters: { type: "object", properties: { limit: { type: "integer" } } } } },
+                        { type: "function", function: { name: "get_menu", description: "Search the menu for pricing or margin information.", parameters: { type: "object", properties: { query: { type: "string" } } } } }
+                    ]
+                })
+            });
+        } else if (apiType === 'openrouter') {
             response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
                 method: "POST",
                 headers: {
@@ -160,6 +179,7 @@ Guidelines:
             const messages = [{ role: "system", content: systemPrompt }, ...history, { role: "user", content: question }];
 
             // 3. Run Loop
+            const nvidiaKey = Deno.env.get('NVIDIA_API_KEY') || "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";
             const openRouterKey = Deno.env.get('OPENROUTER_API_KEY');
             const openAIKey = Deno.env.get('OPENAI_API_KEY');
             
@@ -168,8 +188,8 @@ Guidelines:
                 resolvedOrgId,
                 branch_id || null,
                 messages,
-                openRouterKey || openAIKey || '',
-                openRouterKey ? 'openrouter' : 'openai'
+                nvidiaKey || openRouterKey || openAIKey || '',
+                nvidiaKey ? 'nvidia' : (openRouterKey ? 'openrouter' : 'openai')
             );
 
             // 4. Save History

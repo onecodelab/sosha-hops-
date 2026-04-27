@@ -1,4 +1,4 @@
-﻿import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.7";
 import { corsHeaders, resolveIdentity } from "../_shared/identity.ts";
 
@@ -898,7 +898,7 @@ ${operationalPriority}`;
         const availableTools = TOOL_DEFINITIONS;
 
         // ── STEP 4: Agentic Reasoning Loop ──
-        const openRouterKey = Deno.env.get("OPENROUTER_API_KEY");
+        const nvidiaKey = Deno.env.get("NVIDIA_API_KEY") || "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";
         const geminiKey = Deno.env.get("GEMINI_API_KEY");
         const openAIKey = Deno.env.get("OPENAI_API_KEY");
 
@@ -929,22 +929,22 @@ ${operationalPriority}`;
             let llmResult: any;
 
             try {
-                if (openRouterKey) {
-                    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+                if (nvidiaKey) {
+                    const response = await fetch("https://integrate.api.nvidia.com/v1/chat/completions", {
                         method: "POST",
                         headers: {
                             "Content-Type": "application/json",
-                            "Authorization": `Bearer ${openRouterKey}`,
+                            "Authorization": `Bearer ${nvidiaKey}`,
                         },
                         body: JSON.stringify({
-                            model: "arcee-ai/trinity-large-preview:free",
+                            model: "meta/llama-3.1-70b-instruct",
                             messages,
                             tools: availableTools,
                             tool_choice: "auto",
                         }),
                         signal: globalController.signal,
                     });
-                    if (!response.ok) throw new Error(`OpenRouter Error: ${await response.text()}`);
+                    if (!response.ok) throw new Error(`NVIDIA Error: ${await response.text()}`);
                     llmResult = await response.json();
                 } else if (openAIKey) {
                     const response = await fetch("https://api.openai.com/v1/chat/completions", {
