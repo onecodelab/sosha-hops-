@@ -68,33 +68,14 @@ class AppErrorBoundary extends React.Component<
 
 const root = ReactDOM.createRoot(rootElement);
 
-const bootstrap = async () => {
-  await purgeStaleBrowserState();
-  root.render(
-    <React.StrictMode>
-      <AppErrorBoundary>
-        <App />
-      </AppErrorBoundary>
-    </React.StrictMode>
-  );
-};
+// Render immediately — don't block on cache cleanup
+root.render(
+  <AppErrorBoundary>
+    <App />
+  </AppErrorBoundary>
+);
 
-bootstrap().catch((err) => {
-  console.error('App bootstrap failed:', err);
-  root.render(
-    <div className="min-h-screen flex items-center justify-center bg-background text-foreground p-6">
-      <div className="max-w-xl w-full rounded-3xl border border-border bg-card p-8 shadow-2xl">
-        <h1 className="text-2xl font-black mb-3">Baro could not start</h1>
-        <p className="text-sm text-muted-foreground mb-6">
-          The browser cache looks stale. Please hard refresh once so the latest deployment can load.
-        </p>
-        <button
-          onClick={() => window.location.reload()}
-          className="px-5 py-3 rounded-2xl bg-[#84CC16] text-black font-bold"
-        >
-          Reload App
-        </button>
-      </div>
-    </div>
-  );
+// Purge stale SW/caches in the background (non-blocking)
+purgeStaleBrowserState().catch((err) => {
+  console.warn('Background cache cleanup failed:', err);
 });

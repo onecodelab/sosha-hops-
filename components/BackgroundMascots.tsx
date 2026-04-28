@@ -34,25 +34,6 @@ export const BackgroundMascots: React.FC<BackgroundMascotsProps> = ({ variant })
 
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none z-0 select-none">
-      {/* Style block for animations if not globally present */}
-      <style>{`
-            @keyframes float-slow {
-                0%, 100% { transform: translateY(0) rotate(0deg); }
-                50% { transform: translateY(-20px) rotate(2deg); }
-            }
-            @keyframes float-medium {
-                0%, 100% { transform: translateY(0) rotate(0deg); }
-                50% { transform: translateY(-15px) rotate(-2deg); }
-            }
-            @keyframes float-slower {
-                0%, 100% { transform: translateY(0) rotate(0deg); }
-                50% { transform: translateY(-25px) rotate(3deg); }
-            }
-            .animate-float-slow { animation: float-slow 14s ease-in-out infinite; }
-            .animate-float-delayed { animation: float-slow 16s ease-in-out infinite; animation-delay: 2s; }
-            .animate-float-medium { animation: float-medium 10s ease-in-out infinite; animation-delay: 1s; }
-            .animate-float-slower { animation: float-slower 20s ease-in-out infinite; animation-delay: 4s; }
-        `}</style>
 
       {/* 1. Top Right (Dashboard safe area) */}
       <div className={cn("absolute opacity-30 animate-float-slow transition-all duration-1000", variant === 'landing' ? "top-[15%] right-[5%]" : "top-[5%] right-[5%]")}>

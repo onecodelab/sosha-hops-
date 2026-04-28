@@ -3,6 +3,17 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 
+// Mobile-optimized vendor chunk strategy
+const vendorChunks: Record<string, string[]> = {
+  'vendor-react': ['react', 'react-dom', 'react-is', 'react-router-dom', 'scheduler'],
+  'vendor-supabase': ['@supabase/supabase-js'],
+  'vendor-query': ['@tanstack/react-query'],
+  'vendor-charts': ['recharts', 'd3-shape', 'd3-scale', 'd3-interpolate', 'd3-color', 'd3-path', 'd3-format', 'd3-time', 'd3-time-format', 'd3-array'],
+  'vendor-motion': ['framer-motion'],
+  'vendor-icons': ['lucide-react'],
+  'vendor-misc': ['date-fns', 'qrcode.react', 'jsqr'],
+};
+
 export default defineConfig(() => {
   return {
     server: {
@@ -51,11 +62,20 @@ export default defineConfig(() => {
       }
     },
     build: {
+      // Target modern browsers for smaller output (no legacy polyfills)
+      target: 'es2020',
       rollupOptions: {
         output: {
-          // Automatic chunking is more reliable for React 19
-        }
-      }
+          manualChunks(id: string) {
+            // Vendor splitting: each library gets its own cacheable chunk
+            for (const [chunkName, packages] of Object.entries(vendorChunks)) {
+              if (packages.some(pkg => id.includes(`node_modules/${pkg}/`) || id.includes(`node_modules\\${pkg}\\`))) {
+                return chunkName;
+              }
+            }
+          },
+        },
+      },
     }
   };
 });

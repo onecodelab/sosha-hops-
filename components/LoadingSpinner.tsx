@@ -41,14 +41,12 @@ export function LoadingSpinner({
         <div className="flex flex-col items-center gap-10">
           {/* Central Logo Indicator */}
           <div className="relative flex items-center justify-center scale-90 md:scale-100">
-            {/* Layered Cinematic Glow */}
-            <div className="absolute inset-0 bg-primary/40 blur-[100px] rounded-full animate-rotate-slow scale-150" />
-            <div className="absolute inset-0 bg-primary/20 blur-[60px] rounded-full animate-pulse-slow scale-110" />
-            <div className="absolute inset-0 bg-[#FFB800]/10 blur-[30px] rounded-full animate-pulse" />
+            {/* Lightweight glow — no blur on mobile */}
+            <div className="hidden md:block absolute inset-0 bg-primary/30 blur-[60px] rounded-full animate-pulse-slow scale-125" />
             
             <BaroLogo 
               variant="full" 
-              className="w-32 md:w-48 h-auto animate-pulse relative z-10 drop-shadow-[0_0_40px_rgba(255,184,0,0.6)]" 
+              className="w-32 md:w-48 h-auto animate-pulse relative z-10" 
             />
           </div>
         </div>

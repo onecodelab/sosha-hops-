@@ -84,9 +84,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
 
       {/* Mobile Header */}
       {!config.fullScreen && (
-        <div className="md:hidden fixed top-0 left-0 right-0 h-16 bg-background/80 backdrop-blur-3xl border-b border-primary/5 shadow-xl z-[100] px-4 flex items-center justify-between">
-          
-          <div className="absolute inset-0 bg-gradient-to-r from-primary/5 via-transparent to-transparent pointer-events-none overflow-hidden rounded-b-xl" />
+        <div className="md:hidden fixed top-0 left-0 right-0 h-16 bg-card border-b border-primary/5 shadow-lg z-[100] px-4 flex items-center justify-between">
           
           {/* Logo — no scaling transforms */}
           <div className="relative z-10 flex items-center">
@@ -124,12 +122,6 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
         </div>
       </main>
 
-      <style>{`
-          .custom-scrollbar::-webkit-scrollbar { width: 4px; height: 4px; }
-          .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-          .custom-scrollbar::-webkit-scrollbar-thumb { background: var(--primary); opacity: 0.3; border-radius: 10px; }
-          .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: var(--primary); opacity: 0.5; }
-        `}</style>
     </div>
   );
 };
