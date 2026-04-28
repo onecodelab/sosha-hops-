@@ -84,23 +84,25 @@ export const MarketingLayout: React.FC<MarketingLayoutProps> = ({ children }) =>
                                     </Button>
                                 </Link>
                             ) : (
-                                <div className="hidden md:flex items-center gap-3">
-                                    <Link to="/onboarding" className="ripple-link">
-                                        <Button variant="ghost" className="mono-os text-[9px] font-black tracking-widest px-5 h-10 text-brand-yellow/80 hover:text-brand-yellow hover:bg-brand-yellow/5 uppercase">
-                                            Apply for Access
-                                        </Button>
-                                    </Link>
+                                <>
+                                    <div className="hidden md:flex items-center gap-3">
+                                        <Link to="/onboarding" className="ripple-link">
+                                            <Button variant="ghost" className="mono-os text-[9px] font-black tracking-widest px-5 h-10 text-brand-yellow/80 hover:text-brand-yellow hover:bg-brand-yellow/5 uppercase">
+                                                Apply for Access
+                                            </Button>
+                                        </Link>
+                                        <Link to="/book-demo">
+                                            <Button className="bg-brand-yellow hover:bg-white text-black mono-os text-[9px] font-black px-8 h-10 rounded-full shadow-2xl shadow-brand-yellow/10 uppercase">
+                                                {t('marketingNav.demo')}
+                                            </Button>
+                                        </Link>
+                                    </div>
                                     <Link to="/login" className="ripple-link">
-                                        <Button variant="ghost" className="mono-os text-[9px] font-black tracking-widest px-6 h-10 text-white/70 hover:text-white hover:bg-white/5 uppercase">
+                                        <Button variant="ghost" className="mono-os text-[9px] font-black tracking-widest px-3 sm:px-6 h-10 text-white hover:text-white hover:bg-white/5 uppercase border border-white/10 sm:border-transparent rounded-full sm:rounded-none">
                                             {t('marketingNav.login')}
                                         </Button>
                                     </Link>
-                                    <Link to="/book-demo">
-                                        <Button className="bg-brand-yellow hover:bg-white text-black mono-os text-[9px] font-black px-8 h-10 rounded-full shadow-2xl shadow-brand-yellow/10 uppercase">
-                                            {t('marketingNav.demo')}
-                                        </Button>
-                                    </Link>
-                                </div>
+                                </>
                             )}
 
                             {/* Mobile hamburger */}
