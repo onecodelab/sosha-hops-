@@ -60,8 +60,12 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowedRoles 
             </button>
             <button 
                 onClick={async () => { 
+                    const theme = localStorage.getItem('baro-theme');
+                    const lang = localStorage.getItem('baro-language');
                     await signOut(); 
                     localStorage.clear();
+                    if (theme) localStorage.setItem('baro-theme', theme);
+                    if (lang) localStorage.setItem('baro-language', lang);
                     navigate('/'); 
                 }} 
                 className="px-6 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-700 transition-colors"

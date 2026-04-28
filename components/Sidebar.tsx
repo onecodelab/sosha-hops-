@@ -217,8 +217,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, setIsCollapsed, h
         >
             <div className={cn("flex-none h-16 md:h-20 lg:h-24 flex items-center border-b border-primary/5 transition-colors duration-500", isCollapsed ? "justify-center" : "px-6")}>
                 <div className="relative group cursor-pointer" onClick={() => navigate('/app')}>
-                    <div className="absolute -inset-4 bg-primary/10 rounded-full blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
-                    <BaroLogo variant={isCollapsed ? "compact" : "full"} className="relative z-10" />
+                    <BaroLogo iconOnly className="relative z-10 w-12 h-12" />
                 </div>
             </div>
 
@@ -312,6 +311,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, setIsCollapsed, h
                         icon={BookOpen}
                         label={t('nav.menuManagement')}
                         path="/app/admin/menu"
+                        allowedRoles={['owner', 'admin', 'manager']}
+                    />
+                    <NavItem
+                        icon={ClipboardList}
+                        label="Transactions"
+                        path="/app/menu-transactions"
                         allowedRoles={['owner', 'admin', 'manager']}
                     />
                     <NavItem

@@ -127,3 +127,54 @@ export async function resolveIdentity(req: Request, supabase: any): Promise<Iden
 
     return null;
 }
+
+/**
+ * Basic Rate Limiter using Upstash Redis
+ * @param redis Upstash Redis client
+ * @param identifier Unique ID (e.g., user.id or IP)
+ * @param limit Max requests
+ * @param windowSeconds Window in seconds
+ */
+export async function rateLimit(redis: any, identifier: string, limit: number, windowSeconds: number): Promise<{ success: boolean; remaining: number }> {
+    if (!redis) return { success: true, remaining: 999 }; // Fail open if redis is down? Or fail closed? (Audit says fail open for MVP)
+
+    const key = `ratelimit:${identifier}`;
+    const count = await redis.incr(key);
+
+    if (count === 1) {
+        await redis.expire(key, windowSeconds);
+    }
+
+    return {
+        success: count <= limit,
+        remaining: Math.max(0, limit - count)
+    };
+}
+
+/**
+ * Log a security-sensitive action to the business_audit_logs table
+ */
+export async function logAudit(
+    supabase: any,
+    organizationId: string,
+    userId: string,
+    action: string,
+    entityType: string,
+    entityId: string,
+    metadata: any = {}
+) {
+    try {
+        await supabase.from('business_audit_logs').insert({
+            organization_id: organizationId,
+            actor_id: userId,
+            action,
+            entity_type: entityType,
+            entity_id: entityId,
+            metadata,
+            created_at: new Date().toISOString()
+        });
+    } catch (e) {
+        console.error("[AUDIT LOG ERROR] Failed to insert audit log:", e.message);
+    }
+}
+

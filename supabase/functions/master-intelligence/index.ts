@@ -141,6 +141,20 @@ serve(async (req) => {
         const { data: { user }, error: userErr } = await authClient.auth.getUser();
         if (userErr || !user) throw new Error("Unauthorized");
 
+        // --- RATE LIMITING ---
+        const redisUrl = Deno.env.get('UPSTASH_REDIS_REST_URL');
+        const redisToken = Deno.env.get('UPSTASH_REDIS_REST_TOKEN');
+        if (redisUrl && redisToken) {
+            const { Redis } = await import("https://esm.sh/@upstash/redis");
+            const redis = new Redis({ url: redisUrl, token: redisToken });
+            const { rateLimit } = await import("../_shared/identity.ts");
+            
+            const limit = await rateLimit(redis, `ai:${user.id}`, 10, 60); // 10 requests per minute
+            if (!limit.success) {
+                return new Response(JSON.stringify({ error: "Too many AI requests. Please wait a minute." }), { status: 429, headers: corsHeaders });
+            }
+        }
+
         const { action, payload, organization_id, branch_id } = await req.json();
 
         const { data: profile } = await supabase.from('profiles').select('organization_id, role, full_name').eq('id', user.id).single();
@@ -179,9 +193,21 @@ Guidelines:
             const messages = [{ role: "system", content: systemPrompt }, ...history, { role: "user", content: question }];
 
             // 3. Run Loop
-            const nvidiaKey = Deno.env.get('NVIDIA_API_KEY') || "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";
+            const nvidiaKey = Deno.env.get('NVIDIA_API_KEY');
             const openRouterKey = Deno.env.get('OPENROUTER_API_KEY');
             const openAIKey = Deno.env.get('OPENAI_API_KEY');
+
+            if (branch_id) {
+                const { data: branchCheck } = await supabase
+                    .from('branches')
+                    .select('organization_id')
+                    .eq('id', branch_id)
+                    .single();
+                
+                if (!branchCheck || branchCheck.organization_id !== resolvedOrgId) {
+                    throw new Error("Branch-Organization mismatch or invalid Branch ID");
+                }
+            }
             
             const responseText = await runReasoningLoop(
                 supabase,

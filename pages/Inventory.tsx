@@ -473,63 +473,41 @@ const Inventory: React.FC = () => {
     return 'In stock';
   };
   useLayoutConfig({
-    title: "Inventory Management",
-    subtitle: "Master Registry Control [FORCE_UI_v2.2]"
+    title: "",
+    subtitle: ""
   });
 
   return (
     <>
       <div className="space-y-6 animate-in fade-in duration-500">
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-6">
-          <div className="bg-card/60 backdrop-blur-xl border border-border p-4 md:p-8 rounded-3xl md:rounded-[2.5rem] shadow-2xl relative group overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent pointer-events-none" />
-            <div className="relative z-10 flex flex-col gap-1 md:gap-2">
-              <p className="text-[9px] md:text-[10px] font-black text-muted uppercase tracking-[0.2em]">Total Asset Valuation</p>
-              <h3 className="text-3xl md:text-4xl font-black text-foreground tracking-tighter">
-                <span className="text-[10px] md:text-xs font-black mr-1 opacity-40">ETB</span>
-                {(stats.totalValue || 0).toLocaleString()}
-              </h3>
-            </div>
-            <div className="absolute top-3 right-3 md:top-6 md:right-6 p-2 md:p-4 bg-primary/10 rounded-xl md:rounded-2xl group-hover:scale-110 transition-transform">
-              <DollarSign className="w-5 h-5 md:w-6 md:h-6 text-primary" strokeWidth={3} />
-            </div>
-          </div>
-          <div className={cn(
-            "p-4 md:p-8 rounded-3xl md:rounded-[2.5rem] border shadow-2xl transition-all relative group overflow-hidden",
-            stats.lowStockCount > 0 ? "bg-red-500/5 border-red-500/20" : "bg-card/60 backdrop-blur-xl border-border"
-          )}>
-            {stats.lowStockCount > 0 && <div className="absolute inset-0 bg-gradient-to-br from-red-500/10 to-transparent pointer-events-none" />}
-            <div className="relative z-10 flex flex-col gap-1 md:gap-2">
-              <p className="text-[9px] md:text-[10px] font-black text-muted uppercase tracking-[0.2em]">Re-order Alerts</p>
-              <h3 className={cn("text-3xl md:text-4xl font-black tracking-tighter", stats.lowStockCount > 0 ? "text-red-500" : "text-foreground")}>
-                {stats.lowStockCount} <span className="text-[10px] md:text-xs font-black opacity-40">Low SKUs</span>
-              </h3>
-            </div>
-            <div className={cn("absolute top-3 right-3 md:top-6 md:right-6 p-2 md:p-4 rounded-xl md:rounded-2xl group-hover:scale-110 transition-transform", stats.lowStockCount > 0 ? "bg-red-500/10" : "bg-muted/10")}>
-              <AlertTriangle className={cn("w-5 h-5 md:w-6 md:h-6", stats.lowStockCount > 0 ? "text-red-500" : "text-muted")} strokeWidth={3} />
-            </div>
-          </div>
+        <div className="flex flex-col gap-1">
+          <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tighter italic text-white">
+            Master <span className="serif-ital text-brand-green lowercase">Registry</span>
+          </h1>
+          <p className="text-[10px] font-black uppercase tracking-[0.4em] text-muted-foreground opacity-40 px-1">
+            Global Inventory Audit
+          </p>
         </div>
 
-        <div className="flex flex-col md:flex-row justify-between gap-3 md:gap-6 bg-card/60 backdrop-blur-xl p-3 md:p-6 rounded-[2rem] md:rounded-[2.5rem] border border-border shadow-2xl">
+        <div className="flex flex-col md:flex-row justify-between gap-4 items-center bg-white/[0.02] backdrop-blur-md p-3 md:p-4 rounded-2xl border border-primary/10 shadow-sm">
           <div className="relative w-full md:w-96 group">
             <Search className="absolute left-4 md:left-6 top-1/2 -translate-y-1/2 h-4 w-4 text-muted group-focus-within:text-primary transition-colors" />
             <Input
-              placeholder="Search by name or SKU..."
+              placeholder="Filter master registry..."
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
-              className="pl-10 md:pl-14 bg-muted/10 border-border h-12 md:h-14 rounded-2xl focus:border-primary/50 text-sm font-bold shadow-inner"
+              className="pl-10 md:pl-14 bg-white/5 border-border h-12 md:h-14 rounded-2xl focus:border-primary/50 text-sm font-bold shadow-inner"
             />
           </div>
-          <div className="flex items-center gap-2 md:gap-4 w-full md:w-auto mt-1 md:mt-0 bg-primary/5 p-1.5 md:p-2 rounded-2xl border border-primary/20">
+          
+          <div className="flex items-center gap-3 w-full md:w-auto">
             {isOwnerOrAdmin && (
-              <Button onClick={handleAddClick} className="h-12 md:h-14 flex-1 md:flex-none px-4 md:px-8 rounded-xl md:rounded-2xl bg-orange-600 text-white font-black uppercase tracking-[0.2em] shadow-lg hover:bg-orange-700 active:scale-95 transition-all text-[10px] md:text-sm whitespace-nowrap border-4 border-white/20">
-                <Plus className="w-4 h-4 md:w-6 md:h-6 mr-1.5 md:mr-3" strokeWidth={4} /> ADD NEW ITEM
+              <Button onClick={handleAddClick} className="h-12 md:h-14 flex-1 md:flex-none px-6 md:px-10 rounded-2xl bg-brand-yellow text-black font-black uppercase tracking-widest shadow-xl hover:bg-white active:scale-95 transition-all text-[10px] md:text-xs border-none">
+                <Plus className="w-4 h-4 md:w-5 md:h-5 mr-2 md:mr-3" strokeWidth={4} /> Initialize SKU
               </Button>
             )}
-            <Button onClick={fetchInventory} variant="ghost" className="h-12 w-12 md:h-14 md:w-14 shrink-0 p-0 rounded-xl md:rounded-2xl bg-muted/5 border border-border text-muted hover:text-foreground transition-all">
-              <RefreshCw className={cn("h-4 w-4 md:h-6 md:w-6", loading && "animate-spin")} strokeWidth={3} />
+            <Button onClick={fetchInventory} variant="ghost" className="h-12 w-12 md:h-14 md:w-14 shrink-0 p-0 rounded-2xl bg-white/5 border border-border text-muted hover:text-white transition-all">
+              <RefreshCw className={cn("h-4 w-4 md:h-5 md:w-5", loading && "animate-spin")} strokeWidth={3} />
             </Button>
           </div>
         </div>
@@ -687,15 +665,6 @@ const Inventory: React.FC = () => {
                     value={formData.name}
                     onChange={e => setFormData({ ...formData, name: e.target.value })}
                     className="bg-card border-primary/10 shadow-inner text-sm font-black w-full"
-                  />
-                </div>
-                <div className="space-y-1.5 relative z-10">
-                  <p className="text-[9px] font-black text-muted uppercase tracking-[0.2em]">Node Identity (SKU) - Optional</p>
-                  <Input
-                    placeholder="Auto-generated if blank"
-                    value={formData.sku}
-                    onChange={e => setFormData({ ...formData, sku: e.target.value })}
-                    className="bg-card border-primary/10 shadow-inner text-sm font-mono font-black uppercase w-full"
                   />
                 </div>
                 <div className="space-y-1.5 relative z-10">

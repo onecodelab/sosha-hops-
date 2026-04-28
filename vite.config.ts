@@ -49,6 +49,13 @@ export default defineConfig(() => {
       alias: {
         '@': path.resolve(__dirname, '.'),
       }
+    },
+    build: {
+      rollupOptions: {
+        output: {
+          // Automatic chunking is more reliable for React 19
+        }
+      }
     }
   };
 });

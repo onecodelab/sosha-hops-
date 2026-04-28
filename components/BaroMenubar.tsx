@@ -2,7 +2,7 @@ import * as React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Menubar } from '@base-ui/react/menubar';
 import { Menu } from '@base-ui/react/menu';
-import { ChevronRight, LayoutDashboard, Monitor, ShoppingBag, BookOpen, Users, LogOut, Settings, User, DollarSign, Database, Trash2, RefreshCw } from 'lucide-react';
+import { ChevronRight, LayoutDashboard, Monitor, ShoppingBag, BookOpen, Users, LogOut, Settings, User, DollarSign, Database, Trash2, RefreshCw, ClipboardList } from 'lucide-react';
 import { useAuth } from '../AuthContext';
 import { useBranch } from '../contexts/BranchContext';
 import { RoleGuard } from './RoleGuard';
@@ -153,6 +153,15 @@ export default function BaroMenubar() {
                                         <div className="flex items-center gap-3">
                                             <ShoppingBag className="w-4 h-4 text-purple-400 shrink-0" />
                                             <span className="uppercase tracking-widest truncate">Inventory</span>
+                                        </div>
+                                    </Menu.Item>
+                                </RoleGuard>
+
+                                <RoleGuard allowedRoles={['owner', 'admin', 'manager']} hideOnly>
+                                    <Menu.Item onClick={() => handleNav('/app/menu-transactions')} className="flex cursor-pointer items-center justify-between gap-4 px-4 py-3 text-xs font-bold outline-none select-none hover:bg-primary/10 data-[highlighted]:bg-primary/10 data-[highlighted]:text-primary transition-colors">
+                                        <div className="flex items-center gap-3">
+                                            <ClipboardList className="w-4 h-4 text-amber-400 shrink-0" />
+                                            <span className="uppercase tracking-widest truncate">Transactions</span>
                                         </div>
                                     </Menu.Item>
                                 </RoleGuard>

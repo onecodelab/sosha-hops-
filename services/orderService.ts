@@ -428,30 +428,39 @@ export const orderService = {
 
         // 3. Handle Performance & Shortage Logging
         if (order.waiter_id) {
+            const orgId = (order as any).organization_id || '00000000-0000-0000-0000-000000000000';
+
             const { data: existingPerf } = await supabase
                 .from('staff_performance_daily')
                 .select('id, revenue_attributed, total_shortage, shortages_count, orders_completed')
                 .eq('staff_id', order.waiter_id)
+                .eq('organization_id', orgId)
                 .eq('date', todayStr)
                 .maybeSingle();
+
 
             if (existingPerf) {
                 await supabase.from('staff_performance_daily').update({
                     revenue_attributed: (existingPerf.revenue_attributed || 0) + (order.total_amount - trueShortage),
                     total_shortage: (existingPerf.total_shortage || 0) + trueShortage,
                     shortages_count: (existingPerf.shortages_count || 0) + (trueShortage > 0 ? 1 : 0),
-                    orders_completed: (existingPerf.orders_completed || 0) + 1
+                    orders_completed: (existingPerf.orders_completed || 0) + 1,
+                    last_updated: now
                 }).eq('id', existingPerf.id);
+
             } else {
                 await supabase.from('staff_performance_daily').insert({
                     staff_id: order.waiter_id,
                     staff_name: order.waiter?.full_name || 'Staff',
+                    organization_id: orgId,
                     date: todayStr,
                     revenue_attributed: order.total_amount - trueShortage,
                     total_shortage: trueShortage,
                     shortages_count: trueShortage > 0 ? 1 : 0,
-                    orders_completed: 1
+                    orders_completed: 1,
+                    created_at: now
                 });
+
             }
         }
 

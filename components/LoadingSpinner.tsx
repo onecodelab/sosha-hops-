@@ -29,19 +29,6 @@ export function LoadingSpinner({
 
   return (
     <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-background p-8 overflow-hidden">
-      <style>{`
-        @keyframes loading-slide {
-          0% { transform: translateX(-100%); }
-          100% { transform: translateX(200%); }
-        }
-        @keyframes float-logo {
-          0%, 100% { transform: translateY(0); }
-          50% { transform: translateY(-12px); }
-        }
-        .animate-float-logo {
-          animation: float-logo 4s ease-in-out infinite;
-        }
-      `}</style>
 
       {/* 
           CENTRAL POSITIONING 
@@ -51,18 +38,19 @@ export function LoadingSpinner({
       */}
       <div className="w-full max-w-lg flex flex-col items-center gap-16 transition-all duration-700">
 
-        <div className="flex flex-col items-center gap-6">
-          {/* Spinner with icon only */}
-          <div className="relative w-32 h-32 flex items-center justify-center animate-pulse duration-1000">
-            <div className="absolute inset-0 border-4 border-primary/20 rounded-full animate-spin direction-reverse" />
-            <div className="absolute inset-2 border-4 border-t-primary rounded-full animate-spin" />
-            <div className="w-16 h-16 z-10 flex items-center justify-center">
-              <BaroLogo variant="icon" />
-            </div>
+        <div className="flex flex-col items-center gap-10">
+          {/* Central Logo Indicator */}
+          <div className="relative flex items-center justify-center scale-90 md:scale-100">
+            {/* Layered Cinematic Glow */}
+            <div className="absolute inset-0 bg-primary/40 blur-[100px] rounded-full animate-rotate-slow scale-150" />
+            <div className="absolute inset-0 bg-primary/20 blur-[60px] rounded-full animate-pulse-slow scale-110" />
+            <div className="absolute inset-0 bg-[#FFB800]/10 blur-[30px] rounded-full animate-pulse" />
+            
+            <BaroLogo 
+              variant="full" 
+              className="w-32 md:w-48 h-auto animate-pulse relative z-10 drop-shadow-[0_0_40px_rgba(255,184,0,0.6)]" 
+            />
           </div>
-        
-          {/* Full logo shown below the spinner */}
-          <BaroLogo variant="full" className="animate-pulse" />
         </div>
 
         {/* System Initializer UI */}

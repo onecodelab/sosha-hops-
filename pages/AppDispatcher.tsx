@@ -112,6 +112,8 @@ const AppDispatcher: React.FC = () => {
         return <AccountErrorScreen title={errorInfo.title} message={errorInfo.message} onSignOut={signOut} />;
     }
 
+    if (guardState === 'ok') return null;
+
     return <LoadingSpinner />;
 };
 

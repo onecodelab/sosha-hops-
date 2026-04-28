@@ -108,11 +108,23 @@ export const StaffOrderHistory: React.FC<StaffOrderHistoryProps> = ({
                                     </div>
 
                                     <div className="text-right flex items-center gap-5 flex-shrink-0">
-                                        <div className="flex flex-col items-end">
-                                            <p className="text-[9px] font-black text-zinc-500 uppercase tracking-widest leading-none mb-1.5 opacity-60">Total</p>
-                                            <p className="text-sm font-black text-primary font-mono tracking-tighter">
-                                                ETB {order.total_amount.toLocaleString()}
-                                            </p>
+                                        <div className="flex flex-col items-end gap-1.5">
+                                            <div className="flex flex-col items-end">
+                                                <p className="text-[8px] font-black text-zinc-500 uppercase tracking-widest leading-none mb-1 opacity-60">Total</p>
+                                                <p className="text-xs font-bold text-zinc-400 font-mono tracking-tighter">
+                                                    ETB {order.total_amount.toLocaleString()}
+                                                </p>
+                                            </div>
+                                            <div className="flex flex-col items-end">
+                                                <p className="text-[8px] font-black text-zinc-500 uppercase tracking-widest leading-none mb-1 opacity-60">Paid</p>
+                                                <p className={cn(
+                                                    "text-sm font-black font-mono tracking-tighter",
+                                                    (order.amount_paid || 0) < order.total_amount ? "text-red-500" : 
+                                                    (order.amount_paid || 0) > order.total_amount ? "text-emerald-500" : "text-primary"
+                                                )}>
+                                                    ETB {(order.amount_paid || 0).toLocaleString()}
+                                                </p>
+                                            </div>
                                         </div>
                                         <ChevronRight className="w-4 h-4 text-zinc-700 group-hover:text-primary transition-all translate-x-0 group-hover:translate-x-1 duration-300" />
                                     </div>

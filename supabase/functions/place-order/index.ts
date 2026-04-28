@@ -1,11 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-const corsHeaders = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-    'Content-Type': 'application/json',
-};
+import { Redis } from "https://esm.sh/@upstash/redis";
+import { corsHeaders, logAudit } from "../_shared/identity.ts";
 
 serve(async (req) => {
     if (req.method === 'OPTIONS') {
@@ -36,7 +32,20 @@ serve(async (req) => {
         }
 
         const payload = await req.json();
-        let { branch_id, items, order_details, table_id, telegram_id, source } = payload;
+        let { branch_id, items, order_details, table_id, telegram_id, source, idempotency_key } = payload;
+
+        // --- IDEMPOTENCY CHECK ---
+        const redisUrl = Deno.env.get('UPSTASH_REDIS_REST_URL');
+        const redisToken = Deno.env.get('UPSTASH_REDIS_REST_TOKEN');
+        const redis = (redisUrl && redisToken) ? new Redis({ url: redisUrl, token: redisToken }) : null;
+
+        if (idempotency_key && redis) {
+            const cachedResult = await redis.get(`idempotency:order:${idempotency_key}`);
+            if (cachedResult) {
+                console.log(`[IDEMPOTENCY] Returning cached result for key: ${idempotency_key}`);
+                return new Response(JSON.stringify(cachedResult), { headers: corsHeaders, status: 200 });
+            }
+        }
 
         // If order_details is provided (Chatbot pattern), destruct from it
         if (order_details) {
@@ -80,12 +89,22 @@ serve(async (req) => {
             }), { status: 400, headers: corsHeaders });
         }
 
-        return new Response(JSON.stringify({
+        const responseData = {
             success: true,
             order_id: result.order_id,
             total_amount: result.total_amount,
             message: "Order placed successfully with atomic stock deduction."
-        }), {
+        };
+
+        // --- CACHE RESULT (IDEMPOTENCY) ---
+        if (idempotency_key && redis) {
+            await redis.set(`idempotency:order:${idempotency_key}`, responseData, { ex: 86400 }); // Cache for 24h
+        }
+
+        // --- AUDIT LOG ---
+        await logAudit(supabase, organizationId, user.id, 'PLACE_ORDER', 'order', result.order_id, { items_count: items.length, total: result.total_amount });
+
+        return new Response(JSON.stringify(responseData), {
             headers: corsHeaders,
             status: 200,
         });

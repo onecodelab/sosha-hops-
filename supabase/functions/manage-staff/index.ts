@@ -1,10 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-const corsHeaders = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+import { corsHeaders } from "../_shared/identity.ts";
 
 serve(async (req) => {
     if (req.method === 'OPTIONS') {
@@ -77,6 +73,22 @@ serve(async (req) => {
         }
 
         if (action === 'create') {
+            const { z } = await import("https://esm.sh/zod");
+            const staffSchema = z.object({
+                email: z.string().email(),
+                password: z.string().min(8),
+                role: z.enum(['admin', 'manager', 'waiter', 'chef', 'driver', 'staff']),
+                full_name: z.string().min(2),
+                base_salary: z.number().optional(),
+                pay_period: z.enum(['hourly', 'daily', 'weekly', 'monthly']).optional(),
+                home_branch_id: z.string().uuid().optional().nullable()
+            });
+
+            const result = staffSchema.safeParse(staff_data);
+            if (!result.success) {
+                return new Response(JSON.stringify({ error: "Validation failed", details: result.error.format() }), { status: 400, headers: corsHeaders });
+            }
+
             const {
                 email,
                 password,
@@ -85,11 +97,7 @@ serve(async (req) => {
                 base_salary,
                 pay_period,
                 home_branch_id
-            } = staff_data;
-
-            if (!email || !password || !full_name) {
-                return new Response(JSON.stringify({ error: "Missing required fields (email, password, full_name)" }), { status: 400, headers: corsHeaders });
-            }
+            } = result.data;
 
             // 2.0 Check if user already exists in ANY organization
             const { data: existingProfile, error: searchError } = await supabase
@@ -169,6 +177,10 @@ serve(async (req) => {
                 return new Response(JSON.stringify({ error: `User created, but profile update failed: ${upsertError.message}` }), { status: 500, headers: corsHeaders });
             }
 
+            // --- AUDIT LOG ---
+            const { logAudit } = await import("../_shared/identity.ts");
+            await logAudit(supabase, organizationId, user.id, 'CREATE_STAFF', 'profile', newUserId, { full_name, role, email });
+
             return new Response(JSON.stringify({ success: true, user: authData.user }), {
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' },
                 status: 200
@@ -202,9 +214,34 @@ serve(async (req) => {
 
         if (action === 'delete') {
             if (!target_id) throw new Error("Target ID required");
-            // Delete Auth User
+
+            // 1. Verify the target user belongs to the same organization
+            const { data: targetProfile, error: targetErr } = await supabase
+                .from('profiles')
+                .select('organization_id')
+                .eq('id', target_id)
+                .single();
+
+            if (targetErr || !targetProfile) {
+                return new Response(JSON.stringify({ error: "Target user not found" }), { status: 404, headers: corsHeaders });
+            }
+
+            if (targetProfile.organization_id !== organizationId) {
+                return new Response(JSON.stringify({ error: "Tenant isolation violation: Cannot delete user from another organization" }), { status: 403, headers: corsHeaders });
+            }
+
+            // 2. Prevent self-deletion
+            if (target_id === user.id) {
+                return new Response(JSON.stringify({ error: "Cannot delete your own account via manage-staff" }), { status: 400, headers: corsHeaders });
+            }
+
+            // 3. Delete Auth User
             const { error } = await supabase.auth.admin.deleteUser(target_id);
             if (error) throw error;
+
+            // --- AUDIT LOG ---
+            const { logAudit } = await import("../_shared/identity.ts");
+            await logAudit(supabase, organizationId, user.id, 'DELETE_STAFF', 'profile', target_id, { target_profile: targetProfile });
 
             return new Response(JSON.stringify({ success: true }), {
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' },

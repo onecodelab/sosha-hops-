@@ -18,13 +18,34 @@ interface StartVerificationParams {
     additional_data?: any;
 }
 
-// Verifier service URL and API key from environment
-const VERIFIER_URL = import.meta.env.VITE_VERIFIER_URL || 'http://localhost:3002';
+// ================================================================
+// VERIFIER CONFIGURATION — Hardcoded for reliability
+// ================================================================
+
+// Primary: Your Railway-hosted verifier service
+const RAILWAY_URL = 'https://verifier-service-repo-production.up.railway.app';
+
+// Secondary Backup: Official SDK (different endpoint & auth format)
+const OFFICIAL_SDK_URL = 'https://verifyapi.leulzenebe.pro';
+
+// API key used by the Railway service
 const VERIFIER_API_KEY = import.meta.env.VITE_VERIFIER_API_KEY || 'test-key-123';
 
+// Check if the env var points to a valid, non-dead URL
+const envUrl = import.meta.env.VITE_VERIFIER_URL || '';
+const DEAD_HOSTS = ['trycloudflare.com', 'localhost', '127.0.0.1'];
+const isEnvUrlDead = !envUrl || DEAD_HOSTS.some(dead => envUrl.includes(dead)) || envUrl === 'VITE_VERIFIER_URL';
+
+// Use env URL only if it's valid, otherwise use Railway
+const PRIMARY_URL = isEnvUrlDead ? RAILWAY_URL : envUrl;
+
 /**
- * Calls the local verifier-service's /verify-payment endpoint directly.
- * No job queue, no edge function — direct HTTP call.
+ * Payment verification hook with automatic failover.
+ * 
+ * Flow:
+ *   1. Try PRIMARY (Railway or valid env URL) via POST /verify-payment
+ *   2. If that fails, try OFFICIAL SDK via POST /verify (different format)
+ *   3. If both fail, return a clear error to the user
  */
 export function usePaymentVerification() {
     const { organizationId } = useAuth();
@@ -32,50 +53,26 @@ export function usePaymentVerification() {
     const [isVerifying, setIsVerifying] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    const startVerification = async (params: StartVerificationParams) => {
-        if (!organizationId) {
-            setError("No Organization ID found. Please log in again.");
-            return;
+    // ── Attempt 1: Railway verifier (/verify-payment) ──
+    const tryRailway = async (params: StartVerificationParams): Promise<any> => {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 25000);
+
+        const payload: any = {
+            payment_method: params.payment_method,
+            reference: params.reference,
+            expected_amount: params.expected_amount,
+        };
+
+        // Merge bank-specific params
+        if (params.additional_data) {
+            Object.assign(payload, params.additional_data);
         }
 
-        setIsVerifying(true);
-        setError(null);
-        setJob(null);
+        console.log('[Verify] Attempt 1 — Railway:', `${PRIMARY_URL}/verify-payment`);
 
         try {
-            // Build the payload for the verifier service
-            const payload: any = {
-                payment_method: params.payment_method,
-                reference: params.reference,
-                expected_amount: params.expected_amount,
-            };
-
-            // Add bank-specific params from additional_data
-            if (params.additional_data) {
-                if (params.additional_data.accountSuffix) {
-                    payload.accountSuffix = params.additional_data.accountSuffix;
-                }
-                if (params.additional_data.suffix) {
-                    payload.suffix = params.additional_data.suffix;
-                }
-                if (params.additional_data.expected_receiver) {
-                    payload.expected_receiver = params.additional_data.expected_receiver;
-                }
-                if (params.additional_data.phoneNumber) {
-                    payload.phoneNumber = params.additional_data.phoneNumber;
-                }
-                if (params.additional_data.receiptNumber) {
-                    payload.receiptNumber = params.additional_data.receiptNumber;
-                }
-            }
-
-            console.log('[Verify] Calling verifier service:', `${VERIFIER_URL}/verify-payment`, payload);
-
-            // Call the local verifier service directly
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s timeout
-
-            const response = await fetch(`${VERIFIER_URL}/verify-payment`, {
+            const response = await fetch(`${PRIMARY_URL}/verify-payment`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -87,14 +84,123 @@ export function usePaymentVerification() {
 
             clearTimeout(timeoutId);
 
-            const data = await response.json();
-            console.log('[Verify] Response:', data);
-
             if (!response.ok) {
-                throw new Error(data?.error || `Verifier returned ${response.status}`);
+                const text = await response.text().catch(() => '');
+                throw new Error(`Railway HTTP ${response.status}: ${text.slice(0, 100)}`);
             }
 
-            // Build a job-like response for backward compatibility with the BillModal UI
+            const data = await response.json();
+            // If the service returned a JSON error body, treat it as success path
+            // (the caller will check data.success/data.validated)
+            return data;
+        } catch (err) {
+            clearTimeout(timeoutId);
+            throw err;
+        }
+    };
+
+    // ── Attempt 2: Official SDK (/verify) — different payload format ──
+    const tryOfficialSDK = async (params: StartVerificationParams): Promise<any> => {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 20000);
+
+        // The official SDK uses a different payload shape:
+        //   { bank, transaction_id, receiver_account }
+        // And uses Authorization: Bearer <key> instead of x-api-key
+        const payload: any = {
+            bank: params.payment_method,
+            transaction_id: params.reference,
+        };
+
+        // Map receiver account from additional_data
+        if (params.additional_data) {
+            payload.receiver_account =
+                params.additional_data.accountSuffix ||
+                params.additional_data.suffix ||
+                params.additional_data.expected_receiver ||
+                undefined;
+        }
+
+        console.log('[Verify] Attempt 2 — Official SDK:', `${OFFICIAL_SDK_URL}/verify`);
+
+        try {
+            const response = await fetch(`${OFFICIAL_SDK_URL}/verify`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${VERIFIER_API_KEY}`,
+                },
+                body: JSON.stringify(payload),
+                signal: controller.signal,
+            });
+
+            clearTimeout(timeoutId);
+
+            if (!response.ok) {
+                const text = await response.text().catch(() => '');
+                throw new Error(`Official SDK HTTP ${response.status}: ${text.slice(0, 100)}`);
+            }
+
+            const raw = await response.json();
+
+            // Normalize the official SDK response to match our expected shape
+            return {
+                success: raw.success ?? raw.validated ?? false,
+                validated: raw.validated ?? false,
+                amount: raw.amount ?? raw.amount_found ?? params.expected_amount,
+                receipt_reference: raw.receipt_reference ?? params.reference,
+                error: raw.error ?? raw.message,
+                validation: raw.validation ?? null,
+            };
+        } catch (err) {
+            clearTimeout(timeoutId);
+            throw err;
+        }
+    };
+
+    // ── Main verification entry point ──
+    const startVerification = async (params: StartVerificationParams) => {
+        if (!organizationId) {
+            setError("No Organization ID found. Please log in again.");
+            return;
+        }
+
+        setIsVerifying(true);
+        setError(null);
+        setJob(null);
+
+        try {
+            let data: any;
+
+            // ATTEMPT 1: Railway service
+            try {
+                data = await tryRailway(params);
+                console.log('[Verify] Railway response:', data);
+
+                // CRITICAL FIX: If Railway returns a system error (like missing Chrome/Puppeteer), 
+                // treat it as a failure and jump to the backup!
+                const systemError = data?.error?.toLowerCase() || '';
+                if (data && !data.success && (systemError.includes('chrome') || systemError.includes('puppeteer') || systemError.includes('browser'))) {
+                    console.warn('[Verify] Railway has a system error (Chrome missing), jumping to backup...');
+                    throw new Error('Railway System Error: ' + systemError);
+                }
+            } catch (railwayErr: any) {
+                console.warn('[Verify] Railway failed or system error:', railwayErr.message);
+
+                // ATTEMPT 2: Official SDK (different format)
+                try {
+                    data = await tryOfficialSDK(params);
+                    console.log('[Verify] Official SDK succeeded:', data);
+                } catch (sdkErr: any) {
+                    console.error('[Verify] Official SDK also failed:', sdkErr.message);
+                    // Both failed — throw the most informative error
+                    throw new Error(
+                        `Verification unavailable. Railway: ${railwayErr.message}. Backup: ${sdkErr.message}`
+                    );
+                }
+            }
+
+            // Build job result for backward compatibility with BillModal UI
             const jobResult: VerificationJob = {
                 id: crypto.randomUUID(),
                 organization_id: organizationId,
@@ -120,13 +226,12 @@ export function usePaymentVerification() {
             }
 
         } catch (err: any) {
-            console.error("Failed to verify payment:", err);
+            console.error('[Verify] All attempts exhausted:', err.message);
 
             const errorMessage = err.name === 'AbortError'
-                ? 'Verification timed out. Please try again.'
+                ? 'Verification timed out. Both services are unavailable. Please try again later.'
                 : (err.message || 'Verification failed');
 
-            // Build a failed job for UI consistency
             const failedJob: VerificationJob = {
                 id: crypto.randomUUID(),
                 organization_id: organizationId,

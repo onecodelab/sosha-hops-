@@ -1,8 +1,8 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, Badge, Button } from '../components/ui';
+import { Card, CardContent, CardHeader, CardTitle, Badge, Button, cn } from '../components/ui';
 import { supabase } from '../supabase';
 import { useBranch } from '../contexts/BranchContext';
-import { RefreshCw, Bot, User, Globe, Utensils } from 'lucide-react';
+import { RefreshCw, Bot, User, Globe, Utensils, AlertCircle } from 'lucide-react';
 
 import { BaroLogo } from '../components/BaroLogo';
 
@@ -135,12 +135,7 @@ const MenuTransactions = () => {
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-        <div className="flex flex-col gap-1">
-          <BaroLogo iconOnly className="h-16 w-16" />
-          <p className="text-[10px] font-black uppercase tracking-[0.4em] text-muted-foreground opacity-40 px-1">
-            Global Audit Log
-          </p>
-        </div>
+        <div />
         <div className="flex flex-wrap items-center gap-4">
           <div className="flex bg-primary/5 rounded-xl p-1 border border-primary/20 backdrop-blur-md">
             {(['today', 'yesterday', 'week', 'month', 'all', 'custom'] as const).map((d) => (
@@ -202,14 +197,15 @@ const MenuTransactions = () => {
                   <th className="px-6 py-5 font-black tracking-widest whitespace-nowrap">Handled By</th>
                   <th className="px-6 py-5 font-black tracking-widest whitespace-nowrap">Date & Time</th>
                   <th className="px-6 py-5 font-black tracking-widest whitespace-nowrap">Payment</th>
-                  <th className="px-6 py-5 font-black tracking-widest">Amount</th>
+                  <th className="px-6 py-5 font-black tracking-widest whitespace-nowrap">Total</th>
+                  <th className="px-6 py-5 font-black tracking-widest whitespace-nowrap">Paid</th>
                   <th className="px-6 py-5 font-black tracking-widest">Status</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5">
                 {orders.length === 0 && !loading && (
                    <tr>
-                     <td colSpan={7} className="px-6 py-20 text-center text-muted-foreground">
+                    <td colSpan={8} className="px-6 py-20 text-center text-muted-foreground">
                         <div className="flex flex-col items-center gap-3 opacity-30">
                            <Globe className="w-10 h-10" />
                            <span className="text-[10px] font-black uppercase tracking-[0.2em]">No records found for the selected period</span>
@@ -223,6 +219,12 @@ const MenuTransactions = () => {
                   const statusDisplay = getStatusDisplay(order.status);
                   const orderDate = new Date(order.closed_at || order.paid_at || order.created_at);
                   
+                  // Paid vs Total calculation
+                  const totalAmount = order.total_amount || 0;
+                  const amountPaid = order.amount_paid || 0;
+                  const isUnderpaid = amountPaid < totalAmount && order.status !== 'cancelled' && order.status !== 'pending';
+                  const isOverpaid = amountPaid > totalAmount;
+
                   // Clean order ID: ensure no double ORD-
                   const displayOrderId = order.order_number 
                     ? (order.order_number.startsWith('ORD-') ? order.order_number : `ORD-${order.order_number}`)
@@ -265,9 +267,32 @@ const MenuTransactions = () => {
                          <span className="text-red-500/40 italic text-[9px] font-black tracking-widest">UNPAID</span>
                       )}
                     </td>
-                    <td className="px-6 py-5 font-black text-primary whitespace-nowrap">
+                    <td className="px-6 py-5 font-black text-muted-foreground whitespace-nowrap">
                       <span className="text-[9px] mr-1 opacity-40 font-sans">ETB</span>
-                      {(order.total_amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      {totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </td>
+                    <td className="px-6 py-5 font-black whitespace-nowrap">
+                      <div className="flex flex-col gap-1">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[9px] opacity-40 font-sans">ETB</span>
+                          <span className={cn(
+                            "text-sm",
+                            isUnderpaid ? "text-red-500" : isOverpaid ? "text-emerald-500" : "text-primary"
+                          )}>
+                            {amountPaid.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </span>
+                        </div>
+                        {isOverpaid && (
+                          <div className="flex items-center gap-1 text-[7px] font-black text-emerald-500 uppercase tracking-tighter bg-emerald-500/5 px-1.5 py-0.5 rounded border border-emerald-500/10 w-fit animate-pulse">
+                            <RefreshCw className="w-2 h-2" /> Overpaid / Tip
+                          </div>
+                        )}
+                        {isUnderpaid && (
+                          <div className="flex items-center gap-1 text-[7px] font-black text-red-500 uppercase tracking-tighter bg-red-500/5 px-1.5 py-0.5 rounded border border-red-500/10 w-fit">
+                            <AlertCircle className="w-2 h-2" /> Underpaid
+                          </div>
+                        )}
+                      </div>
                     </td>
                     <td className="px-6 py-5 whitespace-nowrap">
                       <div className="flex items-center gap-2">

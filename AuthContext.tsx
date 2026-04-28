@@ -53,11 +53,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setAuthLoading(false);
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log(`[AuthContext] State change: ${event}`, !!session);
       setUser(session?.user ?? null);
       setAuthLoading(false);
-      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'SIGNED_OUT') {
+      
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        if (!session) {
+          console.warn("[AuthContext] Event received without session. Cleaning up...");
+          await signOut();
+          return;
+        }
         refetch();
+      } else if (event === 'SIGNED_OUT') {
+        refetch();
+        navigate('/');
       }
     });
 
@@ -67,7 +77,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signOut = async () => {
     try {
       await supabase.auth.signOut();
+      
+      // Selective cleanup to preserve user preferences like theme
+      const theme = localStorage.getItem('baro-theme');
+      const lang = localStorage.getItem('baro-language');
       localStorage.clear();
+      if (theme) localStorage.setItem('baro-theme', theme);
+      if (lang) localStorage.setItem('baro-language', lang);
       setUser(null);
       refetch();
       navigate('/');
@@ -104,7 +120,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       <LoadingSpinner
         timeout={8000}
         onTimeout={() => {
-          if (user) navigate('/login?error=timeout');
+          // Only navigate if we aren't already on login or landing
+          const path = window.location.pathname;
+          if (user && !path.includes('/login') && path !== '/') {
+            navigate('/login?error=timeout');
+          }
         }}
       />
     );

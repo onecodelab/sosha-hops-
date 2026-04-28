@@ -278,6 +278,15 @@ hr {
         }
     }
 
+    @keyframes shake {
+        0%, 100% { transform: translateX(0); }
+        25% { transform: translateX(-4px); }
+        75% { transform: translateX(4px); }
+    }
+    .animate-shake {
+        animation: shake 0.2s ease-in-out 0s 2;
+    }
+
     .system-flush-overlay {
         position: fixed;
         inset: 0;
@@ -286,6 +295,33 @@ hr {
         background: white;
         mix-blend-mode: overlay;
         animation: system-flush 0.4s ease-out forwards;
+    }
+
+    /* Loading Spinner Animations */
+    @keyframes loading-slide {
+        0% { transform: translateX(-100%); }
+        100% { transform: translateX(200%); }
+    }
+    @keyframes float-logo {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-12px); }
+    }
+    .animate-float-logo {
+        animation: float-logo 4s ease-in-out infinite;
+    }
+    @keyframes pulse-slow {
+        0%, 100% { opacity: 0.3; transform: scale(1); }
+        50% { opacity: 0.6; transform: scale(1.1); }
+    }
+    .animate-pulse-slow {
+        animation: pulse-slow 6s ease-in-out infinite;
+    }
+    @keyframes rotate-slow {
+        from { transform: rotate(0deg) scale(1); }
+        to { transform: rotate(360deg) scale(1.1); }
+    }
+    .animate-rotate-slow {
+        animation: rotate-slow 12s linear infinite;
     }
 
     body {

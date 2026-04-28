@@ -1,10 +1,5 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
-
-const corsHeaders = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
+import { Redis } from "https://esm.sh/@upstash/redis";
+import { corsHeaders, rateLimit } from "../_shared/identity.ts";
 
 serve(async (req) => {
     if (req.method === 'OPTIONS') {
@@ -17,7 +12,33 @@ serve(async (req) => {
             Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
         )
 
-        const { email, password, organizationName, fullName } = await req.json()
+        // --- RATE LIMITING (By IP) ---
+        const redisUrl = Deno.env.get('UPSTASH_REDIS_REST_URL');
+        const redisToken = Deno.env.get('UPSTASH_REDIS_REST_TOKEN');
+        if (redisUrl && redisToken) {
+            const redis = new Redis({ url: redisUrl, token: redisToken });
+            const clientIp = req.headers.get('x-real-ip') || req.headers.get('x-forwarded-for') || 'anonymous';
+            const limit = await rateLimit(redis, `register:${clientIp}`, 3, 3600); // Max 3 per hour
+            if (!limit.success) {
+                return new Response(JSON.stringify({ error: "Registration limit exceeded. Please try again later." }), { status: 429, headers: corsHeaders });
+            }
+        }
+
+        const body = await req.json()
+        const { z } = await import("https://esm.sh/zod");
+        const schema = z.object({
+            email: z.string().email(),
+            password: z.string().min(8),
+            organizationName: z.string().min(2),
+            fullName: z.string().min(2)
+        });
+
+        const result = schema.safeParse(body);
+        if (!result.success) {
+            return new Response(JSON.stringify({ error: "Validation failed", details: result.error.format() }), { status: 400, headers: corsHeaders });
+        }
+
+        const { email, password, organizationName, fullName } = result.data;
 
         // 1. Create Auth User
         const { data: authData, error: authError } = await supabaseClient.auth.admin.createUser({

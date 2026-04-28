@@ -188,6 +188,18 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
   };
 
   const addToCart = (dish: MenuDish) => {
+    if (!tableId && !tableNumber) {
+      showToast("Please select a table number before adding items.", "error");
+      
+      // Shake the table selector for visual feedback
+      const selector = document.getElementById('table-selector-container');
+      if (selector) {
+        selector.classList.add('animate-shake');
+        setTimeout(() => selector.classList.remove('animate-shake'), 500);
+      }
+      return;
+    }
+
     setCart(prev => {
       const existing = prev.find(i => i.dish.id === dish.id);
       if (existing) return prev.map(i => i.dish.id === dish.id ? { ...i, quantity: i.quantity + 1 } : i);
@@ -501,8 +513,13 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
               <div className="space-y-1.5">
                 <label className="text-[9px] font-black text-muted uppercase tracking-widest ml-1 flex items-center gap-2">
                   <Armchair className="w-3 h-3" /> {tableId ? `Assigned: Table ${tableNumber}` : 'Select Table'}
+                  {!tableId && (
+                    <span className="flex items-center gap-1 text-red-500 animate-pulse lowercase font-bold tracking-normal italic ml-2">
+                      <AlertCircle className="w-2.5 h-2.5" /> required before adding items
+                    </span>
+                  )}
                 </label>
-                <div className="flex flex-wrap gap-1 max-h-16 md:max-h-24 overflow-y-auto custom-scrollbar p-1">
+                <div id="table-selector-container" className="flex flex-wrap gap-1 max-h-16 md:max-h-24 overflow-y-auto custom-scrollbar p-1">
                   {(!initialTableId && !internalAppendId) ? (
                     tables.map(t => (
                       <button
@@ -564,7 +581,7 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
                       {dish.image_url ? <img src={dish.image_url} className="w-full h-full object-cover" /> : <Utensils className="w-4 h-4 md:w-5 md:h-5 text-muted" />}
                     </div>
                     <div className="flex flex-col pr-1 overflow-hidden">
-                      <h4 className="text-[11px] md:text-sm font-bold text-foreground group-hover:text-primary transition-colors leading-tight truncate">
+                      <h4 className="text-[11px] md:text-[13px] font-bold text-foreground group-hover:text-primary transition-colors leading-tight line-clamp-2">
                         {dish.name}
                       </h4>
                       <p className="text-[9px] md:text-[10px] font-black text-muted uppercase mt-0.5 whitespace-nowrap">ETB {dish.price.toLocaleString()}</p>
