@@ -76,7 +76,8 @@ serve(async (req) => {
 
         // 3. VERIFY PAYMENT (Call Local Verifier Service)
         // We use the same logic as sosha-verifier
-        const UPSTREAM_API_URL = "http://localhost:3000";
+        const VERIFIER_SERVICE_URL = Deno.env.get('VERIFIER_SERVICE_URL') || "http://localhost:3000";
+        const VERIFIER_API_KEY = Deno.env.get('VERIFIER_API_KEY') || "test-key-123";
         const serviceEndpoint = bank_key === 'telebirr' ? '/verify-telebirr' :
             bank_key === 'cbe' ? '/verify-cbe' : '/verify-other';
 
@@ -86,11 +87,14 @@ serve(async (req) => {
             receiver_account: bankConfig.account_number
         };
 
-        console.log(`[WHATSAPP_ORDER] Verifying via ${UPSTREAM_API_URL}${serviceEndpoint}`);
+        console.log(`[WHATSAPP_ORDER] Verifying via ${VERIFIER_SERVICE_URL}${serviceEndpoint}`);
 
-        const verifyResponse = await fetch(`${UPSTREAM_API_URL}${serviceEndpoint}`, {
+        const verifyResponse = await fetch(`${VERIFIER_SERVICE_URL}${serviceEndpoint}`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 
+                'Content-Type': 'application/json',
+                'x-api-key': VERIFIER_API_KEY
+            },
             body: JSON.stringify(payload)
         });
 

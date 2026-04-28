@@ -1,8 +1,8 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.7'
 
-const VERIFY_SERVICE_KEY = "Y21pdnQwMWVnMDAzYW5vMGtmbmNva2w4Ni0xNzY4MDQ0MTcwNTU0LWowamoyaGt5Y2g";
-const UPSTREAM_API_URL = "http://localhost:3000"; // Point to our new self-hosted service
+const VERIFIER_SERVICE_URL = Deno.env.get('VERIFIER_SERVICE_URL') || "http://localhost:3000";
+const VERIFIER_API_KEY = Deno.env.get('VERIFIER_API_KEY') || "test-key-123";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -30,6 +30,22 @@ serve(async (req) => {
     const { data: keyRecord } = await supabase.from('api_keys').select('id').eq('key', apiKey).eq('is_active', true).maybeSingle();
     if (!keyRecord) throw new Error("Invalid/Inactive API Key");
 
+    // --- RATE LIMITING (By IP) ---
+    const redisUrl = (globalThis as any).Deno.env.get('UPSTASH_REDIS_REST_URL');
+    const redisToken = (globalThis as any).Deno.env.get('UPSTASH_REDIS_REST_TOKEN');
+    if (redisUrl && redisToken) {
+        const { Redis } = await import("https://esm.sh/@upstash/redis");
+        const redis = new Redis({ url: redisUrl, token: redisToken });
+        const { rateLimit } = await import("../_shared/identity.ts");
+        
+        // Limit by IP to prevent brute-forcing
+        const clientIp = req.headers.get('x-real-ip') || req.headers.get('x-forwarded-for') || 'anonymous';
+        const limit = await rateLimit(redis, `verify:${clientIp}`, 20, 60); // 20 requests per minute
+        if (!limit.success) {
+            return new Response(JSON.stringify({ error: "Rate limit exceeded. Please try again later." }), { status: 429, headers: corsHeaders });
+        }
+    }
+
     // 2. PARSE DATA
     const body = await req.json();
     // Don't convert to uppercase - keep original case
@@ -38,27 +54,8 @@ serve(async (req) => {
 
     if (!reference) throw new Error("Missing transaction reference");
 
-    // 3. MASTER TEST BYPASS
-    if (reference.toUpperCase() === "BARO-TEST-99" || reference.toUpperCase() === "BARO_TEST_99") {
-      console.log("[BARO] Test Bypass Triggered");
-      return new Response(JSON.stringify({
-        success: true,
-        message: "Verified (Development Mode)",
-        amount: body.expectedAmount || 100,
-        receiptNo: "TEST-SUCCESS-88",
-        customerName: "Baro Test User"
-      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
-    }
-
-    // 4. MANUAL OVERRIDE
-    if (body.manualOverride === true) {
-      console.log("[BARO] Manual Override Triggered");
-      return new Response(JSON.stringify({
-        success: true,
-        message: "Manual Approval Success",
-        receiptNo: reference
-      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
-    }
+    // 3. MASTER TEST BYPASS (REMOVED FOR PRODUCTION SECURITY)
+    // 4. MANUAL OVERRIDE (REMOVED FOR PRODUCTION SECURITY)
 
     // 5. FRAUD CHECK
     const { data: existing } = await supabase.from('orders').select('id').eq('transaction_reference', reference).neq('status', 'cancelled').maybeSingle();
@@ -98,11 +95,14 @@ serve(async (req) => {
     const serviceEndpoint = path.endsWith('/telebirr') ? '/verify-telebirr' :
       path.endsWith('/cbe') ? '/verify-cbe' : '/verify-other';
 
-    console.log(`[BARO] Calling Local Service: ${UPSTREAM_API_URL}${serviceEndpoint}`);
+    console.log(`[BARO] Calling External Service: ${VERIFIER_SERVICE_URL}${serviceEndpoint}`);
 
-    const verifyResponse = await fetch(`${UPSTREAM_API_URL}${serviceEndpoint}`, {
+    const verifyResponse = await fetch(`${VERIFIER_SERVICE_URL}${serviceEndpoint}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        'x-api-key': VERIFIER_API_KEY
+      },
       body: JSON.stringify({ ...payload, bank: bankCode }),
       signal: controller.signal
     });
