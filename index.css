@@ -39,8 +39,8 @@
 }
 
 body[data-theme="fresh"] {
-    --background: #F8FAFC;
-    --card: #FFFFFF;
+    --background: #FFFFFF;
+    --card: #F9FAFB;
     --border: rgba(255, 184, 0, 0.15);
     --foreground: #020617;
     --muted: #64748B;
@@ -51,9 +51,7 @@ body[data-theme="fresh"] {
     --input-bg: #F1F5F9;
     --shadow-color: rgba(0, 0, 0, 0.05);
     --bubble-1: rgba(114, 191, 68, 0.08);
-    /* Cucumber Green */
     --bubble-2: rgba(255, 184, 0, 0.08);
-    /* Sosha Yellow */
 }
 
 body {
@@ -101,9 +99,7 @@ hr {
 }
 
 .liquid-bg {
-    background: linear-gradient(-45deg, #020617, #0A192F, #72BF4411, #FFB80011);
-    background-size: 400% 400%;
-    animation: liquid-core 20s ease infinite;
+    background: var(--background);
 }
 
 .river-shimmer {
@@ -125,14 +121,7 @@ hr {
 }
 
 .river-gradient {
-    background: linear-gradient(-45deg, #020617, #0f172a, #72BF4422, #FFB80011);
-    background-size: 400% 400%;
-    animation: river-flow 15s ease infinite;
-}
-
-body[data-theme="fresh"] .river-gradient {
-    background: linear-gradient(-45deg, #F8FAFC, #F1F5F9, #72BF4411, #FFB80008);
-    background-size: 400% 400%;
+    background: var(--background);
 }
 
 @layer components {

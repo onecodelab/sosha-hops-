@@ -33,13 +33,6 @@ export const BaroBackground: React.FC<BaroBackgroundProps> = ({
       <div className="fixed inset-0 z-0 river-gradient transition-colors duration-500 pointer-events-none">
         <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")` }} />
 
-        {/* River Atmospheric Glows */}
-        <div className="absolute top-[-10%] left-[-10%] w-[60%] h-[60%] bg-brand-green/5 rounded-full blur-[140px] animate-float-slow" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-brand-yellow/5 rounded-full blur-[140px] animate-float-medium" />
-
-        {/* Dynamic Water Horizon */}
-        <div className="absolute top-1/2 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-brand-green/10 to-transparent blur-[1px]" />
-
         <BackgroundMascots variant={variant} />
       </div>
 
