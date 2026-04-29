@@ -9,6 +9,19 @@ interface BackgroundMascotsProps {
 }
 
 export const BackgroundMascots: React.FC<BackgroundMascotsProps> = ({ variant }) => {
+  // Performance optimization: Don't render decorative mascots on mobile
+  // This saves DOM nodes and prevents unnecessary animations/calculations
+  const [isMobile, setIsMobile] = React.useState(false);
+
+  React.useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  if (isMobile) return null;
+
   const getTheme = () => {
     switch (variant) {
       case 'owner': return { color: 'yellow', icons: [ShieldCheck, BarChart3, Users, LayoutDashboard] };

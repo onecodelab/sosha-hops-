@@ -1,9 +1,10 @@
 
-import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
+import React, { useEffect, useState, useMemo, useCallback, useRef, lazy, Suspense } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useLayoutConfig } from '../contexts/LayoutContext';
 import { BaroCard, BaroCardTitle } from '../components/BaroCard';
+import { OrderCard } from '../components/OrderCard';
 import {
    TrendingUp, Users, ShoppingBag, AlertTriangle,
    RefreshCw, DollarSign, Activity, ClipboardList, List, Eye, Filter, User, ShieldCheck, Search, Calendar, LayoutList
@@ -11,14 +12,15 @@ import {
 import { cn, Badge, Button, showToast, Card } from '../components/ui';
 import { supabase } from '../supabase';
 import { useLanguage } from '../contexts/LanguageContext';
-import { ActiveOrdersModal } from '../components/ActiveOrdersModal';
-import { PaymentVerificationModal } from '../components/PaymentVerificationModal';
-import { OrderCard } from '../components/OrderCard';
 import { Order, UserProfile } from '../types';
-import { OrderDetailsModal } from '../components/OrderDetailsModal';
 import { useBranch } from '../contexts/BranchContext';
 import { useAuth } from '../AuthContext';
 import { Sparkles, Brain, ArrowUpRight } from 'lucide-react';
+
+// Lazy load heavy modals to improve mobile PageSpeed
+const ActiveOrdersModal = lazy(() => import('../components/ActiveOrdersModal').then(m => ({ default: m.ActiveOrdersModal })));
+const PaymentVerificationModal = lazy(() => import('../components/PaymentVerificationModal').then(m => ({ default: m.PaymentVerificationModal })));
+const OrderDetailsModal = lazy(() => import('../components/OrderDetailsModal').then(m => ({ default: m.OrderDetailsModal })));
 
 const AdminDashboard: React.FC = () => {
    const { t } = useLanguage();
@@ -588,18 +590,20 @@ const AdminDashboard: React.FC = () => {
             </div>
          </div>
 
-         <ActiveOrdersModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} orders={activeOrders.filter(o => !['served', 'paid'].includes(o.status))} />
-         <PaymentVerificationModal
-            isOpen={isPaymentOpen}
-            onClose={() => setIsPaymentOpen(false)}
-            orders={servedUnpaidOrders}
-            onPaymentSuccess={handlePaymentSuccess}
-         />
-         <OrderDetailsModal
-            isOpen={isDetailsModalOpen}
-            onClose={() => setIsDetailsModalOpen(false)}
-            order={selectedDetailsOrder}
-         />
+         <Suspense fallback={null}>
+            <ActiveOrdersModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} orders={activeOrders.filter(o => !['served', 'paid'].includes(o.status))} />
+            <PaymentVerificationModal
+               isOpen={isPaymentOpen}
+               onClose={() => setIsPaymentOpen(false)}
+               orders={servedUnpaidOrders}
+               onPaymentSuccess={handlePaymentSuccess}
+            />
+            <OrderDetailsModal
+               isOpen={isDetailsModalOpen}
+               onClose={() => setIsDetailsModalOpen(false)}
+               order={selectedDetailsOrder}
+            />
+         </Suspense>
       </>
    );
 };

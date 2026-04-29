@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Button } from './ui';
@@ -25,23 +24,23 @@ export const MarketingLayout: React.FC<MarketingLayoutProps> = ({ children }) =>
     ];
 
     return (
-        <div className="min-h-screen bg-background flex flex-col transition-colors duration-1000 font-sans">
+        <div className="min-h-screen bg-background flex flex-col font-sans text-foreground transition-colors duration-500">
             {/* Navigation */}
-            <nav className="sticky top-0 z-50 bg-black border-b border-white/5 h-20 flex items-center">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
+            <nav className="sticky top-0 z-50 bg-background/80 backdrop-blur-md border-b border-foreground/10 h-16 flex items-center transition-colors duration-500">
+                <div className="max-w-[1440px] mx-auto px-4 sm:px-8 w-full">
                     <div className="flex justify-between items-center relative">
                         {/* Logo & Left Links */}
                         <div className="flex items-center gap-12">
-                            <Link to="/" className="flex items-center gap-3 group liquid-core-logo">
-                                <BaroLogo className="scale-110" />
+                            <Link to="/" className="flex items-center gap-3">
+                                <BaroLogo className="scale-100" />
                             </Link>
 
-                            <div className="hidden md:flex items-center gap-10">
+                            <div className="hidden md:flex items-center gap-8">
                                 {navLinks.map((l) => (
                                     <Link
                                         key={l.to}
                                         to={l.to}
-                                        className="ripple-link mono-os text-[10px] font-black text-white/50 hover:text-white transition-colors py-2 px-1 uppercase"
+                                        className="text-foreground/70 hover:text-[#0052ef] text-[16px] font-normal transition-colors"
                                     >
                                         {l.label}
                                     </Link>
@@ -49,69 +48,47 @@ export const MarketingLayout: React.FC<MarketingLayoutProps> = ({ children }) =>
                             </div>
                         </div>
 
-                        {/* Central Protocol Hub - Centered Absolutely */}
-                        <div className="hidden lg:flex items-center absolute left-1/2 -translate-x-1/2 h-20">
-                            <div className="flex items-center gap-3 px-4 h-10 rounded-full bg-white/[0.03] border border-white/10 backdrop-blur-3xl shadow-[0_0_30px_rgba(255,184,0,0.05)] hover:border-primary/30 transition-all group relative">
-                                {/* Subtle scanline effect */}
-                                <div className="absolute inset-0 rounded-full overflow-hidden pointer-events-none">
-                                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/[0.02] to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
-                                </div>
-
-                                <div className="flex items-center gap-2 border-r border-white/10 pr-4">
-                                    <Settings2 className="w-4 h-4 text-primary animate-spin-slow-extra" />
-                                    <span className="mono-os text-[9px] font-black text-white/60 uppercase tracking-widest hidden xl:inline">Protocol_Control</span>
-                                </div>
-
-                                <div className="flex items-center gap-5 h-full">
-                                    <LanguageSwitcher />
-                                    <div className="w-px h-4 bg-white/10" />
-                                    <ThemeToggle />
-                                </div>
-
-                                <div className="ml-2 flex items-center justify-center">
-                                    <Sparkles className="w-3.5 h-3.5 text-brand-green animate-pulse" />
-                                </div>
+                        {/* Central Protocol Hub (Simplified for Sanity style) */}
+                        <div className="hidden lg:flex items-center absolute left-1/2 -translate-x-1/2">
+                            <div className="flex items-center gap-4 bg-foreground/5 px-4 py-1.5 rounded-[3px] border border-foreground/10">
+                                <LanguageSwitcher />
+                                <div className="w-px h-4 bg-foreground/10" />
+                                <ThemeToggle />
                             </div>
                         </div>
 
                         {/* Right side Actions */}
-                        <div className="flex items-center gap-4 h-20">
+                        <div className="flex items-center gap-2 sm:gap-4">
                             {user ? (
                                 <Link to="/app">
-                                    <Button variant="outline" className="mono-os text-[9px] font-black border-white/10 hover:border-primary/50 h-10 px-6 rounded-full group uppercase shadow-[0_0_15px_rgba(255,184,0,0.05)] hover:shadow-[0_0_20px_rgba(255,184,0,0.15)] transition-all">
+                                    <button className="bg-foreground/5 text-foreground/70 hover:bg-[#0052ef] hover:text-white px-3 sm:px-4 py-1.5 sm:py-2 rounded-full font-medium text-[13px] sm:text-[15px] transition-colors border border-foreground/10">
                                         {t('marketingNav.dashboard')}
-                                        <Sparkles className="w-3 h-3 ml-2 text-primary opacity-0 group-hover:opacity-100 transition-opacity" />
-                                    </Button>
+                                    </button>
                                 </Link>
                             ) : (
                                 <>
+                                    <Link to="/login" className="flex items-center">
+                                        <button className="text-foreground/70 hover:text-[#0052ef] px-3 sm:px-4 py-2 font-medium text-[14px] sm:text-[15px] transition-colors">
+                                            {t('marketingNav.login')}
+                                        </button>
+                                    </Link>
                                     <div className="hidden md:flex items-center gap-3">
-                                        <Link to="/onboarding" className="ripple-link">
-                                            <Button variant="ghost" className="mono-os text-[9px] font-black tracking-widest px-5 h-10 text-brand-yellow/80 hover:text-brand-yellow hover:bg-brand-yellow/5 uppercase">
-                                                Apply for Access
-                                            </Button>
-                                        </Link>
                                         <Link to="/book-demo">
-                                            <Button className="bg-brand-yellow hover:bg-white text-black mono-os text-[9px] font-black px-8 h-10 rounded-full shadow-2xl shadow-brand-yellow/10 uppercase">
+                                            <button className="bg-[#f36458] text-white hover:bg-[#0052ef] px-5 py-2 rounded-full font-medium text-[15px] transition-colors">
                                                 {t('marketingNav.demo')}
-                                            </Button>
+                                            </button>
                                         </Link>
                                     </div>
-                                    <Link to="/login" className="ripple-link">
-                                        <Button variant="ghost" className="mono-os text-[9px] font-black tracking-widest px-3 sm:px-6 h-10 text-white hover:text-white hover:bg-white/5 uppercase border border-white/10 sm:border-transparent rounded-full sm:rounded-none">
-                                            {t('marketingNav.login')}
-                                        </Button>
-                                    </Link>
                                 </>
                             )}
 
                             {/* Mobile hamburger */}
                             <button
-                                className="md:hidden p-2 text-white/60 hover:text-white transition-colors"
+                                className="md:hidden p-2 text-foreground/70 hover:text-[#0052ef] transition-colors"
                                 onClick={() => setMobileOpen(!mobileOpen)}
                                 aria-label="Toggle menu"
                             >
-                                {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+                                {mobileOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
                             </button>
                         </div>
                     </div>
@@ -119,58 +96,36 @@ export const MarketingLayout: React.FC<MarketingLayoutProps> = ({ children }) =>
 
                 {/* Mobile dropdown */}
                 {mobileOpen && (
-                    <div className="absolute top-20 left-0 right-0 md:hidden border-t border-white/5 bg-black/95 backdrop-blur-3xl animate-in fade-in slide-in-from-top-2 duration-300 z-50">
+                    <div className="absolute top-16 left-0 right-0 md:hidden border-t border-foreground/10 bg-background z-50">
                         <div className="px-6 py-8 space-y-6">
                             {navLinks.map((l) => (
                                 <Link
                                     key={l.to}
                                     to={l.to}
                                     onClick={() => setMobileOpen(false)}
-                                    className="block mono-os text-xs font-black text-white/60 hover:text-white transition-colors uppercase"
+                                    className="block text-foreground/70 hover:text-[#0052ef] text-[16px] transition-colors"
                                 >
                                     {l.label}
                                 </Link>
                             ))}
-                            <div className="pt-6 space-y-6 border-t border-white/5">
-                                <span className="mono-os text-[10px] font-black text-primary uppercase tracking-[0.3em] block">System_Protocol</span>
-                                <div className="grid grid-cols-1 gap-4">
-                                    <div className="flex items-center justify-between p-4 rounded-2xl bg-white/5 border border-white/10">
-                                        <span className="text-sm font-bold text-white flex items-center gap-3">
-                                            <Globe className="w-4 h-4 text-brand-green" /> Language
-                                        </span>
-                                        <div className="scale-90 origin-right">
-                                            <LanguageSwitcher />
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center justify-between p-4 rounded-2xl bg-white/5 border border-white/10">
-                                        <span className="text-sm font-bold text-white flex items-center gap-3">
-                                            <Settings2 className="w-4 h-4 text-primary" /> System Theme
-                                        </span>
-                                        <div className="scale-90 origin-right">
-                                            <ThemeToggle />
-                                        </div>
-                                    </div>
+                            <div className="pt-6 space-y-6 border-t border-foreground/10">
+                                <div className="flex items-center gap-4">
+                                    <LanguageSwitcher />
+                                    <ThemeToggle />
                                 </div>
                                 {!user && (
-                                    <div className="pt-6 space-y-4 border-t border-white/5">
-                                        <Link
-                                            to="/onboarding"
-                                            onClick={() => setMobileOpen(false)}
-                                            className="block mono-os text-xs font-black text-brand-yellow/80 hover:text-brand-yellow transition-colors uppercase"
-                                        >
-                                            New here? Apply for Access →
-                                        </Link>
+                                    <div className="pt-6 space-y-4 border-t border-foreground/10 flex flex-col">
                                         <Link
                                             to="/login"
                                             onClick={() => setMobileOpen(false)}
-                                            className="block mono-os text-xs font-black text-white/60 hover:text-white transition-colors uppercase"
+                                            className="block text-foreground/70 hover:text-[#0052ef] text-[16px] transition-colors"
                                         >
                                             {t('marketingNav.login')}
                                         </Link>
                                         <Link to="/book-demo" onClick={() => setMobileOpen(false)} className="block">
-                                            <Button className="w-full bg-brand-yellow hover:bg-white text-black mono-os text-xs font-black h-14 rounded-2xl shadow-2xl shadow-brand-yellow/10 uppercase">
+                                            <button className="w-full bg-[#f36458] hover:bg-[#0052ef] text-white font-medium text-[16px] py-3 rounded-full transition-colors">
                                                 {t('marketingNav.demo')}
-                                            </Button>
+                                            </button>
                                         </Link>
                                     </div>
                                 )}
@@ -181,23 +136,19 @@ export const MarketingLayout: React.FC<MarketingLayoutProps> = ({ children }) =>
             </nav>
 
             {/* Main Content */}
-            <main className="flex-1">
+            <main className="flex-1 bg-background transition-colors duration-500">
                 {children}
             </main>
 
             {/* Footer */}
-            <footer className="bg-black border-t border-white/5 pb-24 pt-32 relative overflow-hidden">
-                {/* Delta Branching Representation */}
-                <div className="absolute inset-x-0 bottom-0 h-96 uchok-pattern opacity-10 pointer-events-none" />
-                <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-brand-blue/5 blur-[150px] rounded-full pointer-events-none translate-x-1/2 -translate-y-1/2" />
-
-                <div className="max-w-7xl mx-auto px-6 relative z-10">
-                    <div className="flex flex-col md:flex-row items-center justify-between gap-16 mb-20">
+            <footer className="bg-background border-t border-foreground/10 pt-24 pb-12 transition-colors duration-500">
+                <div className="max-w-[1440px] mx-auto px-8">
+                    <div className="flex flex-col md:flex-row items-center justify-between gap-12 mb-16">
                         <div className="flex flex-col items-center md:items-start gap-6">
-                            <Link to="/" className="flex items-center gap-2 grayscale opacity-40 hover:grayscale-0 hover:opacity-100 transition-all duration-700">
+                            <Link to="/" className="flex items-center gap-2 grayscale hover:grayscale-0 transition-all duration-300">
                                 <BaroLogo className="scale-90" />
                             </Link>
-                            <p className="mono-os text-[10px] font-black text-white/20 tracking-[0.3em] uppercase">
+                            <p className="font-mono text-[13px] text-foreground/50 uppercase">
                                 {t('footer.tagline')}
                             </p>
                         </div>
@@ -211,7 +162,7 @@ export const MarketingLayout: React.FC<MarketingLayoutProps> = ({ children }) =>
                                 <Link
                                     key={link.key}
                                     to="#"
-                                    className="mono-os text-[9px] font-black text-white/40 hover:text-brand-green transition-colors tracking-widest uppercase"
+                                    className="text-[15px] text-foreground/70 hover:text-[#0052ef] transition-colors"
                                 >
                                     {link.label}
                                 </Link>
@@ -219,18 +170,14 @@ export const MarketingLayout: React.FC<MarketingLayoutProps> = ({ children }) =>
                         </div>
                     </div>
 
-                    <div className="flex flex-col md:flex-row items-center justify-between gap-8 pt-10 border-t border-white/5">
-                        <p className="mono-os text-[9px] font-black text-white/20 uppercase tracking-widest">
+                    <div className="flex flex-col md:flex-row items-center justify-between gap-8 pt-8 border-t border-foreground/10">
+                        <p className="text-[13px] text-foreground/50">
                             {t('footer.copyright')}
                         </p>
-                        <div className="flex items-center gap-6 opacity-20 hover:opacity-100 transition-opacity">
-                            <div className="w-4 h-4 bg-muted-foreground/20 rounded-full" />
-                            <div className="w-4 h-4 bg-muted-foreground/20 rounded-full" />
-                            <div className="w-4 h-4 bg-muted-foreground/20 rounded-full" />
-                        </div>
                     </div>
                 </div>
             </footer>
         </div>
     );
 };
+

@@ -1,178 +1,20 @@
-
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import { MarketingLayout } from '../components/MarketingLayout';
-import { Button, cn, showToast } from '../components/ui';
-import { WaveDivider } from '../components/WaveDivider';
 import { useLanguage } from '../contexts/LanguageContext';
-import {
-  Cpu,
-  Waves,
-  BarChart3,
-  ArrowRight,
-  Layers,
-  Zap,
-  ShieldCheck,
-  MousePointer2
-} from 'lucide-react';
-
-const EpicDashboardShowcase: React.FC<{ t: (path: string) => string }> = ({ t }) => {
-  const highlights = [
-    { title: t('marketing.feat1Title'), desc: t('marketing.feat1Desc'), icon: MousePointer2, color: 'text-brand-yellow' },
-    { title: t('marketing.feat2Title'), desc: t('marketing.feat2Desc'), icon: Zap, color: 'text-brand-green' },
-    { title: t('marketing.feat3Title'), desc: t('marketing.feat3Desc'), icon: Layers, color: 'text-brand-yellow' },
-  ];
-
-  return (
-    <div className="relative w-full py-24 overflow-hidden group">
-      {/* Background River Flow Layers */}
-      <div className="absolute inset-0 z-0 pointer-events-none">
-        <div className="absolute top-1/2 left-0 w-full h-[500px] -translate-y-1/2 opacity-20 blur-[100px] bg-brand-green/20 animate-pulse-slow" />
-        <svg viewBox="0 0 1200 600" className="absolute top-0 left-0 w-full h-full opacity-10">
-          <path
-            d="M-200,300 Q200,100 600,300 T1400,300"
-            fill="none"
-            stroke="var(--primary)"
-            strokeWidth="80"
-            className="animate-[river-flow_15s_linear_infinite]"
-          />
-          <path
-            d="M-200,400 Q200,200 600,400 T1400,400"
-            fill="none"
-            stroke="var(--brand-green)"
-            strokeWidth="60"
-            className="animate-[river-flow_10s_linear_infinite_reverse]"
-          />
-        </svg>
-      </div>
-
-      <div className="max-w-7xl mx-auto px-6 relative z-10">
-        <div className="flex flex-col lg:flex-row items-center gap-16">
-          {/* Text Content */}
-          <div className="w-full lg:w-1/3">
-            <span className="mono-os text-brand-yellow text-xs font-black mb-6 block tracking-[0.5em]">{t('marketing.showcaseTag')}</span>
-            <h2 className="text-5xl md:text-6xl font-black uppercase tracking-tighter text-white mb-8 leading-none">
-              {t('marketing.showcaseTitle1')} <br />
-              <span className="serif-ital text-brand-green lowercase">{t('marketing.showcaseTitle2')}</span>
-            </h2>
-            <p className="serif-ital text-lg text-white/50 mb-12 max-w-sm">
-              {t('marketing.showcaseDesc')}
-            </p>
-            <div className="space-y-6">
-              {highlights.map((h, i) => (
-                <div key={i} className="flex items-center gap-6 p-6 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-primary/30 transition-all cursor-default group/item">
-                  <div className={`w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center ${h.color} group-hover/item:scale-110 transition-transform`}>
-                    <h.icon className="w-6 h-6" />
-                  </div>
-                  <div>
-                    <h4 className="font-black text-white text-sm uppercase tracking-widest">{h.title}</h4>
-                    <p className="text-[10px] text-white/40 font-bold uppercase">{h.desc}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Epic Dashboard Visual */}
-          <div className="w-full lg:w-2/3 perspective-[2500px] h-[600px] flex items-center justify-center relative">
-            <div
-              className="relative w-full h-[500px] transition-all duration-1000 group-hover:scale-105"
-              style={{
-                transform: 'rotateX(20deg) rotateZ(-10deg) rotateY(10deg)',
-                transformStyle: 'preserve-3d'
-              }}
-            >
-              {/* Main Dashboard Frame */}
-              <div className="absolute inset-0 bg-[#0A0A0A] rounded-[2.5rem] border border-white/10 shadow-[0_50px_100px_rgba(0,0,0,0.8)] overflow-hidden flex backdrop-blur-3xl">
-                {/* Sidebar Preview */}
-                <div className="w-16 md:w-20 border-r border-white/5 flex flex-col items-center py-6 gap-6 shrink-0">
-                  <div className="w-8 h-8 rounded-full bg-brand-green/20 border border-brand-green/30" />
-                  {[1, 2, 3, 4, 5, 6].map(i => (
-                    <div key={i} className={cn("w-6 h-6 rounded-lg bg-white/5 border border-white/5", i === 1 && "bg-primary/20 border-primary/30")} />
-                  ))}
-                </div>
-
-                {/* Main Content Area */}
-                <div className="flex-1 flex flex-col p-6 gap-6 overflow-hidden">
-                  <div className="flex justify-between items-center mb-2">
-                    <div className="h-8 w-48 bg-white/5 rounded-full" />
-                    <div className="flex gap-4">
-                      <div className="h-10 w-10 rounded-xl bg-white/5 border border-white/10" />
-                      <div className="h-10 w-32 rounded-full bg-primary/20 border border-primary/40 shadow-[0_0_15px_rgba(255,184,0,0.2)]" />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-4 gap-4">
-                    {[
-                      { label: 'Proposals', val: '0', color: 'text-primary' },
-                      { label: 'Audit', val: '43', color: 'text-white' },
-                      { label: 'Savings', val: 'ETB 14k', color: 'text-primary' },
-                      { label: 'Reliability', val: '99.2%', color: 'text-purple-400' }
-                    ].map((metric, i) => (
-                      <div key={i} className="p-4 rounded-2xl bg-white/[0.03] border border-white/5 flex flex-col">
-                        <span className="text-[8px] font-black text-white/30 uppercase tracking-widest">{metric.label}</span>
-                        <span className={cn("text-lg font-black mt-1", metric.color)}>{metric.val}</span>
-                      </div>
-                    ))}
-                  </div>
-
-                  <div className="flex-1 rounded-2xl bg-white/[0.02] border border-white/5 p-4 flex flex-col gap-3 min-h-0">
-                    <div className="flex justify-between border-b border-white/5 pb-2">
-                      <div className="h-3 w-16 bg-white/10 rounded" />
-                      <div className="h-3 w-16 bg-white/10 rounded" />
-                      <div className="h-3 w-16 bg-white/10 rounded" />
-                    </div>
-                    {[1, 2, 3, 4, 5].map(i => (
-                      <div key={i} className="flex justify-between items-center group/row">
-                        <div className="h-2 w-12 bg-white/5 rounded" />
-                        <div className="flex items-center gap-2">
-                          <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
-                          <div className="h-2 w-8 bg-white/5 rounded" />
-                        </div>
-                        <div className="h-4 w-20 bg-white/5 rounded-full border border-white/5" />
-                        <div className="h-2 w-8 bg-primary/30 rounded" />
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              {/* Floating Accents */}
-              <div
-                className="absolute -top-10 -right-4 p-6 rounded-3xl bg-brand-green/20 backdrop-blur-xl border border-brand-green/40 shadow-2xl"
-                style={{ transform: 'translateZ(100px)' }}
-              >
-                <Zap className="w-8 h-8 text-brand-green animate-pulse" />
-              </div>
-              <div
-                className="absolute -bottom-10 -left-4 p-8 rounded-full bg-primary/10 backdrop-blur-2xl border border-primary/20 shadow-[0_0_40px_rgba(255,184,0,0.15)]"
-                style={{ transform: 'translateZ(150px)' }}
-              >
-                <BarChart3 className="w-10 h-10 text-primary animate-bounce-slow" />
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
 
 const Landing: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { t } = useLanguage();
 
-  // Auto-redirect to dashboard if already logged in OR handle errors
   React.useEffect(() => {
-    // Check for error fragment from Supabase (Magic Link failure)
     const hash = window.location.hash;
     if (hash.includes('error=')) {
       const params = new URLSearchParams(hash.substring(1));
       const errorCode = params.get('error_code');
       if (errorCode === 'otp_expired') {
-        showToast("Authentication Error: The link has expired or was already used.", "error");
         navigate('/login');
         return;
       }
@@ -183,152 +25,183 @@ const Landing: React.FC = () => {
     }
   }, [user, navigate]);
 
-  const sequence = [
-    { num: '01', title: t('marketing.seq1Title'), desc: t('marketing.seq1Desc'), icon: Cpu },
-    { num: '02', title: t('marketing.seq2Title'), desc: t('marketing.seq2Desc'), icon: Waves },
-    { num: '03', title: t('marketing.seq3Title'), desc: t('marketing.seq3Desc'), icon: BarChart3 },
+  const cards = [
+    { tag: 'OPERATIONS', title: t('marketing.feat1Title'), desc: t('marketing.feat1Desc') },
+    { tag: 'SPEED', title: t('marketing.feat2Title'), desc: t('marketing.feat2Desc') },
+    { tag: 'ARCHITECTURE', title: t('marketing.feat3Title'), desc: t('marketing.feat3Desc') },
+    { tag: 'PHASE 01', title: t('marketing.seq1Title'), desc: t('marketing.seq1Desc') },
+    { tag: 'PHASE 02', title: t('marketing.seq2Title'), desc: t('marketing.seq2Desc') },
+    { tag: 'PHASE 03', title: t('marketing.seq3Title'), desc: t('marketing.seq3Desc') },
   ];
 
   return (
     <MarketingLayout>
-      {/* 🌋 PHASE I: THE SOURCE (Hero) */}
-      <section className="relative min-h-screen flex flex-col items-center justify-center pt-20 overflow-hidden bg-black liquid-bg">
-        <div className="absolute inset-0 bg-black/40 pointer-events-none" />
-        <div className="absolute top-[10%] left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-brand-green/30 to-transparent blur-[2px] pointer-events-none" />
-        <div className="absolute top-[30%] right-[10%] w-[500px] h-[500px] bg-brand-yellow/10 blur-[150px] rounded-full pointer-events-none animate-pulse-slow mix-blend-screen" />
-
-        <div className="max-w-7xl mx-auto px-6 relative z-10 text-center">
-          <p className="mono-os text-brand-green text-xs font-black tracking-[0.5em] mb-12 animate-in fade-in slide-in-from-bottom-4 duration-1000">
-            {t('marketing.heroTag')}
-          </p>
-
-          <h1 className="text-7xl sm:text-9xl md:text-[10rem] font-black uppercase tracking-tighter leading-[0.8] mb-12 animate-in fade-in slide-in-from-bottom-8 duration-1000 delay-200 text-white text-glow-primary">
-            {t('marketing.heroTitle1')} <br />
-            <span className="serif-ital text-brand-green lowercase">{t('marketing.heroTitle2')}</span>
-          </h1>
-
-          <p className="serif-ital text-2xl md:text-3xl text-white/90 max-w-2xl mx-auto mb-16 leading-relaxed animate-in fade-in slide-in-from-bottom-12 duration-1000 delay-500">
-            {t('marketing.heroDesc')}{' '}
-            <span className="mono-os text-brand-yellow text-sm tracking-[0.2em] font-black underline decoration-brand-green/30 underline-offset-8">{t('marketing.heroAccent')}</span>.
-          </p>
-
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-8 animate-in fade-in slide-in-from-bottom-16 duration-1000 delay-700">
-            <Button
-              size="lg"
-              onClick={() => navigate('/book-demo')}
-              className="px-16 h-20 bg-brand-yellow hover:bg-white text-black font-black uppercase tracking-widest text-xs rounded-full shadow-[0_20px_60px_rgba(255,184,0,0.2)] flex items-center gap-4 group transition-all ripple-link"
-            >
-              {t('marketing.ctaStart')}
-              <Waves className="w-5 h-5 group-hover:scale-125 transition-transform" />
-            </Button>
-            <Button
-              variant="outline"
-              size="lg"
-              onClick={() => navigate('/features')}
-              className="px-16 h-20 border-white/20 hover:border-brand-green text-white font-black uppercase tracking-widest text-xs rounded-full hover:bg-brand-green/10 transition-all font-mono ripple-link"
-            >
-              {t('marketing.ctaProtocol')}
-            </Button>
-          </div>
-        </div>
-
-        <WaveDivider variant="strong" color="fill-brand-blue/30" />
-      </section>
-
-      {/* 🚣 PHASE II: THE STREAM (OPERATIONS) */}
-      <section className="relative py-48 bg-brand-blue/30 border-y border-white/5">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="flex flex-col md:flex-row items-end justify-between gap-12 mb-32">
-            <div className="max-w-2xl">
-              <span className="mono-os text-brand-yellow text-xs font-black mb-6 block">{t('marketing.streamTag')}</span>
-              <h2 className="text-6xl md:text-8xl font-black uppercase tracking-tighter text-white leading-[0.9]">
-                {t('marketing.streamTitle1')} <br />
-                <span className="serif-ital text-brand-green lowercase">{t('marketing.streamTitle2')}</span>
-              </h2>
-            </div>
-            <p className="serif-ital text-xl text-white/50 max-w-sm mb-4">
-              {t('marketing.streamQuote')}
+      <div className="bg-background min-h-screen text-foreground overflow-hidden transition-colors duration-500">
+        {/* Hero Section */}
+        <section className="relative pt-[32px] md:pt-[80px] pb-[24px] md:pb-[32px] px-4 md:px-8 max-w-[1440px] mx-auto flex flex-col items-center text-center min-h-[calc(100vh-64px)] justify-center">
+          <div className="flex flex-col items-center z-10 relative w-full">
+            <p className="text-foreground/70 text-[11px] md:text-[14px] mb-2 md:mb-4 max-w-2xl font-mono uppercase tracking-widest">
+              {t('marketing.heroTag')}
             </p>
+            <h1 className="text-[44px] sm:text-[56px] md:text-[88px] leading-[1.05] md:leading-[1.0] tracking-[-1.5px] md:tracking-[-3.5px] font-normal text-foreground mb-4 md:mb-6 max-w-5xl mx-auto">
+              {t('marketing.heroTitle1')} {t('marketing.heroTitle2')}
+            </h1>
+            <p className="text-[14px] md:text-[18px] text-foreground/70 max-w-xl leading-[1.4] md:leading-[1.5] mb-6 md:mb-8 px-4">
+              {t('marketing.heroDesc')} {t('marketing.heroAccent')}
+            </p>
+            
+            <div className="flex flex-col sm:flex-row items-center gap-3 md:gap-4 w-full sm:w-auto px-6">
+              <button 
+                onClick={() => navigate('/book-demo')}
+                className="bg-[#f36458] text-white hover:bg-[#0052ef] w-full sm:w-auto px-6 py-3 md:px-8 md:py-3.5 rounded-[99999px] font-medium text-[14px] md:text-[15px] transition-colors"
+              >
+                {t('marketing.ctaStart')}
+              </button>
+              <button 
+                onClick={() => navigate('/features')}
+                className="bg-background text-foreground/70 border border-foreground/10 hover:bg-[#0052ef] hover:text-white w-full sm:w-auto px-6 py-3 md:px-8 md:py-3.5 rounded-[99999px] font-medium text-[14px] md:text-[15px] transition-colors"
+              >
+                {t('marketing.ctaProtocol')}
+              </button>
+            </div>
           </div>
 
-          <EpicDashboardShowcase t={t} />
-        </div>
-      </section>
+          {/* Raycast-style Dashboard Mockup */}
+          <div className="mt-8 md:mt-12 w-full max-w-[1000px] mx-auto relative group perspective-[2000px] z-20">
+            {/* Warm glow behind the dashboard */}
+            <div className="absolute inset-0 bg-[#d7c9af] opacity-[0.06] blur-[80px] pointer-events-none rounded-full" />
+            
+            {/* The Dashboard Card */}
+            <div 
+              className="relative w-full bg-card rounded-[8px] md:rounded-[10px] border border-foreground/10 overflow-hidden text-left"
+              style={{
+                boxShadow: `
+                  0px 0px 0px 1px var(--shadow-color), 
+                  0px 10px 40px var(--shadow-color),
+                  0px 0px 14px var(--glass-highlight),
+                  inset 0px 1px 0px var(--glass-highlight)
+                `
+              }}
+            >
+              {/* Header / Search Area */}
+              <div className="flex items-center gap-2 md:gap-3 px-3 md:px-5 py-2 md:py-3.5 border-b border-foreground/10 bg-card">
+                <div className="flex gap-1.5 md:gap-2">
+                  <div className="w-2.5 h-2.5 md:w-3 md:h-3 rounded-full bg-[#FF6363] border border-[#FF6363]/30 shadow-[0_0_8px_rgba(255,99,99,0.4)]" />
+                  <div className="w-2.5 h-2.5 md:w-3 md:h-3 rounded-full bg-[#ffbc33] border border-[#ffbc33]/30" />
+                  <div className="w-2.5 h-2.5 md:w-3 md:h-3 rounded-full bg-[#5fc992] border border-[#5fc992]/30" />
+                </div>
+                <div className="ml-2 md:ml-4 flex-1 flex items-center">
+                  <div className="h-4 md:h-5 w-32 md:w-48 bg-foreground/5 rounded-[4px] border border-foreground/5 shadow-[inset_0_1px_2px_rgba(0,0,0,0.1)]" />
+                </div>
+              </div>
 
-      {/* 🧭 THE JOURNEY SEQUENCE */}
-      <section className="relative pt-32 pb-24 md:pt-48 md:pb-32 overflow-hidden liquid-bg">
-        <div className="absolute inset-0 bg-black/40 pointer-events-none" />
-        <WaveDivider position="top" color="fill-brand-blue/30" />
+              {/* Main Content Area */}
+              <div className="flex h-[200px] sm:h-[260px] md:h-[400px]">
+                {/* Sidebar - Hidden on mobile */}
+                <div className="hidden md:flex w-56 border-r border-foreground/5 p-3 flex-col gap-1 bg-foreground/5">
+                  <div className="px-3 py-1.5 text-[11px] font-semibold text-foreground/50 uppercase tracking-widest mt-1">Favorites</div>
+                  {[1, 2, 3].map(i => (
+                    <div key={i} className={`flex items-center gap-3 px-3 py-1.5 rounded-[6px] hover:bg-foreground/5 cursor-default transition-colors ${i === 1 ? 'bg-foreground/5' : ''}`}>
+                      <div className="w-3.5 h-3.5 bg-foreground/10 rounded-[3px] shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] flex items-center justify-center">
+                        <div className="w-1.5 h-1.5 rounded-[1px] bg-foreground/40" />
+                      </div>
+                      <div className={`h-2.5 w-20 rounded-[2px] ${i === 1 ? 'bg-foreground/90' : 'bg-foreground/40'}`} />
+                    </div>
+                  ))}
+                  <div className="px-3 py-1.5 text-[11px] font-semibold text-foreground/50 uppercase tracking-widest mt-4">Extensions</div>
+                  {[4, 5, 6, 7].map(i => (
+                    <div key={i} className="flex items-center gap-3 px-3 py-1.5 rounded-[6px] hover:bg-foreground/5 cursor-default transition-colors">
+                      <div className="w-3.5 h-3.5 bg-foreground/5 rounded-[3px]" />
+                      <div className="h-2.5 w-24 bg-foreground/40 rounded-[2px]" />
+                    </div>
+                  ))}
+                </div>
 
-        <div className="max-w-6xl mx-auto px-6 relative z-10">
-          <div className="text-center mb-40">
-            <h2 className="text-5xl md:text-7xl font-black uppercase tracking-tighter text-white">
-              {t('marketing.journeyTitle1')} <br />
-              <span className="serif-ital text-brand-yellow lowercase">{t('marketing.journeyTitle2')}</span>
-            </h2>
+                {/* Main Panel */}
+                <div className="flex-1 p-3 md:p-6 flex flex-col gap-3 md:gap-5 bg-card">
+                  {/* Dashboard Metrics */}
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
+                    {[
+                      { val: '24.5k', color: 'bg-[#55b3ff]' },
+                      { val: '99.9%', color: 'bg-[#5fc992]' },
+                      { val: '43', color: 'bg-[#ffbc33]', hiddenMobile: true },
+                      { val: '12m', color: 'bg-foreground/80', hiddenMobile: true }
+                    ].map((metric, i) => (
+                      <div key={i} className={`p-2.5 md:p-4 rounded-[6px] bg-foreground/[0.015] border border-foreground/[0.03] shadow-sm ${metric.hiddenMobile ? 'hidden md:block' : 'block'}`}>
+                        <div className="text-[9px] md:text-[11px] font-medium text-foreground/50 mb-1.5 md:mb-2 uppercase tracking-wider">Metric {i + 1}</div>
+                        <div className="text-[16px] md:text-[20px] font-bold text-foreground mb-1.5 md:mb-2 font-mono tracking-tight">{metric.val}</div>
+                        <div className={`h-[2px] md:h-[3px] w-8 md:w-12 ${metric.color} rounded-full opacity-80`} />
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* List View / Data Table */}
+                  <div className="flex-1 rounded-[6px] bg-foreground/[0.01] border border-foreground/[0.03] p-2 md:p-3 flex flex-col overflow-hidden">
+                    <div className="flex justify-between pb-2 md:pb-3 border-b border-foreground/[0.03] px-1 md:px-2">
+                      <div className="h-1.5 md:h-2 w-12 md:w-16 bg-foreground/30 rounded-[2px]" />
+                      <div className="h-1.5 md:h-2 w-10 md:w-12 bg-foreground/30 rounded-[2px]" />
+                      <div className="h-1.5 md:h-2 w-16 md:w-20 bg-foreground/30 rounded-[2px] hidden md:block" />
+                    </div>
+                    <div className="flex-1 overflow-hidden flex flex-col gap-[2px] mt-1 md:mt-2">
+                      {[1, 2, 3, 4].map(i => (
+                        <div key={i} className="flex justify-between items-center py-1.5 md:py-2.5 group/row hover:bg-foreground/[0.02] px-1 md:px-2 rounded-[4px] transition-colors border border-transparent hover:border-foreground/[0.03]">
+                          <div className="flex items-center gap-2 md:gap-3">
+                            <div className="w-1.5 h-1.5 md:w-2 md:h-2 rounded-full bg-[#5fc992] shadow-[0_0_6px_rgba(95,201,146,0.4)]" />
+                            <div className="h-2 md:h-2.5 w-20 md:w-32 bg-foreground/90 rounded-[2px]" />
+                          </div>
+                          <div className="h-2 md:h-2.5 w-12 md:w-16 bg-foreground/40 rounded-[2px]" />
+                          <div className="hidden md:flex items-center justify-center h-5 px-2.5 bg-foreground/[0.04] rounded-[3px] border border-foreground/[0.06] shadow-sm">
+                            <div className="h-1.5 w-8 bg-foreground/30 rounded-full" />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
+        </section>
 
-          <div className="grid md:grid-cols-3 gap-24 relative">
-            <div className="hidden md:block absolute top-[48px] left-[15%] right-[15%] h-[1px] bg-gradient-to-r from-transparent via-brand-green/20 to-transparent" />
+        {/* Unified Card Grid Section */}
 
-            {sequence.map((s) => (
-              <div key={s.num} className="relative group text-center">
-                <div className="mono-os text-8xl md:text-9xl font-black text-white/[0.02] absolute -top-16 left-1/2 -translate-x-1/2 pointer-events-none group-hover:text-brand-green/5 transition-colors duration-1000">
-                  {s.num}
-                </div>
-                <div className="w-24 h-24 rounded-full bg-brand-green/5 border border-brand-green/10 flex items-center justify-center mx-auto mb-10 group-hover:scale-110 group-hover:bg-brand-green/20 transition-all duration-700">
-                  <s.icon className="w-10 h-10 text-brand-green" />
-                </div>
-                <h3 className="text-3xl font-black uppercase tracking-tighter mb-4 text-white">
-                  {s.title}
+        <section className="py-[64px] md:py-[120px] px-8 max-w-[1440px] mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {cards.map((card, idx) => (
+              <div 
+                key={idx} 
+                className="bg-card border border-foreground/10 rounded-[6px] p-[32px] flex flex-col hover:border-foreground/40 transition-colors group cursor-default"
+              >
+                <span className="font-mono text-[13px] text-foreground/50 uppercase mb-8 group-hover:text-[#0052ef] transition-colors">
+                  {card.tag}
+                </span>
+                <h3 className="text-[24px] font-normal leading-[1.24] tracking-[-0.24px] text-foreground mb-4">
+                  {card.title}
                 </h3>
-                <p className="serif-ital text-sm text-white/50 leading-relaxed max-w-[240px] mx-auto">
-                  {s.desc}
+                <p className="text-[15px] leading-[1.5] text-foreground/70">
+                  {card.desc}
                 </p>
               </div>
             ))}
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* 🗺️ PHASE III: THE DELTA (INTELLIGENCE) */}
-      <section className="relative py-64 overflow-hidden bg-gradient-to-b from-black via-brand-blue/20 to-black">
-        <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")` }} />
-
-        <div className="max-w-5xl mx-auto px-6 text-center relative z-10">
-          <span className="mono-os text-brand-yellow text-xs font-black mb-8 block tracking-[0.8em]">{t('marketing.deltaTag')}</span>
-          <h2 className="text-7xl md:text-[10rem] font-black uppercase tracking-tighter mb-16 text-white leading-none">
-            {t('marketing.deltaTitle1')} <br />
-            <span className="serif-ital text-brand-green lowercase">{t('marketing.deltaTitle2')}</span>
+        {/* Bottom CTA Section */}
+        <section className="py-[120px] px-8 max-w-[1440px] mx-auto text-center border-t border-foreground/10">
+          <h2 className="text-[48px] md:text-[72px] leading-[1.05] tracking-[-1.68px] md:tracking-[-2.88px] font-normal text-foreground mb-8">
+            {t('marketing.deltaTitle1')} {t('marketing.deltaTitle2')}
           </h2>
-
-          <p className="serif-ital text-2xl md:text-3xl text-white/60 max-w-3xl mx-auto mb-20 leading-relaxed">
+          <p className="text-[18px] text-foreground/70 leading-[1.5] max-w-2xl mx-auto mb-10">
             {t('marketing.deltaDesc')}
           </p>
-
-          <Button
-            size="lg"
+          <button 
             onClick={() => navigate('/book-demo')}
-            className="px-20 h-24 bg-brand-yellow hover:bg-white text-black font-black uppercase tracking-[0.3em] text-[10px] rounded-full shadow-2xl shadow-brand-yellow/20 group transition-all"
+            className="bg-[#f36458] text-white hover:bg-[#0052ef] px-8 py-4 rounded-[99999px] font-normal text-[16px] transition-colors"
           >
             {t('marketing.deltaCta')}
-            <ArrowRight className="w-5 h-5 ml-6 group-hover:translate-x-4 transition-transform" />
-          </Button>
-
-          <div className="mt-32 flex flex-wrap justify-center gap-x-20 gap-y-12">
-            {[
-              { label: t('marketing.badge1'), icon: ShieldCheck },
-              { label: t('marketing.badge2'), icon: Zap },
-              { label: t('marketing.badge3'), icon: BarChart3 }
-            ].map(item => (
-              <div key={item.label} className="flex items-center gap-4 group cursor-default">
-                <item.icon className="w-5 h-5 text-brand-green group-hover:scale-125 transition-transform" />
-                <span className="mono-os text-[10px] text-white/40 font-black">{item.label}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+          </button>
+        </section>
+      </div>
     </MarketingLayout>
   );
 };

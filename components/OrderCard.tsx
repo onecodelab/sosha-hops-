@@ -149,7 +149,13 @@ export const OrderCard: React.FC<OrderCardProps> = ({
               {/* Item Thumbnail */}
               <div className="w-8 h-8 rounded-lg bg-background/50 border border-border flex items-center justify-center overflow-hidden shrink-0 shadow-inner group-hover:border-primary/20 transition-colors">
                 {item.menu_item?.image_url ? (
-                  <img src={item.menu_item.image_url} alt={item.menu_item?.name} className="w-full h-full object-cover" />
+                  <img 
+                    src={item.menu_item.image_url} 
+                    alt={item.menu_item?.name} 
+                    loading="lazy"
+                    decoding="async"
+                    className="w-full h-full object-cover" 
+                  />
                 ) : (
                   <Receipt className="w-3 h-3 text-muted/50" />
                 )}
