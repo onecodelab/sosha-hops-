@@ -18,6 +18,10 @@ export const BaroLogo: React.FC<BaroLogoProps> = ({
         // Icon only — just the graphic, no text
         <img 
           src="/baro-icon.png" 
+          width="40"
+          height="40"
+          decoding="async"
+          loading="lazy"
           className={cn(
             "object-contain shrink-0 drop-shadow-sm transition-all",
             variant === 'compact' ? "w-8 h-8" : "w-10 h-10",
@@ -26,9 +30,12 @@ export const BaroLogo: React.FC<BaroLogoProps> = ({
           alt="Baro Icon" 
         />
       ) : (
-        // Full logo — use the combined image asset directly
         <img 
           src="/baro-logo-full.png" 
+          width="96"
+          height="32"
+          decoding="async"
+          loading="eager"
           className="w-20 md:w-24 h-auto object-contain shrink-0 drop-shadow-sm transition-all" 
           alt="Baro OS Logo" 
         />

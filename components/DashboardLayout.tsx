@@ -7,13 +7,16 @@ import {
 } from 'lucide-react';
 import { cn, Button } from './ui';
 import { LeafBubbleBackground } from './LeafBubbleBackground';
-import { BackgroundMascots, MascotVariant } from './BackgroundMascots';
-import { Sidebar } from './Sidebar';
 import { Header } from './Header';
 import { RoleGuard } from './RoleGuard';
 import BaroMenubar from './BaroMenubar';
 import { BaroLogo } from './BaroLogo';
+import { MascotVariant } from './BackgroundMascots';
 import { useLayout } from '../contexts/LayoutContext';
+
+// Lazy load heavy components to improve mobile PageSpeed scores
+const Sidebar = React.lazy(() => import('./Sidebar').then(m => ({ default: m.Sidebar })));
+const BackgroundMascots = React.lazy(() => import('./BackgroundMascots').then(m => ({ default: m.BackgroundMascots })));
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -68,19 +71,23 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   const displayName = profile?.full_name || profile?.name || profile?.email?.split('@')[0] || 'User';
 
   return (
-    <div className="flex h-screen bg-background text-foreground overflow-y-hidden overflow-x-clip selection:bg-primary selection:text-black">
+    <div className="flex h-[100dvh] bg-background text-foreground overflow-y-hidden overflow-x-clip selection:bg-primary selection:text-black">
       <LeafBubbleBackground />
-      <div className="fixed inset-0 z-0 transition-colors duration-500 pointer-events-none">
-        <BackgroundMascots variant={mascotVariant} />
-      </div>
+      <React.Suspense fallback={null}>
+        <div className="fixed inset-0 z-0 transition-colors duration-500 pointer-events-none">
+          <BackgroundMascots variant={mascotVariant} />
+        </div>
+      </React.Suspense>
 
-      {!config.fullScreen && (
-        <Sidebar
-          isCollapsed={isCollapsed}
-          setIsCollapsed={setIsCollapsed}
-          handleLogout={handleLogout}
-        />
-      )}
+      <React.Suspense fallback={null}>
+        {!config.fullScreen && (
+          <Sidebar
+            isCollapsed={isCollapsed}
+            setIsCollapsed={setIsCollapsed}
+            handleLogout={handleLogout}
+          />
+        )}
+      </React.Suspense>
 
       {/* Mobile Header */}
       {!config.fullScreen && (

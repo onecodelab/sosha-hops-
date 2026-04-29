@@ -3,7 +3,7 @@ import { BaroLogo } from './BaroLogo';
 
 export const BrandLoader: React.FC = () => {
     return (
-        <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-[#000000] overflow-hidden">
+        <div className="fixed inset-0 h-[100dvh] z-[100] flex flex-col items-center justify-center bg-[#000000] overflow-hidden">
             <div className="flex flex-col items-center gap-16 group">
                 {/* Central Logo Indicator */}
                 <div className="relative flex items-center justify-center scale-90 md:scale-100">
