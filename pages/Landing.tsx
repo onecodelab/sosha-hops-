@@ -67,21 +67,13 @@ const Landing: React.FC = () => {
           </div>
 
           {/* Raycast-style Dashboard Mockup */}
-          <div className="mt-8 md:mt-12 w-full max-w-[1000px] mx-auto relative group perspective-[2000px] z-20">
-            {/* Warm glow behind the dashboard */}
-            <div className="absolute inset-0 bg-[#d7c9af] opacity-[0.06] blur-[80px] pointer-events-none rounded-full" />
+          <div className="mt-8 md:mt-12 w-full max-w-[1000px] mx-auto relative group z-20">
+            {/* Warm glow behind the dashboard - Desktop only or simplified */}
+            <div className="absolute inset-0 bg-[#d7c9af] opacity-[0.04] blur-[80px] pointer-events-none rounded-full hidden md:block" />
             
             {/* The Dashboard Card */}
             <div 
-              className="relative w-full bg-card rounded-[8px] md:rounded-[10px] border border-foreground/10 overflow-hidden text-left"
-              style={{
-                boxShadow: `
-                  0px 0px 0px 1px var(--shadow-color), 
-                  0px 10px 40px var(--shadow-color),
-                  0px 0px 14px var(--glass-highlight),
-                  inset 0px 1px 0px var(--glass-highlight)
-                `
-              }}
+              className="relative w-full bg-card rounded-[8px] md:rounded-[10px] border border-foreground/10 overflow-hidden text-left shadow-2xl"
             >
               {/* Header / Search Area */}
               <div className="flex items-center gap-2 md:gap-3 px-3 md:px-5 py-2 md:py-3.5 border-b border-foreground/10 bg-card">

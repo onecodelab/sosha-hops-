@@ -113,11 +113,6 @@ const MenuCard: React.FC<{ item: MenuItem; index: number; onAdd: (item: MenuItem
             <div className="absolute top-[40%] left-1/2 -translate-x-1/2 -translate-y-1/2 w-24 h-24 bg-lime-500/20 blur-[25px] rounded-full pointer-events-none transition-opacity duration-500 group-hover:opacity-100 opacity-60" />
 
             <div className="flex-1 flex items-center justify-center relative z-10 mt-1 mb-1">
-                <motion.div
-                    animate={{ rotate: 360 }}
-                    transition={{ duration: 40, repeat: Infinity, ease: "linear" }}
-                    className="w-20 h-20 rounded-full p-1 border border-lime-500/30 bg-gradient-to-br from-card to-muted shadow-xl relative group-hover:border-lime-500/60 transition-colors"
-                >
                     <div className="w-full h-full rounded-full overflow-hidden bg-background">
                         {item.image_url ? (
                             <img src={item.image_url} alt={item.name} className="w-full h-full object-cover scale-110" />

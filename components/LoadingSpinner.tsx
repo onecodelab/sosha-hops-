@@ -28,38 +28,38 @@ export function LoadingSpinner({
   }, [timeout, onTimeout]);
 
   return (
-    <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-background p-8 overflow-hidden select-none">
+    <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-black transition-colors duration-500">
+      <div className="relative flex flex-col items-center gap-12">
+        {/* Simplified Logo with Pulse */}
+        <motion.div
+          animate={{ 
+            opacity: [0.4, 0.7, 0.4],
+            scale: [0.98, 1, 0.98]
+          }}
+          transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+          className="relative z-10"
+        >
+          <BaroLogo className="w-24 h-auto" />
+        </motion.div>
 
-      <div className="flex flex-col items-center gap-12 animate-in fade-in zoom-in-95 duration-700">
-        <div className="flex flex-col items-center gap-10">
-          {/* Central Logo Indicator - Using the icon for faster initial render */}
-          <div className="relative flex items-center justify-center">
-            <BaroLogo 
-              variant="full" 
-              className="w-48 h-auto animate-pulse relative z-10" 
-            />
-          </div>
-        </div>
-
-        {/* System Initializer UI */}
+        {/* Simplified Status UI */}
         <div className="flex flex-col items-center gap-4">
-          <div className="flex flex-col items-center gap-2">
-            <span className="text-[10px] font-black text-foreground/20 tracking-[1em] uppercase ml-[1em]">
-              System Protocol
+          <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.8em] ml-[0.8em]">
+            System Protocol
+          </span>
+          
+          <div className="flex items-center gap-3">
+            <div className="w-1.5 h-1.5 bg-[#FFB800] rounded-full animate-pulse shadow-[0_0_8px_#FFB800]" />
+            <span className="text-[11px] font-black text-white/60 uppercase tracking-[0.4em]">
+              Initializing Baro OS
             </span>
-            <div className="flex items-center gap-3">
-              <div className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse shadow-[0_0_10px_rgba(255,184,0,0.5)]" />
-              <span className="text-[11px] font-black text-foreground/60 tracking-[0.4em] uppercase">
-                Initializing Baro OS
-              </span>
-            </div>
           </div>
         </div>
 
         {/* Interaction Message */}
         {showWarning && (
-          <div className="absolute bottom-12 animate-in fade-in slide-in-from-bottom-4 duration-1000">
-            <p className="text-[10px] font-bold text-primary/40 bg-primary/5 px-6 py-2 rounded-full border border-primary/10 backdrop-blur-sm">
+          <div className="absolute bottom-12 opacity-50">
+            <p className="text-[10px] font-bold text-white px-6 py-2 uppercase tracking-widest">
               Authenticating with database cluster...
             </p>
           </div>
