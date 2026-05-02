@@ -28,13 +28,9 @@ const RAILWAY_URL = 'https://verifier-service-repo-production.up.railway.app';
 // Secondary Backup: Official SDK (different endpoint & auth format)
 const OFFICIAL_SDK_URL = 'https://verifyapi.leulzenebe.pro';
 
-// API key used by the Railway service
-const VERIFIER_API_KEY = import.meta.env.VITE_VERIFIER_API_KEY || 'test-key-123';
-
-// Check if the env var points to a valid, non-dead URL
-const envUrl = import.meta.env.VITE_VERIFIER_URL || '';
-const DEAD_HOSTS = ['trycloudflare.com', 'localhost', '127.0.0.1'];
-const isEnvUrlDead = !envUrl || DEAD_HOSTS.some(dead => envUrl.includes(dead)) || envUrl === 'VITE_VERIFIER_URL';
+// API keys for different tiers
+const RAILWAY_API_KEY = import.meta.env.VITE_RAILWAY_API_KEY || import.meta.env.VITE_VERIFIER_API_KEY || 'test-key-123';
+const LEUL_API_KEY = import.meta.env.VITE_LEUL_API_KEY || import.meta.env.VITE_VERIFIER_API_KEY || 'test-key-123';
 
 // Use env URL only if it's valid, otherwise use Railway
 const PRIMARY_URL = isEnvUrlDead ? RAILWAY_URL : envUrl;
@@ -76,7 +72,7 @@ export function usePaymentVerification() {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'x-api-key': VERIFIER_API_KEY,
+                    'x-api-key': RAILWAY_API_KEY,
                 },
                 body: JSON.stringify(payload),
                 signal: controller.signal,
@@ -128,7 +124,7 @@ export function usePaymentVerification() {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${VERIFIER_API_KEY}`,
+                    'Authorization': `Bearer ${LEUL_API_KEY}`,
                 },
                 body: JSON.stringify(payload),
                 signal: controller.signal,
@@ -158,6 +154,29 @@ export function usePaymentVerification() {
         }
     };
 
+    // ── Attempt 3: Supabase Proxy (Internal) ──
+    // This calls your own Edge Function which proxies to the official SDK.
+    // It's the most secure because the API key is kept in Supabase secrets.
+    const trySupabaseProxy = async (params: StartVerificationParams): Promise<any> => {
+        const { supabase } = await import('../supabase');
+        
+        const payload = {
+            bank: params.payment_method,
+            transaction_id: params.reference,
+            receiver_account: params.additional_data?.expected_receiver || params.additional_data?.accountSuffix,
+            amount: params.expected_amount
+        };
+
+        console.log('[Verify] Attempt 3 — Supabase Proxy');
+
+        const { data, error } = await supabase.functions.invoke('verify-payment', {
+            body: payload
+        });
+
+        if (error) throw error;
+        return data;
+    };
+
     // ── Main verification entry point ──
     const startVerification = async (params: StartVerificationParams) => {
         if (!organizationId) {
@@ -177,26 +196,30 @@ export function usePaymentVerification() {
                 data = await tryRailway(params);
                 console.log('[Verify] Railway response:', data);
 
-                // CRITICAL FIX: If Railway returns a system error (like missing Chrome/Puppeteer), 
-                // treat it as a failure and jump to the backup!
                 const systemError = data?.error?.toLowerCase() || '';
                 if (data && !data.success && (systemError.includes('chrome') || systemError.includes('puppeteer') || systemError.includes('browser'))) {
-                    console.warn('[Verify] Railway has a system error (Chrome missing), jumping to backup...');
                     throw new Error('Railway System Error: ' + systemError);
                 }
             } catch (railwayErr: any) {
-                console.warn('[Verify] Railway failed or system error:', railwayErr.message);
+                console.warn('[Verify] Railway failed, trying Tier 2 (Official SDK)...');
 
-                // ATTEMPT 2: Official SDK (different format)
+                // ATTEMPT 2: Official SDK (Direct)
                 try {
                     data = await tryOfficialSDK(params);
                     console.log('[Verify] Official SDK succeeded:', data);
                 } catch (sdkErr: any) {
-                    console.error('[Verify] Official SDK also failed:', sdkErr.message);
-                    // Both failed — throw the most informative error
-                    throw new Error(
-                        `Verification unavailable. Railway: ${railwayErr.message}. Backup: ${sdkErr.message}`
-                    );
+                    console.warn('[Verify] Official SDK failed, trying Tier 3 (Internal Proxy)...');
+                    
+                    // ATTEMPT 3: Internal Supabase Proxy
+                    try {
+                        data = await trySupabaseProxy(params);
+                        console.log('[Verify] Supabase Proxy succeeded:', data);
+                    } catch (proxyErr: any) {
+                        console.error('[Verify] All tiers failed.');
+                        throw new Error(
+                            `Verification unavailable. Railway: ${railwayErr.message}. SDK: ${sdkErr.message}. Local: ${proxyErr.message}`
+                        );
+                    }
                 }
             }
 
