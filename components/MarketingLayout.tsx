@@ -48,17 +48,17 @@ export const MarketingLayout: React.FC<MarketingLayoutProps> = ({ children }) =>
                             </div>
                         </div>
 
-                        {/* Central Protocol Hub (Simplified for Sanity style) */}
-                        <div className="hidden lg:flex items-center absolute left-1/2 -translate-x-1/2">
-                            <div className="flex items-center gap-4 bg-foreground/5 px-4 py-1.5 rounded-[3px] border border-foreground/10">
+                        {/* Central Protocol Hub - Hidden on smaller md screens to prevent overlap */}
+                        <div className="hidden xl:flex items-center absolute left-1/2 -translate-x-1/2">
+                            <div className="flex items-center gap-3 bg-foreground/5 px-3 py-1.5 rounded-full border border-foreground/10">
                                 <LanguageSwitcher />
-                                <div className="w-px h-4 bg-foreground/10" />
+                                <div className="w-px h-3 bg-foreground/10" />
                                 <ThemeToggle />
                             </div>
                         </div>
 
                         {/* Right side Actions */}
-                        <div className="flex items-center gap-2 sm:gap-4">
+                        <div className="flex items-center gap-2 sm:gap-4 ml-auto">
                             {user ? (
                                 <Link to="/app">
                                     <button className="bg-foreground/5 text-foreground/70 hover:bg-[#0052ef] hover:text-white px-3 sm:px-4 py-1.5 sm:py-2 rounded-full font-medium text-[13px] sm:text-[15px] transition-colors border border-foreground/10">

@@ -47,28 +47,40 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     refetch
   } = useProfile(user?.id);
 
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
+    useEffect(() => {
+    // Initial silent session check
+    supabase.auth.getSession().then(({ data: { session }, error }) => {
+      if (error) {
+        console.warn("[AuthContext] Session initialization warning:", error.message);
+        setAuthLoading(false);
+        return;
+      }
+      
+      if (session) {
+        setUser(session.user);
+      }
       setAuthLoading(false);
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log(`[AuthContext] State change: ${event}`, !!session);
-      setUser(session?.user ?? null);
-      setAuthLoading(false);
       
+      // Filter out noisy state changes that don't impact the user session
       if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-        if (!session) {
-          console.warn("[AuthContext] Event received without session. Cleaning up...");
-          await signOut();
-          return;
+        if (session) {
+          setUser(session.user);
+          refetch();
         }
-        refetch();
       } else if (event === 'SIGNED_OUT') {
+        setUser(null);
         refetch();
         navigate('/');
+      } else if (event === 'INITIAL_SESSION') {
+         // Silently update user if session exists
+         if (session) setUser(session.user);
       }
+      
+      setAuthLoading(false);
     });
 
     return () => subscription.unsubscribe();
