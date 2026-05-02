@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { BaroLogo } from './BaroLogo';
+import { motion } from 'framer-motion';
 
 interface LoadingSpinnerProps {
   timeout?: number;
