@@ -42,7 +42,7 @@ const Login: React.FC = () => {
       setSyncing(true);
 
       let currentProfile = null;
-      for (let i = 0; i < 4; i++) {
+      for (let i = 0; i < 5; i++) {
         const { data, error: fetchError } = await supabase
           .from('profiles')
           .select('*')
@@ -58,7 +58,8 @@ const Login: React.FC = () => {
           throw new Error("Database recursion error detected.");
         }
 
-        await new Promise(r => setTimeout(r, 1000));
+        // Only wait if it's not the last attempt and we haven't found data yet
+        if (i < 4) await new Promise(r => setTimeout(r, 200 * (i + 1))); 
       }
 
       if (!currentProfile) {

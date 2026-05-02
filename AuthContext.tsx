@@ -88,6 +88,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signOut = async () => {
     try {
+      // Clear local state first for instant UI response
+      setUser(null);
+      
+      // Perform the actual sign out
       await supabase.auth.signOut();
       
       // Selective cleanup to preserve user preferences like theme
@@ -96,11 +100,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.clear();
       if (theme) localStorage.setItem('baro-theme', theme);
       if (lang) localStorage.setItem('baro-language', lang);
-      setUser(null);
-      refetch();
+      
+      // Immediate navigation
       navigate('/');
     } catch (error) {
       console.error('Sign out error:', error);
+      navigate('/'); // Still navigate even if error occurs
     }
   };
 
