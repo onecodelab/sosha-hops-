@@ -36,7 +36,7 @@ const Landing: React.FC = () => {
 
   return (
     <MarketingLayout>
-      <div className="bg-background min-h-screen text-foreground overflow-hidden transition-colors duration-500">
+      <div className="bg-background min-h-screen text-foreground overflow-x-hidden transition-colors duration-500">
         {/* Hero Section */}
         <section className="relative pt-[32px] md:pt-[80px] pb-[24px] md:pb-[32px] px-4 md:px-8 max-w-[1440px] mx-auto flex flex-col items-center text-center min-h-[calc(100vh-64px)] justify-center">
           <div className="flex flex-col items-center z-10 relative w-full">
