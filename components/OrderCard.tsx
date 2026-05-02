@@ -108,17 +108,17 @@ export const OrderCard: React.FC<OrderCardProps> = ({
       {/* Header */}
       <div className="flex justify-between items-start">
         <div className="min-w-0 flex-1">
-          <span className="text-base font-black text-foreground tracking-tight">#{order.order_number?.slice(-4) || order.id.slice(0, 5)}</span>
-          <div className="flex items-center gap-2 mt-1">
-            <span className="text-[9px] font-black text-muted px-1.5 py-0.5 bg-muted/10 rounded-md border border-border uppercase tracking-widest">
+          <span className="text-sm font-black text-foreground tracking-tight">#{order.order_number?.slice(-4) || order.id.slice(0, 5)}</span>
+          <div className="flex items-center gap-1.5 mt-0.5">
+            <span className="text-[8px] font-black text-muted px-1 py-0.5 bg-muted/10 rounded-md border border-border uppercase tracking-widest">
               T-{order.table_number}
             </span>
-            {showTimer && <span className={cn("text-[9px] font-mono font-bold flex items-center", elapsed > 20 ? "text-red-500 animate-pulse" : "text-zinc-500")}>
-              <Clock className="w-2.5 h-2.5 mr-1" />{elapsed}m
+            {showTimer && <span className={cn("text-[8px] font-mono font-bold flex items-center", elapsed > 20 ? "text-red-500 animate-pulse" : "text-zinc-500")}>
+              <Clock className="w-2 h-2 mr-0.5" />{elapsed}m
             </span>}
             {order.waiter?.full_name && order.waiter?.role === 'waiter' && (
-              <span className="text-[9px] font-black text-primary/70 uppercase tracking-widest flex items-center gap-1 border-l border-border pl-2">
-                <User className="w-2.5 h-2.5" /> {order.waiter.full_name}
+              <span className="text-[8px] font-black text-primary/70 uppercase tracking-widest flex items-center gap-1 border-l border-border pl-1.5">
+                <User className="w-2 h-2" /> {order.waiter.full_name}
               </span>
             )}
           </div>
@@ -142,12 +142,12 @@ export const OrderCard: React.FC<OrderCardProps> = ({
       </div>
 
       {/* Items List - Cleaner Look */}
-      <div className="bg-muted/5 p-2 rounded-xl space-y-1.5 border border-border">
+      <div className="bg-muted/5 p-1.5 rounded-lg space-y-1 border border-border">
         {order.order_items?.map((item: any) => (
-          <div key={item.id} className="flex flex-col border-b border-white/5 last:border-0 pb-2 last:pb-0">
-            <div className="flex items-start gap-3 w-full">
+          <div key={item.id} className="flex flex-col border-b border-white/5 last:border-0 pb-1.5 last:pb-0">
+            <div className="flex items-start gap-2 w-full">
               {/* Item Thumbnail */}
-              <div className="w-8 h-8 rounded-lg bg-background/50 border border-border flex items-center justify-center overflow-hidden shrink-0 shadow-inner group-hover:border-primary/20 transition-colors">
+              <div className="w-6 h-6 rounded-md bg-background/50 border border-border flex items-center justify-center overflow-hidden shrink-0 shadow-inner group-hover:border-primary/20 transition-colors">
                 {item.menu_item?.image_url ? (
                   <img 
                     src={item.menu_item.image_url} 
@@ -163,8 +163,8 @@ export const OrderCard: React.FC<OrderCardProps> = ({
 
               <div className="flex flex-col flex-1 min-w-0">
                 <div className="flex items-start gap-2 leading-tight">
-                  <span className="text-primary font-black text-xs min-w-[20px] text-center bg-primary/10 border border-primary/20 rounded-md py-0.5">{item.quantity}x</span>
-                  <span className="text-xs font-bold text-foreground/90 truncate pt-0.5">{item.menu_item?.name}</span>
+                  <span className="text-primary font-black text-[10px] min-w-[18px] text-center bg-primary/10 border border-primary/20 rounded-md py-0.5">{item.quantity}x</span>
+                  <span className="text-[10px] font-bold text-foreground/90 truncate pt-0.5">{item.menu_item?.name}</span>
                   {isNewItem(item) && (
                     <span className="text-[8px] font-black text-cyan-400 bg-cyan-500/15 border border-cyan-500/30 px-1.5 py-0.5 rounded-full uppercase tracking-wider animate-pulse shadow-[0_0_8px_rgba(6,182,212,0.3)] shrink-0 mt-0.5">
                       🆕 NEW
@@ -193,13 +193,13 @@ export const OrderCard: React.FC<OrderCardProps> = ({
       )}
 
       {/* Buttons */}
-      <div className="flex flex-col gap-2 mt-auto pt-1">
+      <div className="flex flex-col gap-1.5 mt-auto pt-1">
         {/* Kitchen Controls - Glossy Buttons */}
         {isKitchen && order.status === 'pending' && (
-          <Button size="sm" onClick={() => onAction?.('accepted', order.id)} className="w-full bg-primary text-black h-8 rounded-lg font-black uppercase text-[10px] tracking-widest shadow-[0_0_15px_rgba(251,191,36,0.2)] hover:bg-white hover:scale-[1.02] transition-all">Accept Order</Button>
+          <Button size="sm" onClick={() => onAction?.('accepted', order.id)} className="w-full bg-primary text-black h-7 rounded-lg font-black uppercase text-[9px] tracking-widest shadow-[0_0_15px_rgba(251,191,36,0.2)] hover:bg-white hover:scale-[1.02] transition-all">Accept Order</Button>
         )}
         {isKitchen && (order.status === 'accepted' || order.status === 'preparing') && (
-          <Button size="sm" onClick={() => onAction?.('ready', order.id)} className="w-full bg-green-500 text-black h-8 rounded-lg font-black uppercase text-[10px] tracking-widest shadow-[0_0_15px_rgba(34,197,94,0.2)] hover:bg-green-400 hover:scale-[1.02] transition-all">Mark Prepared</Button>
+          <Button size="sm" onClick={() => onAction?.('ready', order.id)} className="w-full bg-green-500 text-black h-7 rounded-lg font-black uppercase text-[9px] tracking-widest shadow-[0_0_15px_rgba(34,197,94,0.2)] hover:bg-green-400 hover:scale-[1.02] transition-all">Mark Prepared</Button>
         )}
         {isKitchen && order.status === 'ready' && (
           <Button size="sm" onClick={() => onAction?.('dispatch', order.id)} className="w-full bg-emerald-600 text-white h-8 rounded-lg font-black uppercase text-[10px] tracking-widest shadow-[0_0_15px_rgba(16,185,129,0.2)] hover:bg-emerald-500 hover:scale-[1.02] transition-all">
@@ -236,7 +236,7 @@ export const OrderCard: React.FC<OrderCardProps> = ({
           (order.status === 'served' && order.payment_status === 'pending') ||
           ((order.status === 'paid' || (order.status === 'served' && order.payment_status === 'paid')) && !order.closed_at)
         ) && (
-            <div className="flex gap-2">
+            <div className="flex gap-1.5">
               {order.payment_status === 'pending' && (
                 <Button size="sm" onClick={() => onAction?.('pay', order.id)} className="bg-blue-600 hover:bg-blue-500 text-white flex-1 h-10 font-black uppercase text-[10px] shadow-lg rounded-xl tracking-widest">
                   <Receipt className="w-3.5 h-3.5 mr-2" /> Pay

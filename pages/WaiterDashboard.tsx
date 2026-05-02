@@ -211,51 +211,54 @@ const WaiterDashboard: React.FC = () => {
       >
         <motion.div
           variants={{
-            hidden: { opacity: 0, y: 20 },
+            hidden: { opacity: 0, y: 10 },
             show: { opacity: 1, y: 0 },
             modalOpen: { opacity: 0.4 }
           }}
+          className="mx-2"
         >
-          <Card variant="elevated" className="mx-2 p-8 flex flex-col md:flex-row items-center justify-between gap-8 relative overflow-hidden group border-primary/10">
-            <div className="absolute inset-0 bg-gradient-to-r from-primary/5 via-transparent to-primary/5 opacity-50" />
-
-            <div className="flex items-center gap-12 z-10 w-full md:w-auto justify-between md:justify-start">
+          <div className="flex flex-wrap items-center justify-between gap-4 p-4 bg-white/5 border border-white/10 rounded-2xl backdrop-blur-md relative overflow-hidden group transition-all hover:bg-white/10">
+            <div className="flex items-center gap-6">
               <div className="flex flex-col">
-                <span className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] mb-1">Floor Availability</span>
-                <div className="flex items-baseline gap-2">
-                  <span className="text-4xl font-black text-foreground tracking-tighter">{tables.filter(t => t.status === 'available').length}</span>
-                  <span className="text-[10px] font-black text-gray-600 uppercase tracking-widest">/ {tables.length} FREE</span>
+                <span className="text-[8px] font-black text-zinc-500 uppercase tracking-widest mb-0.5">Floor</span>
+                <div className="flex items-baseline gap-1.5">
+                  <span className="text-xl font-black text-foreground">{tables.filter(t => t.status === 'available').length}</span>
+                  <span className="text-[8px] font-black text-zinc-600 uppercase">/ {tables.length} FREE</span>
                 </div>
               </div>
 
-              <div className="w-px h-10 bg-white/5 hidden md:block" />
+              <div className="w-px h-6 bg-white/10" />
 
               <div className="flex flex-col">
-                <span className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] mb-1">Table Load</span>
-                <div className="flex items-center gap-3">
-                  <span className="text-4xl font-black text-red-500 tracking-tighter drop-shadow-[0_0_15px_rgba(239,68,68,0.3)]">{tables.filter(t => t.status === 'occupied').length}</span>
-                  <Badge variant="destructive" className="text-[8px] h-4">Occupied</Badge>
+                <span className="text-[8px] font-black text-zinc-500 uppercase tracking-widest mb-0.5">Load</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-xl font-black text-red-500">{tables.filter(t => t.status === 'occupied').length}</span>
+                  <div className="px-1.5 py-0.5 rounded-full bg-red-500/10 border border-red-500/20 text-[7px] font-black text-red-500 uppercase tracking-widest">Occupied</div>
                 </div>
               </div>
 
-              <div className="w-px h-10 bg-white/5 hidden md:block" />
+              <div className="w-px h-6 bg-white/10" />
 
               <div className="flex flex-col">
-                <span className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] mb-1">Workload</span>
-                <div className="flex items-center gap-3">
-                  <span className="text-4xl font-black text-primary tracking-tighter drop-shadow-[0_0_15px_rgba(251,191,36,0.3)]">{orders.length}</span>
-                  {kitchenPipeline.length > 0 && <Badge variant="warning" className="text-[8px] h-4">+{kitchenPipeline.length} Pipeline</Badge>}
+                <span className="text-[8px] font-black text-zinc-500 uppercase tracking-widest mb-0.5">Workload</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-xl font-black text-primary">{orders.length}</span>
+                  {kitchenPipeline.length > 0 && (
+                    <div className="px-1.5 py-0.5 rounded-full bg-primary/10 border border-primary/20 text-[7px] font-black text-primary uppercase tracking-widest">
+                       +{kitchenPipeline.length}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
 
-            <div className="z-10 hidden lg:block">
-              <Button onClick={refreshAll} variant="outline" size="sm" className="h-10 px-6">
-                <RefreshCw className={cn("h-4 w-4 mr-2", isLoading && "animate-spin")} />
-                Sync Station
+            <div className="hidden sm:block">
+              <Button onClick={refreshAll} variant="ghost" size="sm" className="h-8 px-4 text-[9px] font-black uppercase tracking-widest hover:bg-white/5">
+                <RefreshCw className={cn("h-3 w-3 mr-2", isLoading && "animate-spin")} />
+                Sync
               </Button>
             </div>
-          </Card>
+          </div>
         </motion.div>
 
         {/* Production Pipeline - 3 Column Layout */}

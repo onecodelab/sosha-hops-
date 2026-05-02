@@ -26,7 +26,7 @@ export const BaroLeafyCard = ({
         <div className={cn("relative group transition-all duration-700 h-full", className)}>
             {/* Main Container */}
             <div
-                className="relative p-[1.5px] rounded-[2.5rem] overflow-hidden bg-[#050505] h-full flex flex-col shadow-2xl transition-all duration-500"
+                className="relative p-[1px] rounded-3xl overflow-hidden bg-[#050505] h-full flex flex-col shadow-2xl transition-all duration-500"
                 style={{
                     boxShadow: `0 20px 50px -12px ${color}22`,
                     borderColor: `${color}33`
@@ -51,21 +51,21 @@ export const BaroLeafyCard = ({
 
                 {/* Vitality Breathing Border */}
                 <div
-                    className="absolute inset-0 rounded-[2.5rem] border border-white/5 group-hover:border-primary/20 transition-colors pointer-events-none"
+                    className="absolute inset-0 rounded-3xl border border-white/5 group-hover:border-primary/20 transition-colors pointer-events-none"
                 />
                 <div
-                    className="absolute inset-0 rounded-[2.5rem] border-[1px] animate-pulse duration-[4000ms] pointer-events-none"
+                    className="absolute inset-0 rounded-3xl border-[1px] animate-pulse duration-[4000ms] pointer-events-none"
                     style={{ borderColor: `${color}22` }}
                 />
 
                 {/* Stable Content area */}
                 <div className="relative z-10 flex-1 flex flex-col p-1">
-                    <div className="bg-[#0A0A0A]/90 backdrop-blur-xl rounded-[2.3rem] overflow-hidden border border-white/5 flex-1 flex flex-col">
+                    <div className="bg-[#0A0A0A]/90 backdrop-blur-xl rounded-2xl overflow-hidden border border-white/5 flex-1 flex flex-col">
                         {/* Organic Badge */}
                         {badge && (
-                            <div className="px-6 pt-5">
+                            <div className="px-4 pt-4">
                                 <div
-                                    className="inline-flex items-center gap-2 px-3 py-1 rounded-full border text-[9px] font-black uppercase tracking-[0.2em]"
+                                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[8px] font-black uppercase tracking-[0.2em]"
                                     style={{
                                         backgroundColor: `${color}11`,
                                         borderColor: `${color}33`,
@@ -104,7 +104,7 @@ export const BaroKitchenCard = ({
         <div className={cn("relative group transition-all duration-700 h-full", className)}>
             {/* Main Container */}
             <div
-                className="relative p-[1.5px] rounded-[2.5rem] overflow-hidden bg-[#050505] h-full flex flex-col shadow-2xl transition-all duration-500"
+                className="relative p-[1px] rounded-3xl overflow-hidden bg-[#050505] h-full flex flex-col shadow-2xl transition-all duration-500"
                 style={{
                     boxShadow: `0 20px 50px -12px ${color}22`,
                     borderColor: `${color}33`
@@ -128,20 +128,20 @@ export const BaroKitchenCard = ({
                 </div>
 
                 {/* Vitality Breathing Border */}
-                <div className="absolute inset-0 rounded-[2.5rem] border border-white/5 group-hover:border-primary/20 transition-colors pointer-events-none" />
+                <div className="absolute inset-0 rounded-3xl border border-white/5 group-hover:border-primary/20 transition-colors pointer-events-none" />
                 <div
-                    className="absolute inset-0 rounded-[2.5rem] border-[1px] animate-pulse duration-[3000ms] pointer-events-none"
+                    className="absolute inset-0 rounded-3xl border-[1px] animate-pulse duration-[3000ms] pointer-events-none"
                     style={{ borderColor: `${color}22` }}
                 />
 
                 {/* Stable Content area */}
                 <div className="relative z-10 flex-1 flex flex-col p-1">
-                    <div className="bg-[#0A0A0A]/90 backdrop-blur-xl rounded-[2.3rem] overflow-hidden border border-white/5 flex-1 flex flex-col">
+                    <div className="bg-[#0A0A0A]/90 backdrop-blur-xl rounded-2xl overflow-hidden border border-white/5 flex-1 flex flex-col">
                         {/* Orange Badge */}
                         {badge && (
-                            <div className="px-6 pt-5">
+                            <div className="px-4 pt-4">
                                 <div
-                                    className="inline-flex items-center gap-2 px-3 py-1 rounded-full border text-[9px] font-black uppercase tracking-[0.2em]"
+                                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[8px] font-black uppercase tracking-[0.2em]"
                                     style={{
                                         backgroundColor: `${color}11`,
                                         borderColor: `${color}33`,
@@ -174,7 +174,7 @@ export const BaroBillingCard = ({
         <div className={cn("relative group transition-all duration-700 h-full", className)}>
             {/* Main Container */}
             <div
-                className="relative p-[1.5px] rounded-[2.5rem] overflow-hidden bg-[#050505] h-full flex flex-col shadow-2xl transition-all duration-500"
+                className="relative p-[1px] rounded-3xl overflow-hidden bg-[#050505] h-full flex flex-col shadow-2xl transition-all duration-500"
                 style={{
                     boxShadow: `0 20px 50px -12px ${color}22`,
                     borderColor: `${color}33`
@@ -202,20 +202,20 @@ export const BaroBillingCard = ({
                 </div>
 
                 {/* Vitality Breathing Border */}
-                <div className="absolute inset-0 rounded-[2.5rem] border border-white/5 group-hover:border-primary/20 transition-colors pointer-events-none" />
+                <div className="absolute inset-0 rounded-3xl border border-white/5 group-hover:border-primary/20 transition-colors pointer-events-none" />
                 <div
-                    className="absolute inset-0 rounded-[2.5rem] border-[1px] pointer-events-none"
+                    className="absolute inset-0 rounded-3xl border-[1px] pointer-events-none"
                     style={{ borderColor: `${color}44` }}
                 />
 
                 {/* Stable Content area */}
                 <div className="relative z-10 flex-1 flex flex-col p-1">
-                    <div className="bg-[#0A0A0A]/90 backdrop-blur-xl rounded-[2.3rem] overflow-hidden border border-white/5 flex-1 flex flex-col">
+                    <div className="bg-[#0A0A0A]/90 backdrop-blur-xl rounded-2xl overflow-hidden border border-white/5 flex-1 flex flex-col">
                         {/* Purple Badge */}
                         {badge && (
-                            <div className="px-6 pt-5">
+                            <div className="px-4 pt-4">
                                 <div
-                                    className="inline-flex items-center gap-2 px-3 py-1 rounded-full border text-[9px] font-black uppercase tracking-[0.2em]"
+                                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[8px] font-black uppercase tracking-[0.2em]"
                                     style={{
                                         backgroundColor: `${color}11`,
                                         borderColor: `${color}33`,
