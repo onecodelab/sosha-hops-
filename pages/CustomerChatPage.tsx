@@ -1129,110 +1129,78 @@ const CustomerChatPage: React.FC = () => {
             setIsVerifying(true);
 
             try {
-                // Fetch table data with fallback for schema differences (resilient select)
-                let { data: tableData, error: tableErr } = await supabase
+                // 1. Fetch Table Info (Minimal & Essential)
+                const { data: tableData } = await supabase
                     .from('tables')
-                    .select('id, table_number, branch_id, status, organization_id, qr_token')
+                    .select('*')
                     .eq('id', tableId)
                     .maybeSingle();
 
-                // If it fails with a 400, try a minimal select (fallback for older schemas)
-                if (tableErr && tableErr.code === 'PGRST204' || (tableErr && tableErr.message?.includes('column'))) {
-                    console.warn('[OrderChat] Retrying with minimal schema...');
-                    const { data: fallbackData, error: fallbackErr } = await supabase
-                        .from('tables')
-                        .select('id, table_number, branch_id, status')
-                        .eq('id', tableId)
-                        .maybeSingle();
-                    tableData = fallbackData;
-                    tableErr = fallbackErr;
-                }
-
-                if (tableErr || !tableData) {
-                    console.error('[OrderChat] Table Fetch Error:', tableErr);
-                    showToast('Invalid session. Please scan a valid QR code.', 'error');
+                if (!tableData) {
+                    showToast('Table not found. Please scan a valid QR code.', 'error');
                     setIsHistoryLoading(false);
                     return;
                 }
 
-                // Security Hardening: Token Verification
-                // Only verify if both the URL has a token AND the table record has one
-                if (urlToken && tableData.qr_token) {
-                    if (tableData.qr_token !== urlToken) {
-                        showToast('Secure access failed. Please re-scan the QR code.', 'error');
-                        setIsHistoryLoading(false);
-                        return;
-                    }
-                    setIsVerified(true);
-                    
-                    // Auto-occupy if available
-                    if (tableData.status === 'available') {
-                        await supabase
-                            .from('tables')
-                            .update({ status: 'occupied', current_session_id: sessionId })
-                            .eq('id', tableId);
-                    }
-                } else {
-                    // Fallback: If no token in URL or DB doesn't support tokens yet, allow access
-                    setIsVerified(true);
-                }
-
                 setTableNumber(tableData.table_number || '');
                 setBranchId(tableData.branch_id || '');
-                if (tableData.organization_id) setActiveOrgId(tableData.organization_id);
-
                 const currentBranchId = tableData.branch_id;
                 const currentOrgId = tableData.organization_id;
 
-                // Parallel fetch for remaining data (Menu, Banks, Branch Context)
-                // We wrap each in a catch to ensure the whole page doesn't crash if one fails
-                const [menuRes, banksRes, contextRes] = await Promise.all([
-                    // 1. Fetch Menu Items (Heavy) - Primary Goal
-                    (currentOrgId ? supabase.from('view_menu_details')
-                        .select('*')
-                        .eq('organization_id', currentOrgId)
-                        .eq('is_available', true)
-                        .eq(currentBranchId ? 'branch_id' : 'organization_id', currentBranchId || currentOrgId)
-                        .then(res => res)
-                        .catch(err => ({ data: null, error: err }))
-                    : Promise.resolve({ data: null, error: null })),
+                if (currentOrgId) setActiveOrgId(currentOrgId);
+                setIsVerified(true); // Allow access even if token check is skipped
 
-                    // 2. Fetch Banks
-                    (currentBranchId ? supabase.from('bank_settings')
-                        .select('bank_key, account_number')
+                // 2. Fetch Menu Items (Resilient)
+                try {
+                    let menuQuery = supabase.from('view_menu_details').select('*').eq('is_available', true);
+                    if (currentBranchId) {
+                        menuQuery = menuQuery.eq('branch_id', currentBranchId);
+                    } else if (currentOrgId) {
+                        menuQuery = menuQuery.eq('organization_id', currentOrgId);
+                    }
+
+                    const { data: menuData } = await menuQuery;
+                    if (menuData) {
+                        setAllItems(menuData);
+                        const cats = [...new Set(menuData.map((r: any) => r.category).filter(Boolean))] as string[];
+                        setCategories(cats);
+                    }
+                } catch (e) { console.warn('Menu load failed:', e); }
+
+                // 3. Fetch Banks (Optional - Don't let failure stop us)
+                if (currentBranchId) {
+                    supabase.from('bank_settings')
+                        .select('*')
                         .eq('branch_id', currentBranchId)
                         .eq('is_active', true)
-                        .then(res => res)
-                        .catch(err => ({ data: null, error: err }))
-                    : Promise.resolve({ data: null, error: null })),
+                        .then(({ data }) => { if (data) setBranchBanks(data); })
+                        .catch(() => null);
+                }
 
-                    // 3. Fetch Context (Edge Function) - Only if we have a token or session
-                    (currentBranchId && (urlToken || (await supabase.auth.getSession()).data.session) 
-                        ? invokeSecureFunction('get-branch-info', { branch_id: currentBranchId }).catch(() => null)
-                        : Promise.resolve(null))
-                ]);
+                // 4. Fetch Branch/Org Branding (Optional)
+                if (currentBranchId) {
+                    invokeSecureFunction('get-branch-info', { branch_id: currentBranchId })
+                        .then(data => {
+                            if (data?.branch?.name) setBranchName(data.branch.name);
+                            if (data?.organization?.name) setOrgName(data.organization.name);
+                            if (data?.organization?.chatbot_logo_url) setOrgLogoUrl(data.organization.chatbot_logo_url);
+                        })
+                        .catch(() => {
+                            // Manual fallback if edge function fails
+                            supabase.from('branches').select('name').eq('id', currentBranchId).maybeSingle()
+                                .then(({ data }) => { if (data?.name) setBranchName(data.name); });
+                        });
+                }
 
-                // 4. Final Syncs (Parallel but separate from heavy menu load)
+                // 5. Initial Order Sync
                 refreshActiveOrder().catch(() => null);
 
-                // Apply results
-                if (menuRes?.data) {
-                    setAllItems(menuRes.data);
-                    const cats = [...new Set(menuRes.data.map((r: any) => r.category).filter(Boolean))] as string[];
-                    setCategories(cats);
-                }
-                
-                if (banksRes?.data) setBranchBanks(banksRes.data);
-
-                if (contextRes) {
-                    if (contextRes.branch?.name) setBranchName(contextRes.branch.name);
-                    if (contextRes.organization?.name) setOrgName(contextRes.organization.name);
-                    if (contextRes.organization?.chatbot_logo_url) setOrgLogoUrl(contextRes.organization.chatbot_logo_url);
-                } else {
-                    // Fallback branch name if edge function fails
-                    const { data: bData } = await supabase.from('branches').select('name').eq('id', currentBranchId).maybeSingle();
-                    if (bData?.name) setBranchName(bData.name);
-                }
+            } catch (err) {
+                console.error('Fatal bootstrap failure:', err);
+            } finally {
+                setIsHistoryLoading(false);
+                setIsVerifying(false);
+            }
 
             } catch (err) {
                 console.error('Bootstrap failure:', err);
