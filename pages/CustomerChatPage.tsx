@@ -1129,21 +1129,35 @@ const CustomerChatPage: React.FC = () => {
             setIsVerifying(true);
 
             try {
-                // Fetch basic table data first (fastest)
-                const { data: tableData, error: tableErr } = await supabase
+                // Fetch table data with fallback for schema differences (resilient select)
+                let { data: tableData, error: tableErr } = await supabase
                     .from('tables')
-                    .select('id, table_number, branch_id, organization_id, qr_token, status')
+                    .select('id, table_number, branch_id, status, organization_id, qr_token')
                     .eq('id', tableId)
                     .maybeSingle();
 
+                // If it fails with a 400, try a minimal select (fallback for older schemas)
+                if (tableErr && tableErr.code === 'PGRST204' || (tableErr && tableErr.message?.includes('column'))) {
+                    console.warn('[OrderChat] Retrying with minimal schema...');
+                    const { data: fallbackData, error: fallbackErr } = await supabase
+                        .from('tables')
+                        .select('id, table_number, branch_id, status')
+                        .eq('id', tableId)
+                        .maybeSingle();
+                    tableData = fallbackData;
+                    tableErr = fallbackErr;
+                }
+
                 if (tableErr || !tableData) {
+                    console.error('[OrderChat] Table Fetch Error:', tableErr);
                     showToast('Invalid session. Please scan a valid QR code.', 'error');
                     setIsHistoryLoading(false);
                     return;
                 }
 
                 // Security Hardening: Token Verification
-                if (urlToken) {
+                // Only verify if both the URL has a token AND the table record has one
+                if (urlToken && tableData.qr_token) {
                     if (tableData.qr_token !== urlToken) {
                         showToast('Secure access failed. Please re-scan the QR code.', 'error');
                         setIsHistoryLoading(false);
@@ -1158,6 +1172,9 @@ const CustomerChatPage: React.FC = () => {
                             .update({ status: 'occupied', current_session_id: sessionId })
                             .eq('id', tableId);
                     }
+                } else {
+                    // Fallback: If no token in URL or DB doesn't support tokens yet, allow access
+                    setIsVerified(true);
                 }
 
                 setTableNumber(tableData.table_number || '');
