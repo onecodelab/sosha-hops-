@@ -17,19 +17,50 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <!-- Secondary decorative fonts — loaded async so they don't block render -->
   <link rel="preload" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@1,300;1,700&family=Satisfy&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'" />
-  <!-- Inline critical CSS for instant first paint (black bg + centered spinner) -->
+  <!-- Inline critical CSS for instant first paint (black bg + centered logo) -->
   <style>
-    body { margin: 0; background: #020202; color: #FAFAFA; font-family: Inter, sans-serif; }
-    #root:empty { display: flex; align-items: center; justify-content: center; min-height: 100dvh; }
-    #root:empty::after { content: ''; width: 32px; height: 32px; border: 3px solid rgba(255,184,0,0.2); border-top-color: #FFB800; border-radius: 50%; animation: sp .6s linear infinite; }
-    @keyframes sp { to { transform: rotate(360deg); } }
+    body { margin: 0; background: #000; color: #FAFAFA; font-family: Inter, sans-serif; overflow: hidden; transition: background-color 0.3s ease; }
+    body[data-theme="fresh"] { background: #FFF; color: #020617; }
+    .init-container { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #000; z-index: 9999; }
+    body[data-theme="fresh"] .init-container { background: #FFF; }
+    .init-content { display: flex; flex-direction: column; align-items: center; gap: 48px; }
+    .init-logo { width: 120px; height: auto; opacity: 0.8; animation: pulse 2s ease-in-out infinite; }
+    .init-status { display: flex; flex-direction: column; align-items: center; gap: 16px; }
+    .init-label { font-size: 10px; font-weight: 900; color: rgba(255,255,255,0.2); letter-spacing: 0.8em; text-transform: uppercase; margin-left: 0.8em; }
+    body[data-theme="fresh"] .init-label { color: rgba(0,0,0,0.2); }
+    .init-sub { display: flex; align-items: center; gap: 12px; }
+    .init-dot { width: 6px; height: 6px; background: #FFB800; border-radius: 50%; box-shadow: 0 0 10px #FFB800; animation: pulse 1s ease-in-out infinite; }
+    .init-text { font-size: 11px; font-weight: 900; color: rgba(255,255,255,0.6); letter-spacing: 0.4em; text-transform: uppercase; }
+    body[data-theme="fresh"] .init-text { color: rgba(0,0,0,0.6); }
+    @keyframes pulse { 0%, 100% { opacity: 0.4; transform: scale(0.98); } 50% { opacity: 0.8; transform: scale(1); } }
   </style>
 </head>
 
 <body>
-  <div id="root"></div>
+  <script>
+    (function() {
+      try {
+        const theme = localStorage.getItem('baro-theme');
+        if (theme === 'fresh') document.body.setAttribute('data-theme', 'fresh');
+      } catch (e) {}
+    })();
+  </script>
+  <div id="root">
+    <!-- Static Initializer UI (replaced by React once loaded) -->
+    <div class="init-container">
+      <div class="init-content">
+        <img src="/baro-logo-full.png" class="init-logo" alt="Baro OS" />
+        <div class="init-status">
+          <span class="init-label">System Protocol</span>
+          <div class="init-sub">
+            <div class="init-dot"></div>
+            <span class="init-text">Initializing Baro OS</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
   <script type="module" src="/index.tsx"></script>
-
 </body>
 
 </html>

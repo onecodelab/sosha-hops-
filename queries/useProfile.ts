@@ -3,26 +3,20 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '../supabase';
 import { UserProfile } from '../types';
 
-export function useProfile() {
+export function useProfile(userId?: string) {
   return useQuery({
-    queryKey: ['profile'],
+    queryKey: ['profile', userId],
+    enabled: !!userId, // Don't even try to fetch if we don't have a userId
     queryFn: async () => {
-      const { data: { user }, error: authError } = await supabase.auth.getUser();
-      
-      if (authError) throw authError;
-      if (!user) throw new Error('Not authenticated');
+      if (!userId) throw new Error('Not authenticated');
 
-      // Attempt to get the profile
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
-        .eq('id', user.id)
+        .eq('id', userId)
         .maybeSingle();
 
       if (error) throw error;
-      
-      // If we are logged in but have no profile record, we return null 
-      // instead of throwing to let the UI handle the "missing profile" state
       return data as UserProfile | null;
     },
     staleTime: 1000 * 60 * 5, // 5 minutes

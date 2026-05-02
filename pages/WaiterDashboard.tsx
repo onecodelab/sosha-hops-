@@ -14,7 +14,10 @@ import {
   PlusCircle,
   Timer,
   MessageSquare,
-  ChefHat
+  ChefHat,
+  Monitor,
+  CheckCircle2,
+  AlertCircle
 } from 'lucide-react';
 import { PaymentVerificationModal, FloatingPaymentButton } from '../components/PaymentVerificationModal';
 import { ReceiptVerificationModal } from '../components/ReceiptVerificationModal';
@@ -116,8 +119,6 @@ const WaiterDashboard: React.FC = () => {
         setIsPaymentOpen(true);
       }
     } else if (action === 'served' && target) {
-      // Logic for marking served is handled in OrderCard via handleMarkServed calling orderService.markServed
-      // We removed the auto-popup of BillModal here to allow serving multiple tables quickly.
       refreshAll();
     } else {
       refreshAll();
@@ -159,7 +160,7 @@ const WaiterDashboard: React.FC = () => {
   const isLoading = ordersLoading || isSyncingTables;
 
   useLayoutConfig({
-    title: "Waiter Station",
+    title: "My Station",
     subtitle: (
       <span className="flex items-center gap-1.5 uppercase font-black tracking-widest text-[10px]">
         <span className="text-zinc-500">Floor •</span>
@@ -208,7 +209,6 @@ const WaiterDashboard: React.FC = () => {
         }}
         className="space-y-10"
       >
-        {/* Standardized Glass HUD */}
         <motion.div
           variants={{
             hidden: { opacity: 0, y: 20 },
@@ -258,169 +258,129 @@ const WaiterDashboard: React.FC = () => {
           </Card>
         </motion.div>
 
-        {/* Task View Only */}
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-10 px-2 pb-32">
-          {/* Ready to Serve - CRITICAL FOR WAITER */}
-          <motion.div
-            variants={{
-              hidden: { opacity: 0, x: -20 },
-              show: { opacity: 1, x: 0 },
-              modalOpen: { opacity: 0.2, filter: 'grayscale(1)' }
-            }}
-            className="space-y-6 col-span-full"
-          >
-            <div className="flex items-center justify-between px-2">
-              <h3 className="text-sm font-black text-foreground uppercase tracking-widest flex items-center gap-3">
-                <ChefHat className="w-5 h-5 text-green-500" /> Ready to Serve
-              </h3>
-              <Badge variant="outline" className="bg-green-500/10 text-green-500 border-green-500/20 font-mono">
-                {readyOrders.length}
-              </Badge>
-            </div>
-            <div className="flex overflow-x-auto gap-4 pb-4 snap-x snap-mandatory custom-scrollbar relative">
-              {readyOrders.map(order =>
-                <div key={order.id} className="w-[85vw] md:w-[350px] snap-center md:snap-start shrink-0">
-                  <OrderCard order={order} role="waiter" onAction={handleOrderAction} />
-                </div>
-              )}
-              {readyOrders.length === 0 && (
-                <div className="flex-1 min-w-[300px] h-24 flex flex-col gap-2 items-center justify-center border border-dashed border-white/5 rounded-3xl opacity-20 text-[10px] font-black uppercase tracking-widest">
-                  All orders served
-                </div>
-              )}
-            </div>
-          </motion.div>
-
-          {/* Unassigned Chat Orders */}
+        {/* Production Pipeline - 3 Column Layout */}
+        <div className="flex-1 min-h-0 px-2 pb-32">
+          {/* Unassigned Chat Orders Banner */}
           {unassignedChatOrders.length > 0 && (
             <motion.div
-              variants={{
-                hidden: { opacity: 0, y: 20 },
-                show: { opacity: 1, y: 0 },
-                modalOpen: { opacity: 0.1 }
-              }}
-              className="space-y-6 col-span-full"
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-8 p-6 bg-primary/10 border border-primary/20 rounded-[2rem] flex flex-col md:flex-row items-center justify-between gap-6 backdrop-blur-xl relative overflow-hidden"
             >
-              <div className="flex items-center justify-between px-2">
-                <h3 className="text-sm font-black text-foreground uppercase tracking-widest flex items-center gap-3">
-                  <MessageSquare className="w-5 h-5 text-primary" /> Unassigned Chat Orders
-                </h3>
-                <Badge variant="glass" className="bg-primary/10 text-primary border-primary/20 font-mono">
-                  {unassignedChatOrders.length} New
-                </Badge>
+              <div className="absolute inset-0 bg-gradient-to-r from-primary/5 to-transparent pointer-events-none" />
+              <div className="flex items-center gap-4 z-10">
+                <div className="w-12 h-12 rounded-2xl bg-primary/20 flex items-center justify-center text-primary shadow-[0_0_20px_rgba(255,184,0,0.2)]">
+                  <MessageSquare className="w-6 h-6" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-black text-foreground uppercase tracking-widest">New Chatbot Orders Detected</h4>
+                  <p className="text-[10px] font-bold text-primary/60 uppercase tracking-widest mt-0.5">{unassignedChatOrders.length} Customers awaiting staff assignment</p>
+                </div>
               </div>
-              <div className="flex overflow-x-auto gap-4 pb-4 snap-x snap-mandatory custom-scrollbar relative">
+              <div className="flex gap-4 overflow-x-auto pb-2 md:pb-0 w-full md:w-auto px-1 snap-x no-scrollbar z-10">
                 {unassignedChatOrders.map(order => (
-                  <Card key={order.id} variant="elevated" className="w-[85vw] md:w-[350px] snap-center md:snap-start shrink-0 p-6 border-primary/20 bg-primary/5 hover:bg-primary/10 transition-all flex flex-col gap-4">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <div className="text-[10px] font-black text-primary uppercase tracking-widest mb-1">Incoming Chat Order</div>
-                        <h4 className="text-lg font-black text-foreground tracking-tight">{order.order_number}</h4>
-                      </div>
-                      <Badge variant="outline" className="text-xs uppercase font-mono">Chatbot</Badge>
-                    </div>
-
-                    <div className="flex-1 space-y-2">
-                      {order.order_items?.map((item, idx) => (
-                        <div key={idx} className="flex justify-between text-xs font-medium border-b border-white/5 pb-1">
-                          <span className="text-zinc-400">
-                            <span className="text-primary mr-2">{item.quantity}x</span>
-                            {item.menu_item?.name}
-                          </span>
-                          <span className="text-zinc-500 font-mono">ETB {item.price * item.quantity}</span>
-                        </div>
-                      ))}
-                    </div>
-
-                    <div className="flex flex-col gap-2 pt-2 border-t border-white/5">
-                      <div className="flex justify-between items-center px-1">
-                        <span className="text-[10px] font-black text-muted uppercase tracking-widest">Estimated Total</span>
-                        <span className="text-sm font-black text-primary font-mono">ETB {order.total_amount.toLocaleString()}</span>
-                      </div>
-                      {order.table_id ? (
-                        <Button
-                          onClick={() => handleInstantClaim(order.id, order.table_id!)}
-                          disabled={claiming}
-                          className="w-full bg-primary hover:bg-primary/90 text-black font-black uppercase text-[10px] h-10 rounded-xl mt-2 transition-transform hover:scale-[1.02] active:scale-[0.98]"
-                        >
-                          Claim Order (T-{order.table_number})
-                        </Button>
-                      ) : (
-                        <Button
-                          onClick={() => {
-                            setSelectedChatOrder(order);
-                            setIsClaimModalOpen(true);
-                          }}
-                          disabled={claiming}
-                          className="w-full bg-primary hover:bg-primary/90 text-black font-black uppercase text-[10px] h-10 rounded-xl mt-2 transition-transform hover:scale-[1.02] active:scale-[0.98]"
-                        >
-                          Claim & Assign Table
-                        </Button>
-                      )}
-                    </div>
-                  </Card>
+                  <Button
+                    key={order.id}
+                    variant="outline"
+                    onClick={() => {
+                      if (order.table_id) handleInstantClaim(order.id, order.table_id);
+                      else {
+                        setSelectedChatOrder(order);
+                        setIsClaimModalOpen(true);
+                      }
+                    }}
+                    className="shrink-0 snap-center bg-white/5 border-primary/20 h-12 px-6 rounded-xl hover:bg-primary hover:text-black transition-all flex flex-col items-start gap-0.5 min-w-[140px]"
+                  >
+                    <span className="text-[8px] font-black opacity-60">CLAIM {order.order_number}</span>
+                    <span className="text-xs font-black">T-{order.table_number || '??'}</span>
+                  </Button>
                 ))}
               </div>
             </motion.div>
           )}
 
-          {/* Kitchen Pipeline */}
-          <motion.div
-            variants={{
-              hidden: { opacity: 0, y: 20 },
-              show: { opacity: 1, y: 0 }
-            }}
-            className="space-y-6 col-span-full"
-          >
-            <div className="flex items-center justify-between px-2">
-              <h3 className="text-sm font-black text-foreground uppercase tracking-widest flex items-center gap-3">
-                <Timer className="w-5 h-5 text-orange-500" /> Kitchen Pipeline
-              </h3>
-              <Badge variant="outline" className="bg-orange-500/10 text-orange-500 border-orange-500/20 font-mono">{kitchenPipeline.length}</Badge>
-            </div>
-            <div className="flex overflow-x-auto gap-4 pb-4 snap-x snap-mandatory custom-scrollbar relative">
-              {kitchenPipeline.map(order => (
-                <div key={order.id} className="w-[85vw] md:w-[350px] snap-center md:snap-start shrink-0">
-                  <OrderCard order={order} role="waiter" onAction={handleOrderAction} />
+          <div className="flex lg:grid overflow-x-auto lg:overflow-visible lg:grid-cols-3 gap-6 h-full min-h-0 snap-x snap-mandatory no-scrollbar lg:custom-scrollbar pb-2 -mx-4 px-4 lg:-mx-0 lg:px-0">
+            {/* COLUMN 1: KITCHEN PIPELINE */}
+            <div className="w-[85vw] lg:w-auto shrink-0 snap-center flex flex-col min-h-[500px] bg-card/60 backdrop-blur-xl border border-primary/10 rounded-[2.5rem] overflow-hidden shadow-2xl relative group hover:border-orange-500/30 transition-all h-fit">
+              <div className="absolute inset-0 bg-gradient-to-br from-orange-500/5 to-transparent pointer-events-none" />
+              <div className="px-6 py-5 border-b border-white/5 bg-white/5 flex items-center justify-between relative z-10 shrink-0">
+                <div className="flex items-center gap-3">
+                  <div className="w-2.5 h-2.5 rounded-full bg-orange-500 shadow-[0_0_15px_rgba(249,115,22,0.5)] shrink-0" />
+                  <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-orange-500 truncate">Kitchen Pipeline</h3>
                 </div>
-              ))}
-              {kitchenPipeline.length === 0 && (
-                <div className="flex-1 min-w-[300px] h-40 flex flex-col gap-2 items-center justify-center border border-dashed border-white/5 rounded-3xl opacity-20 text-[10px] font-black uppercase tracking-widest">
-                  <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center"><Timer className="w-5 h-5" /></div>
-                  No Pending Orders
-                </div>
-              )}
+                <Badge className="bg-orange-500/10 text-orange-500 border-orange-500/20 px-4 py-1.5 font-mono text-xs font-black shadow-lg shrink-0">
+                  {kitchenPipeline.length}
+                </Badge>
+              </div>
+              <div className="flex-1 overflow-y-auto p-5 space-y-4 custom-scrollbar relative z-10 min-h-[300px]">
+                {kitchenPipeline.map(order => (
+                  <OrderCard key={order.id} order={order} role="waiter" onAction={handleOrderAction} />
+                ))}
+                {kitchenPipeline.length === 0 && (
+                  <div className="h-[300px] flex flex-col items-center justify-center opacity-20 gap-6">
+                    <div className="p-6 bg-orange-500/10 rounded-full">
+                      <ChefHat className="w-12 h-12 text-orange-500" />
+                    </div>
+                    <span className="text-[10px] font-black uppercase tracking-[0.4em] text-orange-500">Pipeline Clear</span>
+                  </div>
+                )}
+              </div>
             </div>
-          </motion.div>
 
-          {/* Billing Queue */}
-          <motion.div
-            variants={{
-              hidden: { opacity: 0, y: 20 },
-              show: { opacity: 1, y: 0 }
-            }}
-            className="space-y-6 col-span-full"
-          >
-            <div className="flex items-center justify-between px-2">
-              <h3 className="text-sm font-black text-foreground uppercase tracking-widest flex items-center gap-3">
-                <Receipt className="w-5 h-5 text-green-500" /> Billing Queue
-              </h3>
-              <Badge variant="outline" className="bg-green-500/10 text-green-500 border-green-500/20 font-mono">{billingQueue.length}</Badge>
-            </div>
-            <div className="flex overflow-x-auto gap-4 pb-4 snap-x snap-mandatory custom-scrollbar relative">
-              {billingQueue.map(order => (
-                <div key={order.id} className="w-[85vw] md:w-[350px] snap-center md:snap-start shrink-0">
-                  <OrderCard order={order} role="waiter" onAction={handleOrderAction} />
+            {/* COLUMN 2: READY TO SERVE */}
+            <div className="w-[85vw] lg:w-auto shrink-0 snap-center flex flex-col min-h-[500px] bg-card/60 backdrop-blur-xl border border-primary/10 rounded-[2.5rem] overflow-hidden shadow-2xl relative group hover:border-emerald-500/30 transition-all h-fit">
+              <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-transparent pointer-events-none" />
+              <div className="px-6 py-5 border-b border-white/5 bg-white/5 flex items-center justify-between relative z-10 shrink-0">
+                <div className="flex items-center gap-3">
+                  <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_15px_rgba(16,185,129,0.5)] shrink-0" />
+                  <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-emerald-500 truncate">Ready to Serve</h3>
                 </div>
-              ))}
-              {billingQueue.length === 0 && (
-                <div className="flex-1 min-w-[300px] h-40 flex flex-col gap-2 items-center justify-center border border-dashed border-white/5 rounded-3xl opacity-20 text-[10px] font-black uppercase tracking-widest">
-                  <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center"><Receipt className="w-5 h-5" /></div>
-                  No Active Bills
-                </div>
-              )}
+                <Badge className="bg-emerald-500/10 text-emerald-500 border-emerald-500/20 px-4 py-1.5 font-mono text-xs font-black shadow-lg shrink-0">
+                  {readyOrders.length}
+                </Badge>
+              </div>
+              <div className="flex-1 overflow-y-auto p-5 space-y-4 custom-scrollbar relative z-10 min-h-[300px]">
+                {readyOrders.map(order => (
+                  <OrderCard key={order.id} order={order} role="waiter" onAction={handleOrderAction} />
+                ))}
+                {readyOrders.length === 0 && (
+                  <div className="h-[300px] flex flex-col items-center justify-center opacity-20 gap-6">
+                    <div className="p-6 bg-emerald-500/10 rounded-full">
+                      <CheckCircle2 className="w-12 h-12 text-emerald-500" />
+                    </div>
+                    <span className="text-[10px] font-black uppercase tracking-[0.4em] text-emerald-500">All Served</span>
+                  </div>
+                )}
+              </div>
             </div>
-          </motion.div>
+
+            {/* COLUMN 3: BILLING QUEUE */}
+            <div className="w-[85vw] lg:w-auto shrink-0 snap-center flex flex-col min-h-[500px] bg-card/60 backdrop-blur-xl border border-primary/10 rounded-[2.5rem] overflow-hidden shadow-2xl relative group hover:border-blue-500/30 transition-all h-fit">
+              <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-transparent pointer-events-none" />
+              <div className="px-6 py-5 border-b border-white/5 bg-white/5 flex items-center justify-between relative z-10 shrink-0">
+                <div className="flex items-center gap-3">
+                  <div className="w-2.5 h-2.5 rounded-full bg-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.5)] shrink-0" />
+                  <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-blue-500 truncate">Billing Queue</h3>
+                </div>
+                <Badge className="bg-blue-500/10 text-blue-500 border-blue-500/20 px-4 py-1.5 font-mono text-xs font-black shadow-lg shrink-0">
+                  {billingQueue.length}
+                </Badge>
+              </div>
+              <div className="flex-1 overflow-y-auto p-5 space-y-4 custom-scrollbar relative z-10 min-h-[300px]">
+                {billingQueue.map(order => (
+                  <OrderCard key={order.id} order={order} role="waiter" onAction={handleOrderAction} />
+                ))}
+                {billingQueue.length === 0 && (
+                  <div className="h-[300px] flex flex-col items-center justify-center opacity-20 gap-6">
+                    <div className="p-6 bg-blue-500/10 rounded-full">
+                      <Receipt className="w-12 h-12 text-blue-500" />
+                    </div>
+                    <span className="text-[10px] font-black uppercase tracking-[0.4em] text-blue-500">No Pending Bills</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
       </motion.div>
 

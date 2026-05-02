@@ -3,6 +3,11 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 import './index.css';
+import { supabase } from './supabase';
+
+// Start auth session fetch immediately to warm up the cache
+// This happens in parallel with React hydration
+const authSessionPromise = supabase.auth.getSession();
 
 const purgeStaleBrowserState = async () => {
   try {
@@ -42,18 +47,18 @@ class AppErrorBoundary extends React.Component<
   render() {
     if (this.state.hasError) {
       return (
-        <div className="min-h-screen flex items-center justify-center bg-background text-foreground p-6">
-          <div className="max-w-xl w-full rounded-3xl border border-border bg-card p-8 shadow-2xl">
+        <div className="min-h-screen flex items-center justify-center bg-[#000] text-foreground p-6">
+          <div className="max-w-xl w-full rounded-3xl border border-white/10 bg-[#0A0A0A] p-8 shadow-2xl">
             <h1 className="text-2xl font-black mb-3">Baro is reloading</h1>
             <p className="text-sm text-muted-foreground mb-6">
-              A cached app chunk failed to load. Refreshing the app will pull the latest version and clear old browser cache.
+              A cached app chunk failed to load. Refreshing the app will pull the latest version.
             </p>
             <button
               onClick={async () => {
                 await purgeStaleBrowserState();
                 window.location.reload();
               }}
-              className="px-5 py-3 rounded-2xl bg-[#84CC16] text-black font-bold"
+              className="px-5 py-3 rounded-2xl bg-[#FFB800] text-black font-bold"
             >
               Reload App
             </button>
@@ -75,7 +80,5 @@ root.render(
   </AppErrorBoundary>
 );
 
-// Purge stale SW/caches in the background (non-blocking)
-purgeStaleBrowserState().catch((err) => {
-  console.warn('Background cache cleanup failed:', err);
-});
+// Purge stale SW/caches in the background
+purgeStaleBrowserState().catch(() => {});

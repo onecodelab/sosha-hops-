@@ -102,7 +102,7 @@ const AppDispatcher: React.FC = () => {
         setGuardState('ok');
     }, [profile, loading, navigate]);
 
-    if (loading || guardState === 'loading') return <LoadingSpinner />;
+    if (loading || guardState === 'loading' || guardState === 'ok') return <LoadingSpinner />;
 
     if (guardState === 'locked') {
         return <AccountLockedScreen status={profile?.status || 'pending'} onSignOut={signOut} />;
@@ -111,8 +111,6 @@ const AppDispatcher: React.FC = () => {
     if (guardState === 'error') {
         return <AccountErrorScreen title={errorInfo.title} message={errorInfo.message} onSignOut={signOut} />;
     }
-
-    if (guardState === 'ok') return null;
 
     return <LoadingSpinner />;
 };

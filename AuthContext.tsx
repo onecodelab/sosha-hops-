@@ -45,7 +45,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     isError,
     error,
     refetch
-  } = useProfile();
+  } = useProfile(user?.id);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -111,16 +111,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     error.message.includes('Auth session missing')
   );
 
-  // If loading and we have no cached data, show spinner
+  // Performance Optimization: Don't block public marketing pages with a full-screen loader
+  const publicPaths = ['/', '/book-demo', '/pricing', '/features', '/signup'];
+  const currentPath = window.location.pathname;
+  const isPublicPath = publicPaths.includes(currentPath) || currentPath.startsWith('/order-chat/');
+
   // We check BOTH auth session and profile data
   const isActuallyLoading = authLoading || (isProfileLoading && !profile && !isAuthMissing);
 
-  if (isActuallyLoading) {
+  // Only show the full-screen spinner for app routes or if we have an active user but no profile yet
+  if (isActuallyLoading && !isPublicPath) {
     return (
       <LoadingSpinner
-        timeout={8000}
+        timeout={12000}
         onTimeout={() => {
-          // Only navigate if we aren't already on login or landing
           const path = window.location.pathname;
           if (user && !path.includes('/login') && path !== '/') {
             navigate('/login?error=timeout');
@@ -129,6 +133,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       />
     );
   }
+
+  // If loading but on a public path, we still want to provide context 
+  // but we allow children (Landing/Pricing) to render immediately.
 
   // Match the screenshot text and behavior
   if (isError && !isAuthMissing && !profile) {

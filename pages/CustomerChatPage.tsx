@@ -104,52 +104,52 @@ const MenuCard: React.FC<{ item: MenuItem; index: number; onAdd: (item: MenuItem
         <motion.div
             whileHover={{ y: -5 }}
             className={cn(
-                "relative w-40 h-52 rounded-[2rem] overflow-hidden flex flex-col p-4 group transition-all duration-300",
+                "relative w-36 h-48 rounded-[2rem] overflow-hidden flex flex-col p-3 group transition-all duration-300",
                 getCardTheme(index)
             )}
         >
-            <div className="absolute top-[45%] left-1/2 -translate-x-1/2 -translate-y-1/2 w-[140%] aspect-square border border-foreground/[0.04] rounded-full pointer-events-none transition-transform duration-700 group-hover:scale-110" />
-            <div className="absolute top-[45%] left-1/2 -translate-x-1/2 -translate-y-1/2 w-[180%] aspect-square border border-foreground/[0.02] rounded-full pointer-events-none transition-transform duration-1000 group-hover:scale-110" />
-            <div className="absolute top-[45%] left-1/2 -translate-x-1/2 -translate-y-1/2 w-28 h-28 bg-lime-500/20 blur-[30px] rounded-full pointer-events-none transition-opacity duration-500 group-hover:opacity-100 opacity-60" />
+            <div className="absolute top-[40%] left-1/2 -translate-x-1/2 -translate-y-1/2 w-[140%] aspect-square border border-foreground/[0.04] rounded-full pointer-events-none transition-transform duration-700 group-hover:scale-110" />
+            <div className="absolute top-[40%] left-1/2 -translate-x-1/2 -translate-y-1/2 w-[180%] aspect-square border border-foreground/[0.02] rounded-full pointer-events-none transition-transform duration-1000 group-hover:scale-110" />
+            <div className="absolute top-[40%] left-1/2 -translate-x-1/2 -translate-y-1/2 w-24 h-24 bg-lime-500/20 blur-[25px] rounded-full pointer-events-none transition-opacity duration-500 group-hover:opacity-100 opacity-60" />
 
-            <div className="flex-1 flex items-center justify-center relative z-10 mt-3 mb-2">
+            <div className="flex-1 flex items-center justify-center relative z-10 mt-1 mb-1">
                 <motion.div
                     animate={{ rotate: 360 }}
                     transition={{ duration: 40, repeat: Infinity, ease: "linear" }}
-                    className="w-24 h-24 rounded-full p-1 border border-lime-500/30 bg-gradient-to-br from-card to-muted shadow-xl relative group-hover:border-lime-500/60 transition-colors"
+                    className="w-20 h-20 rounded-full p-1 border border-lime-500/30 bg-gradient-to-br from-card to-muted shadow-xl relative group-hover:border-lime-500/60 transition-colors"
                 >
                     <div className="w-full h-full rounded-full overflow-hidden bg-background">
                         {item.image_url ? (
                             <img src={item.image_url} alt={item.name} className="w-full h-full object-cover scale-110" />
                         ) : (
                             <div className="w-full h-full flex flex-col items-center justify-center">
-                                <UtensilsCrossed className="w-8 h-8 text-muted-foreground/30" />
+                                <UtensilsCrossed className="w-6 h-6 text-muted-foreground/30" />
                             </div>
                         )}
                     </div>
                 </motion.div>
             </div>
 
-            <div className="text-center mb-3 relative z-10 px-1">
-                <h3 className="text-foreground text-[13px] font-black leading-tight line-clamp-2 uppercase tracking-tight">
+            <div className="text-center mb-2 relative z-10 px-1">
+                <h3 className="text-foreground text-[11px] font-black leading-tight line-clamp-2 uppercase tracking-tight">
                     {item.name}
                 </h3>
             </div>
 
             <div className="flex items-center justify-between relative z-10">
                 <div className="flex items-baseline gap-0.5">
-                    <span className="text-[8px] font-bold text-muted-foreground">ETB</span>
-                    <span className="text-base font-black text-foreground leading-none">
+                    <span className="text-[7px] font-bold text-muted-foreground">ETB</span>
+                    <span className="text-[14px] font-black text-foreground leading-none">
                         {item.price.toLocaleString()}
                     </span>
                 </div>
 
                 <button
                     onClick={() => onAdd(item)}
-                    className="h-8 px-3 rounded-full bg-[#84CC16] flex items-center justify-center gap-1.5 text-black shadow-lg shadow-lime-500/30 hover:bg-lime-500 active:scale-90 transition-all"
+                    className="h-7 px-2.5 rounded-full bg-[#84CC16] flex items-center justify-center gap-1 text-black shadow-lg shadow-lime-500/20 hover:bg-lime-500 active:scale-90 transition-all"
                 >
-                    <ShoppingBag className="w-3.5 h-3.5" />
-                    <span className="text-[10px] font-black uppercase tracking-widest">Add</span>
+                    <ShoppingBag className="w-3 h-3" />
+                    <span className="text-[9px] font-black uppercase tracking-widest">Add</span>
                 </button>
             </div>
         </motion.div>
@@ -712,7 +712,7 @@ const MenuView: React.FC<{
     activeCategory: string;
     onCategoryChange: (c: string) => void;
     onAddToCart: (item: MenuItem) => void;
-}> = ({ items, categories, activeCategory, onCategoryChange, onAddToCart }) => {
+}> = React.memo(({ items, categories, activeCategory, onCategoryChange, onAddToCart }) => {
     const filteredItems = activeCategory === 'All' 
         ? items 
         : items.filter(item => item.category === activeCategory);
@@ -761,7 +761,7 @@ const MenuView: React.FC<{
             </div>
         </div>
     );
-};
+});
 
 const TrackingView: React.FC<{ activeOrder: ActiveOrder | null; refreshOrder: () => void }> = ({ activeOrder, refreshOrder }) => {
     return (
@@ -1119,136 +1119,113 @@ const CustomerChatPage: React.FC = () => {
         return payload;
     }, [getEdgeAuthToken]);
 
+    // 1. Unified Bootstrap (Security + Parallel Speed)
     useEffect(() => {
-        const urlToken = searchParams.get('token');
-        if (!urlToken) {
-            setIsVerified(true);
-            return;
-        }
-        if (!tableId) return;
-        const verifyQrToken = async () => {
+        const bootstrap = async () => {
+            if (!tableId) return;
+            
+            const urlToken = searchParams.get('token');
+            setIsHistoryLoading(true);
             setIsVerifying(true);
+
             try {
-                const { data: tableData } = await supabase
+                // Fetch basic table data first (fastest)
+                const { data: tableData, error: tableErr } = await supabase
                     .from('tables')
-                    .select('qr_token, status')
+                    .select('id, table_number, branch_id, organization_id, qr_token, status')
                     .eq('id', tableId)
                     .maybeSingle();
-                if (!tableData) {
-                    showToast('Table not found.', 'error');
+
+                if (tableErr || !tableData) {
+                    showToast('Invalid session. Please scan a valid QR code.', 'error');
+                    setIsHistoryLoading(false);
                     return;
                 }
-                if (tableData.qr_token && tableData.qr_token === urlToken) {
+
+                // Security Hardening: Token Verification
+                if (urlToken) {
+                    if (tableData.qr_token !== urlToken) {
+                        showToast('Secure access failed. Please re-scan the QR code.', 'error');
+                        setIsHistoryLoading(false);
+                        return;
+                    }
                     setIsVerified(true);
+                    
+                    // Auto-occupy if available
                     if (tableData.status === 'available') {
                         await supabase
                             .from('tables')
                             .update({ status: 'occupied', current_session_id: sessionId })
                             .eq('id', tableId);
                     }
-                } else {
-                    showToast('Invalid table token. Please scan the correct QR code.', 'error');
                 }
+
+                setTableNumber(tableData.table_number || '');
+                setBranchId(tableData.branch_id || '');
+                if (tableData.organization_id) setActiveOrgId(tableData.organization_id);
+
+                const currentBranchId = tableData.branch_id;
+                const currentOrgId = tableData.organization_id;
+
+                // Parallel fetch for remaining data (Menu, Banks, Branch Context)
+                const [menuRes, banksRes, contextRes, activeOrderRes] = await Promise.all([
+                    // 1. Fetch Menu Items (Heavy)
+                    currentOrgId ? supabase.from('view_menu_details')
+                        .select('*')
+                        .eq('organization_id', currentOrgId)
+                        .eq('is_available', true)
+                        .eq(currentBranchId ? 'branch_id' : 'organization_id', currentBranchId || currentOrgId)
+                    : Promise.resolve({ data: [] }),
+
+                    // 2. Fetch Banks (Medium)
+                    currentBranchId ? supabase.from('bank_settings')
+                        .select('bank_key, account_number')
+                        .eq('branch_id', currentBranchId)
+                        .eq('is_active', true)
+                    : Promise.resolve({ data: [] }),
+
+                    // 3. Fetch Context (Edge Function)
+                    currentBranchId ? invokeSecureFunction('get-branch-info', { branch_id: currentBranchId })
+                        .catch(() => null)
+                    : Promise.resolve(null),
+
+                    // 4. Initial Order Sync
+                    refreshActiveOrder().catch(() => null)
+                ]);
+
+                // Apply results
+                if (menuRes.data) {
+                    setAllItems(menuRes.data);
+                    const cats = [...new Set(menuRes.data.map((r: any) => r.category).filter(Boolean))] as string[];
+                    setCategories(cats);
+                }
+                
+                if (banksRes.data) setBranchBanks(banksRes.data);
+
+                if (contextRes) {
+                    if (contextRes.branch?.name) setBranchName(contextRes.branch.name);
+                    if (contextRes.organization?.name) setOrgName(contextRes.organization.name);
+                    if (contextRes.organization?.chatbot_logo_url) setOrgLogoUrl(contextRes.organization.chatbot_logo_url);
+                }
+
             } catch (err) {
-                console.error('QR token verification failed:', err);
+                console.error('Bootstrap failure:', err);
             } finally {
+                setIsHistoryLoading(false);
                 setIsVerifying(false);
             }
         };
-        verifyQrToken();
-    }, [tableId, searchParams, sessionId]);
 
+        bootstrap();
+    }, [tableId, searchParams, sessionId, invokeSecureFunction, refreshActiveOrder]);
+
+    // Simplified interactions
     useEffect(() => {
         if (textareaRef.current) {
             textareaRef.current.style.height = 'auto';
             textareaRef.current.style.height = Math.min(textareaRef.current.scrollHeight, 120) + 'px';
         }
     }, [inputValue]);
-
-    useEffect(() => {
-        if (scrollRef.current) {
-            scrollRef.current.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
-        }
-    }, [messages, isTyping]);
-
-    useEffect(() => {
-        const loadBranchContext = async () => {
-            if (!branchId) {
-                setIsHistoryLoading(false);
-                return;
-            }
-            setIsHistoryLoading(true);
-            try {
-                const data = await invokeSecureFunction('get-branch-info', { branch_id: branchId });
-                if (data?.branch?.name) setBranchName(data.branch.name);
-                if (data?.organization?.name) setOrgName(data.organization.name);
-                if (data?.organization?.chatbot_logo_url) setOrgLogoUrl(data.organization.chatbot_logo_url);
-                if (data?.organization?.id) setActiveOrgId(data.organization.id);
-            } catch (e: any) {
-                console.error('Branch context load failed:', e);
-            } finally {
-                setIsHistoryLoading(false);
-            }
-        };
-        loadBranchContext();
-    }, [branchId, invokeSecureFunction]);
-
-    useEffect(() => {
-        refreshBranchBanks().catch(err => console.warn('Branch bank bootstrap failed:', err));
-    }, [refreshBranchBanks]);
-
-    useEffect(() => {
-        const loadTableInfo = async () => {
-            if (!tableId) return;
-            const { data: tableData } = await supabase
-                .from('tables')
-                .select('id, table_number, branch_id, organization_id')
-                .eq('id', tableId)
-                .maybeSingle();
-            if (!tableData) return;
-            setTableNumber(tableData.table_number || '');
-            setBranchId(tableData.branch_id || '');
-            if (tableData.organization_id) setActiveOrgId(tableData.organization_id);
-            if (tableData.branch_id) {
-                const { data: branchData } = await supabase
-                    .from('branches')
-                    .select('name, organization_id')
-                    .eq('id', tableData.branch_id)
-                    .maybeSingle();
-                if (branchData) {
-                    setBranchName(branchData.name);
-                    if (!tableData.organization_id && branchData.organization_id) setActiveOrgId(branchData.organization_id);
-                }
-            }
-        };
-        loadTableInfo();
-    }, [tableId]);
-
-    useEffect(() => {
-        const fetchCategories = async () => {
-            if (!activeOrgId) return;
-            try {
-                let query = supabase.from('view_menu_details').select('category').eq('organization_id', activeOrgId).eq('is_available', true);
-                if (branchId) query = query.eq('branch_id', branchId);
-                const { data } = await query;
-                if (data) setCategories([...new Set(data.map((r: any) => r.category).filter(Boolean))] as string[]);
-            } catch (e) { console.warn('Category fetch failed:', e); }
-        };
-        fetchCategories();
-    }, [activeOrgId, branchId]);
-
-    useEffect(() => {
-        const fetchAllItems = async () => {
-            if (!activeOrgId) return;
-            try {
-                let query = supabase.from('view_menu_details').select('*').eq('organization_id', activeOrgId).eq('is_available', true);
-                if (branchId) query = query.eq('branch_id', branchId);
-                const { data } = await query;
-                if (data) setAllItems(data);
-            } catch (e) { console.warn('Items fetch failed:', e); }
-        };
-        fetchAllItems();
-    }, [activeOrgId, branchId]);
 
     useEffect(() => {
         let isMounted = true;
@@ -1372,7 +1349,7 @@ const CustomerChatPage: React.FC = () => {
                 )}
 
                 {currentView === 'chat' && (
-                    <div ref={scrollRef} className="h-full overflow-y-auto pb-32">
+                    <div ref={scrollRef} className="h-full overflow-y-auto pb-48 custom-scrollbar">
                         <div className="max-w-2xl mx-auto p-4 space-y-6">
                             <AnimatePresence initial={false}>
                                 {messages.map(msg => (
@@ -1408,14 +1385,23 @@ const CustomerChatPage: React.FC = () => {
 
             {/* Persistent Input Area for Chat */}
             {currentView === 'chat' && (
-                <div className="fixed bottom-[72px] inset-x-0 px-4 pb-4 z-50 pointer-events-none">
-                    <div className="max-w-2xl mx-auto pointer-events-auto">
-                        <div className="flex gap-2 overflow-x-auto no-scrollbar mb-4">
+                <div className="fixed bottom-[72px] inset-x-0 z-50 pointer-events-none">
+                    {/* Backdrop Gradient to prevent text bleed */}
+                    <div className="absolute inset-x-0 bottom-0 top-[-40px] bg-gradient-to-t from-background via-background/95 to-transparent pointer-events-none" />
+                    
+                    <div className="max-w-2xl mx-auto px-4 pb-4 pointer-events-auto relative">
+                        <div className="flex gap-2 overflow-x-auto no-scrollbar mb-4 py-1">
                             {dynamicPrompts.map((action: any, i) => (
-                                <button key={i} onClick={() => handleSend(action.prompt)} className="flex-none px-4 py-2.5 rounded-full bg-lime-500/10 border border-lime-500/20 text-lime-600 text-[10px] font-black uppercase tracking-wider hover:bg-lime-500/20 whitespace-nowrap">{action.label}</button>
+                                <button 
+                                    key={i} 
+                                    onClick={() => handleSend(action.prompt)} 
+                                    className="flex-none px-4 py-2.5 rounded-full bg-card border border-lime-500/30 text-lime-600 text-[10px] font-black uppercase tracking-wider hover:bg-lime-500/10 whitespace-nowrap shadow-xl shadow-black/10 backdrop-blur-md"
+                                >
+                                    {action.label}
+                                </button>
                             ))}
                         </div>
-                        <div className="relative flex items-end rounded-3xl border bg-background/80 backdrop-blur-xl border-border shadow-2xl focus-within:border-[#84CC16]/50 transition-all">
+                        <div className="relative flex items-end rounded-3xl border bg-card/95 backdrop-blur-2xl border-border shadow-2xl focus-within:border-[#84CC16]/50 transition-all">
                             <textarea
                                 ref={textareaRef}
                                 value={inputValue}

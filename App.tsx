@@ -83,15 +83,6 @@ const CustomAppWrapper: React.FC<AppWrapperProps> = ({ children, ...props }) => 
 };
 
 const App: React.FC = () => {
-  useEffect(() => {
-    const savedTheme = localStorage.getItem('baro-theme');
-    if (savedTheme === 'fresh') {
-      document.body.setAttribute('data-theme', 'fresh');
-    } else {
-      document.body.removeAttribute('data-theme');
-    }
-  }, []);
-
   return (
     <QueryClientProvider client={queryClient}>
       <LanguageProvider>
@@ -115,15 +106,17 @@ const App: React.FC = () => {
                     <Route path="/signup" element={<SignUp />} />
                     <Route path="/onboarding" element={<Onboarding />} />
 
-                    {/* Protected App Layer */}
-                    <Route path="/app" element={<DashboardLayoutWrapper />}>
+                    {/* App Entry Point (Role-based redirect) */}
+                    <Route path="/app">
                       <Route index element={<ProtectedRoute><AppDispatcher /></ProtectedRoute>} />
-
-                      <Route path="admin" element={
-                        <ProtectedRoute allowedRoles={['owner', 'admin' as any, 'manager']}>
-                          <AdminDashboard />
-                        </ProtectedRoute>
-                      } />
+                      
+                      {/* Sub-routes WITH Dashboard Layout */}
+                      <Route element={<DashboardLayoutWrapper />}>
+                        <Route path="admin" element={
+                          <ProtectedRoute allowedRoles={['owner', 'admin' as any, 'manager']}>
+                            <AdminDashboard />
+                          </ProtectedRoute>
+                        } />
 
                       <Route path="admin/menu" element={
                         <ProtectedRoute allowedRoles={['owner', 'admin' as any, 'manager']}>
@@ -279,6 +272,7 @@ const App: React.FC = () => {
                         </ProtectedRoute>
                       } />
                     </Route>
+                  </Route>
 
                     {/* Fallback */}
                     <Route path="*" element={<Navigate to="/" replace />} />
