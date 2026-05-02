@@ -1168,44 +1168,53 @@ const CustomerChatPage: React.FC = () => {
                 const currentOrgId = tableData.organization_id;
 
                 // Parallel fetch for remaining data (Menu, Banks, Branch Context)
-                const [menuRes, banksRes, contextRes, activeOrderRes] = await Promise.all([
-                    // 1. Fetch Menu Items (Heavy)
-                    currentOrgId ? supabase.from('view_menu_details')
+                // We wrap each in a catch to ensure the whole page doesn't crash if one fails
+                const [menuRes, banksRes, contextRes] = await Promise.all([
+                    // 1. Fetch Menu Items (Heavy) - Primary Goal
+                    (currentOrgId ? supabase.from('view_menu_details')
                         .select('*')
                         .eq('organization_id', currentOrgId)
                         .eq('is_available', true)
                         .eq(currentBranchId ? 'branch_id' : 'organization_id', currentBranchId || currentOrgId)
-                    : Promise.resolve({ data: [] }),
+                        .then(res => res)
+                        .catch(err => ({ data: null, error: err }))
+                    : Promise.resolve({ data: null, error: null })),
 
-                    // 2. Fetch Banks (Medium)
-                    currentBranchId ? supabase.from('bank_settings')
+                    // 2. Fetch Banks
+                    (currentBranchId ? supabase.from('bank_settings')
                         .select('bank_key, account_number')
                         .eq('branch_id', currentBranchId)
                         .eq('is_active', true)
-                    : Promise.resolve({ data: [] }),
+                        .then(res => res)
+                        .catch(err => ({ data: null, error: err }))
+                    : Promise.resolve({ data: null, error: null })),
 
-                    // 3. Fetch Context (Edge Function)
-                    currentBranchId ? invokeSecureFunction('get-branch-info', { branch_id: currentBranchId })
-                        .catch(() => null)
-                    : Promise.resolve(null),
-
-                    // 4. Initial Order Sync
-                    refreshActiveOrder().catch(() => null)
+                    // 3. Fetch Context (Edge Function) - Only if we have a token or session
+                    (currentBranchId && (urlToken || (await supabase.auth.getSession()).data.session) 
+                        ? invokeSecureFunction('get-branch-info', { branch_id: currentBranchId }).catch(() => null)
+                        : Promise.resolve(null))
                 ]);
 
+                // 4. Final Syncs (Parallel but separate from heavy menu load)
+                refreshActiveOrder().catch(() => null);
+
                 // Apply results
-                if (menuRes.data) {
+                if (menuRes?.data) {
                     setAllItems(menuRes.data);
                     const cats = [...new Set(menuRes.data.map((r: any) => r.category).filter(Boolean))] as string[];
                     setCategories(cats);
                 }
                 
-                if (banksRes.data) setBranchBanks(banksRes.data);
+                if (banksRes?.data) setBranchBanks(banksRes.data);
 
                 if (contextRes) {
                     if (contextRes.branch?.name) setBranchName(contextRes.branch.name);
                     if (contextRes.organization?.name) setOrgName(contextRes.organization.name);
                     if (contextRes.organization?.chatbot_logo_url) setOrgLogoUrl(contextRes.organization.chatbot_logo_url);
+                } else {
+                    // Fallback branch name if edge function fails
+                    const { data: bData } = await supabase.from('branches').select('name').eq('id', currentBranchId).maybeSingle();
+                    if (bData?.name) setBranchName(bData.name);
                 }
 
             } catch (err) {
