@@ -84,7 +84,7 @@ const TableStatus: React.FC = () => {
           // Fallback if qr_token or map positions missing
           if (error && (error.message.includes('qr_token') || error.message.includes('pos_x'))) {
             selectString = `
-              id, table_number, capacity, shape, status, branch_id, organization_id, zone, capacity_min, capacity_max,
+              id, table_number, capacity, shape, status, branch_id, organization_id, zone, capacity_min, capacity_max, qr_token,
               current_order:orders!current_order_id(id, status, payment_status, source, waiter_id, order_number),
               sessions:table_sessions(id, seated_at, is_active)
             `;
