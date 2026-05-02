@@ -1201,13 +1201,6 @@ const CustomerChatPage: React.FC = () => {
                 setIsHistoryLoading(false);
                 setIsVerifying(false);
             }
-
-            } catch (err) {
-                console.error('Bootstrap failure:', err);
-            } finally {
-                setIsHistoryLoading(false);
-                setIsVerifying(false);
-            }
         };
 
         bootstrap();
