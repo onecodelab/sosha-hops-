@@ -24,7 +24,8 @@ interface StartVerificationParams {
 
 // Primary: Your Railway-hosted verifier service
 const RAILWAY_URL = 'https://verifier-service-repo-production.up.railway.app';
-const RAILWAY_API_KEY = import.meta.env.VITE_RAILWAY_API_KEY || 'test-key-123';
+const RAW_RAILWAY_KEY = import.meta.env.VITE_RAILWAY_API_KEY || 'test-key-123';
+const RAILWAY_API_KEY = RAW_RAILWAY_KEY.includes(',') ? RAW_RAILWAY_KEY.split(',')[0].trim() : RAW_RAILWAY_KEY;
 
 // Secondary: Official @creofam/verifier API (verifyapi.leulzenebe.pro)
 // SDK uses x-api-key header and individual endpoints per bank (/verify-cbe, /verify-telebirr, etc.)
