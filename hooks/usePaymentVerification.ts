@@ -32,6 +32,11 @@ const OFFICIAL_SDK_URL = 'https://verifyapi.leulzenebe.pro';
 const RAILWAY_API_KEY = import.meta.env.VITE_RAILWAY_API_KEY || import.meta.env.VITE_VERIFIER_API_KEY || 'test-key-123';
 const LEUL_API_KEY = import.meta.env.VITE_LEUL_API_KEY || import.meta.env.VITE_VERIFIER_API_KEY || 'test-key-123';
 
+// Check if the env var points to a valid, non-dead URL
+const envUrl = import.meta.env.VITE_VERIFIER_URL || '';
+const DEAD_HOSTS = ['trycloudflare.com', 'localhost', '127.0.0.1'];
+const isEnvUrlDead = !envUrl || DEAD_HOSTS.some(dead => envUrl.includes(dead)) || envUrl === 'VITE_VERIFIER_URL';
+
 // Use env URL only if it's valid, otherwise use Railway
 const PRIMARY_URL = isEnvUrlDead ? RAILWAY_URL : envUrl;
 
