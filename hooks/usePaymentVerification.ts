@@ -164,39 +164,48 @@ export function usePaymentVerification() {
             Object.assign(payload, params.additional_data);
         }
 
-        console.log('[Verify] Attempt 1 — Railway:', `${PRIMARY_URL}/verify-payment`);
+        const keys = RAW_RAILWAY_KEY.split(',').map(k => k.trim()).filter(Boolean);
+        let lastErr: any = null;
 
-        try {
-            const response = await fetch(`${PRIMARY_URL}/verify-payment`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'x-api-key': RAILWAY_API_KEY,
-                },
-                body: JSON.stringify(payload),
-                signal: controller.signal,
-            });
+        for (const apiKey of keys) {
+            console.log(`[Verify] Attempt 1 — Railway (${apiKey.slice(0, 5)}...):`, `${PRIMARY_URL}/verify-payment`);
+            try {
+                const response = await fetch(`${PRIMARY_URL}/verify-payment`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'x-api-key': apiKey,
+                    },
+                    body: JSON.stringify(payload),
+                    signal: controller.signal,
+                });
 
-            clearTimeout(timeoutId);
+                if (response.status === 403) {
+                    console.warn(`[Verify] Railway key ${apiKey.slice(0, 5)}... rejected (403). Trying next...`);
+                    continue;
+                }
 
-            if (!response.ok) {
-                const text = await response.text().catch(() => '');
-                throw new Error(`Railway HTTP ${response.status}: ${text.slice(0, 200)}`);
+                if (!response.ok) {
+                    const text = await response.text().catch(() => '');
+                    throw new Error(`Railway HTTP ${response.status}: ${text.slice(0, 200)}`);
+                }
+
+                const data = await response.json();
+                const systemError = data?.error?.toLowerCase() || '';
+                if (data && !data.success && (systemError.includes('chrome') || systemError.includes('puppeteer') || systemError.includes('browser') || systemError.includes('eai_again'))) {
+                    throw new Error('Railway System Error: ' + systemError);
+                }
+
+                clearTimeout(timeoutId);
+                return data;
+            } catch (err: any) {
+                lastErr = err;
+                if (err.name === 'AbortError') break;
             }
-
-            const data = await response.json();
-
-            // If the Railway service itself reports a system error (puppeteer/chrome crash), fall through
-            const systemError = data?.error?.toLowerCase() || '';
-            if (data && !data.success && (systemError.includes('chrome') || systemError.includes('puppeteer') || systemError.includes('browser') || systemError.includes('eai_again'))) {
-                throw new Error('Railway System Error: ' + systemError);
-            }
-
-            return data;
-        } catch (err) {
-            clearTimeout(timeoutId);
-            throw err;
         }
+
+        clearTimeout(timeoutId);
+        throw lastErr || new Error('All Railway keys failed');
     };
 
     // ── Attempt 2: Official @creofam/verifier SDK (verifyapi.leulzenebe.pro) ──
@@ -229,15 +238,34 @@ export function usePaymentVerification() {
                 signal: controller.signal,
             });
 
-            clearTimeout(timeoutId);
-
             const raw = await response.json().catch(() => null);
+
+            // If it failed with "No PDF detected" and we sent an accountSuffix, 
+            // try one more time WITHOUT the suffix (sometimes CBE works without it)
+            if (params.payment_method === 'cbe' && (raw?.error?.includes('PDF') || !response.ok)) {
+                console.warn('[Verify] SDK failed with suffix, trying WITHOUT suffix...');
+                const retryResponse = await fetch(`${OFFICIAL_SDK_BASE}/verify-cbe`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'x-api-key': LEUL_API_KEY,
+                    },
+                    body: JSON.stringify({ reference: params.reference.trim().toUpperCase() }),
+                    signal: controller.signal,
+                });
+                const retryRaw = await retryResponse.json().catch(() => null);
+                if (retryResponse.ok && (retryRaw?.ok || retryRaw?.success)) {
+                    clearTimeout(timeoutId);
+                    return normalizeOfficialSDKResponse(retryRaw, params.payment_method, params.reference, params.expected_amount);
+                }
+            }
+
+            clearTimeout(timeoutId);
 
             if (!response.ok) {
                 throw new Error(`Official SDK HTTP ${response.status}: ${JSON.stringify(raw)?.slice(0, 200)}`);
             }
 
-            // Normalize the response to our standard shape
             return normalizeOfficialSDKResponse(raw, params.payment_method, params.reference, params.expected_amount);
         } catch (err) {
             clearTimeout(timeoutId);
