@@ -166,11 +166,12 @@ export function usePaymentVerification() {
 
         const keys = RAW_RAILWAY_KEY.split(',').map(k => k.trim()).filter(Boolean);
         let lastErr: any = null;
+        const cacheBuster = `?cb=${Date.now()}`;
 
         for (const apiKey of keys) {
-            console.log(`[Verify] Attempt 1 — Railway (${apiKey.slice(0, 5)}...):`, `${PRIMARY_URL}/verify-payment`);
+            console.log(`[Verify] Attempt 1 — Railway (${apiKey.slice(0, 5)}...):`, `${PRIMARY_URL}/verify-payment${cacheBuster}`);
             try {
-                const response = await fetch(`${PRIMARY_URL}/verify-payment`, {
+                const response = await fetch(`${PRIMARY_URL}/verify-payment${cacheBuster}`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -223,11 +224,12 @@ export function usePaymentVerification() {
 
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 20000);
+        const cacheBuster = `?cb=${Date.now()}`;
 
-        console.log('[Verify] Attempt 2 — Official SDK:', `${OFFICIAL_SDK_BASE}${request.path}`, request.body);
+        console.log('[Verify] Attempt 2 — Official SDK:', `${OFFICIAL_SDK_BASE}${request.path}${cacheBuster}`, request.body);
 
         try {
-            const response = await fetch(`${OFFICIAL_SDK_BASE}${request.path}`, {
+            const response = await fetch(`${OFFICIAL_SDK_BASE}${request.path}${cacheBuster}`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
