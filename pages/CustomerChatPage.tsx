@@ -1238,6 +1238,7 @@ const CustomerChatPage: React.FC = () => {
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const scrollRef = useRef<HTMLDivElement>(null);
     const hasInitialGreetingSent = useRef(false);
+    const sessionId = tableId ? getSessionId(tableId) : '';
 
     const generateOrderNumber = useCallback(() => {
         const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
@@ -1467,8 +1468,6 @@ const CustomerChatPage: React.FC = () => {
     useEffect(() => {
         localStorage.setItem(cartStorageKey, JSON.stringify(cart));
     }, [cart, cartStorageKey]);
-
-    const sessionId = tableId ? getSessionId(tableId) : '';
 
     const bootstrappedRef = useRef(false);
 
