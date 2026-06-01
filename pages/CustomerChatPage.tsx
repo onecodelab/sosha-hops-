@@ -98,78 +98,180 @@ const getCardTheme = (index: number) => {
     return themes[index % themes.length];
 };
 
-/* ─── MENU CAROUSEL ─── */
-const MenuCard: React.FC<{ item: MenuItem; index: number; onAdd: (item: MenuItem) => void }> = ({ item, index, onAdd }) => {
+/* ─── CATEGORY CHIP ─── */
+const CategoryChip: React.FC<{
+    label: string;
+    isActive: boolean;
+    onClick: () => void;
+}> = ({ label, isActive, onClick }) => {
     return (
-        <motion.div
-            whileHover={{ y: -5 }}
+        <button
+            onClick={onClick}
             className={cn(
-                "relative w-36 h-48 rounded-[2rem] overflow-hidden flex flex-col p-3 group transition-all duration-300",
-                getCardTheme(index)
+                "h-[40px] px-6 rounded-full text-[13px] font-medium tracking-wide transition-all duration-300 whitespace-nowrap flex items-center justify-center",
+                isActive 
+                    ? "bg-[#84CC16] text-[#FFFFFF] font-semibold shadow-md shadow-[#84CC16]/20" 
+                    : "bg-[#F1F5F9] text-[#64748B] hover:bg-[#E2E8F0] hover:text-[#0F172A]"
             )}
         >
-            <div className="absolute top-[40%] left-1/2 -translate-x-1/2 -translate-y-1/2 w-[140%] aspect-square border border-foreground/[0.04] rounded-full pointer-events-none transition-transform duration-700 group-hover:scale-110" />
-            <div className="absolute top-[40%] left-1/2 -translate-x-1/2 -translate-y-1/2 w-[180%] aspect-square border border-foreground/[0.02] rounded-full pointer-events-none transition-transform duration-1000 group-hover:scale-110" />
-            <div className="absolute top-[40%] left-1/2 -translate-x-1/2 -translate-y-1/2 w-24 h-24 bg-lime-500/20 blur-[25px] rounded-full pointer-events-none transition-opacity duration-500 group-hover:opacity-100 opacity-60" />
+            {label}
+        </button>
+    );
+};
 
-            <div className="flex-1 flex items-center justify-center relative z-10 mt-1 mb-1">
-                <div className="w-20 h-20 rounded-full p-1 border border-lime-500/30 bg-gradient-to-br from-card to-muted shadow-xl relative group-hover:border-lime-500/60 transition-colors">
-                    <div className="w-full h-full rounded-full overflow-hidden bg-background">
-                        {item.image_url ? (
-                            <img src={item.image_url} alt={item.name} className="w-full h-full object-cover scale-110" />
-                        ) : (
-                            <div className="w-full h-full flex flex-col items-center justify-center">
-                                <UtensilsCrossed className="w-6 h-6 text-muted-foreground/30" />
-                            </div>
-                        )}
+/* ─── FEATURED SPECIAL CARD (HERO) ─── */
+const FeaturedSpecialCard: React.FC<{ item: MenuItem; onAdd: (item: MenuItem) => void }> = ({ item, onAdd }) => {
+    const [imageError, setImageError] = useState(false);
+    return (
+        <motion.div
+            whileTap={{ scale: 0.98 }}
+            className="flex-none w-[280px] bg-[#FFFFFF] border border-[#E2E8F0] rounded-[24px] overflow-hidden flex flex-row group transition-all duration-300 shadow-[0_4px_20px_-4px_rgba(15,23,42,0.05)] hover:shadow-[0_12px_24px_-8px_rgba(15,23,42,0.08)] hover:border-[#84CC16]/30"
+        >
+            <div className="w-[100px] h-full bg-[#FAFAFA] relative overflow-hidden flex-shrink-0">
+                {!imageError && item.image_url ? (
+                    <motion.img 
+                        src={item.image_url} 
+                        alt={item.name} 
+                        onError={() => setImageError(true)}
+                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" 
+                    />
+                ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                        <UtensilsCrossed className="w-6 h-6 text-[#64748B]/30" />
                     </div>
+                )}
+            </div>
+            <div className="p-4 flex flex-col justify-between flex-1 min-w-0">
+                <div>
+                    <h4 className="text-[15px] font-semibold text-[#0F172A] truncate tracking-tight">{item.name}</h4>
+                    <p className="text-[12px] text-[#64748B] line-clamp-2 mt-1 leading-normal">
+                        {item.description || 'Chef\'s special selection.'}
+                    </p>
+                </div>
+                <div className="flex items-center justify-between mt-3 pt-1">
+                    <span className="text-[15px] font-bold text-[#0F172A]">
+                        ETB {item.price.toLocaleString()}
+                    </span>
+                    <button
+                        onClick={(e) => { e.stopPropagation(); onAdd(item); }}
+                        className="w-11 h-11 rounded-full bg-[#84CC16] text-[#FFFFFF] flex items-center justify-center shadow-lg shadow-[#84CC16]/20 hover:bg-[#84CC16]/90 active:scale-95 transition-all flex-shrink-0"
+                    >
+                        <Plus className="w-5 h-5 font-bold" />
+                    </button>
+                </div>
+            </div>
+        </motion.div>
+    );
+};
+
+/* ─── PRODUCT CARD ─── */
+const ProductCard: React.FC<{ item: MenuItem; onAdd: (item: MenuItem) => void }> = ({ item, onAdd }) => {
+    const [imageError, setImageError] = useState(false);
+    return (
+        <motion.div
+            whileTap={{ scale: 0.98 }}
+            className="bg-[#FFFFFF] border border-[#E2E8F0] rounded-[24px] overflow-hidden flex flex-col group transition-all duration-300 shadow-[0_4px_20px_-4px_rgba(15,23,42,0.05)] hover:shadow-[0_12px_24px_-8px_rgba(15,23,42,0.08)] hover:border-[#84CC16]/30"
+        >
+            <div className="aspect-[4/3] w-full overflow-hidden bg-[#FAFAFA] relative">
+                {!imageError && item.image_url ? (
+                    <motion.img 
+                        src={item.image_url} 
+                        alt={item.name} 
+                        onError={() => setImageError(true)}
+                        whileHover={{ scale: 1.05 }}
+                        transition={{ duration: 0.3 }}
+                        className="w-full h-full object-cover" 
+                    />
+                ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                        <UtensilsCrossed className="w-8 h-8 text-[#64748B]/30" />
+                    </div>
+                )}
+            </div>
+            <div className="p-4 flex flex-col flex-1">
+                <h3 className="text-[18px] font-semibold text-[#0F172A] line-clamp-1 mb-1 tracking-tight">
+                    {item.name}
+                </h3>
+                <p className="text-[14px] text-[#64748B] line-clamp-2 mb-3 h-10 leading-snug">
+                    {item.description || 'Delicately prepared with fresh ingredients.'}
+                </p>
+                <div className="mt-auto flex items-center justify-between pt-1">
+                    <span className="text-[20px] font-bold text-[#0F172A]">
+                        ETB {item.price.toLocaleString()}
+                    </span>
+                    <button
+                        onClick={(e) => { e.stopPropagation(); onAdd(item); }}
+                        className="w-11 h-11 rounded-full bg-[#84CC16] text-[#FFFFFF] flex items-center justify-center shadow-lg shadow-[#84CC16]/20 hover:bg-[#84CC16]/90 active:scale-95 transition-all flex-shrink-0"
+                    >
+                        <Plus className="w-5 h-5 font-bold" />
+                    </button>
+                </div>
+            </div>
+        </motion.div>
+    );
+};
+
+/* ─── MENU CARD (CHAT) ─── */
+const MenuCard: React.FC<{ item: MenuItem; index: number; onAdd: (item: MenuItem) => void }> = ({ item, index, onAdd }) => {
+    const [imageError, setImageError] = useState(false);
+    return (
+        <motion.div
+            whileHover={{ y: -4 }}
+            className="relative w-36 h-48 bg-[#FFFFFF] border border-[#E2E8F0] rounded-[24px] overflow-hidden flex flex-col p-3 shadow-sm transition-all duration-300"
+        >
+            <div className="flex-1 flex items-center justify-center relative z-10 mb-2">
+                <div className="w-16 h-16 rounded-full overflow-hidden bg-[#FAFAFA] border border-[#E2E8F0]/60 p-1 flex items-center justify-center">
+                    {!imageError && item.image_url ? (
+                        <img 
+                            src={item.image_url} 
+                            alt={item.name} 
+                            onError={() => setImageError(true)}
+                            className="w-full h-full object-cover rounded-full" 
+                        />
+                    ) : (
+                        <UtensilsCrossed className="w-6 h-6 text-[#64748B]/30" />
+                    )}
                 </div>
             </div>
 
             <div className="text-center mb-2 relative z-10 px-1">
-                <h3 className="text-foreground text-[11px] font-black leading-tight line-clamp-2 uppercase tracking-tight">
+                <h3 className="text-[#0F172A] text-[12px] font-semibold leading-tight line-clamp-2">
                     {item.name}
                 </h3>
             </div>
 
-            <div className="flex items-center justify-between relative z-10">
-                <div className="flex items-baseline gap-0.5">
-                    <span className="text-[7px] font-bold text-muted-foreground">ETB</span>
-                    <span className="text-[14px] font-black text-foreground leading-none">
-                        {item.price.toLocaleString()}
-                    </span>
-                </div>
+            <div className="flex items-center justify-between relative z-10 mt-auto">
+                <span className="text-[12px] font-bold text-[#0F172A] leading-none">
+                    ETB {item.price.toLocaleString()}
+                </span>
 
                 <button
                     onClick={() => onAdd(item)}
-                    className="h-7 px-2.5 rounded-full bg-[#84CC16] flex items-center justify-center gap-1 text-black shadow-lg shadow-lime-500/20 hover:bg-lime-500 active:scale-90 transition-all"
+                    className="w-8 h-8 rounded-full bg-[#84CC16] flex items-center justify-center text-white shadow-md shadow-[#84CC16]/20 hover:scale-105 active:scale-90 transition-all"
                 >
-                    <ShoppingBag className="w-3 h-3" />
-                    <span className="text-[9px] font-black uppercase tracking-widest">Add</span>
+                    <Plus className="w-4 h-4 font-bold" />
                 </button>
             </div>
         </motion.div>
     );
 };
 
+/* ─── MENU CAROUSEL ─── */
 const MenuCarousel: React.FC<{ items: MenuItem[]; onAddToCart: (item: MenuItem) => void; isFallback?: boolean }> = ({ items, onAddToCart, isFallback }) => {
     return (
-        <div className="w-full mt-2 -mx-1 px-1">
+        <div className="w-full mt-2">
             {isFallback && (
-                <div className="mb-3 flex items-center gap-2 px-1">
-                    <Sparkles className="w-4 h-4 text-amber-500 animate-pulse" />
-                    <span className="text-[10px] font-black uppercase tracking-widest text-amber-500/80">House Favorites For You</span>
+                <div className="mb-3 flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-[#84CC16] animate-pulse" />
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#64748B]">House Favorites For You</span>
                 </div>
             )}
-            <div className="flex gap-3 overflow-x-auto pb-4 scrollbar-hide no-scrollbar snap-x snap-mandatory">
+            <div className="flex gap-3 overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] pb-2 snap-x snap-mandatory">
                 {items.map((item, i) => (
-                    <div key={item.id} className="snap-start first:pl-2 last:pr-2">
+                    <div key={item.id} className="snap-start flex-shrink-0">
                         <MenuCard 
                             index={i}
-                            item={{
-                                ...item,
-                                demand_status: item.demand_status || (Math.random() > 0.7 ? 'High Demand' : 'Low Demand')
-                            }} 
+                            item={item} 
                             onAdd={() => onAddToCart(item)}
                         />
                     </div>
@@ -190,68 +292,74 @@ const CartDrawer: React.FC<{
 }> = ({ cart, onUpdateQty, onRemove, onPlaceOrder, onClose, isPlacing }) => {
     const total = cart.reduce((s, c) => s + c.menuItem.price * c.quantity, 0);
     return (
-        <motion.div
-            initial={{ y: '100%' }}
-            animate={{ y: 0 }}
-            exit={{ y: '100%' }}
-            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-            className="fixed inset-x-0 bottom-0 z-[100] bg-card border-t border-border rounded-t-[2.5rem] shadow-2xl max-h-[70vh] flex flex-col"
-        >
-            <div className="p-5 border-b border-border flex items-center justify-between">
-                <div>
-                    <h3 className="text-base font-black text-foreground uppercase tracking-tight">Your Cart</h3>
-                    <p className="text-[10px] text-muted-foreground font-mono uppercase tracking-widest">{cart.length} item{cart.length !== 1 ? 's' : ''}</p>
-                </div>
-                <button onClick={onClose} className="p-2 hover:bg-muted/10 rounded-full transition-all">
-                    <X className="w-5 h-5 text-muted-foreground" />
-                </button>
-            </div>
-
-            <div className="flex-1 overflow-y-auto p-5 space-y-3">
-                {cart.length === 0 ? (
-                    <div className="text-center py-10 text-muted-foreground text-sm">Your cart is empty</div>
-                ) : cart.map(c => (
-                    <div key={c.menuItem.id} className="flex items-center gap-3 p-3 bg-muted/5 border border-border rounded-2xl">
-                        {c.menuItem.image_url && (
-                            <img src={c.menuItem.image_url} alt={c.menuItem.name} className="w-12 h-12 rounded-xl object-cover" />
-                        )}
-                        <div className="flex-1 min-w-0">
-                            <p className="text-sm font-bold text-foreground truncate">{c.menuItem.name}</p>
-                            <p className="text-xs text-muted-foreground">ETB {c.menuItem.price.toLocaleString()}</p>
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <button onClick={() => c.quantity <= 1 ? onRemove(c.menuItem.id) : onUpdateQty(c.menuItem.id, -1)}
-                                className="w-7 h-7 rounded-full bg-muted/10 border border-border flex items-center justify-center text-foreground text-sm font-bold hover:bg-red-500/10 hover:text-red-500 transition-all"
-                            >−</button>
-                            <span className="text-sm font-black w-5 text-center">{c.quantity}</span>
-                            <button onClick={() => onUpdateQty(c.menuItem.id, 1)}
-                                className="w-7 h-7 rounded-full bg-lime-500/20 border border-lime-500/30 flex items-center justify-center text-lime-500 text-sm font-bold hover:bg-lime-500/30 transition-all"
-                            >+</button>
-                        </div>
+        <div className="fixed inset-0 z-[100] flex flex-col justify-end bg-black/40 backdrop-blur-sm">
+            <div className="absolute inset-0 z-0" onClick={onClose} />
+            <motion.div
+                initial={{ y: '100%' }}
+                animate={{ y: 0 }}
+                exit={{ y: '100%' }}
+                transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+                className="relative z-10 w-full max-w-md mx-auto bg-[#FFFFFF] border-t border-[#E2E8F0] rounded-t-[24px] shadow-[0_-8px_30px_rgba(15,23,42,0.08)] max-h-[80vh] flex flex-col"
+            >
+                <div className="w-12 h-1 bg-[#E2E8F0] rounded-full mx-auto my-3 flex-shrink-0" />
+                <div className="px-6 pb-4 flex items-center justify-between border-b border-[#E2E8F0]">
+                    <div>
+                        <h3 className="text-[18px] font-bold text-[#0F172A]">Your Cart</h3>
+                        <p className="text-[12px] text-[#64748B] font-medium">{cart.length} item{cart.length !== 1 ? 's' : ''}</p>
                     </div>
-                ))}
-            </div>
-
-            {cart.length > 0 && (
-                <div className="p-5 border-t border-border space-y-3">
-                    <div className="flex justify-between items-center">
-                        <span className="text-sm text-muted-foreground font-bold uppercase tracking-widest">Total</span>
-                        <span className="text-xl font-black text-foreground">ETB {total.toLocaleString()}</span>
-                    </div>
-                    <button
-                        onClick={onPlaceOrder}
-                        disabled={isPlacing}
-                        className="w-full h-14 rounded-2xl bg-[#84CC16] text-black font-black uppercase tracking-wider text-sm shadow-lg shadow-lime-500/30 hover:bg-lime-500 active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-2"
-                    >
-                        {isPlacing ? <Loader2 className="w-5 h-5 animate-spin" /> : <ShoppingBag className="w-5 h-5" />}
-                        {isPlacing ? 'Placing Order...' : 'Place Order'}
+                    <button onClick={onClose} className="p-2 bg-[#FAFAFA] hover:bg-[#F1F5F9] rounded-full transition-all border border-[#E2E8F0]">
+                        <X className="w-4 h-4 text-[#64748B]" />
                     </button>
                 </div>
-            )}
-        </motion.div>
+
+                <div className="flex-1 overflow-y-auto p-6 space-y-4 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                    {cart.length === 0 ? (
+                        <div className="text-center py-12 flex flex-col items-center opacity-60">
+                            <ShoppingBag className="w-12 h-12 mb-4 text-[#64748B]" />
+                            <div className="text-[#64748B] text-sm font-bold uppercase tracking-wider">Your cart is empty</div>
+                        </div>
+                    ) : cart.map(c => (
+                        <div key={c.menuItem.id} className="flex items-center gap-4 p-3 bg-[#FAFAFA] border border-[#E2E8F0] rounded-[16px] shadow-sm">
+                            {c.menuItem.image_url && (
+                                <img src={c.menuItem.image_url} alt={c.menuItem.name} className="w-16 h-16 rounded-[12px] object-cover shadow-sm" />
+                            )}
+                            <div className="flex-1 min-w-0 py-1">
+                                <p className="text-[14px] font-semibold text-[#0F172A] truncate mb-0.5">{c.menuItem.name}</p>
+                                <p className="text-[12px] font-bold text-[#84CC16]">ETB {c.menuItem.price.toLocaleString()}</p>
+                            </div>
+                            <div className="flex items-center gap-3 bg-[#FFFFFF] rounded-full p-1 border border-[#E2E8F0]">
+                                <button onClick={() => c.quantity <= 1 ? onRemove(c.menuItem.id) : onUpdateQty(c.menuItem.id, -1)}
+                                    className="w-8 h-8 rounded-full bg-[#FAFAFA] flex items-center justify-center text-[#0F172A] text-sm font-bold hover:bg-red-500/10 hover:text-red-500 transition-all border border-[#E2E8F0]/40"
+                                >−</button>
+                                <span className="text-sm font-bold w-3 text-center text-[#0F172A]">{c.quantity}</span>
+                                <button onClick={() => onUpdateQty(c.menuItem.id, 1)}
+                                    className="w-8 h-8 rounded-full bg-[#84CC16] flex items-center justify-center text-white text-sm font-bold shadow-md shadow-[#84CC16]/20 hover:scale-105 active:scale-95 transition-all"
+                                >+</button>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+
+                {cart.length > 0 && (
+                    <div className="p-6 bg-[#FAFAFA] border-t border-[#E2E8F0] space-y-4 pb-8 rounded-b-[24px]">
+                        <div className="flex justify-between items-center px-2">
+                            <span className="text-xs text-[#64748B] font-bold uppercase tracking-wider">Total Amount</span>
+                            <span className="text-xl font-bold text-[#0F172A] tracking-tight">ETB {total.toLocaleString()}</span>
+                        </div>
+                        <button
+                            onClick={onPlaceOrder}
+                            disabled={isPlacing}
+                            className="w-full h-12 rounded-full bg-[#84CC16] text-[#FFFFFF] font-bold uppercase tracking-wider text-sm shadow-md shadow-[#84CC16]/20 hover:bg-[#84CC16]/90 active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-3"
+                        >
+                            {isPlacing ? <Loader2 className="w-5 h-5 animate-spin" /> : <ShoppingBag className="w-5 h-5" />}
+                            {isPlacing ? 'Placing Order...' : 'Place Order'}
+                        </button>
+                    </div>
+                )}
+            </motion.div>
+        </div>
     );
 };
-
 
 const ORDER_STATUS_MAP: Record<string, string> = {
     'pending': 'placed',
@@ -273,6 +381,7 @@ const BANK_DISPLAY: Record<string, { name: string; logo?: string }> = {
     'hibret':    { name: 'Hibret' },
 };
 
+/* ─── PAYMENT CARD ─── */
 const PaymentCard: React.FC<{
     orderId: string;
     orderNumber: string;
@@ -329,7 +438,7 @@ const PaymentCard: React.FC<{
                 return;
             }
 
-        setPaymentStatus('verified');
+            setPaymentStatus('verified');
             showToast('Payment verified! ✅', 'success');
             setTimeout(() => onPaymentSubmitted(), 2500);
         } catch (err: any) {
@@ -342,39 +451,39 @@ const PaymentCard: React.FC<{
 
     if (paymentStatus === 'verified') {
         return (
-            <div className="p-5 rounded-2xl bg-card border border-emerald-500/30 text-center space-y-1">
-                <CheckCircle2 className="w-10 h-10 text-emerald-500 mx-auto mb-2" />
-                <p className="text-sm font-bold text-foreground">Payment Verified! 🎉</p>
-                <p className="text-[10px] text-muted-foreground">Table session closing… Thank you for dining with us 💚</p>
+            <div className="p-6 rounded-[24px] bg-[#FFFFFF] border border-[#22C55E]/30 text-center space-y-2">
+                <CheckCircle2 className="w-10 h-10 text-[#22C55E] mx-auto mb-2" />
+                <p className="text-sm font-bold text-[#0F172A]">Payment Verified! 🎉</p>
+                <p className="text-[12px] text-[#64748B]">Table session closing… Thank you for dining with us 💚</p>
             </div>
         );
     }
 
     if (paymentStatus === 'failed' || paymentStatus === 'error') {
         return (
-            <div className="p-4 rounded-2xl bg-card border border-red-500/30 space-y-3">
+            <div className="p-6 rounded-[24px] bg-[#FFFFFF] border border-red-200 space-y-4">
                 <div className="text-center">
-                    <X className="w-8 h-8 text-red-500 mx-auto mb-1" />
-                    <p className="text-sm font-bold text-foreground">Verification Failed</p>
-                    <p className="text-[10px] text-muted-foreground mt-1 leading-relaxed">{lastError || 'Reference not valid. Check the ref number and try again.'}</p>
+                    <X className="w-10 h-10 text-red-500 mx-auto mb-2" />
+                    <p className="text-[16px] font-bold text-[#0F172A]">Verification Failed</p>
+                    <p className="text-[12px] text-[#64748B] mt-1 leading-relaxed">{lastError || 'Reference not valid. Check the ref number and try again.'}</p>
                     {lastVerifiedContext && (
-                        <div className="mt-2 p-2 rounded-lg bg-red-500/5 border border-red-500/10 inline-block">
-                             <p className="text-[9px] text-red-400 font-black uppercase tracking-tighter">
+                        <div className="mt-2 p-2 rounded-xl bg-red-50 border border-red-100 inline-block">
+                             <p className="text-[10px] text-red-600 font-bold uppercase tracking-tighter">
                                 Verified Target: {BANK_DISPLAY[lastVerifiedContext.bank]?.name || lastVerifiedContext.bank} ({lastVerifiedContext.account})
                              </p>
                         </div>
                     )}
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-3">
                     <button
                         onClick={() => { setPaymentStatus('idle'); setRefNumber(''); setStep('enter_ref'); }}
-                        className="flex-1 h-10 rounded-xl border border-border text-xs font-bold text-foreground hover:bg-muted/10 transition-all"
+                        className="flex-1 h-11 rounded-full border border-[#E2E8F0] text-[13px] font-semibold text-[#0F172A] bg-[#FAFAFA] hover:bg-[#F1F5F9] transition-all"
                     >
                         Try Again
                     </button>
                     <button
                         onClick={() => showToast('Waiter notified! 🙋 Please wait.', 'success')}
-                        className="flex-1 h-10 rounded-xl bg-amber-500 text-black text-xs font-bold hover:bg-amber-400 transition-all"
+                        className="flex-1 h-11 rounded-full bg-[#84CC16] text-[#0F172A] text-[13px] font-semibold shadow-md shadow-[#84CC16]/20 hover:bg-[#84CC16]/90 transition-all"
                     >
                         🙋 Call Waiter
                     </button>
@@ -385,35 +494,35 @@ const PaymentCard: React.FC<{
 
     if (paymentStatus === 'verifying') {
         return (
-            <div className="p-5 rounded-2xl bg-card border border-lime-500/20 text-center space-y-1">
-                <Loader2 className="w-8 h-8 text-lime-500 mx-auto mb-2 animate-spin" />
-                <p className="text-sm font-bold text-foreground">Verifying payment...</p>
-                <p className="text-[10px] text-muted-foreground">Checking your reference — almost done!</p>
+            <div className="p-6 rounded-[24px] bg-[#FFFFFF] border border-[#84CC16]/30 text-center space-y-2">
+                <Loader2 className="w-8 h-8 text-[#84CC16] mx-auto mb-2 animate-spin" />
+                <p className="text-sm font-bold text-[#0F172A]">Verifying payment...</p>
+                <p className="text-[12px] text-[#64748B]">Checking your reference — almost done!</p>
             </div>
         );
     }
 
     return (
-        <div className="p-4 rounded-2xl bg-card border border-border space-y-4">
+        <div className="p-6 rounded-[24px] bg-[#FFFFFF] border border-[#E2E8F0] space-y-5 shadow-sm">
             <div className="flex justify-between items-center">
                 <div>
-                    <p className="text-[10px] font-black uppercase tracking-widest text-amber-500">Your Bill</p>
-                    <p className="text-[10px] font-mono text-muted-foreground">#{orderNumber}</p>
+                    <p className="text-[10px] font-black uppercase tracking-wider text-[#84CC16]">Your Bill</p>
+                    <p className="text-[12px] font-mono text-[#64748B]">#{orderNumber}</p>
                 </div>
-                <p className="text-2xl font-black text-foreground">ETB {total.toLocaleString()}</p>
+                <p className="text-[22px] font-bold text-[#0F172A]">ETB {total.toLocaleString()}</p>
             </div>
 
             {step === 'select_bank' && (
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-2">
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Pay with</p>
-                    <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-3">
+                    <p className="text-[11px] font-bold uppercase tracking-wider text-[#64748B]">Pay with</p>
+                    <div className="flex gap-2 overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] pb-1">
                         {banks.map(bank => {
                             const display = BANK_DISPLAY[bank.bank_key] || { name: bank.bank_key };
                             return (
                                 <button
                                     key={bank.bank_key}
                                     onClick={() => handleSelectBank(bank)}
-                                    className="flex-none px-4 py-2.5 rounded-xl text-[11px] font-bold uppercase tracking-wider border border-border text-muted-foreground hover:border-lime-500/50 hover:text-lime-400 transition-all"
+                                    className="flex-none px-4 py-2.5 rounded-full text-[12px] font-semibold border border-[#E2E8F0] text-[#64748B] bg-[#FAFAFA] hover:border-[#84CC16] hover:text-[#0F172A] hover:bg-[#FFFFFF] transition-all"
                                 >
                                     {display.name}
                                 </button>
@@ -424,48 +533,48 @@ const PaymentCard: React.FC<{
             )}
 
             {step === 'send_payment' && (
-                <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="space-y-3">
-                    <div className="p-3 rounded-xl bg-lime-500/5 border border-lime-500/20 space-y-1">
-                        <p className="text-[10px] font-bold uppercase tracking-widest text-lime-400">Send to</p>
-                        <p className="text-lg font-black text-foreground font-mono tracking-widest">{selectedAccount}</p>
-                        <p className="text-[10px] text-muted-foreground">{BANK_DISPLAY[selectedBank]?.name} • ETB {total.toLocaleString()}</p>
+                <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
+                    <div className="p-4 rounded-2xl bg-[#FAFAFA] border border-[#E2E8F0] space-y-1">
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-[#84CC16]">Send to</p>
+                        <p className="text-[18px] font-bold text-[#0F172A] font-mono tracking-wider">{selectedAccount}</p>
+                        <p className="text-[12px] text-[#64748B]">{BANK_DISPLAY[selectedBank]?.name} • ETB {total.toLocaleString()}</p>
                     </div>
-                    <p className="text-[11px] text-muted-foreground leading-relaxed">
-                        📱 Open your <strong>{BANK_DISPLAY[selectedBank]?.name}</strong> app, send the exact amount, then come back with the <strong>transaction reference</strong> from your receipt.
+                    <p className="text-[12px] text-[#64748B] leading-relaxed">
+                        Open your <strong>{BANK_DISPLAY[selectedBank]?.name}</strong> app, send the exact amount, then come back with the <strong>transaction reference</strong>.
                     </p>
                     <button
                         onClick={() => setStep('enter_ref')}
-                        className="w-full h-11 rounded-xl bg-[#84CC16] text-black font-black uppercase tracking-wider text-sm hover:bg-lime-500 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                        className="w-full h-11 rounded-full bg-[#84CC16] text-[#0F172A] font-bold uppercase tracking-wider text-xs shadow-md shadow-[#84CC16]/20 hover:bg-[#84CC16]/90 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
                     >
                         <Receipt className="w-4 h-4" /> I've Sent It — Enter Reference
                     </button>
-                    <button onClick={() => setStep('select_bank')} className="w-full text-center text-[10px] text-muted-foreground hover:text-foreground transition-colors">
+                    <button onClick={() => setStep('select_bank')} className="w-full text-center text-[11px] text-[#64748B] hover:text-[#0F172A] transition-colors">
                         ← Change payment method
                     </button>
                 </motion.div>
             )}
 
             {step === 'enter_ref' && (
-                <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="space-y-3">
-                    <p className="text-[10px] text-muted-foreground">Paste the <strong>transaction reference / REFID</strong> from your {BANK_DISPLAY[selectedBank]?.name} receipt:</p>
+                <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
+                    <p className="text-[12px] text-[#64748B]">Paste the <strong>transaction reference / REFID</strong> from your receipt:</p>
                     <input
                         type="text"
                         value={refNumber}
                         onChange={e => setRefNumber(e.target.value)}
                         onKeyDown={e => e.key === 'Enter' && handleVerify()}
                         placeholder="e.g. TT2503250001234"
-                        className="w-full h-12 px-4 rounded-xl bg-muted/5 border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-lime-500/50 transition-colors font-mono"
+                        className="w-full h-12 px-4 rounded-xl bg-[#FAFAFA] border border-[#E2E8F0] text-sm text-[#0F172A] placeholder:text-[#64748B]/50 focus:outline-none focus:border-[#84CC16] focus:bg-[#FFFFFF] transition-all font-mono"
                         autoFocus
                     />
                     <button
                         onClick={handleVerify}
                         disabled={!refNumber.trim() || isVerifying}
-                        className="w-full h-12 rounded-xl bg-[#84CC16] text-black font-black uppercase tracking-wider text-sm shadow-lg shadow-lime-500/30 hover:bg-lime-500 active:scale-[0.98] transition-all disabled:opacity-40 flex items-center justify-center gap-2"
+                        className="w-full h-12 rounded-full bg-[#84CC16] text-[#0F172A] font-bold uppercase tracking-wider text-xs shadow-md shadow-[#84CC16]/20 hover:bg-[#84CC16]/90 active:scale-[0.98] transition-all disabled:opacity-40 flex items-center justify-center gap-2"
                     >
                         {isVerifying ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
                         {isVerifying ? 'Verifying...' : 'Confirm Payment'}
                     </button>
-                    <button onClick={() => setStep('send_payment')} className="w-full text-center text-[10px] text-muted-foreground hover:text-foreground transition-colors">
+                    <button onClick={() => setStep('send_payment')} className="w-full text-center text-[11px] text-[#64748B] hover:text-[#0F172A] transition-colors">
                         ← Back
                     </button>
                 </motion.div>
@@ -474,6 +583,7 @@ const PaymentCard: React.FC<{
     );
 };
 
+/* ─── STEPPER NAV / TRACKING ─── */
 const StepperNav: React.FC<{ children: React.ReactNode }> = ({ children }) => (
     <div className="flex w-full items-start justify-between relative">{children}</div>
 );
@@ -489,8 +599,8 @@ const StepperItem: React.FC<{
         {children}
         {!isLast && (
             <div className={cn(
-                "absolute top-3.5 left-[calc(50%+1rem)] right-[-1rem] h-[1.5px] z-0 transition-colors duration-500",
-                completed ? "bg-[#84CC16]" : "bg-white/5"
+                "absolute top-3.5 left-[calc(50%+1rem)] right-[-1rem] h-[2px] z-0 transition-colors duration-500",
+                completed ? "bg-[#84CC16]" : "bg-[#E2E8F0]"
             )} />
         )}
     </div>
@@ -502,10 +612,10 @@ const StepperIndicator: React.FC<{
     children: React.ReactNode 
 }> = ({ active, completed, children }) => (
     <div className={cn(
-        "w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-black z-10 transition-all duration-500 border",
-        completed ? "bg-[#84CC16] border-[#84CC16] text-black shadow-[0_0_15px_rgba(132,204,22,0.3)]" :
-        active ? "bg-black border-lime-500/50 text-lime-400 ring-4 ring-lime-500/10 shadow-[0_0_15px_rgba(132,204,22,0.4)]" :
-        "bg-[#0A0A0A] border-white/5 text-muted-foreground"
+        "w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold z-10 transition-all duration-500 border",
+        completed ? "bg-[#84CC16] border-[#84CC16] text-white shadow-sm" :
+        active ? "bg-white border-[#84CC16] text-[#84CC16] ring-4 ring-[#84CC16]/10" :
+        "bg-[#FAFAFA] border-[#E2E8F0] text-[#64748B]"
     )}>
         {completed ? <CheckCircle2 className="w-3.5 h-3.5" /> : children}
     </div>
@@ -527,23 +637,23 @@ const TrackingWidget: React.FC<{ status: 'placed' | 'preparing' | 'ready' | 'del
             {compact && (
                 <div 
                     onClick={() => setIsExpanded(!isExpanded)}
-                    className="flex flex-row items-center justify-between cursor-pointer rounded-2xl bg-muted/5 border border-border px-4 py-3 hover:bg-muted/10 transition-colors shadow-sm"
+                    className="flex flex-row items-center justify-between cursor-pointer rounded-2xl bg-[#FAFAFA] border border-[#E2E8F0] px-4 py-3 hover:bg-[#F1F5F9] transition-colors shadow-sm"
                 >
                     <div className="flex items-center gap-4">
                         <div className="relative flex h-3 w-3">
-                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-lime-400 opacity-75"></span>
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#84CC16] opacity-75"></span>
                             <span className="relative inline-flex rounded-full h-3 w-3 bg-[#84CC16]"></span>
                         </div>
                         <div className="flex flex-col">
-                            <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest leading-none mb-1">Status</span>
-                            <span className="text-[11px] font-black text-foreground uppercase tracking-wide leading-none">{activeStage.title}</span>
+                            <span className="text-[9px] font-bold text-[#64748B] uppercase tracking-wider leading-none mb-1">Status</span>
+                            <span className="text-[11px] font-bold text-[#0F172A] uppercase tracking-wide leading-none">{activeStage.title}</span>
                         </div>
                     </div>
                     
                     <div className="flex items-center gap-3">
-                        {orderNumber && <span className="text-[10px] font-bold uppercase tracking-widest text-[#84CC16] bg-lime-500/10 border border-lime-500/20 px-2 py-1 rounded-md">#{orderNumber}</span>}
-                        <div className={cn("w-6 h-6 rounded-full bg-muted/10 flex items-center justify-center transition-transform duration-300", isExpanded ? "rotate-180" : "rotate-0")}>
-                            <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                        {orderNumber && <span className="text-[10px] font-bold uppercase tracking-wider text-[#84CC16] bg-[#84CC16]/10 border border-[#84CC16]/20 px-2 py-1 rounded-md">#{orderNumber}</span>}
+                        <div className={cn("w-6 h-6 rounded-full bg-[#E2E8F0]/50 flex items-center justify-center transition-transform duration-300", isExpanded ? "rotate-180" : "rotate-0")}>
+                            <ChevronDown className="w-4 h-4 text-[#64748B]" />
                         </div>
                     </div>
                 </div>
@@ -571,12 +681,12 @@ const TrackingWidget: React.FC<{ status: 'placed' | 'preparing' | 'ready' | 'del
                                             </StepperIndicator>
                                             <div className="text-center">
                                                 <p className={cn(
-                                                    "text-[9px] font-black uppercase tracking-tight transition-colors duration-500",
-                                                    active ? "text-foreground" : completed ? "text-[#84CC16]" : "text-muted-foreground"
+                                                    "text-[10px] font-bold uppercase tracking-tight transition-colors duration-500",
+                                                    active ? "text-[#0F172A]" : completed ? "text-[#84CC16]" : "text-[#64748B]"
                                                 )}>
                                                     {stage.title}
                                                 </p>
-                                                <p className="text-[7px] text-muted-foreground/50 font-medium uppercase tracking-[0.05em] mt-0.5 leading-none">
+                                                <p className="text-[8px] text-[#64748B]/70 font-medium uppercase tracking-[0.05em] mt-0.5 leading-none">
                                                     {stage.desc}
                                                 </p>
                                             </div>
@@ -592,36 +702,37 @@ const TrackingWidget: React.FC<{ status: 'placed' | 'preparing' | 'ready' | 'del
     );
 };
 
+/* ─── BILL SPLITTER ─── */
 const BillSplitter: React.FC<{ total: number }> = ({ total }) => {
     const [people, setPeople] = useState(2);
     return (
-        <div className="mt-4 p-5 rounded-3xl bg-gradient-to-br from-amber-500/10 to-amber-600/5 border border-amber-500/20 w-full max-w-xs">
+        <div className="mt-4 p-5 rounded-[24px] bg-[#FFFFFF] border border-[#E2E8F0] w-full max-w-sm shadow-sm">
             <div className="flex items-center gap-2 mb-4">
-                <Users className="w-4 h-4 text-amber-500" />
-                <span className="text-[10px] font-black uppercase tracking-widest text-amber-500">Bill Splitter</span>
+                <Users className="w-4 h-4 text-[#84CC16]" />
+                <span className="text-[11px] font-bold uppercase tracking-wider text-[#64748B]">Bill Splitter</span>
             </div>
 
             <div className="space-y-4">
                 <div className="flex justify-between items-end">
                     <div>
-                        <p className="text-[10px] text-gray-500 uppercase mb-1">Total Bill</p>
-                        <p className="text-xl font-bold">ETB {total.toLocaleString()}</p>
+                        <p className="text-[10px] text-[#64748B] uppercase tracking-wide mb-1">Total Bill</p>
+                        <p className="text-lg font-bold text-[#0F172A]">ETB {total.toLocaleString()}</p>
                     </div>
                     <div className="text-right">
-                        <p className="text-[10px] text-gray-500 uppercase mb-1">Each Pays</p>
-                        <p className="text-xl font-bold text-amber-500">ETB {Math.round(total / people).toLocaleString()}</p>
+                        <p className="text-[10px] text-[#64748B] uppercase tracking-wide mb-1">Each Pays</p>
+                        <p className="text-lg font-bold text-[#84CC16]">ETB {Math.round(total / people).toLocaleString()}</p>
                     </div>
                 </div>
 
-                <div className="pt-4 border-t border-border/10">
+                <div className="pt-4 border-t border-[#E2E8F0]">
                     <div className="flex justify-between items-center mb-2">
-                        <span className="text-xs text-muted-foreground">Number of People</span>
-                        <span className="text-lg font-bold text-foreground">{people}</span>
+                        <span className="text-xs text-[#64748B] font-medium">Number of People</span>
+                        <span className="text-[16px] font-bold text-[#0F172A]">{people}</span>
                     </div>
                     <input
                         type="range" min="2" max="12" step="1"
                         value={people} onChange={(e) => setPeople(parseInt(e.target.value))}
-                        className="w-full accent-amber-500 bg-muted/10 rounded-lg appearance-none h-1.5"
+                        className="w-full accent-[#84CC16] bg-[#F1F5F9] rounded-lg appearance-none h-1.5 cursor-pointer"
                     />
                 </div>
             </div>
@@ -629,21 +740,22 @@ const BillSplitter: React.FC<{ total: number }> = ({ total }) => {
     );
 };
 
+/* ─── STAR RATING ─── */
 const StarRating: React.FC = () => {
     const [rating, setRating] = useState(0);
     const [hover, setHover] = useState(0);
     const [submitted, setSubmitted] = useState(false);
 
     if (submitted) return (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mt-3 text-xs text-lime-500 font-bold flex items-center gap-2">
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mt-3 text-xs text-[#22C55E] font-bold flex items-center gap-2">
             <CheckCircle2 className="w-4 h-4" /> Thanks for your feedback!
         </motion.div>
     );
 
     return (
-        <div className="mt-4 p-4 rounded-2xl bg-card border border-border inline-block">
-            <p className="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-3 text-center">Rate your experience</p>
-            <div className="flex gap-2">
+        <div className="mt-4 p-4 rounded-[16px] bg-[#FFFFFF] border border-[#E2E8F0] inline-block shadow-sm">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-[#64748B] mb-3 text-center">Rate your experience</p>
+            <div className="flex gap-2 justify-center">
                 {[1, 2, 3, 4, 5].map((star) => (
                     <button
                         key={star}
@@ -655,7 +767,7 @@ const StarRating: React.FC = () => {
                         <Star
                             className={cn(
                                 "w-6 h-6 transition-colors",
-                                (hover || rating) >= star ? "fill-amber-500 text-amber-500" : "text-gray-700"
+                                (hover || rating) >= star ? "fill-[#84CC16] text-[#84CC16]" : "text-[#E2E8F0]"
                             )}
                         />
                     </button>
@@ -665,43 +777,36 @@ const StarRating: React.FC = () => {
     );
 };
 
-/* ─── NEW UBER-LIKE UI COMPONENTS ─── */
-const UberMenuCard: React.FC<{ item: MenuItem; onAdd: (item: MenuItem) => void }> = ({ item, onAdd }) => {
-    return (
-        <motion.div
-            whileTap={{ scale: 0.98 }}
-            className="bg-card border border-border rounded-2xl overflow-hidden flex flex-col group transition-all duration-300 touch-pan-y"
-        >
-            <div className="aspect-square relative overflow-hidden bg-muted/5">
-                {item.image_url ? (
-                    <img src={item.image_url} alt={item.name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
-                ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                        <UtensilsCrossed className="w-10 h-10 text-muted-foreground/20" />
-                    </div>
-                )}
-                <button
-                    onClick={(e) => { e.stopPropagation(); onAdd(item); }}
-                    className="absolute bottom-3 right-3 w-10 h-10 rounded-full bg-[#84CC16] text-black shadow-lg flex items-center justify-center hover:scale-110 active:scale-95 transition-transform"
-                >
-                    <Plus className="w-5 h-5" />
-                </button>
-            </div>
-            <div className="p-4 flex flex-col flex-1">
-                <h3 className="text-sm font-bold text-[#84CC16] line-clamp-1 mb-1">{item.name}</h3>
-                <p className="text-[10px] text-muted-foreground line-clamp-2 mb-2 h-7">{item.description}</p>
-                <div className="mt-auto flex items-center justify-between">
-                    <span className="text-sm font-black text-foreground">ETB {item.price.toLocaleString()}</span>
-                    <div className="flex items-center gap-1">
-                        <Star className="w-3 h-3 fill-amber-500 text-amber-500" />
-                        <span className="text-[10px] font-bold text-muted-foreground">5.0</span>
-                    </div>
-                </div>
-            </div>
-        </motion.div>
-    );
-};
+/* ─── ACTION BUTTONS / PILLS ─── */
+const ActionButtons: React.FC<{ buttons: { label: string; prompt: string }[]; onAction: (p: string) => void }> = ({ buttons, onAction }) => (
+    <div className="flex gap-2 overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] py-1">
+        {buttons.map((btn, i) => (
+            <button
+                key={i}
+                onClick={() => onAction(btn.prompt)}
+                className="flex-none px-4 py-2 rounded-full border border-[#E2E8F0] bg-[#FFFFFF] text-[#0F172A] text-[12px] font-medium hover:border-[#84CC16] hover:text-[#84CC16] transition-all whitespace-nowrap shadow-sm"
+            >
+                {btn.label}
+            </button>
+        ))}
+    </div>
+);
 
+const CategoryPills: React.FC<{ pills: string[]; onSelect: (p: string) => void }> = ({ pills, onSelect }) => (
+    <div className="flex flex-wrap gap-1.5 mt-2">
+        {pills.map((pill, i) => (
+            <button
+                key={i}
+                onClick={() => onSelect(`Show me ${pill}`)}
+                className="px-3 py-1 rounded-full bg-[#FAFAFA] border border-[#E2E8F0] text-[11px] font-medium text-[#64748B] hover:border-[#84CC16] hover:text-[#84CC16] transition-all"
+            >
+                {pill}
+            </button>
+        ))}
+    </div>
+);
+
+/* ─── MENU VIEW ─── */
 const MenuView: React.FC<{
     items: MenuItem[];
     categories: string[];
@@ -713,45 +818,53 @@ const MenuView: React.FC<{
         ? items 
         : items.filter(item => item.category === activeCategory);
 
+    const specials = items.slice(0, 4);
+
     return (
-        <div className="flex-1 overflow-y-auto pb-32 pt-6 no-scrollbar">
+        <div className="flex-1 overflow-y-auto pb-32 pt-6 bg-[#FAFAFA] [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
             {/* Categories */}
-            <div className="flex gap-2 overflow-x-auto no-scrollbar px-4 mb-8">
-                <button
+            <div className="flex gap-2.5 overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] px-6 mb-6">
+                <CategoryChip
+                    label="All"
+                    isActive={activeCategory === 'All'}
                     onClick={() => onCategoryChange('All')}
-                    className={cn(
-                        "px-6 py-3 rounded-full text-[10px] font-black uppercase tracking-widest transition-all shadow-lg shadow-black/20",
-                        activeCategory === 'All' ? "bg-[#84CC16] text-black" : "bg-card border border-border text-muted-foreground"
-                    )}
-                >
-                    All Type
-                </button>
+                />
                 {categories.map(cat => (
-                    <button
+                    <CategoryChip
                         key={cat}
+                        label={cat}
+                        isActive={activeCategory === cat}
                         onClick={() => onCategoryChange(cat)}
-                        className={cn(
-                            "px-6 py-3 rounded-full text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap shadow-lg shadow-black/20",
-                            activeCategory === cat ? "bg-[#84CC16] text-black" : "bg-card border border-border text-muted-foreground"
-                        )}
-                    >
-                        {cat}
-                    </button>
+                    />
                 ))}
             </div>
 
-            {/* Menu Grid */}
-            <div className="px-4 mb-12">
-                <div className="flex items-center justify-between mb-6">
-                    <div className="flex flex-col">
-                        <h3 className="text-xl font-black text-foreground uppercase tracking-tight">Best Choice</h3>
-                        <div className="w-8 h-1 bg-[#84CC16] rounded-full mt-1" />
+            {/* Hero Specials Section */}
+            {specials.length > 0 && (
+                <div className="mb-8">
+                    <div className="px-6 mb-3">
+                        <h3 className="text-[18px] font-bold text-[#0F172A] tracking-tight">Today's Specials</h3>
+                        <p className="text-[12px] text-[#64748B]">Handpicked delicacies for you today</p>
                     </div>
-                    <button className="text-[10px] text-muted-foreground uppercase font-black tracking-widest px-3 py-1.5 rounded-full border border-border hover:bg-white/5 transition-colors">See all</button>
+                    <div className="flex gap-4 overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] px-6 pb-2 snap-x snap-mandatory">
+                        {specials.map(item => (
+                            <div key={`special-${item.id}`} className="snap-start flex-shrink-0">
+                                <FeaturedSpecialCard item={item} onAdd={onAddToCart} />
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {/* Menu Grid */}
+            <div className="px-6 mb-12">
+                <div className="mb-6">
+                    <h3 className="text-[28px] font-bold text-[#0F172A] tracking-tight leading-tight">Best Choice</h3>
+                    <p className="text-[14px] text-[#64748B]">Most ordered by customers today</p>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                     {filteredItems.map(item => (
-                        <UberMenuCard key={item.id} item={item} onAdd={onAddToCart} />
+                        <ProductCard key={item.id} item={item} onAdd={onAddToCart} />
                     ))}
                 </div>
             </div>
@@ -759,73 +872,162 @@ const MenuView: React.FC<{
     );
 });
 
-const TrackingView: React.FC<{ activeOrder: ActiveOrder | null; refreshOrder: () => void }> = ({ activeOrder, refreshOrder }) => {
+/* ─── CHAT VIEW ─── */
+const ChatView: React.FC<{
+    messages: ChatMessage[];
+    inputValue: string;
+    setInputValue: (val: string) => void;
+    isTyping: boolean;
+    hasInteracted: boolean;
+    dynamicPrompts: { label: string; prompt: string }[];
+    handleSend: (overrideMessage?: string) => void;
+    onAddToCart: (item: MenuItem) => void;
+    textareaRef: React.RefObject<HTMLTextAreaElement>;
+    scrollRef: React.RefObject<HTMLDivElement>;
+}> = ({
+    messages,
+    inputValue,
+    setInputValue,
+    isTyping,
+    hasInteracted,
+    dynamicPrompts,
+    handleSend,
+    onAddToCart,
+    textareaRef,
+    scrollRef
+}) => {
+    useEffect(() => {
+        if (textareaRef.current) {
+            textareaRef.current.style.height = 'auto';
+            textareaRef.current.style.height = Math.min(textareaRef.current.scrollHeight, 120) + 'px';
+        }
+    }, [inputValue, textareaRef]);
+
+    useEffect(() => {
+        if (scrollRef.current) {
+            scrollRef.current.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
+        }
+    }, [messages, isTyping, scrollRef]);
+
+    const handleKeyDown = (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            handleSend();
+        }
+    };
+
+    const hasContent = inputValue.trim().length > 0;
+
     return (
-        <div className="flex-1 flex flex-col p-6 overflow-y-auto pb-24">
-            <h2 className="text-2xl font-black text-foreground mb-6 uppercase tracking-tight">Order Tracking</h2>
-            {activeOrder ? (
-                <div className="space-y-6">
-                    <div className="p-6 rounded-3xl bg-card border border-border shadow-xl">
-                        <div className="flex justify-between items-start mb-6">
-                            <div>
-                                <p className="text-[10px] font-black text-amber-500 uppercase tracking-widest mb-1">Active Order</p>
-                                <p className="text-lg font-black text-foreground">#{activeOrder.order_number}</p>
+        <div className="flex-1 flex flex-col bg-[#FAFAFA] overflow-hidden relative">
+            <div ref={scrollRef} className="flex-1 overflow-y-auto px-6 pt-4 pb-36 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                <div className="max-w-2xl mx-auto space-y-6">
+                    {!hasInteracted && messages.length === 0 && (
+                        <div className="pt-12 pb-8 text-center flex flex-col items-center">
+                            <div className="w-16 h-16 rounded-[24px] bg-[#FFFFFF] border border-[#E2E8F0] flex items-center justify-center mb-6 shadow-sm">
+                                <Sparkles className="w-8 h-8 text-[#84CC16]" />
                             </div>
-                            <button onClick={refreshOrder} className="p-2 rounded-full bg-white/5 hover:bg-white/10">
-                                <Loader2 className="w-4 h-4 text-muted-foreground" />
-                            </button>
+                            <h2 className="text-[28px] font-bold text-[#0F172A] tracking-tight leading-tight mb-2">
+                                AI Concierge
+                            </h2>
+                            <p className="text-[14px] text-[#64748B] max-w-[240px]">
+                                Your personal dining assistant is preparing a greeting...
+                            </p>
                         </div>
-                        <TrackingWidget status={ORDER_STATUS_MAP[activeOrder.status] as any || 'placed'} orderNumber={activeOrder.order_number} />
-                        <div className="mt-8 pt-6 border-t border-border flex justify-between items-center">
-                            <span className="text-sm font-bold text-muted-foreground uppercase">Total Amount</span>
-                            <span className="text-xl font-black text-foreground">ETB {activeOrder.total_amount.toLocaleString()}</span>
+                    )}
+
+                    <div className={cn("space-y-6 transition-all duration-300", (!hasInteracted && !isTyping) ? "opacity-0" : "opacity-100")}>
+                        <AnimatePresence initial={false}>
+                            {messages.map(msg => (
+                                <MessageBubble 
+                                    key={msg.id} 
+                                    msg={msg} 
+                                    onAddToCart={onAddToCart}
+                                    onQuickAction={handleSend}
+                                />
+                            ))}
+                        </AnimatePresence>
+
+                        {isTyping && (
+                            <motion.div
+                                initial={{ opacity: 0, y: 8 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                className="flex items-center gap-2.5"
+                            >
+                                <div className="w-7 h-7 rounded-full bg-[#FFFFFF] border border-[#E2E8F0] flex items-center justify-center shadow-sm">
+                                    <Sparkles className="w-3.5 h-3.5 text-[#84CC16] animate-pulse" />
+                                </div>
+                                <div className="bg-[#FFFFFF] border border-[#E2E8F0] rounded-[16px] rounded-tl-sm px-4 py-3 shadow-sm">
+                                    <div className="flex items-center gap-3">
+                                        <div className="flex gap-1">
+                                            <motion.div animate={{ opacity: [0, 1, 0] }} transition={{ repeat: Infinity, duration: 1.5, delay: 0 }} className="w-1 h-1 bg-[#84CC16] rounded-full" />
+                                            <motion.div animate={{ opacity: [0, 1, 0] }} transition={{ repeat: Infinity, duration: 1.5, delay: 0.2 }} className="w-1 h-1 bg-[#84CC16] rounded-full" />
+                                            <motion.div animate={{ opacity: [0, 1, 0] }} transition={{ repeat: Infinity, duration: 1.5, delay: 0.4 }} className="w-1 h-1 bg-[#84CC16] rounded-full" />
+                                        </div>
+                                        <span className="text-[10px] text-[#64748B]/60 uppercase font-bold tracking-widest">Thinking</span>
+                                    </div>
+                                </div>
+                            </motion.div>
+                        )}
+                    </div>
+                </div>
+            </div>
+
+            <div className="absolute bottom-20 inset-x-0 bg-gradient-to-t from-[#FAFAFA] via-[#FAFAFA] to-transparent pt-6 pb-4 px-6 z-40">
+                <div className="max-w-2xl mx-auto">
+                    {dynamicPrompts.length > 0 && !messages[messages.length - 1]?.metadata?.buttons && (
+                        <div className={cn(
+                            "flex gap-2 overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] mb-3 transition-opacity duration-300",
+                            (!hasInteracted || isTyping) ? "opacity-50 pointer-events-none" : "opacity-100"
+                        )}>
+                            {dynamicPrompts.map((action, i) => (
+                                <button
+                                    key={i}
+                                    disabled={!hasInteracted || isTyping}
+                                    onClick={() => handleSend(action.prompt)}
+                                    className="flex-none px-4 py-2 rounded-full bg-[#FFFFFF] border border-[#E2E8F0] text-[#0F172A] text-[12px] font-medium hover:border-[#84CC16] hover:text-[#84CC16] transition-all whitespace-nowrap shadow-sm disabled:opacity-50"
+                                >
+                                    {action.label}
+                                </button>
+                            ))}
                         </div>
+                    )}
+
+                    <div className={cn(
+                        "relative flex items-end rounded-[24px] border transition-all duration-300 bg-[#FFFFFF] border-[#E2E8F0] shadow-sm focus-within:border-[#84CC16]"
+                    )}>
+                        <textarea
+                            ref={textareaRef}
+                            value={inputValue}
+                            onChange={e => setInputValue(e.target.value)}
+                            onKeyDown={handleKeyDown}
+                            disabled={!hasInteracted || isTyping}
+                            placeholder={!hasInteracted ? "Connecting..." : "Ask the AI Concierge anything..."}
+                            className="flex-1 bg-transparent border-0 outline-none text-[#0F172A] text-sm placeholder:text-[#64748B]/50 resize-none overflow-hidden px-5 py-4 leading-relaxed disabled:opacity-50"
+                            rows={1}
+                            style={{ minHeight: '1.5em', maxHeight: '120px' }}
+                        />
+                        <button
+                            onClick={() => handleSend()}
+                            disabled={!hasContent || isTyping || !hasInteracted}
+                            className={cn(
+                                "m-2 p-2.5 rounded-full transition-all duration-300 flex-shrink-0",
+                                hasContent && !isTyping && hasInteracted
+                                    ? "bg-[#84CC16] text-white hover:scale-105 active:scale-95 shadow-md shadow-[#84CC16]/20"
+                                    : "bg-[#FAFAFA] text-[#64748B]/40 cursor-not-allowed border border-[#E2E8F0]/50"
+                            )}
+                        >
+                            <Send className="w-4 h-4 text-white" />
+                        </button>
                     </div>
-                    <button className="w-full h-14 rounded-2xl bg-white/5 border border-white/10 text-foreground font-bold uppercase tracking-widest text-xs">
-                        Call Waiter 🙋
-                    </button>
                 </div>
-            ) : (
-                <div className="flex-1 flex flex-col items-center justify-center text-center opacity-50 pt-[10vh]">
-                    <div className="w-20 h-20 rounded-full bg-muted/20 flex items-center justify-center mb-4">
-                        <PackageCheck className="w-10 h-10 text-muted-foreground" />
-                    </div>
-                    <p className="text-sm font-bold text-muted-foreground uppercase tracking-widest">No Active Orders</p>
-                    <p className="text-[10px] text-muted-foreground/60 mt-1 uppercase tracking-tighter">Your recent orders will appear here</p>
-                </div>
-            )}
+            </div>
         </div>
     );
 };
 
-const BottomNav: React.FC<{
-    currentView: 'menu' | 'chat' | 'tracking';
-    onViewChange: (v: 'menu' | 'chat' | 'tracking') => void;
-}> = ({ currentView, onViewChange }) => {
-    return (
-        <div className="fixed bottom-0 inset-x-0 bg-background/90 backdrop-blur-lg border-t border-border px-6 py-3 flex items-center justify-between z-[60] safe-area-bottom">
-            <button onClick={() => onViewChange('menu')} className={cn("flex flex-col items-center gap-1 transition-colors", currentView === 'menu' ? "text-[#84CC16]" : "text-muted-foreground")}>
-                <div className={cn("p-2 rounded-full", currentView === 'menu' && "bg-[#84CC16]/10")}>
-                    <ShoppingBag className="w-5 h-5" />
-                </div>
-                <span className="text-[10px] font-bold uppercase tracking-tighter">Menu</span>
-            </button>
-            <button onClick={() => onViewChange('chat')} className={cn("flex flex-col items-center gap-1 transition-colors", currentView === 'chat' ? "text-[#84CC16]" : "text-muted-foreground")}>
-                <div className={cn("p-2 rounded-full", currentView === 'chat' && "bg-[#84CC16]/10")}>
-                    <MessageCircle className="w-5 h-5" />
-                </div>
-                <span className="text-[10px] font-bold uppercase tracking-tighter">Chat</span>
-            </button>
-            <button onClick={() => onViewChange('tracking')} className={cn("flex flex-col items-center gap-1 transition-colors", currentView === 'tracking' ? "text-[#84CC16]" : "text-muted-foreground")}>
-                <div className={cn("p-2 rounded-full", currentView === 'tracking' && "bg-[#84CC16]/10")}>
-                    <Timer className="w-5 h-5" />
-                </div>
-                <span className="text-[10px] font-bold uppercase tracking-tighter">Tracking</span>
-            </button>
-        </div>
-    );
-};
-const MessageBubble: React.FC<{ msg: ChatMessage; onQuickAction: (p: string, s?: boolean) => void; onAddToCart: (item: MenuItem) => void }> = ({ msg, onQuickAction, onAddToCart }) => {
+/* ─── MESSAGE BUBBLE ─── */
+const MessageBubble: React.FC<{ msg: ChatMessage; onAddToCart: (item: MenuItem) => void; onQuickAction: (p: string) => void }> = ({ msg, onAddToCart, onQuickAction }) => {
     const isUser = msg.role === 'user';
     return (
         <div className={cn("flex flex-col gap-2", isUser ? "items-end" : "items-start")}>
@@ -836,36 +1038,26 @@ const MessageBubble: React.FC<{ msg: ChatMessage; onQuickAction: (p: string, s?:
                 className={cn("flex gap-2.5 max-w-[88%]", isUser ? "flex-row-reverse" : "")}
             >
                 <div className={cn(
-                    "w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center mt-1",
+                    "px-4 py-3 rounded-[20px] text-sm leading-relaxed shadow-sm",
                     isUser
-                        ? "bg-gradient-to-br from-amber-400 to-amber-600"
-                        : "bg-gradient-to-br from-lime-500/20 to-lime-600/30 border border-lime-500/30"
-                )}>
-                    {isUser
-                        ? <div className="w-2.5 h-2.5 rounded-full bg-white/90" />
-                        : <Sparkles className="w-3.5 h-3.5 text-lime-500" />
-                    }
-                </div>
-
-                <div className={cn(
-                    "px-4 py-3 rounded-2xl text-sm leading-relaxed",
-                    isUser
-                        ? "bg-gradient-to-br from-amber-500 to-amber-600 text-black rounded-tr-md"
-                        : "bg-card text-foreground rounded-tl-md border border-border"
+                        ? "bg-[#84CC16] text-[#FFFFFF] font-medium rounded-tr-sm"
+                        : "bg-[#FFFFFF] text-[#0F172A] rounded-tl-sm border border-[#E2E8F0]"
                 )}>
                     <div className="whitespace-pre-wrap">
                         {msg.content
-                            .replace(/\[System Note:.*$/gs, '')
                             .replace(/^\|.*\|$/gm, '')
                             .replace(/^[*-] .*(?:ETB|Birr|Price).*$/gmi, '')
-                            .replace(/^(?:ID|Name|Category|Image URL|Availability|Description|Ref|Status):\s*.*$/gmi, '')
                             .replace(/[\*_\[\]\(\)]/g, '')
                             .trim()}
                     </div>
 
+                    {msg.metadata?.pills && (
+                        <CategoryPills pills={msg.metadata.pills} onSelect={onQuickAction} />
+                    )}
+
                     <p className={cn(
                         "text-[9px] mt-1.5 opacity-50",
-                        isUser ? "text-black/60 text-right" : "text-gray-500"
+                        isUser ? "text-white/80 text-right" : "text-[#64748B]"
                     )}>
                         {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </p>
@@ -873,9 +1065,9 @@ const MessageBubble: React.FC<{ msg: ChatMessage; onQuickAction: (p: string, s?:
             </motion.div>
 
             {!isUser && msg.metadata && (
-                <div className="w-full max-w-[90%] pl-9 space-y-2">
+                <div className="w-full max-w-[90%] pl-2 space-y-2">
                     {msg.metadata.tracking && (
-                        <TrackingWidget status={msg.metadata.tracking.status} orderNumber={msg.metadata.tracking.orderNumber} />
+                        <TrackingWidget status={msg.metadata.tracking.status} />
                     )}
                     {msg.metadata.splitter && (
                         <BillSplitter total={msg.metadata.splitter.total} />
@@ -883,41 +1075,141 @@ const MessageBubble: React.FC<{ msg: ChatMessage; onQuickAction: (p: string, s?:
                     {msg.metadata.rating && (
                         <StarRating />
                     )}
+                    {msg.metadata.buttons && (
+                        <ActionButtons buttons={msg.metadata.buttons} onAction={onQuickAction} />
+                    )}
                 </div>
             )}
 
-            {msg.attachments?.type === 'menu' && msg.attachments.data?.length > 0 && (
-                <div className="w-full max-w-[95%] pl-9">
-                    <MenuCarousel 
-                        items={msg.attachments.data} 
-                        onAddToCart={onAddToCart} 
-                    />
+            {msg.attachments?.type === 'menu' && (
+                <div className="w-full max-w-[95%] pl-2">
+                    <MenuCarousel items={msg.attachments.data} onAddToCart={onAddToCart} />
                 </div>
             )}
         </div>
     );
 };
 
+/* ─── TRACKING VIEW ─── */
+const TrackingView: React.FC<{ 
+    activeOrder: ActiveOrder | null; 
+    refreshOrder: () => void;
+    branchBanks: { bank_key: string; account_number: string }[];
+    latestOrderId: string | null;
+    onPaymentSubmitted: () => void;
+}> = ({ activeOrder, refreshOrder, branchBanks, latestOrderId, onPaymentSubmitted }) => {
+    return (
+        <div className="flex-1 flex flex-col p-6 overflow-y-auto pb-32 bg-[#FAFAFA] [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+            <h2 className="text-[28px] font-bold text-[#0F172A] mb-2 uppercase tracking-tight">Order Tracking</h2>
+            <p className="text-[14px] text-[#64748B] mb-6">Track your active order status below</p>
+            {activeOrder ? (
+                <div className="space-y-6">
+                    <div className="p-6 rounded-[24px] bg-[#FFFFFF] border border-[#E2E8F0] shadow-sm">
+                        <div className="flex justify-between items-start mb-6">
+                            <div>
+                                <p className="text-[10px] font-bold text-[#84CC16] uppercase tracking-wider mb-1">Active Order</p>
+                                <p className="text-[18px] font-bold text-[#0F172A]">#{activeOrder.order_number}</p>
+                            </div>
+                            <button onClick={refreshOrder} className="p-2.5 rounded-full bg-[#FAFAFA] border border-[#E2E8F0] hover:bg-[#F1F5F9] transition-all">
+                                <Loader2 className="w-4 h-4 text-[#64748B]" />
+                            </button>
+                        </div>
+                        <TrackingWidget status={ORDER_STATUS_MAP[activeOrder.status] as any || 'placed'} orderNumber={activeOrder.order_number} />
+                        <div className="mt-8 pt-6 border-t border-[#E2E8F0] flex justify-between items-center">
+                            <span className="text-[14px] font-semibold text-[#64748B] uppercase">Total Amount</span>
+                            <span className="text-[20px] font-bold text-[#0F172A]">ETB {activeOrder.total_amount.toLocaleString()}</span>
+                        </div>
+                    </div>
+
+                    {branchBanks.length > 0 && (
+                        <PaymentCard
+                            orderId={activeOrder.id}
+                            orderNumber={activeOrder.order_number}
+                            total={activeOrder.total_amount}
+                            banks={branchBanks}
+                            onPaymentSubmitted={onPaymentSubmitted}
+                        />
+                    )}
+
+                    <button 
+                        onClick={() => showToast('Waiter notified! 🙋 Please wait.', 'success')}
+                        className="w-full h-12 rounded-full bg-[#FFFFFF] border border-[#E2E8F0] text-[#0F172A] font-bold uppercase tracking-wider text-xs shadow-sm hover:bg-[#FAFAFA] transition-all"
+                    >
+                        Call Waiter 🙋
+                    </button>
+                </div>
+            ) : (
+                <div className="flex-1 flex flex-col items-center justify-center text-center opacity-60 py-12">
+                    <div className="w-20 h-20 rounded-full bg-[#FFFFFF] border border-[#E2E8F0] flex items-center justify-center mb-4 shadow-sm">
+                        <PackageCheck className="w-10 h-10 text-[#64748B]" />
+                    </div>
+                    <p className="text-[16px] font-bold text-[#0F172A] uppercase tracking-wide">No Active Orders</p>
+                    <p className="text-[12px] text-[#64748B] mt-1 max-w-[240px]">Your current orders and tracking updates will appear here</p>
+                </div>
+            )}
+        </div>
+    );
+};
+
+/* ─── BOTTOM NAVIGATION ─── */
+const BottomNav: React.FC<{
+    currentView: 'menu' | 'chat' | 'orders';
+    onViewChange: (v: 'menu' | 'chat' | 'orders') => void;
+}> = ({ currentView, onViewChange }) => {
+    return (
+        <div className="fixed bottom-6 inset-x-4 max-w-md mx-auto bg-white/85 backdrop-blur-xl border border-[#E2E8F0] px-8 py-3 flex items-center justify-between z-[90] rounded-[24px] shadow-[0_8px_30px_rgb(15,23,42,0.06)] transition-all duration-300">
+            <button 
+                onClick={() => onViewChange('menu')} 
+                className={cn(
+                    "flex flex-col items-center gap-1 transition-all duration-300 flex-1", 
+                    currentView === 'menu' ? "text-[#84CC16] scale-105 font-semibold" : "text-[#64748B] hover:text-[#0F172A]"
+                )}
+            >
+                <ShoppingBag className="w-5 h-5" />
+                <span className="text-[10px] tracking-wide">Menu</span>
+            </button>
+            
+            <button 
+                onClick={() => onViewChange('chat')} 
+                className={cn(
+                    "flex flex-col items-center gap-1 transition-all duration-300 flex-1 relative", 
+                    currentView === 'chat' ? "text-[#84CC16] scale-105 font-semibold" : "text-[#64748B] hover:text-[#0F172A]"
+                )}
+            >
+                <MessageCircle className="w-5 h-5" />
+                <span className="text-[10px] tracking-wide">Chat</span>
+            </button>
+
+            <button 
+                onClick={() => onViewChange('orders')} 
+                className={cn(
+                    "flex flex-col items-center gap-1 transition-all duration-300 flex-1", 
+                    currentView === 'orders' ? "text-[#84CC16] scale-105 font-semibold" : "text-[#64748B] hover:text-[#0F172A]"
+                )}
+            >
+                <Receipt className="w-5 h-5" />
+                <span className="text-[10px] tracking-wide">Orders</span>
+            </button>
+        </div>
+    );
+};
+
+/* ─── CUSTOMER CHAT PAGE (MAIN COMPONENT) ─── */
 const CustomerChatPage: React.FC = () => {
     const { t } = useLanguage();
     const { tableId } = useParams<{ tableId: string }>();
     const [searchParams] = useSearchParams();
-    const branchToken = searchParams.get('token') || '';
+    const [branchToken, setBranchToken] = useState<string>('');
     const [activeOrgId, setActiveOrgId] = useState('');
-    const [messages, setMessages] = useState<ChatMessage[]>([]);
-    const [inputValue, setInputValue] = useState('');
-    const [isTyping, setIsTyping] = useState(false);
     const [categories, setCategories] = useState<string[]>([]);
-    const [hasInteracted, setHasInteracted] = useState(false);
     const [branchName, setBranchName] = useState('');
     const [branchId, setBranchId] = useState('');
     const [isHistoryLoading, setIsHistoryLoading] = useState(true);
     const [isVerified, setIsVerified] = useState(false);
-    const [isVerifying, setIsVerifying] = useState(false);
+    const [isVerifying, setIsVerifying] = useState(true);
     const [orgName, setOrgName] = useState('');
     const [orgLogoUrl, setOrgLogoUrl] = useState('');
     const [tableNumber, setTableNumber] = useState('');
-    const [dynamicPrompts, setDynamicPrompts] = useState<{ label: string; prompt: string }[]>([]);
     const cartStorageKey = `baro_cart_${tableId}`;
     const [cart, setCart] = useState<CartItem[]>(() => {
         try {
@@ -932,9 +1224,20 @@ const CustomerChatPage: React.FC = () => {
     const [latestOrderId, setLatestOrderId] = useState<string | null>(null);
     const [activeOrder, setActiveOrder] = useState<ActiveOrder | null>(null);
     const [branchBanks, setBranchBanks] = useState<{ bank_key: string; account_number: string }[]>([]);
-    const [currentView, setCurrentView] = useState<'menu' | 'chat' | 'tracking'>('menu');
+    const [currentView, setCurrentView] = useState<'menu' | 'chat' | 'orders'>('menu');
     const [allItems, setAllItems] = useState<MenuItem[]>([]);
     const [activeCategory, setActiveCategory] = useState<string>('All');
+
+    // Chat view states
+    const [messages, setMessages] = useState<ChatMessage[]>([]);
+    const [inputValue, setInputValue] = useState('');
+    const [isTyping, setIsTyping] = useState(false);
+    const [hasInteracted, setHasInteracted] = useState(false);
+    const [dynamicPrompts, setDynamicPrompts] = useState<{ label: string; prompt: string }[]>([]);
+
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
+    const scrollRef = useRef<HTMLDivElement>(null);
+    const hasInitialGreetingSent = useRef(false);
 
     const generateOrderNumber = useCallback(() => {
         const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
@@ -1000,90 +1303,6 @@ const CustomerChatPage: React.FC = () => {
         return nextOrder;
     }, [tableId]);
 
-    const refreshBranchBanks = useCallback(async () => {
-        if (!branchId) {
-            setBranchBanks([]);
-            return;
-        }
-        const { data, error } = await supabase
-            .from('bank_settings')
-            .select('bank_key, account_number')
-            .eq('branch_id', branchId)
-            .eq('is_active', true);
-        if (error) {
-            console.warn('Branch bank fetch failed:', error);
-            return;
-        }
-        setBranchBanks(data || []);
-    }, [branchId]);
-
-    const handlePlaceOrder = useCallback(async () => {
-        if (isPlacingOrder || cart.length === 0) return;
-        if (!tableId || !branchId) {
-            showToast('Please wait for the table to be verified before placing an order.', 'error');
-            return;
-        }
-        setIsPlacingOrder(true);
-        try {
-            const subtotal = cart.reduce((sum, item) => sum + (item.menuItem.price * item.quantity), 0);
-            const totalAmount = subtotal * 1.15;
-            const payload = {
-                branch_id: branchId,
-                items: cart.map(item => ({
-                    menu_item_id: item.menuItem.id,
-                    quantity: item.quantity,
-                    unit_price: item.menuItem.price,
-                    notes: '',
-                })),
-                order_details: {
-                    table_id: tableId,
-                    table_number: tableNumber || 'Guest',
-                    total_amount: totalAmount,
-                    customer_notes: '',
-                    order_number: generateOrderNumber(),
-                    source: 'chatbot',
-                },
-            };
-            const { data, error } = await supabase.functions.invoke('place-order', {
-                body: payload,
-            });
-            if (error) throw error;
-            const result = typeof data === 'string' ? (() => { try { return JSON.parse(data); } catch { return null; } })() : data;
-            if (!result?.success && !result?.order_id) {
-                throw new Error(result?.detail || result?.error || 'Order submission failed.');
-            }
-            const optimisticOrder: ActiveOrder = {
-                id: result.order_id || crypto.randomUUID(),
-                order_number: result.order_number || payload.order_details.order_number,
-                status: result.status || 'pending',
-                total_amount: totalAmount,
-            };
-            setActiveOrder(optimisticOrder);
-            setLatestOrderId(optimisticOrder.id);
-            setSessionCompleted(false);
-            setCart([]);
-            setIsCartOpen(false);
-            showToast('Order placed successfully!', 'success');
-            window.setTimeout(() => {
-                refreshActiveOrder().catch(err => console.warn('Active order sync failed:', err));
-            }, 300);
-        } catch (err: any) {
-            console.error('Order placement failure:', err);
-            showToast(err.message || 'Order submission failed. Please try again.', 'error');
-        } finally {
-            setIsPlacingOrder(false);
-        }
-    }, [branchId, cart, generateOrderNumber, isPlacingOrder, refreshActiveOrder, tableId, tableNumber]);
-
-    useEffect(() => {
-        localStorage.setItem(cartStorageKey, JSON.stringify(cart));
-    }, [cart, cartStorageKey]);
-
-    const textareaRef = useRef<HTMLTextAreaElement>(null);
-    const scrollRef = useRef<HTMLDivElement>(null);
-    const hasInitialGreetingSent = useRef(false);
-    const sessionId = tableId ? getSessionId(tableId) : '';
-
     const getEdgeAuthToken = useCallback(async () => {
         if (branchToken) return branchToken;
         const { data: { session } } = await supabase.auth.getSession();
@@ -1115,8 +1334,162 @@ const CustomerChatPage: React.FC = () => {
         return payload;
     }, [getEdgeAuthToken]);
 
-    // 1. Unified Bootstrap (Security + Parallel Speed)
+    const handlePlaceOrder = useCallback(async () => {
+        if (isPlacingOrder || cart.length === 0) return;
+        if (!tableId || !branchId) {
+            showToast('Please wait for the table to be verified before placing an order.', 'error');
+            return;
+        }
+        setIsPlacingOrder(true);
+        try {
+            const subtotal = cart.reduce((sum, item) => sum + (item.menuItem.price * item.quantity), 0);
+            const totalAmount = subtotal * 1.15;
+            const payload = {
+                branch_id: branchId,
+                items: cart.map(item => ({
+                    menu_item_id: item.menuItem.id,
+                    quantity: item.quantity,
+                    unit_price: item.menuItem.price,
+                    notes: '',
+                })),
+                order_details: {
+                    table_id: tableId,
+                    table_number: tableNumber || 'Guest',
+                    total_amount: totalAmount,
+                    customer_notes: '',
+                    order_number: generateOrderNumber(),
+                    source: 'chatbot',
+                },
+            };
+            const result = await invokeSecureFunction('place-order', payload);
+            if (!result?.success && !result?.order_id) {
+                throw new Error(result?.detail || result?.error || 'Order submission failed.');
+            }
+            const optimisticOrder: ActiveOrder = {
+                id: result.order_id || crypto.randomUUID(),
+                order_number: result.order_number || payload.order_details.order_number,
+                status: result.status || 'pending',
+                total_amount: totalAmount,
+            };
+            setActiveOrder(optimisticOrder);
+            setLatestOrderId(optimisticOrder.id);
+            setSessionCompleted(false);
+            setCart([]);
+            setIsCartOpen(false);
+            showToast('Order placed successfully!', 'success');
+            window.setTimeout(() => {
+                refreshActiveOrder().catch(err => console.warn('Active order sync failed:', err));
+            }, 300);
+        } catch (err: any) {
+            console.error('Order placement failure:', err);
+            showToast(err.message || 'Order submission failed. Please try again.', 'error');
+        } finally {
+            setIsPlacingOrder(false);
+        }
+    }, [branchId, cart, generateOrderNumber, isPlacingOrder, refreshActiveOrder, tableId, tableNumber, invokeSecureFunction]);
+
+    const handleSend = useCallback(async (overrideMessage?: string) => {
+        const msg = overrideMessage || inputValue.trim();
+        if (!msg) return;
+
+        const isInit = msg === 'init_chat';
+        if (!isInit) {
+            setHasInteracted(true);
+            const userMsg: ChatMessage = {
+                id: crypto.randomUUID(),
+                role: 'user',
+                content: msg,
+                timestamp: new Date(),
+            };
+            setMessages(prev => [...prev, userMsg]);
+            setInputValue('');
+            if (textareaRef.current) textareaRef.current.style.height = 'auto';
+        }
+        
+        setIsTyping(true);
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 15000);
+
+        try {
+            const data = await invokeSecureFunction('customer-intelligence', {
+                message: msg,
+                session_id: sessionId,
+                table_number: tableNumber || 'Guest',
+                organization_id: activeOrgId || undefined,
+                organization_name: orgName,
+                branch_id: branchId,
+                branch_name: branchName,
+                is_verified: true
+            }, controller.signal);
+
+            clearTimeout(timeoutId);
+
+            const responseText = data?.text || '⚠️ No response. Please try again.';
+            const assistantMsg: ChatMessage = {
+                id: crypto.randomUUID(),
+                role: 'assistant',
+                content: responseText,
+                timestamp: new Date(),
+                metadata: data?.metadata,
+                attachments: data?.metadata?.attachments
+            };
+            
+            setMessages(prev => [...prev, assistantMsg]);
+            
+            if (data?.metadata?.buttons && Array.isArray(data.metadata.buttons)) {
+                setDynamicPrompts(data.metadata.buttons);
+            } else if (data?.metadata?.suggested_prompts && Array.isArray(data.metadata.suggested_prompts)) {
+                setDynamicPrompts(data.metadata.suggested_prompts);
+            }
+            
+            if (isInit) {
+                setHasInteracted(true);
+            }
+        } catch (err: any) {
+            console.error('Chat error full details:', err);
+            if (err.name === 'AbortError') {
+                showToast("Request timed out. Please try again.", "error");
+            }
+            if (!isInit) {
+                const errorMsg: ChatMessage = {
+                    id: crypto.randomUUID(),
+                    role: 'assistant',
+                    content: `❌ ${err.message || 'Sorry, something went wrong. Please try again.'}`,
+                    timestamp: new Date(),
+                };
+                setMessages(prev => [...prev, errorMsg]);
+            }
+        } finally {
+            setIsTyping(false);
+        }
+    }, [inputValue, sessionId, tableNumber, activeOrgId, branchId, branchName, orgName, invokeSecureFunction]);
+
     useEffect(() => {
+        localStorage.setItem(cartStorageKey, JSON.stringify(cart));
+    }, [cart, cartStorageKey]);
+
+    const sessionId = tableId ? getSessionId(tableId) : '';
+
+    const bootstrappedRef = useRef(false);
+
+    useEffect(() => {
+        if (bootstrappedRef.current) return;
+        bootstrappedRef.current = true;
+
+        const isTokenExpired = (token: string): boolean => {
+            try {
+                const parts = token.split('.');
+                if (parts.length < 2) return true;
+                const payload = JSON.parse(atob(parts[0].replace(/-/g, '+').replace(/_/g, '/')));
+                if (payload.exp) {
+                    return payload.exp * 1000 < Date.now();
+                }
+                return false;
+            } catch {
+                return true;
+            }
+        };
+
         const bootstrap = async () => {
             if (!tableId) return;
             
@@ -1125,7 +1498,6 @@ const CustomerChatPage: React.FC = () => {
             setIsVerifying(true);
 
             try {
-                // 1. Fetch Table Info (Minimal & Essential)
                 const { data: tableData } = await supabase
                     .from('tables')
                     .select('*')
@@ -1135,6 +1507,7 @@ const CustomerChatPage: React.FC = () => {
                 if (!tableData) {
                     showToast('Table not found. Please scan a valid QR code.', 'error');
                     setIsHistoryLoading(false);
+                    setIsVerifying(false);
                     return;
                 }
 
@@ -1144,9 +1517,48 @@ const CustomerChatPage: React.FC = () => {
                 const currentOrgId = tableData.organization_id;
 
                 if (currentOrgId) setActiveOrgId(currentOrgId);
-                setIsVerified(true); // Allow access even if token check is skipped
 
-                // 2. Fetch Menu Items (Resilient)
+                const sessionTokenKey = `baro_table_session_${tableId}`;
+                let activeToken = sessionStorage.getItem(sessionTokenKey) || '';
+
+                if (activeToken && isTokenExpired(activeToken)) {
+                    activeToken = '';
+                    sessionStorage.removeItem(sessionTokenKey);
+                }
+
+                if (!activeToken) {
+                    if (urlToken) {
+                        try {
+                            const { data: sessionToken, error: rpcErr } = await supabase.rpc('get_table_session_token', {
+                                p_table_id: tableId,
+                                p_qr_token: urlToken
+                            });
+
+                            if (rpcErr || !sessionToken) {
+                                throw new Error(rpcErr?.message || 'Failed to exchange table token');
+                            }
+
+                            activeToken = sessionToken;
+                            sessionStorage.setItem(sessionTokenKey, sessionToken);
+                        } catch (e) {
+                            console.error('Token exchange failed:', e);
+                            showToast('Verification failed. Please scan a valid QR code.', 'error');
+                            setIsVerified(false);
+                            setIsHistoryLoading(false);
+                            setIsVerifying(false);
+                            return;
+                        }
+                    } else {
+                        setIsVerified(false);
+                        setIsHistoryLoading(false);
+                        setIsVerifying(false);
+                        return;
+                    }
+                }
+
+                setBranchToken(activeToken);
+                setIsVerified(true);
+
                 try {
                     let menuQuery = supabase.from('view_menu_details').select('*').eq('is_available', true);
                     if (currentBranchId) {
@@ -1163,7 +1575,6 @@ const CustomerChatPage: React.FC = () => {
                     }
                 } catch (e) { console.warn('Menu load failed:', e); }
 
-                // 3. Fetch Banks (Optional - Don't let failure stop us)
                 if (currentBranchId) {
                     supabase.from('bank_settings')
                         .select('*')
@@ -1173,22 +1584,19 @@ const CustomerChatPage: React.FC = () => {
                         .catch(() => null);
                 }
 
-                // 4. Fetch Branch/Org Branding (Optional)
                 if (currentBranchId) {
-                    invokeSecureFunction('get-branch-info', { branch_id: currentBranchId })
-                        .then(data => {
-                            if (data?.branch?.name) setBranchName(data.branch.name);
-                            if (data?.organization?.name) setOrgName(data.organization.name);
-                            if (data?.organization?.chatbot_logo_url) setOrgLogoUrl(data.organization.chatbot_logo_url);
-                        })
-                        .catch(() => {
-                            // Manual fallback if edge function fails
-                            supabase.from('branches').select('name').eq('id', currentBranchId).maybeSingle()
-                                .then(({ data }) => { if (data?.name) setBranchName(data.name); });
-                        });
+                    supabase.from('branches').select('name').eq('id', currentBranchId).maybeSingle()
+                        .then(({ data }) => { if (data?.name) setBranchName(data.name); });
+                    
+                    if (currentOrgId) {
+                        supabase.from('organizations').select('name, chatbot_logo_url').eq('id', currentOrgId).maybeSingle()
+                            .then(({ data }) => {
+                                if (data?.name) setOrgName(data.name);
+                                if (data?.chatbot_logo_url) setOrgLogoUrl(data.chatbot_logo_url);
+                            });
+                    }
                 }
 
-                // 5. Initial Order Sync
                 refreshActiveOrder().catch(() => null);
 
             } catch (err) {
@@ -1200,15 +1608,7 @@ const CustomerChatPage: React.FC = () => {
         };
 
         bootstrap();
-    }, [tableId, searchParams, sessionId, invokeSecureFunction, refreshActiveOrder]);
-
-    // Simplified interactions
-    useEffect(() => {
-        if (textareaRef.current) {
-            textareaRef.current.style.height = 'auto';
-            textareaRef.current.style.height = Math.min(textareaRef.current.scrollHeight, 120) + 'px';
-        }
-    }, [inputValue]);
+    }, [tableId, searchParams, sessionId, refreshActiveOrder]);
 
     useEffect(() => {
         let isMounted = true;
@@ -1220,103 +1620,58 @@ const CustomerChatPage: React.FC = () => {
         return () => { isMounted = false; window.clearInterval(pollId); };
     }, [refreshActiveOrder]);
 
-    const handleSend = useCallback(async (textOverride?: string, isCategoryClick = false) => {
-        const textToSend = textOverride || inputValue.trim();
-        if (!textToSend.trim() || isTyping) return;
+    if (isVerifying || isHistoryLoading) {
+        return (
+            <div className="flex flex-col h-[100dvh] items-center justify-center bg-[#FAFAFA] text-[#0F172A] text-center">
+                <Loader2 className="w-10 h-10 text-[#84CC16] animate-spin mb-4" />
+                <p className="text-sm font-bold uppercase tracking-widest text-[#64748B] animate-pulse">Verifying Session...</p>
+            </div>
+        );
+    }
 
-        if (textToSend !== 'init_chat' && !isCategoryClick) {
-            const userMessage: ChatMessage = {
-                id: crypto.randomUUID(),
-                role: 'user',
-                content: textToSend,
-                timestamp: new Date(),
-            };
-            setMessages((prev) => [...prev, userMessage]);
-            setInputValue('');
-            if (textareaRef.current) textareaRef.current.style.height = 'auto';
-        }
-        
-        setIsTyping(true);
-        setHasInteracted(true);
-
-        try {
-            const data = await invokeSecureFunction('customer-intelligence', {
-                message: textToSend,
-                session_id: sessionId,
-                table_id: tableId,
-                table_number: tableNumber || 'Guest',
-                organization_id: activeOrgId || undefined,
-                organization_name: orgName,
-                branch_id: branchId,
-                branch_name: branchName,
-                is_verified: isVerified
-            });
-
-            if (data?.metadata?.customer_id) {
-                localStorage.setItem(`baro_customer_${activeOrgId}`, data.metadata.customer_id);
-            }
-
-            const responseText = data?.text || '⚠️ No response. Please try again.';
-            const rawItems = data?.metadata?.attachments?.items || data?.metadata?.attachments?.data;
-            const parsedAttachments = rawItems && Array.isArray(rawItems) && rawItems.length > 0
-                ? { type: 'menu' as const, data: rawItems }
-                : undefined;
-            const assistantMsg: ChatMessage = {
-                id: crypto.randomUUID(),
-                role: 'assistant',
-                content: responseText,
-                timestamp: new Date(),
-                metadata: data?.metadata,
-                attachments: parsedAttachments
-            };
-            
-            setMessages(prev => [...prev, assistantMsg]);
-
-            if (data?.metadata?.buttons && Array.isArray(data.metadata.buttons)) {
-                setDynamicPrompts(data.metadata.buttons);
-            }
-        } catch (err: any) {
-            console.error('Chat error:', err);
-            showToast('Unable to reach assistant.', 'error');
-        } finally {
-            setIsTyping(false);
-        }
-    }, [inputValue, isTyping, sessionId, tableId, tableNumber, activeOrgId, orgName, branchId, branchName, isVerified, invokeSecureFunction]);
-
-    const handleKeyDown = (e: React.KeyboardEvent) => {
-        if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            handleSend();
-        }
-    };
+    if (!isVerified) {
+        return (
+            <div className="flex flex-col h-[100dvh] items-center justify-center bg-[#FAFAFA] text-[#0F172A] text-center p-6 relative">
+                <div className="relative z-10 w-full max-w-sm rounded-[24px] bg-[#FFFFFF] border border-[#E2E8F0] p-8 shadow-sm flex flex-col items-center gap-6">
+                    <div className="w-16 h-16 rounded-full bg-red-50 border border-red-100 flex items-center justify-center">
+                        <X className="w-8 h-8 text-red-500" />
+                    </div>
+                    <div>
+                        <h2 className="text-xl font-bold uppercase tracking-tight text-[#0F172A]">Session Invalid or Expired</h2>
+                        <p className="text-xs text-[#64748B] mt-2 leading-relaxed">
+                            For security reasons, your digital ordering session has expired or is invalid.
+                        </p>
+                    </div>
+                    <div className="p-4 rounded-[16px] bg-[#FAFAFA] border border-[#E2E8F0] text-[10px] text-[#64748B] leading-relaxed uppercase tracking-wider">
+                        📱 Please scan the physical QR code printed on your table to start ordering.
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     return (
-        <div className="flex flex-col h-[100dvh] bg-background overflow-hidden relative font-sans text-foreground selection:bg-[#84CC16]/30">
-            {/* Background Decorations */}
-            <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
-                <div className="absolute top-[-10%] right-[-10%] w-[50%] h-[50%] bg-[#84CC16]/5 rounded-full blur-[120px]" />
-                <div className="absolute bottom-[-10%] left-[-10%] w-[40%] h-[40%] bg-emerald-500/5 rounded-full blur-[100px]" />
-            </div>
-
+        <div className="flex flex-col h-[100dvh] bg-[#FAFAFA] overflow-hidden relative font-sans text-[#0F172A] select-none">
             {/* Header */}
-            <div className="flex-none px-6 py-4 flex items-center justify-between bg-background/90 backdrop-blur-lg border-b border-border z-50">
+            <div className="flex-none px-6 py-3 flex items-center justify-between bg-white/80 backdrop-blur-md border-b border-[#E2E8F0] z-50 sticky top-0 animate-fade-in">
                 <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-card border border-[#84CC16]/20 flex items-center justify-center overflow-hidden">
+                    <div className="w-10 h-10 rounded-full bg-[#FAFAFA] border border-[#E2E8F0] flex items-center justify-center overflow-hidden flex-shrink-0 animate-pulse-slow">
                         {orgLogoUrl ? <img src={orgLogoUrl} alt="Logo" className="w-full h-full object-cover" /> : <Sparkles className="w-5 h-5 text-[#84CC16]" />}
                     </div>
                     <div>
-                        <h1 className="text-sm font-black uppercase tracking-tight text-foreground">{orgName || 'Sosha'}</h1>
-                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{branchName || 'Restaurant'} • Table {tableNumber}</p>
+                        <h1 className="text-[20px] font-bold text-[#0F172A] leading-tight tracking-tight">{orgName || 'Restaurant'}</h1>
+                        <p className="text-[12px] font-medium text-[#64748B]">
+                            {branchName || 'Main Branch'} • Table {tableNumber || 'Guest'}
+                        </p>
                     </div>
                 </div>
                 <div className="flex items-center gap-2">
-                    <ThemeToggle />
                     <LanguageSwitcher />
                 </div>
             </div>
 
             {/* Main Content Area */}
-            <div className="flex-1 overflow-hidden relative z-10 flex flex-col">
+            <div className="flex-1 overflow-hidden relative z-10 flex flex-col bg-[#FAFAFA]">
                 {currentView === 'menu' && (
                     <MenuView
                         items={allItems}
@@ -1327,93 +1682,49 @@ const CustomerChatPage: React.FC = () => {
                     />
                 )}
 
-                {currentView === 'tracking' && (
-                    <TrackingView activeOrder={activeOrder} refreshOrder={refreshActiveOrder} />
+                {currentView === 'chat' && (
+                    <ChatView
+                        messages={messages}
+                        inputValue={inputValue}
+                        setInputValue={setInputValue}
+                        isTyping={isTyping}
+                        hasInteracted={hasInteracted}
+                        dynamicPrompts={dynamicPrompts}
+                        handleSend={handleSend}
+                        onAddToCart={addToCart}
+                        textareaRef={textareaRef}
+                        scrollRef={scrollRef}
+                    />
                 )}
 
-                {currentView === 'chat' && (
-                    <div ref={scrollRef} className="h-full overflow-y-auto pb-48 custom-scrollbar">
-                        <div className="max-w-2xl mx-auto p-4 space-y-6">
-                            <AnimatePresence initial={false}>
-                                {messages.map(msg => (
-                                    <MessageBubble 
-                                        key={msg.id} 
-                                        msg={msg} 
-                                        onQuickAction={handleSend}
-                                        onAddToCart={addToCart}
-                                    />
-                                ))}
-                            </AnimatePresence>
-                            {isTyping && (
-                                <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="flex items-center gap-2.5">
-                                    <div className="w-7 h-7 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
-                                        <Sparkles className="w-3.5 h-3.5 text-emerald-500 animate-pulse" />
-                                    </div>
-                                    <div className="bg-card border border-border rounded-2xl rounded-tl-md px-4 py-3 shadow-lg">
-                                        <div className="flex items-center gap-3">
-                                            <div className="flex gap-1">
-                                                <motion.div animate={{ opacity: [0, 1, 0] }} transition={{ repeat: Infinity, duration: 1.5, delay: 0 }} className="w-1 h-1 bg-emerald-400 rounded-full" />
-                                                <motion.div animate={{ opacity: [0, 1, 0] }} transition={{ repeat: Infinity, duration: 1.5, delay: 0.2 }} className="w-1 h-1 bg-emerald-400 rounded-full" />
-                                                <motion.div animate={{ opacity: [0, 1, 0] }} transition={{ repeat: Infinity, duration: 1.5, delay: 0.4 }} className="w-1 h-1 bg-emerald-400 rounded-full" />
-                                            </div>
-                                            <span className="text-[10px] text-emerald-400/60 uppercase font-bold tracking-widest">Thinking...</span>
-                                        </div>
-                                    </div>
-                                </motion.div>
-                            )}
-                        </div>
-                    </div>
+                {currentView === 'orders' && (
+                    <TrackingView 
+                        activeOrder={activeOrder} 
+                        refreshOrder={refreshActiveOrder}
+                        branchBanks={branchBanks}
+                        latestOrderId={latestOrderId}
+                        onPaymentSubmitted={() => {
+                            setSessionCompleted(true);
+                            setRatingSubmitted(false);
+                        }}
+                    />
                 )}
             </div>
-
-            {/* Persistent Input Area for Chat */}
-            {currentView === 'chat' && (
-                <div className="fixed bottom-[72px] inset-x-0 z-50 pointer-events-none">
-                    {/* Backdrop Gradient to prevent text bleed */}
-                    <div className="absolute inset-x-0 bottom-0 top-[-40px] bg-gradient-to-t from-background via-background/95 to-transparent pointer-events-none" />
-                    
-                    <div className="max-w-2xl mx-auto px-4 pb-4 pointer-events-auto relative">
-                        <div className="flex gap-2 overflow-x-auto no-scrollbar mb-4 py-1">
-                            {dynamicPrompts.map((action: any, i) => (
-                                <button 
-                                    key={i} 
-                                    onClick={() => handleSend(action.prompt)} 
-                                    className="flex-none px-4 py-2.5 rounded-full bg-card border border-lime-500/30 text-lime-600 text-[10px] font-black uppercase tracking-wider hover:bg-lime-500/10 whitespace-nowrap shadow-xl shadow-black/10 backdrop-blur-md"
-                                >
-                                    {action.label}
-                                </button>
-                            ))}
-                        </div>
-                        <div className="relative flex items-end rounded-3xl border bg-card/95 backdrop-blur-2xl border-border shadow-2xl focus-within:border-[#84CC16]/50 transition-all">
-                            <textarea
-                                ref={textareaRef}
-                                value={inputValue}
-                                onChange={e => setInputValue(e.target.value)}
-                                onKeyDown={handleKeyDown}
-                                placeholder="Ask me anything..."
-                                className="flex-1 bg-transparent border-0 outline-none text-foreground text-sm px-5 py-4 resize-none min-h-[56px] max-h-[120px]"
-                            />
-                            <button onClick={() => handleSend()} className={cn("m-2 p-2.5 rounded-2xl transition-all", inputValue.trim() ? "bg-[#84CC16] text-black shadow-lg shadow-lime-500/30" : "bg-muted/10 text-muted-foreground")}>
-                                <Send className="w-4 h-4" />
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
 
             {/* Bottom Navigation */}
             <BottomNav currentView={currentView} onViewChange={setCurrentView} />
 
             {/* Floating Cart Button */}
-            {cart.length > 0 && !isCartOpen && (
+            {cart.length > 0 && currentView !== 'chat' && !isCartOpen && (
                 <motion.button
-                    initial={{ scale: 0 }} animate={{ scale: 1 }}
+                    initial={{ scale: 0, y: 20 }}
+                    animate={{ scale: 1, y: 0 }}
                     onClick={() => setIsCartOpen(true)}
-                    className="fixed bottom-24 right-5 z-[55] w-14 h-14 rounded-full bg-[#84CC16] text-black shadow-2xl flex items-center justify-center hover:scale-110 active:scale-95 transition-transform"
+                    className="fixed bottom-24 right-6 z-[85] h-12 px-5 rounded-full bg-[#84CC16] text-[#FFFFFF] shadow-lg shadow-[#84CC16]/20 flex items-center gap-2 hover:scale-105 active:scale-95 transition-transform"
                 >
-                    <ShoppingBag className="w-6 h-6" />
-                    <span className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-red-500 text-white text-[10px] font-black flex items-center justify-center">
-                        {cart.reduce((s, c) => s + c.quantity, 0)}
+                    <ShoppingBag className="w-4.5 h-4.5" />
+                    <span className="text-sm font-bold">
+                        Cart ({cart.reduce((s, c) => s + c.quantity, 0)}) • ETB {cart.reduce((s, c) => s + c.menuItem.price * c.quantity, 0).toLocaleString()}
                     </span>
                 </motion.button>
             )}
@@ -1432,14 +1743,14 @@ const CustomerChatPage: React.FC = () => {
                 )}
 
                 {sessionCompleted && !ratingSubmitted && (
-                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[100] bg-background/95 backdrop-blur-xl flex flex-col items-center justify-center p-6 text-center">
-                        <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="bg-card w-full max-w-sm rounded-[2rem] p-8 border border-border shadow-2xl flex flex-col items-center gap-6">
-                            <div className="w-16 h-16 rounded-3xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mb-2">
-                                <CheckCircle2 className="w-8 h-8 text-emerald-500" />
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[100] bg-black/40 backdrop-blur-sm flex flex-col items-center justify-center p-6 text-center">
+                        <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="bg-[#FFFFFF] w-full max-w-sm rounded-[24px] p-8 border border-[#E2E8F0] shadow-md flex flex-col items-center gap-6">
+                            <div className="w-16 h-16 rounded-[24px] bg-[#22C55E]/10 border border-[#22C55E]/20 flex items-center justify-center mb-2">
+                                <CheckCircle2 className="w-8 h-8 text-[#22C55E]" />
                             </div>
                             <div>
-                                <h2 className="text-2xl font-black mb-2 uppercase tracking-wide">Thank You! 🥂</h2>
-                                <p className="text-muted-foreground text-sm">Your order is complete. How was your experience today?</p>
+                                <h2 className="text-2xl font-bold mb-2 uppercase tracking-wide">Thank You! 🥂</h2>
+                                <p className="text-[#64748B] text-sm">Your order is complete. How was your experience today?</p>
                             </div>
                             <RatingInteraction onChange={async (val) => {
                                 try {

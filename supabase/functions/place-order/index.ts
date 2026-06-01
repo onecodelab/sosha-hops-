@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Redis } from "https://esm.sh/@upstash/redis";
-import { corsHeaders, logAudit } from "../_shared/identity.ts";
+import { corsHeaders, logAudit, resolveIdentity } from "../_shared/identity.ts";
 
 serve(async (req) => {
     if (req.method === 'OPTIONS') {
@@ -13,23 +13,16 @@ serve(async (req) => {
         const sbKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || Deno.env.get('SERVICE_ROLE_KEY')!;
         const supabase = createClient(sbUrl, sbKey);
 
-        const authHeader = req.headers.get('Authorization');
-        if (!authHeader) {
-            return new Response(JSON.stringify({ error: 'Missing authorization header' }), { status: 401, headers: corsHeaders });
-        }
-
-        const anonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
-        const authClient = createClient(sbUrl, anonKey, { global: { headers: { Authorization: authHeader } } });
-        const { data: { user }, error: userErr } = await authClient.auth.getUser();
-
-        if (userErr || !user) {
+        const identity = await resolveIdentity(req, supabase);
+        if (!identity) {
             return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: corsHeaders });
         }
 
-        const organizationId = user.app_metadata?.organization_id;
-        if (!organizationId) {
-            return new Response(JSON.stringify({ error: 'Identity Error', detail: 'User is not bound to an organization' }), { status: 403, headers: corsHeaders });
+        const organizationId = identity.organizationId;
+        if (!organizationId || organizationId === 'SERVICE_ROLE') {
+            return new Response(JSON.stringify({ error: 'Identity Error', detail: 'Valid organization context required' }), { status: 403, headers: corsHeaders });
         }
+        const actorId = identity.userId || null;
 
         const payload = await req.json();
         let { branch_id, items, order_details, table_id, telegram_id, source, idempotency_key } = payload;
@@ -102,7 +95,9 @@ serve(async (req) => {
         }
 
         // --- AUDIT LOG ---
-        await logAudit(supabase, organizationId, user.id, 'PLACE_ORDER', 'order', result.order_id, { items_count: items.length, total: result.total_amount });
+        if (actorId) {
+            await logAudit(supabase, organizationId, actorId, 'PLACE_ORDER', 'order', result.order_id, { items_count: items.length, total: result.total_amount });
+        }
 
         return new Response(JSON.stringify(responseData), {
             headers: corsHeaders,

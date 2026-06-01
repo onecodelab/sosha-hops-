@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useLayoutConfig } from '../contexts/LayoutContext';
 import { supabase } from '../supabase';
 import { useBranch } from '../contexts/BranchContext';
@@ -13,10 +13,21 @@ import {
    CheckCircle2,
    ChefHat,
    LayoutPanelTop,
-   Truck
+   Truck,
+   Bell,
+   X
 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { OrderCard } from '../components/OrderCard';
 import { orderService } from '../services/orderService';
+
+interface KitchenNotification {
+   id: string;
+   orderNumber: string;
+   tableNumber: string;
+   itemCount: number;
+   type: 'new' | 'update';
+}
 
 const KitchenDashboard: React.FC = () => {
    const { activeBranchId } = useBranch();
@@ -24,6 +35,91 @@ const KitchenDashboard: React.FC = () => {
    const [loading, setLoading] = useState(true);
    const [isSyncing, setIsSyncing] = useState(false);
    const [error, setError] = useState<string | null>(null);
+   const [notifications, setNotifications] = useState<KitchenNotification[]>([]);
+
+   const ordersRef = useRef<Order[]>([]);
+   const isFirstLoadRef = useRef(true);
+   const notifiedKeysRef = useRef<Set<string>>(new Set());
+
+   // Sync ref with orders state
+   useEffect(() => {
+      ordersRef.current = orders;
+   }, [orders]);
+
+   const playNotificationSound = () => {
+      try {
+         const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+         
+         if (audioCtx.state === 'suspended') {
+            audioCtx.resume();
+         }
+
+         // Upward C-major triad chime
+         // Note 1: C5 (523.25 Hz)
+         const osc1 = audioCtx.createOscillator();
+         const gain1 = audioCtx.createGain();
+         osc1.type = 'sine';
+         osc1.frequency.setValueAtTime(523.25, audioCtx.currentTime);
+         gain1.gain.setValueAtTime(0.08, audioCtx.currentTime);
+         gain1.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.35);
+         osc1.connect(gain1);
+         gain1.connect(audioCtx.destination);
+         osc1.start();
+         osc1.stop(audioCtx.currentTime + 0.35);
+
+         // Note 2: E5 (659.25 Hz) after 90ms
+         setTimeout(() => {
+            const osc2 = audioCtx.createOscillator();
+            const gain2 = audioCtx.createGain();
+            osc2.type = 'sine';
+            osc2.frequency.setValueAtTime(659.25, audioCtx.currentTime);
+            gain2.gain.setValueAtTime(0.08, audioCtx.currentTime);
+            gain2.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.4);
+            osc2.connect(gain2);
+            gain2.connect(audioCtx.destination);
+            osc2.start();
+            osc2.stop(audioCtx.currentTime + 0.4);
+         }, 90);
+
+         // Note 3: G5 (783.99 Hz) after 180ms
+         setTimeout(() => {
+            const osc3 = audioCtx.createOscillator();
+            const gain3 = audioCtx.createGain();
+            osc3.type = 'sine';
+            osc3.frequency.setValueAtTime(783.99, audioCtx.currentTime);
+            gain3.gain.setValueAtTime(0.1, audioCtx.currentTime);
+            gain3.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.55);
+            osc3.connect(gain3);
+            gain3.connect(audioCtx.destination);
+            osc3.start();
+            osc3.stop(audioCtx.currentTime + 0.55);
+         }, 180);
+      } catch (e) {
+         console.warn("Failed to play sound:", e);
+      }
+   };
+
+   const triggerNewOrderNotification = (order: Order, isUpdate: boolean) => {
+      // 1. Play sound
+      playNotificationSound();
+
+      // 2. Add notification card
+      const id = Math.random().toString(36).substring(2, 11);
+      const newNotification: KitchenNotification = {
+         id,
+         orderNumber: order.order_number,
+         tableNumber: order.table_number || 'N/A',
+         itemCount: order.order_items?.reduce((sum, item) => sum + item.quantity, 0) || 0,
+         type: isUpdate ? 'update' : 'new'
+      };
+
+      setNotifications(prev => [newNotification, ...prev]);
+
+      // 3. Auto-remove after 8 seconds
+      setTimeout(() => {
+         setNotifications(prev => prev.filter(n => n.id !== id));
+      }, 8000);
+   };
 
    const fetchOrders = useCallback(async () => {
       setIsSyncing(true);
@@ -37,6 +133,39 @@ const KitchenDashboard: React.FC = () => {
          }
 
          const data = await orderService.fetchActiveOrders(activeBranchId);
+         
+         // Compare to trigger notifications/sound
+         if (!isFirstLoadRef.current) {
+            data.forEach(newOrder => {
+               const prevOrder = ordersRef.current.find(o => o.id === newOrder.id);
+               const isIncoming = newOrder.status === 'pending' && !(newOrder.source === 'chatbot' && !newOrder.waiter_id);
+               
+               if (isIncoming) {
+                  const itemsCount = newOrder.order_items?.length || 0;
+                  if (!prevOrder) {
+                     // New order
+                     const key = `new-order-${newOrder.id}`;
+                     if (!notifiedKeysRef.current.has(key)) {
+                        notifiedKeysRef.current.add(key);
+                        triggerNewOrderNotification(newOrder, false);
+                     }
+                  } else {
+                     // Existing order - check if new items were appended
+                     const prevItemsCount = prevOrder.order_items?.length || 0;
+                     if (itemsCount > prevItemsCount) {
+                        const key = `update-order-${newOrder.id}-${itemsCount}`;
+                        if (!notifiedKeysRef.current.has(key)) {
+                           notifiedKeysRef.current.add(key);
+                           triggerNewOrderNotification(newOrder, true);
+                        }
+                     }
+                  }
+               }
+            });
+         } else {
+            isFirstLoadRef.current = false;
+         }
+
          setOrders(data);
          setError(null);
       } catch (err: any) {
@@ -47,7 +176,7 @@ const KitchenDashboard: React.FC = () => {
          setLoading(false);
          setIsSyncing(false);
       }
-   }, []);
+   }, [activeBranchId]);
 
    useEffect(() => {
       if (!activeBranchId) return;
@@ -62,8 +191,21 @@ const KitchenDashboard: React.FC = () => {
             table: 'orders',
             filter: filter
          }, () => fetchOrders())
+         .on('postgres_changes', {
+            event: '*',
+            schema: 'public',
+            table: 'order_items'
+         }, () => fetchOrders())
          .subscribe();
-      return () => { supabase.removeChannel(channel); };
+
+      const interval = setInterval(() => {
+         fetchOrders();
+      }, 5000);
+
+      return () => {
+         supabase.removeChannel(channel);
+         clearInterval(interval);
+      };
    }, [fetchOrders, activeBranchId]);
 
    const handleOrderAction = async (action: string, orderId: string) => {
@@ -197,6 +339,61 @@ const KitchenDashboard: React.FC = () => {
                   </div>
                </div>
             </div>
+         </div>
+
+         {/* Floating Notification Sidebar Stack */}
+         <div className="fixed top-24 right-6 z-50 flex flex-col gap-3 w-80 max-w-[calc(100vw-3rem)] pointer-events-none">
+            <style>{`
+               @keyframes shrink-progress {
+                  from { width: 100%; }
+                  to { width: 0%; }
+               }
+            `}</style>
+            <AnimatePresence>
+               {notifications.map(notification => (
+                  <motion.div
+                     key={notification.id}
+                     initial={{ opacity: 0, x: 100, scale: 0.9 }}
+                     animate={{ opacity: 1, x: 0, scale: 1 }}
+                     exit={{ opacity: 0, x: 100, scale: 0.9 }}
+                     transition={{ type: 'spring', damping: 20, stiffness: 300 }}
+                     className="pointer-events-auto bg-card/90 backdrop-blur-xl border border-primary/30 rounded-2xl p-4 shadow-2xl relative overflow-hidden flex gap-3 hover:border-primary/50 transition-all duration-300"
+                  >
+                     {/* Progress bar */}
+                     <div 
+                        className="absolute bottom-0 left-0 h-1 bg-primary/80" 
+                        style={{ animation: 'shrink-progress 8s linear forwards' }} 
+                     />
+                     
+                     <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 text-primary shrink-0">
+                        <Bell className="w-5 h-5 animate-[bounce_1.5s_infinite]" />
+                     </div>
+
+                     <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                           <span className="text-[10px] font-black uppercase tracking-wider text-primary">
+                              {notification.type === 'new' ? 'New Order!' : 'Order Updated!'}
+                           </span>
+                           <button
+                              onClick={() => {
+                                 setNotifications(prev => prev.filter(n => n.id !== notification.id));
+                              }}
+                              className="text-muted hover:text-foreground transition-colors p-0.5"
+                           >
+                              <X className="w-3.5 h-3.5" />
+                           </button>
+                        </div>
+                        <h4 className="text-sm font-bold text-foreground mt-0.5 font-sans leading-tight">
+                           Table {notification.tableNumber}
+                        </h4>
+                        <p className="text-[10px] text-muted-foreground mt-1 flex justify-between font-mono">
+                           <span>{notification.itemCount} items</span>
+                           <span>{notification.orderNumber.substring(0, 15)}</span>
+                        </p>
+                     </div>
+                  </motion.div>
+               ))}
+            </AnimatePresence>
          </div>
       </>
    );
