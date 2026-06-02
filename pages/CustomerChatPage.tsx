@@ -1060,6 +1060,10 @@ const CustomerChatPage: React.FC = () => {
         if (signal) {
             fetchOptions.signal = signal;
         }
+        console.log('invokeSecureFunction fetch call debug:', {
+            url: `${SUPABASE_URL}/functions/v1/${functionName}`,
+            fetchOptions
+        });
         const response = await fetch(`${SUPABASE_URL}/functions/v1/${functionName}`, fetchOptions);
         const payload = await response.json().catch(() => ({}));
         if (!response.ok || payload?.error) {
@@ -1175,7 +1179,7 @@ const CustomerChatPage: React.FC = () => {
                 if (currentOrgId) setActiveOrgId(currentOrgId);
 
                 const sessionTokenKey = `baro_table_session_${tableId}`;
-                let activeToken = sessionStorage.getItem(sessionTokenKey) || '';
+                let activeToken = (sessionStorage.getItem(sessionTokenKey) || '').replace(/[\r\n\s]+/g, '');
 
                 if (activeToken && isTokenExpired(activeToken)) {
                     activeToken = '';
@@ -1194,8 +1198,8 @@ const CustomerChatPage: React.FC = () => {
                                 throw new Error(rpcErr?.message || 'Failed to exchange table token');
                             }
 
-                            activeToken = sessionToken;
-                            sessionStorage.setItem(sessionTokenKey, sessionToken);
+                            activeToken = sessionToken.replace(/[\r\n\s]+/g, '');
+                            sessionStorage.setItem(sessionTokenKey, activeToken);
                         } catch (e) {
                             console.error('Token exchange failed:', e);
                             showToast('Verification failed. Please scan a valid QR code.', 'error');

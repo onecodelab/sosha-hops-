@@ -53,8 +53,8 @@ BEGIN
     );
     
     -- 5. Sign payload with HMAC SHA-256
-    v_token := encode(v_payload::text::bytea, 'base64') || '.' || 
-               encode(hmac(v_payload::text::bytea, v_secret::bytea, 'sha256'), 'base64');
+    v_token := replace(replace(encode(v_payload::text::bytea, 'base64'), E'\n', ''), E'\r', '') || '.' || 
+               replace(replace(encode(hmac(v_payload::text::bytea, v_secret::bytea, 'sha256'), 'base64'), E'\n', ''), E'\r', '');
                
     RETURN v_token;
 END;
