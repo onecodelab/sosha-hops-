@@ -41,7 +41,7 @@ const INCLUDED_FEATURES = [
 const PricingPage: React.FC = () => {
     const navigate = useNavigate();
     const { t } = useLanguage();
-    const [billing, setBilling] = useState<'monthly' | 'annual'>('annual');
+    
 
     return (
         <MarketingLayout>
@@ -126,7 +126,7 @@ const PricingPage: React.FC = () => {
                 </div>
             </section>
 
-            {/* ═══════════════  SAAS SUBSCRIPTION  ═══════════════ */}
+            {/* ═══════════════  SINGLE PACKAGE  ═══════════════ */}
             <section className="relative py-32 overflow-hidden liquid-bg">
                 <div className="absolute inset-0 bg-black/40 pointer-events-none" />
                 <WaveDivider position="top" color="fill-brand-blue/30" />
@@ -137,115 +137,60 @@ const PricingPage: React.FC = () => {
                             {t('pricing.saasTag')}
                         </span>
                         <h2 className="text-4xl md:text-6xl font-black uppercase tracking-tighter text-white leading-none mb-6">
-                            {t('pricing.saasTitle1')} <br />
-                            <span className="serif-ital text-brand-yellow lowercase">{t('pricing.saasTitle2')}</span>
+                            Everything You Need, <br />
+                            <span className="serif-ital text-brand-yellow lowercase">One Simple Price</span>
                         </h2>
                         <p className="serif-ital text-lg text-white/40 max-w-xl mx-auto">
-                            {t('pricing.saasDesc')}
+                            Full access to all Baro OS modules. Designed for precision and speed.
                         </p>
                     </div>
 
-                    {/* Billing Toggle */}
-                    <div className="flex items-center justify-center gap-4 mb-16">
-                        <button
-                            onClick={() => setBilling('monthly')}
-                            className={`mono-os text-[10px] font-black tracking-widest px-6 py-3 rounded-full transition-all uppercase ${billing === 'monthly'
-                                    ? 'bg-white/10 text-white border border-white/20'
-                                    : 'text-white/30 hover:text-white/60'
-                                }`}
-                        >
-                            {t('pricing.monthlyLabel')}
-                        </button>
-                        <button
-                            onClick={() => setBilling('annual')}
-                            className={`mono-os text-[10px] font-black tracking-widest px-6 py-3 rounded-full transition-all uppercase flex items-center gap-2 ${billing === 'annual'
-                                    ? 'bg-brand-green/20 text-brand-green border border-brand-green/30'
-                                    : 'text-white/30 hover:text-white/60'
-                                }`}
-                        >
-                            {t('pricing.annualLabel')}
-                            <span className="bg-brand-green/30 text-brand-green px-2 py-0.5 rounded-full text-[8px] tracking-[0.2em]">
-                                -15%
-                            </span>
-                        </button>
-                    </div>
-
-                    {/* Pricing Cards */}
-                    <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-                        {/* Monthly Card */}
-                        <div
-                            className={`glass-panel rounded-[2.5rem] p-10 md:p-12 relative group transition-all duration-500 overflow-hidden cursor-pointer ${billing === 'monthly'
-                                    ? 'border-white/20 scale-[1.02]'
-                                    : 'border-white/5 opacity-60 hover:opacity-80'
-                                }`}
-                            onClick={() => setBilling('monthly')}
-                        >
-                            <div className="relative z-10">
-                                <h3 className="mono-os text-[10px] font-black text-white/50 tracking-[0.3em] uppercase mb-6">
-                                    {t('pricing.monthlyTitle')}
-                                </h3>
-                                <div className="flex items-baseline gap-2 mb-2">
-                                    <span className="text-5xl font-black text-white">ETB 15,000</span>
-                                </div>
-                                <p className="mono-os text-[10px] font-black text-white/30 tracking-widest uppercase mb-8">
-                                    {t('pricing.perMonth')}
-                                </p>
-                                <p className="serif-ital text-sm text-white/40 leading-relaxed">
-                                    {t('pricing.monthlyDesc')}
-                                </p>
-                            </div>
-                        </div>
-
-                        {/* Annual Card — RECOMMENDED */}
-                        <div
-                            className={`relative rounded-[2.5rem] p-10 md:p-12 group transition-all duration-500 overflow-hidden cursor-pointer uchok-border ${billing === 'annual'
-                                    ? 'scale-[1.02]'
-                                    : 'opacity-60 hover:opacity-80'
-                                }`}
-                            style={{
-                                background: 'rgba(20, 20, 20, 0.4)',
-                                border: billing === 'annual' ? '1px solid rgba(114, 191, 68, 0.3)' : '1px solid rgba(255, 255, 255, 0.05)',
-                                backdropFilter: 'blur(12px)',
-                            }}
-                            onClick={() => setBilling('annual')}
-                        >
-                            {/* Recommended Badge */}
-                            <div className="absolute top-6 right-6 flex items-center gap-2 bg-brand-green/20 border border-brand-green/30 rounded-full px-4 py-1.5">
-                                <Crown className="w-3.5 h-3.5 text-brand-green" />
-                                <span className="mono-os text-[8px] font-black text-brand-green tracking-[0.2em] uppercase">
-                                    {t('pricing.recommended')}
-                                </span>
-                            </div>
-
-                            <div className="relative z-10">
-                                <h3 className="mono-os text-[10px] font-black text-brand-green tracking-[0.3em] uppercase mb-6">
-                                    {t('pricing.annualTitle')}
-                                </h3>
-                                <div className="flex items-baseline gap-3 mb-2">
-                                    <span className="text-5xl font-black text-white">ETB 153,000</span>
-                                </div>
-                                <div className="flex items-center gap-3 mb-8">
-                                    <p className="mono-os text-[10px] font-black text-white/30 tracking-widest uppercase">
-                                        {t('pricing.perYear')}
-                                    </p>
-                                    <span className="mono-os text-[9px] font-black text-brand-green bg-brand-green/10 px-3 py-1 rounded-full border border-brand-green/20">
-                                        {t('pricing.save')} ETB 27,000
-                                    </span>
-                                </div>
-                                <p className="serif-ital text-sm text-white/40 leading-relaxed">
-                                    {t('pricing.annualDesc')}
-                                </p>
-                            </div>
-
+                    <div className="mx-auto flex max-w-5xl flex-col items-center gap-6 text-center">
+                        <div className="glass-panel w-full sm:w-fit sm:min-w-[24rem] rounded-[2.5rem] p-10 md:p-12 relative group transition-all duration-500 overflow-hidden border border-brand-green/30">
                             {/* Glow effect */}
                             <div className="absolute -bottom-20 -right-20 w-60 h-60 bg-brand-green/10 blur-[100px] rounded-full pointer-events-none" />
+
+                            <div className="relative z-10 flex flex-col items-center">
+                                <div className="flex justify-center items-baseline gap-2 mb-8">
+                                    <span className="text-lg font-semibold text-white/50">ETB</span>
+                                    <span className="text-6xl font-black text-white">5,500</span>
+                                    <span className="mono-os text-[10px] font-black text-white/30 tracking-widest uppercase">
+                                        / month
+                                    </span>
+                                </div>
+                                
+                                <div className="w-full my-6 text-left">
+                                    {[
+                                        ["Unlimited Staff Accounts", "Full Operations POS", "Advanced Kitchen Display (KDS)"],
+                                        ["Live Table Tracking", "Purchase Order System", "Detailed Waste Analytics"],
+                                        ["2 Free QR Code Plates", "Local Verifier Engine", "Dedicated VPS Hosting"],
+                                    ].map((featureGroup, idx) => (
+                                        <div key={idx}>
+                                            <ul className="flex flex-col gap-4">
+                                                {featureGroup.map((feature, i) => (
+                                                    <li
+                                                        key={i}
+                                                        className="flex items-center justify-between gap-4 text-sm font-medium text-white/70"
+                                                    >
+                                                        {feature} <Check className="inline w-4 h-4 shrink-0 text-brand-green" />
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                            {idx < 2 && <div className="w-full h-px bg-white/5 my-6" />}
+                                        </div>
+                                    ))}
+                                </div>
+
+                                <Button
+                                    size="lg"
+                                    onClick={() => navigate('/book-demo')}
+                                    className="w-full h-16 mt-4 bg-brand-yellow hover:bg-white text-black font-black uppercase tracking-[0.2em] text-[10px] rounded-2xl shadow-xl shadow-brand-yellow/10 transition-all ripple-link"
+                                >
+                                    Start 7-Day Free Trial
+                                </Button>
+                            </div>
                         </div>
                     </div>
-
-                    {/* Subscription Note */}
-                    <p className="text-center serif-ital text-sm text-white/30 mt-12 max-w-lg mx-auto">
-                        {t('pricing.subscriptionNote')}
-                    </p>
                 </div>
             </section>
 

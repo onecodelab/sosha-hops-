@@ -27,32 +27,7 @@ const getPastelColor = (index: number) => {
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
-const QUICK_PROMPTS = [
-    { label: 'Track Order', prompt: 'Track my order' },
-    { label: 'Add More', prompt: 'I want to add more items' },
-    { label: 'Recommendations', prompt: 'What do you recommend?' },
-    { label: 'Budget Meal', prompt: 'What can I get within my budget?' },
-    { label: 'Popular Items', prompt: 'Show me your most popular items' },
-];
 
-/* ─── TYPES ─── */
-interface ChatMessage {
-    id: string;
-    role: 'user' | 'assistant';
-    content: string;
-    timestamp: Date;
-    attachments?: {
-        type: 'menu';
-        data: any[];
-    };
-    metadata?: {
-        buttons?: { label: string; prompt: string }[];
-        tracking?: { status: 'placed' | 'preparing' | 'ready' | 'delivered'; orderNumber?: string };
-        pills?: string[];
-        splitter?: { total: number };
-        rating?: { type: 'stars' };
-    };
-}
 
 interface MenuItem {
     id: string;
@@ -77,15 +52,7 @@ interface ActiveOrder {
 }
 
 /* ─── SESSION MANAGEMENT ─── */
-const getSessionId = (tableId: string): string => {
-    const key = `baro_session_${tableId}`;
-    let sid = localStorage.getItem(key);
-    if (!sid) {
-        sid = crypto.randomUUID();
-        localStorage.setItem(key, sid);
-    }
-    return sid;
-};
+
 
 const getCardTheme = (index: number) => {
     const themes = [
@@ -872,223 +839,7 @@ const MenuView: React.FC<{
     );
 });
 
-/* ─── CHAT VIEW ─── */
-const ChatView: React.FC<{
-    messages: ChatMessage[];
-    inputValue: string;
-    setInputValue: (val: string) => void;
-    isTyping: boolean;
-    hasInteracted: boolean;
-    dynamicPrompts: { label: string; prompt: string }[];
-    handleSend: (overrideMessage?: string) => void;
-    onAddToCart: (item: MenuItem) => void;
-    textareaRef: React.RefObject<HTMLTextAreaElement>;
-    scrollRef: React.RefObject<HTMLDivElement>;
-}> = ({
-    messages,
-    inputValue,
-    setInputValue,
-    isTyping,
-    hasInteracted,
-    dynamicPrompts,
-    handleSend,
-    onAddToCart,
-    textareaRef,
-    scrollRef
-}) => {
-    useEffect(() => {
-        if (textareaRef.current) {
-            textareaRef.current.style.height = 'auto';
-            textareaRef.current.style.height = Math.min(textareaRef.current.scrollHeight, 120) + 'px';
-        }
-    }, [inputValue, textareaRef]);
 
-    useEffect(() => {
-        if (scrollRef.current) {
-            scrollRef.current.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
-        }
-    }, [messages, isTyping, scrollRef]);
-
-    const handleKeyDown = (e: React.KeyboardEvent) => {
-        if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            handleSend();
-        }
-    };
-
-    const hasContent = inputValue.trim().length > 0;
-
-    return (
-        <div className="flex-1 flex flex-col bg-[#FAFAFA] overflow-hidden relative">
-            <div ref={scrollRef} className="flex-1 overflow-y-auto px-6 pt-4 pb-36 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-                <div className="max-w-2xl mx-auto space-y-6">
-                    {!hasInteracted && messages.length === 0 && (
-                        <div className="pt-12 pb-8 text-center flex flex-col items-center">
-                            <div className="w-16 h-16 rounded-[24px] bg-[#FFFFFF] border border-[#E2E8F0] flex items-center justify-center mb-6 shadow-sm">
-                                <Sparkles className="w-8 h-8 text-[#84CC16]" />
-                            </div>
-                            <h2 className="text-[28px] font-bold text-[#0F172A] tracking-tight leading-tight mb-2">
-                                AI Concierge
-                            </h2>
-                            <p className="text-[14px] text-[#64748B] max-w-[240px]">
-                                Your personal dining assistant is preparing a greeting...
-                            </p>
-                        </div>
-                    )}
-
-                    <div className={cn("space-y-6 transition-all duration-300", (!hasInteracted && !isTyping) ? "opacity-0" : "opacity-100")}>
-                        <AnimatePresence initial={false}>
-                            {messages.map(msg => (
-                                <MessageBubble 
-                                    key={msg.id} 
-                                    msg={msg} 
-                                    onAddToCart={onAddToCart}
-                                    onQuickAction={handleSend}
-                                />
-                            ))}
-                        </AnimatePresence>
-
-                        {isTyping && (
-                            <motion.div
-                                initial={{ opacity: 0, y: 8 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                className="flex items-center gap-2.5"
-                            >
-                                <div className="w-7 h-7 rounded-full bg-[#FFFFFF] border border-[#E2E8F0] flex items-center justify-center shadow-sm">
-                                    <Sparkles className="w-3.5 h-3.5 text-[#84CC16] animate-pulse" />
-                                </div>
-                                <div className="bg-[#FFFFFF] border border-[#E2E8F0] rounded-[16px] rounded-tl-sm px-4 py-3 shadow-sm">
-                                    <div className="flex items-center gap-3">
-                                        <div className="flex gap-1">
-                                            <motion.div animate={{ opacity: [0, 1, 0] }} transition={{ repeat: Infinity, duration: 1.5, delay: 0 }} className="w-1 h-1 bg-[#84CC16] rounded-full" />
-                                            <motion.div animate={{ opacity: [0, 1, 0] }} transition={{ repeat: Infinity, duration: 1.5, delay: 0.2 }} className="w-1 h-1 bg-[#84CC16] rounded-full" />
-                                            <motion.div animate={{ opacity: [0, 1, 0] }} transition={{ repeat: Infinity, duration: 1.5, delay: 0.4 }} className="w-1 h-1 bg-[#84CC16] rounded-full" />
-                                        </div>
-                                        <span className="text-[10px] text-[#64748B]/60 uppercase font-bold tracking-widest">Thinking</span>
-                                    </div>
-                                </div>
-                            </motion.div>
-                        )}
-                    </div>
-                </div>
-            </div>
-
-            <div className="absolute bottom-20 inset-x-0 bg-gradient-to-t from-[#FAFAFA] via-[#FAFAFA] to-transparent pt-6 pb-4 px-6 z-40">
-                <div className="max-w-2xl mx-auto">
-                    {dynamicPrompts.length > 0 && !messages[messages.length - 1]?.metadata?.buttons && (
-                        <div className={cn(
-                            "flex gap-2 overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] mb-3 transition-opacity duration-300",
-                            (!hasInteracted || isTyping) ? "opacity-50 pointer-events-none" : "opacity-100"
-                        )}>
-                            {dynamicPrompts.map((action, i) => (
-                                <button
-                                    key={i}
-                                    disabled={!hasInteracted || isTyping}
-                                    onClick={() => handleSend(action.prompt)}
-                                    className="flex-none px-4 py-2 rounded-full bg-[#FFFFFF] border border-[#E2E8F0] text-[#0F172A] text-[12px] font-medium hover:border-[#84CC16] hover:text-[#84CC16] transition-all whitespace-nowrap shadow-sm disabled:opacity-50"
-                                >
-                                    {action.label}
-                                </button>
-                            ))}
-                        </div>
-                    )}
-
-                    <div className={cn(
-                        "relative flex items-end rounded-[24px] border transition-all duration-300 bg-[#FFFFFF] border-[#E2E8F0] shadow-sm focus-within:border-[#84CC16]"
-                    )}>
-                        <textarea
-                            ref={textareaRef}
-                            value={inputValue}
-                            onChange={e => setInputValue(e.target.value)}
-                            onKeyDown={handleKeyDown}
-                            disabled={!hasInteracted || isTyping}
-                            placeholder={!hasInteracted ? "Connecting..." : "Ask the AI Concierge anything..."}
-                            className="flex-1 bg-transparent border-0 outline-none text-[#0F172A] text-sm placeholder:text-[#64748B]/50 resize-none overflow-hidden px-5 py-4 leading-relaxed disabled:opacity-50"
-                            rows={1}
-                            style={{ minHeight: '1.5em', maxHeight: '120px' }}
-                        />
-                        <button
-                            onClick={() => handleSend()}
-                            disabled={!hasContent || isTyping || !hasInteracted}
-                            className={cn(
-                                "m-2 p-2.5 rounded-full transition-all duration-300 flex-shrink-0",
-                                hasContent && !isTyping && hasInteracted
-                                    ? "bg-[#84CC16] text-white hover:scale-105 active:scale-95 shadow-md shadow-[#84CC16]/20"
-                                    : "bg-[#FAFAFA] text-[#64748B]/40 cursor-not-allowed border border-[#E2E8F0]/50"
-                            )}
-                        >
-                            <Send className="w-4 h-4 text-white" />
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    );
-};
-
-/* ─── MESSAGE BUBBLE ─── */
-const MessageBubble: React.FC<{ msg: ChatMessage; onAddToCart: (item: MenuItem) => void; onQuickAction: (p: string) => void }> = ({ msg, onAddToCart, onQuickAction }) => {
-    const isUser = msg.role === 'user';
-    return (
-        <div className={cn("flex flex-col gap-2", isUser ? "items-end" : "items-start")}>
-            <motion.div
-                initial={{ opacity: 0, y: 10, scale: 0.98 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                transition={{ duration: 0.25, ease: [0.2, 0, 0, 1] }}
-                className={cn("flex gap-2.5 max-w-[88%]", isUser ? "flex-row-reverse" : "")}
-            >
-                <div className={cn(
-                    "px-4 py-3 rounded-[20px] text-sm leading-relaxed shadow-sm",
-                    isUser
-                        ? "bg-[#84CC16] text-[#FFFFFF] font-medium rounded-tr-sm"
-                        : "bg-[#FFFFFF] text-[#0F172A] rounded-tl-sm border border-[#E2E8F0]"
-                )}>
-                    <div className="whitespace-pre-wrap">
-                        {msg.content
-                            .replace(/^\|.*\|$/gm, '')
-                            .replace(/^[*-] .*(?:ETB|Birr|Price).*$/gmi, '')
-                            .replace(/[\*_\[\]\(\)]/g, '')
-                            .trim()}
-                    </div>
-
-                    {msg.metadata?.pills && (
-                        <CategoryPills pills={msg.metadata.pills} onSelect={onQuickAction} />
-                    )}
-
-                    <p className={cn(
-                        "text-[9px] mt-1.5 opacity-50",
-                        isUser ? "text-white/80 text-right" : "text-[#64748B]"
-                    )}>
-                        {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </p>
-                </div>
-            </motion.div>
-
-            {!isUser && msg.metadata && (
-                <div className="w-full max-w-[90%] pl-2 space-y-2">
-                    {msg.metadata.tracking && (
-                        <TrackingWidget status={msg.metadata.tracking.status} />
-                    )}
-                    {msg.metadata.splitter && (
-                        <BillSplitter total={msg.metadata.splitter.total} />
-                    )}
-                    {msg.metadata.rating && (
-                        <StarRating />
-                    )}
-                    {msg.metadata.buttons && (
-                        <ActionButtons buttons={msg.metadata.buttons} onAction={onQuickAction} />
-                    )}
-                </div>
-            )}
-
-            {msg.attachments?.type === 'menu' && (
-                <div className="w-full max-w-[95%] pl-2">
-                    <MenuCarousel items={msg.attachments.data} onAddToCart={onAddToCart} />
-                </div>
-            )}
-        </div>
-    );
-};
 
 /* ─── TRACKING VIEW ─── */
 const TrackingView: React.FC<{ 
@@ -1217,17 +968,7 @@ const CustomerChatPage: React.FC = () => {
     const [allItems, setAllItems] = useState<MenuItem[]>([]);
     const [activeCategory, setActiveCategory] = useState<string>('All');
 
-    // Chat view states
-    const [messages, setMessages] = useState<ChatMessage[]>([]);
-    const [inputValue, setInputValue] = useState('');
-    const [isTyping, setIsTyping] = useState(false);
-    const [hasInteracted, setHasInteracted] = useState(false);
-    const [dynamicPrompts, setDynamicPrompts] = useState<{ label: string; prompt: string }[]>([]);
 
-    const textareaRef = useRef<HTMLTextAreaElement>(null);
-    const scrollRef = useRef<HTMLDivElement>(null);
-    const hasInitialGreetingSent = useRef(false);
-    const sessionId = tableId ? getSessionId(tableId) : '';
 
     const generateOrderNumber = useCallback(() => {
         const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
@@ -1381,82 +1122,6 @@ const CustomerChatPage: React.FC = () => {
         }
     }, [branchId, cart, generateOrderNumber, isPlacingOrder, refreshActiveOrder, tableId, tableNumber, invokeSecureFunction]);
 
-    const handleSend = useCallback(async (overrideMessage?: string) => {
-        const msg = overrideMessage || inputValue.trim();
-        if (!msg) return;
-
-        const isInit = msg === 'init_chat';
-        if (!isInit) {
-            setHasInteracted(true);
-            const userMsg: ChatMessage = {
-                id: crypto.randomUUID(),
-                role: 'user',
-                content: msg,
-                timestamp: new Date(),
-            };
-            setMessages(prev => [...prev, userMsg]);
-            setInputValue('');
-            if (textareaRef.current) textareaRef.current.style.height = 'auto';
-        }
-        
-        setIsTyping(true);
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 15000);
-
-        try {
-            const data = await invokeSecureFunction('customer-intelligence', {
-                message: msg,
-                session_id: sessionId,
-                table_number: tableNumber || 'Guest',
-                organization_id: activeOrgId || undefined,
-                organization_name: orgName,
-                branch_id: branchId,
-                branch_name: branchName,
-                is_verified: true
-            }, controller.signal);
-
-            clearTimeout(timeoutId);
-
-            const responseText = data?.text || '⚠️ No response. Please try again.';
-            const assistantMsg: ChatMessage = {
-                id: crypto.randomUUID(),
-                role: 'assistant',
-                content: responseText,
-                timestamp: new Date(),
-                metadata: data?.metadata,
-                attachments: data?.metadata?.attachments
-            };
-            
-            setMessages(prev => [...prev, assistantMsg]);
-            
-            if (data?.metadata?.buttons && Array.isArray(data.metadata.buttons)) {
-                setDynamicPrompts(data.metadata.buttons);
-            } else if (data?.metadata?.suggested_prompts && Array.isArray(data.metadata.suggested_prompts)) {
-                setDynamicPrompts(data.metadata.suggested_prompts);
-            }
-            
-            if (isInit) {
-                setHasInteracted(true);
-            }
-        } catch (err: any) {
-            console.error('Chat error full details:', err);
-            if (err.name === 'AbortError') {
-                showToast("Request timed out. Please try again.", "error");
-            }
-            if (!isInit) {
-                const errorMsg: ChatMessage = {
-                    id: crypto.randomUUID(),
-                    role: 'assistant',
-                    content: `❌ ${err.message || 'Sorry, something went wrong. Please try again.'}`,
-                    timestamp: new Date(),
-                };
-                setMessages(prev => [...prev, errorMsg]);
-            }
-        } finally {
-            setIsTyping(false);
-        }
-    }, [inputValue, sessionId, tableNumber, activeOrgId, branchId, branchName, orgName, invokeSecureFunction]);
-
     useEffect(() => {
         localStorage.setItem(cartStorageKey, JSON.stringify(cart));
     }, [cart, cartStorageKey]);
@@ -1566,10 +1231,10 @@ const CustomerChatPage: React.FC = () => {
                     }
                 } catch (e) { console.warn('Menu load failed:', e); }
 
-                if (currentBranchId) {
+                if (currentOrgId) {
                     supabase.from('bank_settings')
                         .select('*')
-                        .eq('branch_id', currentBranchId)
+                        .eq('organization_id', currentOrgId)
                         .eq('is_active', true)
                         .then(({ data }) => { if (data) setBranchBanks(data); })
                         .catch(() => null);
@@ -1599,7 +1264,7 @@ const CustomerChatPage: React.FC = () => {
         };
 
         bootstrap();
-    }, [tableId, searchParams, sessionId, refreshActiveOrder]);
+    }, [tableId, searchParams, refreshActiveOrder]);
 
     useEffect(() => {
         let isMounted = true;
