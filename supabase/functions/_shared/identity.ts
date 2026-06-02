@@ -51,8 +51,9 @@ async function verifyBranchToken(token: string): Promise<IdentityContext | null>
             ['sign'],
         );
 
+        const rawPayload = decodeBase64(payloadB64);
         const expectedSignature = new Uint8Array(
-            await crypto.subtle.sign('HMAC', key, encoder.encode(payloadB64)),
+            await crypto.subtle.sign('HMAC', key, encoder.encode(rawPayload)),
         );
         const providedSignature = Uint8Array.from(decodeBase64(signatureB64), (char) => char.charCodeAt(0));
 
@@ -60,7 +61,7 @@ async function verifyBranchToken(token: string): Promise<IdentityContext | null>
             return null;
         }
 
-        const payload = JSON.parse(decodeBase64(payloadB64));
+        const payload = JSON.parse(rawPayload);
         if (!payload.branch_id || !payload.organization_id) {
             return null;
         }
