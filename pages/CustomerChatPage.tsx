@@ -1153,8 +1153,8 @@ const TrackingView: React.FC<{
 
 /* ─── BOTTOM NAVIGATION ─── */
 const BottomNav: React.FC<{
-    currentView: 'menu' | 'chat' | 'orders';
-    onViewChange: (v: 'menu' | 'chat' | 'orders') => void;
+    currentView: 'menu' | 'orders';
+    onViewChange: (v: 'menu' | 'orders') => void;
 }> = ({ currentView, onViewChange }) => {
     return (
         <div className="fixed bottom-6 inset-x-4 max-w-md mx-auto bg-white/85 backdrop-blur-xl border border-[#E2E8F0] px-8 py-3 flex items-center justify-between z-[90] rounded-[24px] shadow-[0_8px_30px_rgb(15,23,42,0.06)] transition-all duration-300">
@@ -1167,17 +1167,6 @@ const BottomNav: React.FC<{
             >
                 <ShoppingBag className="w-5 h-5" />
                 <span className="text-[10px] tracking-wide">Menu</span>
-            </button>
-            
-            <button 
-                onClick={() => onViewChange('chat')} 
-                className={cn(
-                    "flex flex-col items-center gap-1 transition-all duration-300 flex-1 relative", 
-                    currentView === 'chat' ? "text-[#84CC16] scale-105 font-semibold" : "text-[#64748B] hover:text-[#0F172A]"
-                )}
-            >
-                <MessageCircle className="w-5 h-5" />
-                <span className="text-[10px] tracking-wide">Chat</span>
             </button>
 
             <button 
@@ -1224,7 +1213,7 @@ const CustomerChatPage: React.FC = () => {
     const [latestOrderId, setLatestOrderId] = useState<string | null>(null);
     const [activeOrder, setActiveOrder] = useState<ActiveOrder | null>(null);
     const [branchBanks, setBranchBanks] = useState<{ bank_key: string; account_number: string }[]>([]);
-    const [currentView, setCurrentView] = useState<'menu' | 'chat' | 'orders'>('menu');
+    const [currentView, setCurrentView] = useState<'menu' | 'orders'>('menu');
     const [allItems, setAllItems] = useState<MenuItem[]>([]);
     const [activeCategory, setActiveCategory] = useState<string>('All');
 
@@ -1681,20 +1670,6 @@ const CustomerChatPage: React.FC = () => {
                     />
                 )}
 
-                {currentView === 'chat' && (
-                    <ChatView
-                        messages={messages}
-                        inputValue={inputValue}
-                        setInputValue={setInputValue}
-                        isTyping={isTyping}
-                        hasInteracted={hasInteracted}
-                        dynamicPrompts={dynamicPrompts}
-                        handleSend={handleSend}
-                        onAddToCart={addToCart}
-                        textareaRef={textareaRef}
-                        scrollRef={scrollRef}
-                    />
-                )}
 
                 {currentView === 'orders' && (
                     <TrackingView 
@@ -1714,7 +1689,7 @@ const CustomerChatPage: React.FC = () => {
             <BottomNav currentView={currentView} onViewChange={setCurrentView} />
 
             {/* Floating Cart Button */}
-            {cart.length > 0 && currentView !== 'chat' && !isCartOpen && (
+            {cart.length > 0 && !isCartOpen && (
                 <motion.button
                     initial={{ scale: 0, y: 20 }}
                     animate={{ scale: 1, y: 0 }}
