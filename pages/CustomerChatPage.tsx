@@ -1307,7 +1307,7 @@ const CustomerChatPage: React.FC = () => {
         if (!authToken) {
             throw new Error('This chat link is missing a valid secure token.');
         }
-        const response = await fetch(`${SUPABASE_URL}/functions/v1/${functionName}`, {
+        const fetchOptions: RequestInit = {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -1315,8 +1315,11 @@ const CustomerChatPage: React.FC = () => {
                 'Authorization': `Bearer ${authToken}`,
             },
             body: JSON.stringify(body),
-            signal,
-        });
+        };
+        if (signal) {
+            fetchOptions.signal = signal;
+        }
+        const response = await fetch(`${SUPABASE_URL}/functions/v1/${functionName}`, fetchOptions);
         const payload = await response.json().catch(() => ({}));
         if (!response.ok || payload?.error) {
             throw new Error(payload?.detail || payload?.error || `Failed to call ${functionName}.`);
