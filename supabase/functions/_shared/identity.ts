@@ -52,28 +52,37 @@ async function verifyBranchToken(token: string): Promise<IdentityContext | null>
         );
 
         const rawPayload = decodeBase64(payloadB64);
+        console.log("[verifyBranchToken] rawPayload:", rawPayload);
         const expectedSignature = new Uint8Array(
             await crypto.subtle.sign('HMAC', key, encoder.encode(rawPayload)),
         );
         const providedSignature = Uint8Array.from(decodeBase64(signatureB64), (char) => char.charCodeAt(0));
 
+        console.log("[verifyBranchToken] providedSignature length:", providedSignature.length, "expectedSignature length:", expectedSignature.length);
         if (!timingSafeEqual(expectedSignature, providedSignature)) {
+            console.warn("[verifyBranchToken] Signature mismatch!");
             return null;
         }
 
         const payload = JSON.parse(rawPayload);
+        console.log("[verifyBranchToken] payload:", payload);
         if (!payload.branch_id || !payload.organization_id) {
+            console.warn("[verifyBranchToken] Missing branch_id or organization_id in payload!");
             return null;
         }
 
         if (payload.exp !== undefined) {
             const expiry = Number(payload.exp);
-            if (!Number.isFinite(expiry) || expiry <= Math.floor(Date.now() / 1000)) {
+            const nowSeconds = Math.floor(Date.now() / 1000);
+            console.log("[verifyBranchToken] expiry:", expiry, "now:", nowSeconds);
+            if (!Number.isFinite(expiry) || expiry <= nowSeconds) {
+                console.warn("[verifyBranchToken] Token expired!");
                 return null;
             }
         }
 
         if (typeof payload.branch_id !== 'string' || typeof payload.organization_id !== 'string') {
+            console.warn("[verifyBranchToken] branch_id or organization_id is not a string!");
             return null;
         }
 
@@ -96,6 +105,7 @@ export async function resolveIdentity(req: Request, supabase: any): Promise<Iden
     // 0. Try Internal Token or Service Role Key
     if ((systemSecret && internalToken === systemSecret) ||
         (authHeader && authHeader.replace('Bearer ', '') === Deno.env.get('SUPABASE_SERVICE_ROLE_KEY'))) {
+        console.log("[resolveIdentity] Authenticated via Internal Token or Service Role Key");
         return {
             organizationId: 'SERVICE_ROLE',
             branchId: 'SERVICE_ROLE',
@@ -103,26 +113,41 @@ export async function resolveIdentity(req: Request, supabase: any): Promise<Iden
         };
     }
 
-    if (!authHeader) return null;
+    if (!authHeader) {
+        console.warn("[resolveIdentity] No Authorization header found!");
+        return null;
+    }
     const token = authHeader.replace('Bearer ', '');
+    console.log("[resolveIdentity] Authorization token starts with:", token.substring(0, 15) + "...");
 
     // 1. Try Standard Supabase Auth
-    const { data: { user }, error: userErr } = await supabase.auth.getUser(token);
-    if (!userErr && user) {
-        return {
-            organizationId: user.app_metadata?.organization_id,
-            branchId: '', // Standard users might not be bound to one branch
-            userId: user.id,
-            role: user.app_metadata?.role
-        };
+    try {
+        const { data: { user }, error: userErr } = await supabase.auth.getUser(token);
+        if (userErr) {
+            console.log("[resolveIdentity] Standard Supabase Auth returned error:", userErr.message);
+        }
+        if (!userErr && user) {
+            console.log("[resolveIdentity] Standard Supabase Auth succeeded for user:", user.id);
+            return {
+                organizationId: user.app_metadata?.organization_id,
+                branchId: '', // Standard users might not be bound to one branch
+                userId: user.id,
+                role: user.app_metadata?.role
+            };
+        }
+    } catch (e) {
+        console.error("[resolveIdentity] Standard Supabase Auth threw error:", e);
     }
 
     // 2. Try Signed Branch Token
+    console.log("[resolveIdentity] Attempting to verify branch token...");
     const branchIdentity = await verifyBranchToken(token);
     if (branchIdentity) {
+        console.log("[resolveIdentity] Branch token verification succeeded!");
         return branchIdentity;
     }
 
+    console.warn("[resolveIdentity] Both standard auth and branch token verification failed!");
     return null;
 }
 

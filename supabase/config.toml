@@ -11,3 +11,15 @@ import_map = "./functions/db-migrate/deno.json"
 
 [functions.mcp-server]
 verify_jwt = false
+
+[functions.place-order]
+verify_jwt = false
+
+[functions.search-menu]
+verify_jwt = false
+
+[functions.get-branch-info]
+verify_jwt = false
+
+[functions.customer-intelligence]
+verify_jwt = false
