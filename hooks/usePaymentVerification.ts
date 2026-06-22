@@ -24,13 +24,13 @@ interface StartVerificationParams {
 
 // Primary: Your Railway-hosted verifier service
 const RAILWAY_URL = 'https://verifier-service-repo-production.up.railway.app';
-const RAW_RAILWAY_KEY = import.meta.env.VITE_RAILWAY_API_KEY || 'test-key-123';
+const RAW_RAILWAY_KEY = import.meta.env.VITE_RAILWAY_API_KEY || import.meta.env.VITE_VERIFIER_API_KEY || 'test-key-123';
 const RAILWAY_API_KEY = RAW_RAILWAY_KEY.includes(',') ? RAW_RAILWAY_KEY.split(',')[0].trim() : RAW_RAILWAY_KEY;
 
-// Secondary: Official @creofam/verifier API (verifyapi.leulzenebe.pro)
+// Secondary: Official @creofam/verifier API (verify.et)
 // SDK uses x-api-key header and individual endpoints per bank (/verify-cbe, /verify-telebirr, etc.)
-const OFFICIAL_SDK_BASE = 'https://verifyapi.leulzenebe.pro';
-const LEUL_API_KEY = import.meta.env.VITE_LEUL_API_KEY || '';
+const OFFICIAL_SDK_BASE = 'https://api.verify.et';
+const LEUL_API_KEY = 'VERIFY_BANK_ET_D1z7Tz7xL2nNSO4MXMTL-PWhvk7LBZzdaRxCFYBOWTEId_VuhzUxJ2HV_UMEeePZ';
 
 // Check if the env var points to a valid, non-dead URL
 const envUrl = import.meta.env.VITE_VERIFIER_URL || '';
@@ -209,9 +209,9 @@ export function usePaymentVerification() {
         throw lastErr || new Error('All Railway keys failed');
     };
 
-    // ── Attempt 2: Official @creofam/verifier SDK (verifyapi.leulzenebe.pro) ──
+    // ── Attempt 2: Official @creofam/verifier SDK (verify.et) ──
     // Uses x-api-key auth and calls per-bank endpoints (/verify-cbe, /verify-telebirr, etc.)
-    // This matches EXACTLY what verify.leul.et uses internally.
+    // This matches EXACTLY what verify.et uses internally.
     const tryOfficialSDK = async (params: StartVerificationParams): Promise<any> => {
         const request = buildOfficialSDKRequest(params.payment_method, params.reference, params.additional_data);
         if (!request) {
@@ -219,7 +219,7 @@ export function usePaymentVerification() {
         }
 
         if (!LEUL_API_KEY) {
-            throw new Error('VITE_LEUL_API_KEY is not configured');
+            throw new Error('VITE_LEUL_API_KEY or VITE_VERIFIER_API_KEY is not configured');
         }
 
         const controller = new AbortController();

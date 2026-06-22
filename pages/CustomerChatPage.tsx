@@ -353,7 +353,7 @@ const PaymentCard: React.FC<{
     orderId: string;
     orderNumber: string;
     total: number;
-    banks: { bank_key: string; account_number: string }[];
+    banks: { bank_key: string; account_number: string; account_name?: string }[];
     onPaymentSubmitted: () => void;
 }> = ({ orderId, orderNumber, total, banks, onPaymentSubmitted }) => {
     const [step, setStep] = useState<'select_bank' | 'send_payment' | 'enter_ref'>('select_bank');
@@ -504,6 +504,11 @@ const PaymentCard: React.FC<{
                     <div className="p-4 rounded-2xl bg-[#FAFAFA] border border-[#E2E8F0] space-y-1">
                         <p className="text-[10px] font-bold uppercase tracking-wider text-[#84CC16]">Send to</p>
                         <p className="text-[18px] font-bold text-[#0F172A] font-mono tracking-wider">{selectedAccount}</p>
+                        {banks.find(b => b.bank_key === selectedBank)?.account_name && (
+                            <p className="text-[13px] font-bold text-[#0F172A] uppercase tracking-wide">
+                                {banks.find(b => b.bank_key === selectedBank)?.account_name}
+                            </p>
+                        )}
                         <p className="text-[12px] text-[#64748B]">{BANK_DISPLAY[selectedBank]?.name} • ETB {total.toLocaleString()}</p>
                     </div>
                     <p className="text-[12px] text-[#64748B] leading-relaxed">
@@ -845,7 +850,7 @@ const MenuView: React.FC<{
 const TrackingView: React.FC<{ 
     activeOrder: ActiveOrder | null; 
     refreshOrder: () => void;
-    branchBanks: { bank_key: string; account_number: string }[];
+    branchBanks: { bank_key: string; account_number: string; account_name?: string }[];
     latestOrderId: string | null;
     onPaymentSubmitted: () => void;
 }> = ({ activeOrder, refreshOrder, branchBanks, latestOrderId, onPaymentSubmitted }) => {
@@ -963,7 +968,7 @@ const CustomerChatPage: React.FC = () => {
     const [ratingSubmitted, setRatingSubmitted] = useState(false);
     const [latestOrderId, setLatestOrderId] = useState<string | null>(null);
     const [activeOrder, setActiveOrder] = useState<ActiveOrder | null>(null);
-    const [branchBanks, setBranchBanks] = useState<{ bank_key: string; account_number: string }[]>([]);
+    const [branchBanks, setBranchBanks] = useState<{ bank_key: string; account_number: string; account_name?: string }[]>([]);
     const [currentView, setCurrentView] = useState<'menu' | 'orders'>('menu');
     const [allItems, setAllItems] = useState<MenuItem[]>([]);
     const [activeCategory, setActiveCategory] = useState<string>('All');
@@ -1315,8 +1320,8 @@ const CustomerChatPage: React.FC = () => {
             {/* Header */}
             <div className="flex-none px-6 py-3 flex items-center justify-between bg-white/80 backdrop-blur-md border-b border-[#E2E8F0] z-50 sticky top-0 animate-fade-in">
                 <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-[#FAFAFA] border border-[#E2E8F0] flex items-center justify-center overflow-hidden flex-shrink-0 animate-pulse-slow">
-                        {orgLogoUrl ? <img src={orgLogoUrl} alt="Logo" className="w-full h-full object-cover" /> : <Sparkles className="w-5 h-5 text-[#84CC16]" />}
+                    <div className="w-10 h-10 rounded-full bg-transparent border border-[#E2E8F0] flex items-center justify-center overflow-hidden flex-shrink-0">
+                        {orgLogoUrl ? <img src={orgLogoUrl} alt="Logo" className="w-full h-full object-contain" /> : <Sparkles className="w-5 h-5 text-[#84CC16]" />}
                     </div>
                     <div>
                         <h1 className="text-[20px] font-bold text-[#0F172A] leading-tight tracking-tight">{orgName || 'Restaurant'}</h1>

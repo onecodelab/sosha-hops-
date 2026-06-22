@@ -5,10 +5,10 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const VERIFY_LEUL_KEY = Deno.env.get('VERIFY_LEUL_KEY');
-const OFFICIAL_SDK_BASE = "https://verifyapi.leulzenebe.pro";
+const OFFICIAL_SDK_BASE = "https://api.verify.et";
 
 // Map payment method to the correct SDK endpoint + payload.
-// The @creofam/verifier SDK (and verify.leul.et) use per-bank endpoints,
+// The @creofam/verifier SDK (and verify.et) use per-bank endpoints,
 // NOT a unified /verify endpoint. Auth uses x-api-key, NOT Authorization: Bearer.
 function buildSDKRequest(bank: string, transaction_id: string, receiver_account?: string): { path: string; body: Record<string, unknown> } | null {
   const ref = transaction_id.trim().toUpperCase();
@@ -279,7 +279,7 @@ serve(async (req) => {
     //   POST /verify-cbe with { reference, accountSuffix }
     //   POST /verify-telebirr with { reference }
     //   etc. — all authenticated via x-api-key header
-    // This is what verify.leul.et uses internally.
+    // This is what verify.et uses internally.
     // ================================================================
     if (!VERIFY_LEUL_KEY) {
       throw new Error("Verification service not configured (Missing VERIFY_LEUL_KEY)");
