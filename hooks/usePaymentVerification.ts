@@ -29,7 +29,7 @@ const RAILWAY_API_KEY = RAW_RAILWAY_KEY.includes(',') ? RAW_RAILWAY_KEY.split(',
 
 // Secondary: Official @creofam/verifier API (verify.et)
 // SDK uses x-api-key header and individual endpoints per bank (/verify-cbe, /verify-telebirr, etc.)
-const OFFICIAL_SDK_BASE = 'https://api.verify.et';
+const OFFICIAL_SDK_BASE = 'https://verifyapi.leulzenebe.pro';
 const LEUL_API_KEY = 'VERIFY_BANK_ET_D1z7Tz7xL2nNSO4MXMTL-PWhvk7LBZzdaRxCFYBOWTEId_VuhzUxJ2HV_UMEeePZ';
 
 // Check if the env var points to a valid, non-dead URL
