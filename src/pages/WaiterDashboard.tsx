@@ -17,7 +17,9 @@ import {
   ChefHat,
   Monitor,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  Zap,
+  Bell
 } from 'lucide-react';
 import { PaymentVerificationModal, FloatingPaymentButton } from '../components/PaymentVerificationModal';
 import { ReceiptVerificationModal } from '../components/ReceiptVerificationModal';
@@ -263,28 +265,44 @@ const WaiterDashboard: React.FC = () => {
 
         {/* Production Pipeline - 3 Column Layout */}
         <div className="flex-1 min-h-0 px-2 pb-32">
-          {/* Unassigned Chat Orders Banner */}
+          {/* Unassigned Chat Orders Banner - Bold, High-Visibility Alert */}
           {unassignedChatOrders.length > 0 && (
             <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="mb-8 p-6 bg-primary/10 border border-primary/20 rounded-[2rem] flex flex-col md:flex-row items-center justify-between gap-6 backdrop-blur-xl relative overflow-hidden"
+              initial={{ opacity: 0, scale: 0.95, y: -15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+              className="mb-8 p-6 md:p-8 bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 border-4 border-yellow-200 dark:border-yellow-300 rounded-[2.5rem] flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 relative overflow-hidden shadow-[0_0_60px_rgba(245,158,11,0.6)] animate-pulse-subtle"
             >
-              <div className="absolute inset-0 bg-gradient-to-r from-primary/5 to-transparent pointer-events-none" />
-              <div className="flex items-center gap-4 z-10">
-                <div className="w-12 h-12 rounded-2xl bg-primary/20 flex items-center justify-center text-primary shadow-[0_0_20px_rgba(255,184,0,0.2)]">
-                  <MessageSquare className="w-6 h-6" />
+              {/* Decorative background glow and stripes */}
+              <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-white/40 via-transparent to-transparent pointer-events-none" />
+              <div className="absolute -right-10 -bottom-10 w-64 h-64 bg-yellow-300/30 rounded-full blur-3xl pointer-events-none" />
+              
+              <div className="flex items-center gap-5 z-10">
+                <div className="w-16 h-16 md:w-20 md:h-20 rounded-3xl bg-black text-yellow-400 flex items-center justify-center shadow-2xl shrink-0 animate-bounce border-2 border-yellow-400/30">
+                  <Bell className="w-8 h-8 md:w-10 md:h-10 stroke-[2.5] animate-pulse" />
                 </div>
                 <div>
-                  <h4 className="text-sm font-black text-foreground uppercase tracking-widest">New Chatbot Orders Detected</h4>
-                  <p className="text-[10px] font-bold text-primary/60 uppercase tracking-widest mt-0.5">{unassignedChatOrders.length} Customers awaiting staff assignment</p>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="px-3 py-1 rounded-full bg-black text-yellow-400 font-mono text-[10px] md:text-xs font-black uppercase tracking-wider animate-pulse shadow-md">
+                      ⚠️ ACTION REQUIRED
+                    </span>
+                    <span className="px-3 py-1 rounded-full bg-red-600 text-white font-mono text-[10px] md:text-xs font-black uppercase tracking-wider shadow-md flex items-center gap-1">
+                      <span className="w-2 h-2 rounded-full bg-white animate-ping" /> LIVE DISPATCH
+                    </span>
+                  </div>
+                  <h4 className="text-xl md:text-3xl font-black text-black uppercase tracking-tight mt-2 drop-shadow-sm leading-tight">
+                    {unassignedChatOrders.length} New Chatbot Order{unassignedChatOrders.length > 1 ? 's' : ''} Detected!
+                  </h4>
+                  <p className="text-xs md:text-sm font-black text-black/80 uppercase tracking-wider mt-1">
+                    Customer{unassignedChatOrders.length > 1 ? 's are' : ' is'} waiting at the table — Assign yourself now to start service
+                  </p>
                 </div>
               </div>
-              <div className="flex gap-4 overflow-x-auto pb-2 md:pb-0 w-full md:w-auto px-1 snap-x no-scrollbar z-10">
+
+              <div className="flex items-center gap-3 overflow-x-auto pb-2 lg:pb-0 w-full lg:w-auto px-1 snap-x no-scrollbar z-10">
                 {unassignedChatOrders.map(order => (
                   <Button
                     key={order.id}
-                    variant="outline"
                     onClick={() => {
                       if (order.table_id) handleInstantClaim(order.id, order.table_id);
                       else {
@@ -292,10 +310,14 @@ const WaiterDashboard: React.FC = () => {
                         setIsClaimModalOpen(true);
                       }
                     }}
-                    className="shrink-0 snap-center bg-white/5 border-primary/20 h-12 px-6 rounded-xl hover:bg-primary hover:text-black transition-all flex flex-col items-start gap-0.5 min-w-[140px]"
+                    className="shrink-0 snap-center bg-black hover:bg-black/85 text-yellow-400 border-2 border-yellow-400/50 h-16 md:h-18 px-8 rounded-2xl shadow-2xl hover:scale-105 active:scale-95 transition-all flex flex-col items-center justify-center gap-0.5 min-w-[170px] group cursor-pointer"
                   >
-                    <span className="text-[8px] font-black opacity-60">CLAIM {order.order_number}</span>
-                    <span className="text-xs font-black">T-{order.table_number || '??'}</span>
+                    <span className="text-[10px] md:text-xs font-black tracking-widest text-white/80 group-hover:text-white uppercase flex items-center gap-1">
+                      <Zap className="w-3.5 h-3.5 text-yellow-400 fill-yellow-400 animate-bounce" /> CLAIM {order.order_number}
+                    </span>
+                    <span className="text-lg md:text-xl font-black tracking-tight text-yellow-400 group-hover:text-yellow-300">
+                      Table {order.table_number || '??'}
+                    </span>
                   </Button>
                 ))}
               </div>

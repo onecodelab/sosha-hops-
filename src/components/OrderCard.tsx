@@ -130,8 +130,8 @@ export const OrderCard: React.FC<OrderCardProps> = ({
                 order.status}
         </Badge>
         {order.source === 'chatbot' && (
-          <Badge className="absolute -top-2 -right-2 bg-primary text-black border-2 border-background text-[8px] font-black px-2 py-1 shadow-xl flex items-center gap-1 animate-bounce">
-            <MessageSquare className="w-3 h-3" /> BOT
+          <Badge className="absolute -top-3 -right-2 bg-gradient-to-r from-amber-400 to-yellow-300 text-black border-2 border-black font-mono text-[9px] font-black px-2.5 py-1 shadow-[0_0_15px_rgba(245,158,11,0.8)] flex items-center gap-1 animate-bounce z-30">
+            <span className="w-1.5 h-1.5 rounded-full bg-red-600 animate-ping" /> AI BOT
           </Badge>
         )}
         {hasNewItems && (

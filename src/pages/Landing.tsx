@@ -3,11 +3,22 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { MarketingLayout } from '../components/MarketingLayout';
 import { useLanguage } from '../contexts/LanguageContext';
+import { Search, ArrowRight } from 'lucide-react';
 
 const Landing: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { t } = useLanguage();
+  const [searchQuery, setSearchQuery] = React.useState('');
+
+  const handleSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      navigate(`/book-demo?venue=${encodeURIComponent(searchQuery.trim())}`);
+    } else {
+      navigate('/book-demo');
+    }
+  };
 
   React.useEffect(() => {
     const hash = window.location.hash;
@@ -37,121 +48,203 @@ const Landing: React.FC = () => {
   return (
     <MarketingLayout>
       <div className="bg-background min-h-screen text-foreground overflow-x-hidden transition-colors duration-500">
-        {/* Hero Section */}
-        <section className="relative pt-[32px] md:pt-[80px] pb-[24px] md:pb-[32px] px-4 md:px-8 max-w-[1440px] mx-auto flex flex-col items-center text-center min-h-[calc(100vh-64px)] justify-center">
-          <div className="flex flex-col items-center z-10 relative w-full">
-            <p className="text-foreground/70 text-[11px] md:text-[14px] mb-2 md:mb-4 max-w-2xl font-mono uppercase tracking-widest">
-              {t('marketing.heroTag')}
-            </p>
-            <h1 className="text-[44px] sm:text-[56px] md:text-[88px] leading-[1.05] md:leading-[1.0] tracking-[-1.5px] md:tracking-[-3.5px] font-normal text-foreground mb-4 md:mb-6 max-w-5xl mx-auto">
-              {t('marketing.heroTitle1')} {t('marketing.heroTitle2')}
-            </h1>
-            <p className="text-[14px] md:text-[18px] text-foreground/70 max-w-xl leading-[1.4] md:leading-[1.5] mb-6 md:mb-8 px-4">
-              {t('marketing.heroDesc')} {t('marketing.heroAccent')}
-            </p>
-            
-            <div className="flex flex-col sm:flex-row items-center gap-3 md:gap-4 w-full sm:w-auto px-6">
-              <button 
-                onClick={() => navigate('/book-demo')}
-                className="bg-[#f36458] text-white hover:bg-[#0052ef] w-full sm:w-auto px-6 py-3 md:px-8 md:py-3.5 rounded-[99999px] font-medium text-[14px] md:text-[15px] transition-colors"
-              >
-                {t('marketing.ctaStart')}
-              </button>
-              <button 
-                onClick={() => navigate('/features')}
-                className="bg-background text-foreground/70 border border-foreground/10 hover:bg-[#0052ef] hover:text-white w-full sm:w-auto px-6 py-3 md:px-8 md:py-3.5 rounded-[99999px] font-medium text-[14px] md:text-[15px] transition-colors"
-              >
-                {t('marketing.ctaProtocol')}
-              </button>
-            </div>
-          </div>
+        {/* Hero Section - Futuristic Tablet OS Screen Mockup */}
+        <section className="relative py-8 md:py-16 px-4 sm:px-6 lg:px-8 max-w-[1440px] mx-auto min-h-[calc(100vh-64px)] flex items-center justify-center">
+          {/* Subtle Ambient Glow behind display */}
+          <div className="absolute inset-0 bg-gradient-to-tr from-emerald-500/10 via-teal-500/5 to-transparent blur-[120px] pointer-events-none" />
+          
+          {/* Tablet Stand Mount Accents (Left & Right Clamps) */}
+          <div className="absolute -left-1 top-1/2 -translate-y-1/2 w-3 h-32 bg-gradient-to-r from-[#202328] to-[#0f1115] rounded-l-md border-y border-l border-white/20 shadow-2xl hidden lg:block z-10" />
+          <div className="absolute -right-1 top-1/2 -translate-y-1/2 w-3 h-32 bg-gradient-to-l from-[#202328] to-[#0f1115] rounded-r-md border-y border-r border-white/20 shadow-2xl hidden lg:block z-10" />
 
-          {/* Raycast-style Dashboard Mockup */}
-          <div className="mt-8 md:mt-12 w-full max-w-[1000px] mx-auto relative group z-20">
-            {/* Warm glow behind the dashboard - Desktop only or simplified */}
-            <div className="absolute inset-0 bg-[#d7c9af] opacity-[0.04] blur-[80px] pointer-events-none rounded-full hidden md:block" />
+          {/* The Tablet / Display Frame */}
+          <div className="relative w-full max-w-[1240px] bg-[#06080a] rounded-2xl sm:rounded-[24px] border border-white/15 shadow-[0_30px_100px_-20px_rgba(0,0,0,0.95),0_0_60px_rgba(16,185,129,0.18)] overflow-hidden flex flex-col text-left min-h-[580px] md:min-h-[640px] transition-all duration-500 z-20">
             
-            {/* The Dashboard Card */}
-            <div 
-              className="relative w-full bg-card rounded-[8px] md:rounded-[10px] border border-foreground/10 overflow-hidden text-left shadow-2xl"
-            >
-              {/* Header / Search Area */}
-              <div className="flex items-center gap-2 md:gap-3 px-3 md:px-5 py-2 md:py-3.5 border-b border-foreground/10 bg-card">
-                <div className="flex gap-1.5 md:gap-2">
-                  <div className="w-2.5 h-2.5 md:w-3 md:h-3 rounded-full bg-[#FF6363] border border-[#FF6363]/30 shadow-[0_0_8px_rgba(255,99,99,0.4)]" />
-                  <div className="w-2.5 h-2.5 md:w-3 md:h-3 rounded-full bg-[#ffbc33] border border-[#ffbc33]/30" />
-                  <div className="w-2.5 h-2.5 md:w-3 md:h-3 rounded-full bg-[#5fc992] border border-[#5fc992]/30" />
+            {/* Top Internal Screen Navigation Bar */}
+            <div className="flex items-center justify-between px-6 md:px-10 py-4 md:py-5 border-b border-white/[0.08] bg-[#080a0d]/90 backdrop-blur-md z-30 relative select-none">
+              <div className="flex items-center gap-8">
+                {/* Brand Logo inside display */}
+                <div className="flex items-center gap-2.5 cursor-pointer" onClick={() => navigate('/')}>
+                  <div className="w-5 h-5 rounded-[4px] bg-gradient-to-br from-emerald-400 to-green-600 shadow-[0_0_12px_rgba(52,211,153,0.6)] flex items-center justify-center">
+                    <div className="w-2 h-2 bg-white rounded-[1px]" />
+                  </div>
+                  <span className="text-white font-bold tracking-tight text-lg">Baro<span className="text-emerald-400 font-light">OS</span></span>
                 </div>
-                <div className="ml-2 md:ml-4 flex-1 flex items-center">
-                  <div className="h-4 md:h-5 w-32 md:w-48 bg-foreground/5 rounded-[4px] border border-foreground/5 shadow-[inset_0_1px_2px_rgba(0,0,0,0.1)]" />
+
+                {/* Internal Nav Links */}
+                <div className="hidden lg:flex items-center gap-7">
+                  {['Features', 'Operations', 'Kitchen', 'Security', 'Pricing'].map((item, idx) => (
+                    <span
+                      key={item}
+                      onClick={() => navigate(idx === 4 ? '/pricing' : '/features')}
+                      className="text-[13px] text-gray-400 hover:text-white transition-colors cursor-pointer font-normal"
+                    >
+                      {item}
+                    </span>
+                  ))}
                 </div>
               </div>
 
-              {/* Main Content Area */}
-              <div className="flex h-[200px] sm:h-[260px] md:h-[400px]">
-                {/* Sidebar - Hidden on mobile */}
-                <div className="hidden md:flex w-56 border-r border-foreground/5 p-3 flex-col gap-1 bg-foreground/5">
-                  <div className="px-3 py-1.5 text-[11px] font-semibold text-foreground/50 uppercase tracking-widest mt-1">Favorites</div>
-                  {[1, 2, 3].map(i => (
-                    <div key={i} className={`flex items-center gap-3 px-3 py-1.5 rounded-[6px] hover:bg-foreground/5 cursor-default transition-colors ${i === 1 ? 'bg-foreground/5' : ''}`}>
-                      <div className="w-3.5 h-3.5 bg-foreground/10 rounded-[3px] shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] flex items-center justify-center">
-                        <div className="w-1.5 h-1.5 rounded-[1px] bg-foreground/40" />
-                      </div>
-                      <div className={`h-2.5 w-20 rounded-[2px] ${i === 1 ? 'bg-foreground/90' : 'bg-foreground/40'}`} />
-                    </div>
-                  ))}
-                  <div className="px-3 py-1.5 text-[11px] font-semibold text-foreground/50 uppercase tracking-widest mt-4">Extensions</div>
-                  {[4, 5, 6, 7].map(i => (
-                    <div key={i} className="flex items-center gap-3 px-3 py-1.5 rounded-[6px] hover:bg-foreground/5 cursor-default transition-colors">
-                      <div className="w-3.5 h-3.5 bg-foreground/5 rounded-[3px]" />
-                      <div className="h-2.5 w-24 bg-foreground/40 rounded-[2px]" />
-                    </div>
-                  ))}
+              {/* Right Side Actions inside display */}
+              <div className="flex items-center gap-4 text-[13px]">
+                <span onClick={() => navigate('/features')} className="text-gray-400 hover:text-white transition-colors cursor-pointer hidden sm:block">Deals</span>
+                <span onClick={() => navigate('/book-demo')} className="text-gray-400 hover:text-white transition-colors cursor-pointer hidden sm:block">Help</span>
+                <button
+                  onClick={() => navigate('/login')}
+                  className="bg-white hover:bg-gray-100 text-[#080a0d] px-4 py-1.5 rounded-full font-semibold transition-all shadow-sm active:scale-95 ml-1"
+                >
+                  Sign In
+                </button>
+              </div>
+            </div>
+
+            {/* Main 2-Column Hero Content */}
+            <div className="relative flex-1 grid grid-cols-1 lg:grid-cols-12 overflow-hidden bg-gradient-to-br from-[#06080a] via-[#090d10] to-[#050709]">
+              
+              {/* Left Column: Text & Search Input Bar */}
+              <div className="lg:col-span-7 z-20 flex flex-col justify-center p-6 sm:p-10 lg:p-14 lg:pr-6">
+                
+                {/* Pill Tag */}
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-[6px] bg-white/[0.06] border border-white/10 text-emerald-400 text-[11px] font-mono uppercase tracking-wider mb-6 w-fit shadow-inner">
+                  <span>{t('marketing.heroTag') || 'BARO OS 2.0 • INTRODUCING AGENTIC HOSPITALITY'}</span>
                 </div>
 
-                {/* Main Panel */}
-                <div className="flex-1 p-3 md:p-6 flex flex-col gap-3 md:gap-5 bg-card">
-                  {/* Dashboard Metrics */}
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
-                    {[
-                      { val: '24.5k', color: 'bg-[#55b3ff]' },
-                      { val: '99.9%', color: 'bg-[#5fc992]' },
-                      { val: '43', color: 'bg-[#ffbc33]', hiddenMobile: true },
-                      { val: '12m', color: 'bg-foreground/80', hiddenMobile: true }
-                    ].map((metric, i) => (
-                      <div key={i} className={`p-2.5 md:p-4 rounded-[6px] bg-foreground/[0.015] border border-foreground/[0.03] shadow-sm ${metric.hiddenMobile ? 'hidden md:block' : 'block'}`}>
-                        <div className="text-[9px] md:text-[11px] font-medium text-foreground/50 mb-1.5 md:mb-2 uppercase tracking-wider">Metric {i + 1}</div>
-                        <div className="text-[16px] md:text-[20px] font-bold text-foreground mb-1.5 md:mb-2 font-mono tracking-tight">{metric.val}</div>
-                        <div className={`h-[2px] md:h-[3px] w-8 md:w-12 ${metric.color} rounded-full opacity-80`} />
-                      </div>
-                    ))}
+                {/* Main Headline */}
+                <h1 className="text-[34px] sm:text-[46px] lg:text-[56px] xl:text-[62px] font-semibold text-white tracking-[-1.2px] lg:tracking-[-2px] leading-[1.08] mb-5 font-sans">
+                  {t('marketing.heroTitle1') || 'Secure operations'} <br className="hidden sm:inline" />
+                  <span className="text-white/95">{t('marketing.heroTitle2') || 'without the hassles'}</span>
+                </h1>
+
+                {/* Subtitle */}
+                <p className="text-[14px] sm:text-[16px] text-gray-400/90 font-normal leading-[1.6] max-w-lg mb-8">
+                  {t('marketing.heroDesc') || 'AI-powered hospitality management from $0.00 setup for the first year with full agentic oversight and 24/7 reliability.'} {t('marketing.heroAccent')}
+                </p>
+
+                {/* Interactive Search Input Box */}
+                <form 
+                  onSubmit={handleSearchSubmit}
+                  className="flex items-center bg-[#11141a]/95 border border-white/15 rounded-xl p-1.5 max-w-lg shadow-[0_15px_35px_rgba(0,0,0,0.6)] focus-within:border-emerald-500/60 focus-within:ring-2 focus-within:ring-emerald-500/20 transition-all backdrop-blur-md"
+                >
+                  <div className="pl-3.5 pr-2 text-gray-400">
+                    <Search className="w-4 h-4 text-emerald-400" />
+                  </div>
+                  <input 
+                    type="text" 
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Type the venue name you want..." 
+                    className="bg-transparent text-white placeholder:text-gray-500 text-[14px] w-full focus:outline-none px-1 py-2 sm:py-2.5 font-normal"
+                  />
+                  <button 
+                    type="submit"
+                    className="bg-white hover:bg-gray-100 text-[#06080a] font-semibold px-4 sm:px-6 py-2.5 rounded-lg text-[13px] whitespace-nowrap transition-all shadow-md active:scale-95 flex items-center gap-1.5"
+                  >
+                    <span>Search Venue</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
+                </form>
+
+              </div>
+
+              {/* Right Column: Glowing Emerald Light Leak & Matrix Data Stream */}
+              <div className="lg:col-span-5 absolute inset-0 lg:relative z-10 overflow-hidden pointer-events-none lg:pointer-events-auto flex items-center justify-center">
+                
+                {/* Left fade gradient for smooth blending */}
+                <div className="absolute inset-0 bg-gradient-to-r from-[#06080a] via-[#06080a]/85 lg:via-transparent to-transparent z-10" />
+                
+                {/* Glowing Light Bursts (The Green Data Stream Glow) */}
+                <div className="absolute right-[-15%] top-[15%] w-[350px] sm:w-[500px] lg:w-[600px] h-[350px] sm:h-[500px] lg:h-[600px] bg-gradient-to-tr from-emerald-500/40 via-teal-400/25 to-transparent rounded-full blur-[80px] lg:blur-[100px] animate-pulse duration-1000" />
+                <div className="absolute right-[10%] top-[30%] w-[200px] sm:w-[300px] h-[200px] sm:h-[300px] bg-gradient-to-r from-yellow-100/40 via-emerald-300/40 to-transparent rounded-full blur-[60px]" />
+                <div className="absolute right-0 bottom-0 w-[400px] h-[400px] bg-gradient-to-tl from-emerald-600/30 via-transparent to-transparent rounded-full blur-[90px]" />
+
+                {/* Vertical Laser / Ray Leak Effect */}
+                <div className="absolute inset-0 bg-[linear-gradient(115deg,_transparent_30%,_rgba(16,185,129,0.15)_45%,_rgba(52,211,153,0.25)_50%,_rgba(16,185,129,0.1)_55%,_transparent_70%)] opacity-80" />
+
+                {/* Animated Digital Matrix Code Columns */}
+                <div className="absolute inset-0 flex justify-end items-center opacity-75 select-none pr-6 sm:pr-10 gap-3 sm:gap-6 font-mono text-[10px] sm:text-[11px] overflow-hidden z-0">
+                  
+                  {/* Column 1 */}
+                  <div className="flex flex-col gap-2 text-emerald-400/35 animate-[translateY_25s_linear_infinite]">
+                    <div>01001001</div>
+                    <div className="text-emerald-200/95 font-bold drop-shadow-[0_0_8px_rgba(52,211,153,0.9)]">8820 1198</div>
+                    <div>0019 8472</div>
+                    <div>SYS_OK 200</div>
+                    <div>99.98% OPS</div>
+                    <div className="text-white font-semibold tracking-wider">ZERO CHAOS</div>
+                    <div>4819 0021</div>
+                    <div>11001010</div>
+                    <div>POS_ACTIVE</div>
+                    <div className="text-emerald-300 font-medium">8492 1102</div>
+                    <div>01100100</div>
+                    <div>7721 9901</div>
                   </div>
 
-                  {/* List View / Data Table */}
-                  <div className="flex-1 rounded-[6px] bg-foreground/[0.01] border border-foreground/[0.03] p-2 md:p-3 flex flex-col overflow-hidden">
-                    <div className="flex justify-between pb-2 md:pb-3 border-b border-foreground/[0.03] px-1 md:px-2">
-                      <div className="h-1.5 md:h-2 w-12 md:w-16 bg-foreground/30 rounded-[2px]" />
-                      <div className="h-1.5 md:h-2 w-10 md:w-12 bg-foreground/30 rounded-[2px]" />
-                      <div className="h-1.5 md:h-2 w-16 md:w-20 bg-foreground/30 rounded-[2px] hidden md:block" />
-                    </div>
-                    <div className="flex-1 overflow-hidden flex flex-col gap-[2px] mt-1 md:mt-2">
-                      {[1, 2, 3, 4].map(i => (
-                        <div key={i} className="flex justify-between items-center py-1.5 md:py-2.5 group/row hover:bg-foreground/[0.02] px-1 md:px-2 rounded-[4px] transition-colors border border-transparent hover:border-foreground/[0.03]">
-                          <div className="flex items-center gap-2 md:gap-3">
-                            <div className="w-1.5 h-1.5 md:w-2 md:h-2 rounded-full bg-[#5fc992] shadow-[0_0_6px_rgba(95,201,146,0.4)]" />
-                            <div className="h-2 md:h-2.5 w-20 md:w-32 bg-foreground/90 rounded-[2px]" />
-                          </div>
-                          <div className="h-2 md:h-2.5 w-12 md:w-16 bg-foreground/40 rounded-[2px]" />
-                          <div className="hidden md:flex items-center justify-center h-5 px-2.5 bg-foreground/[0.04] rounded-[3px] border border-foreground/[0.06] shadow-sm">
-                            <div className="h-1.5 w-8 bg-foreground/30 rounded-full" />
-                          </div>
-                        </div>
-                      ))}
-                    </div>
+                  {/* Column 2 */}
+                  <div className="flex flex-col gap-2.5 text-emerald-500/30 font-light pt-14 animate-[translateY_20s_linear_infinite_reverse]">
+                    <div>4920 1102</div>
+                    <div>01101011</div>
+                    <div className="text-emerald-200 font-bold drop-shadow-[0_0_8px_rgba(52,211,153,0.8)]">REV $48,290</div>
+                    <div>9901 2231</div>
+                    <div>10100011</div>
+                    <div className="text-white/90 font-medium">AI OVERSIGHT</div>
+                    <div>3321 0019</div>
+                    <div>00110011</div>
+                    <div>TABLE_12_OK</div>
+                    <div>8821 4490</div>
+                    <div>11001101</div>
                   </div>
+
+                  {/* Column 3 - Brightest Core */}
+                  <div className="flex flex-col gap-1.5 text-emerald-400/45 pt-6 hidden sm:flex">
+                    <div>00110100</div>
+                    <div className="text-yellow-200 font-bold drop-shadow-[0_0_10px_rgba(253,224,71,0.9)] text-[12px]">$.01 / YEAR</div>
+                    <div>11001001</div>
+                    <div>8492 0012</div>
+                    <div className="text-emerald-100 font-bold tracking-wider">SECURE_HOST</div>
+                    <div>01010101</div>
+                    <div>9920 1182</div>
+                    <div>00101010</div>
+                    <div>7482 9910</div>
+                    <div className="text-emerald-300">10110001</div>
+                  </div>
+
+                  {/* Column 4 */}
+                  <div className="flex flex-col gap-2 text-emerald-600/30 hidden lg:flex pt-24 animate-[translateY_30s_linear_infinite]">
+                    <div>11010010</div>
+                    <div>5541 0029</div>
+                    <div>01110011</div>
+                    <div>8829 1102</div>
+                    <div className="text-emerald-300 font-semibold">MATRIX_LIVE</div>
+                    <div>00110101</div>
+                    <div>9918 2201</div>
+                    <div>10101010</div>
+                  </div>
+                </div>
+
+              </div>
+
+            </div>
+
+            {/* Bottom Right Glass Partner Bar */}
+            <div className="absolute bottom-6 right-6 z-30 hidden md:flex items-center">
+              <div className="bg-[#11141a]/90 backdrop-blur-md border border-white/10 rounded-xl p-1.5 flex items-center gap-1 shadow-2xl">
+                <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-lg hover:bg-white/5 text-gray-300 text-[11px] font-mono tracking-wider transition-colors cursor-default">
+                  <div className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.8)]" />
+                  <span>NEORICK</span>
+                </div>
+                <div className="h-3 w-px bg-white/10" />
+                <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-lg hover:bg-white/5 text-gray-300 text-[11px] font-mono tracking-wider transition-colors cursor-default">
+                  <div className="w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_6px_rgba(34,211,238,0.8)]" />
+                  <span>GinterX</span>
+                </div>
+                <div className="h-3 w-px bg-white/10" />
+                <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-lg hover:bg-white/5 text-gray-300 text-[11px] font-mono tracking-wider transition-colors cursor-default">
+                  <div className="w-2 h-2 rounded-full bg-purple-400 shadow-[0_0_6px_rgba(192,132,252,0.8)]" />
+                  <span>Matic</span>
                 </div>
               </div>
             </div>
+
           </div>
         </section>
 
