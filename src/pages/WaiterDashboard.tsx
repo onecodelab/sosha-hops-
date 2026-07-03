@@ -265,43 +265,43 @@ const WaiterDashboard: React.FC = () => {
 
         {/* Production Pipeline - 3 Column Layout */}
         <div className="flex-1 min-h-0 px-2 pb-32">
-          {/* Unassigned Chat Orders Banner - Bold, High-Visibility Alert */}
+          {/* Unassigned Chat Orders Banner - Sleek, Compact Multi-Order Dispatch Center */}
           {unassignedChatOrders.length > 0 && (
             <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: -15 }}
+              initial={{ opacity: 0, scale: 0.98, y: -10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
-              transition={{ type: 'spring', stiffness: 300, damping: 25 }}
-              className="mb-8 p-6 md:p-8 bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 border-4 border-yellow-200 dark:border-yellow-300 rounded-[2.5rem] flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 relative overflow-hidden shadow-[0_0_60px_rgba(245,158,11,0.6)] animate-pulse-subtle"
+              transition={{ type: 'spring', stiffness: 350, damping: 28 }}
+              className="mb-6 p-4 sm:p-5 md:p-6 bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 border-2 sm:border-4 border-yellow-200 dark:border-yellow-300 rounded-2xl sm:rounded-3xl relative overflow-hidden shadow-[0_0_40px_rgba(245,158,11,0.5)] z-20"
             >
               {/* Decorative background glow and stripes */}
-              <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-white/40 via-transparent to-transparent pointer-events-none" />
-              <div className="absolute -right-10 -bottom-10 w-64 h-64 bg-yellow-300/30 rounded-full blur-3xl pointer-events-none" />
+              <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-white/30 via-transparent to-transparent pointer-events-none" />
               
-              <div className="flex items-center gap-5 z-10">
-                <div className="w-16 h-16 md:w-20 md:h-20 rounded-3xl bg-black text-yellow-400 flex items-center justify-center shadow-2xl shrink-0 animate-bounce border-2 border-yellow-400/30">
-                  <Bell className="w-8 h-8 md:w-10 md:h-10 stroke-[2.5] animate-pulse" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="px-3 py-1 rounded-full bg-black text-yellow-400 font-mono text-[10px] md:text-xs font-black uppercase tracking-wider animate-pulse shadow-md">
-                      ⚠️ ACTION REQUIRED
-                    </span>
-                    <span className="px-3 py-1 rounded-full bg-red-600 text-white font-mono text-[10px] md:text-xs font-black uppercase tracking-wider shadow-md flex items-center gap-1">
-                      <span className="w-2 h-2 rounded-full bg-white animate-ping" /> LIVE DISPATCH
+              {/* Compact Sleek Header Bar */}
+              <div className="flex items-center justify-between gap-3 w-full pb-3 border-b border-black/15 z-10 relative">
+                <div className="flex items-center gap-2.5 sm:gap-3.5 min-w-0">
+                  <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-xl bg-black text-yellow-400 flex items-center justify-center shadow-lg shrink-0 border border-yellow-400/30">
+                    <Bell className="w-5 h-5 sm:w-6 sm:h-6 stroke-[2.5] animate-pulse" />
+                  </div>
+                  <div className="min-w-0 flex items-center gap-2 flex-wrap">
+                    <h4 className="text-base sm:text-xl font-black text-black uppercase tracking-tight truncate drop-shadow-sm">
+                      New Chatbot Orders
+                    </h4>
+                    <span className="px-2 py-0.5 rounded-full bg-black text-yellow-400 font-mono text-[10px] sm:text-xs font-black uppercase tracking-wider animate-pulse shadow">
+                      {unassignedChatOrders.length} WAITING
                     </span>
                   </div>
-                  <h4 className="text-xl md:text-3xl font-black text-black uppercase tracking-tight mt-2 drop-shadow-sm leading-tight">
-                    {unassignedChatOrders.length} New Chatbot Order{unassignedChatOrders.length > 1 ? 's' : ''} Detected!
-                  </h4>
-                  <p className="text-xs md:text-sm font-black text-black/80 uppercase tracking-wider mt-1">
-                    Customer{unassignedChatOrders.length > 1 ? 's are' : ' is'} waiting at the table — Assign yourself now to start service
-                  </p>
+                </div>
+
+                <div className="shrink-0 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-red-600 text-white font-mono text-[9px] sm:text-[10px] font-black uppercase tracking-wider shadow-md">
+                  <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
+                  <span className="hidden xs:inline">LIVE </span>DISPATCH
                 </div>
               </div>
 
-              <div className="flex items-center gap-3 overflow-x-auto pb-2 lg:pb-0 w-full lg:w-auto px-1 snap-x no-scrollbar z-10">
+              {/* Responsive Compact Grid Tray - Perfectly Fits 1, 4, or 10 Orders without Mess */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 sm:gap-2.5 mt-3 sm:mt-4 max-h-[220px] overflow-y-auto custom-scrollbar pr-1 z-10 relative w-full">
                 {unassignedChatOrders.map(order => (
-                  <Button
+                  <button
                     key={order.id}
                     onClick={() => {
                       if (order.table_id) handleInstantClaim(order.id, order.table_id);
@@ -310,15 +310,29 @@ const WaiterDashboard: React.FC = () => {
                         setIsClaimModalOpen(true);
                       }
                     }}
-                    className="shrink-0 snap-center bg-black hover:bg-black/85 text-yellow-400 border-2 border-yellow-400/50 h-16 md:h-18 px-8 rounded-2xl shadow-2xl hover:scale-105 active:scale-95 transition-all flex flex-col items-center justify-center gap-0.5 min-w-[170px] group cursor-pointer"
+                    className="group relative bg-black/90 hover:bg-black text-left border border-yellow-400/40 hover:border-yellow-300 p-2.5 sm:p-3 rounded-xl sm:rounded-2xl shadow-md hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 flex flex-col justify-between overflow-hidden min-h-[72px] sm:min-h-[80px]"
                   >
-                    <span className="text-[10px] md:text-xs font-black tracking-widest text-white/80 group-hover:text-white uppercase flex items-center gap-1">
-                      <Zap className="w-3.5 h-3.5 text-yellow-400 fill-yellow-400 animate-bounce" /> CLAIM {order.order_number}
-                    </span>
-                    <span className="text-lg md:text-xl font-black tracking-tight text-yellow-400 group-hover:text-yellow-300">
-                      Table {order.table_number || '??'}
-                    </span>
-                  </Button>
+                    {/* Glowing hover accent */}
+                    <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-yellow-400 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+
+                    <div className="flex items-start justify-between gap-1 w-full">
+                      <span className="font-mono text-[9px] sm:text-[10px] font-black text-yellow-400/70 uppercase tracking-wider truncate">
+                        #{order.order_number}
+                      </span>
+                      <span className="px-1.5 py-0.5 rounded bg-yellow-400/10 group-hover:bg-yellow-400 text-yellow-400 group-hover:text-black font-mono text-[8px] sm:text-[9px] font-black tracking-widest uppercase transition-colors flex items-center gap-0.5 shrink-0">
+                        <Zap className="w-2.5 h-2.5 fill-current" /> CLAIM
+                      </span>
+                    </div>
+
+                    <div className="mt-1 sm:mt-1.5 flex items-baseline justify-between gap-1">
+                      <span className="text-sm sm:text-base font-black tracking-tight text-white group-hover:text-yellow-300 truncate">
+                        Table {order.table_number || '??'}
+                      </span>
+                      <span className="text-[9px] font-bold text-white/50 group-hover:text-white/80 shrink-0">
+                        {order.order_items?.length || 1} items
+                      </span>
+                    </div>
+                  </button>
                 ))}
               </div>
             </motion.div>

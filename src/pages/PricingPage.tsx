@@ -7,6 +7,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import {
     ArrowRight,
     CheckCircle2,
+    Check,
     Camera,
     GraduationCap,
     Crown,

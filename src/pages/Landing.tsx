@@ -197,10 +197,10 @@ const Landing: React.FC = () => {
                   {/* Column 3 - Brightest Core */}
                   <div className="flex flex-col gap-1.5 text-emerald-400/45 pt-6 hidden sm:flex">
                     <div>00110100</div>
-                    <div className="text-yellow-200 font-bold drop-shadow-[0_0_10px_rgba(253,224,71,0.9)] text-[12px]">$.01 / YEAR</div>
+                    <div className="text-yellow-200 font-bold drop-shadow-[0_0_10px_rgba(253,224,71,0.9)] text-[12px]">ZERO SETUP</div>
                     <div>11001001</div>
                     <div>8492 0012</div>
-                    <div className="text-emerald-100 font-bold tracking-wider">SECURE_HOST</div>
+                    <div className="text-emerald-100 font-bold tracking-wider">POS_LIVE_24/7</div>
                     <div>01010101</div>
                     <div>9920 1182</div>
                     <div>00101010</div>
@@ -230,17 +230,17 @@ const Landing: React.FC = () => {
               <div className="bg-[#11141a]/90 backdrop-blur-md border border-white/10 rounded-xl p-1.5 flex items-center gap-1 shadow-2xl">
                 <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-lg hover:bg-white/5 text-gray-300 text-[11px] font-mono tracking-wider transition-colors cursor-default">
                   <div className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.8)]" />
-                  <span>NEORICK</span>
+                  <span>BARO SPEED</span>
                 </div>
                 <div className="h-3 w-px bg-white/10" />
                 <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-lg hover:bg-white/5 text-gray-300 text-[11px] font-mono tracking-wider transition-colors cursor-default">
                   <div className="w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_6px_rgba(34,211,238,0.8)]" />
-                  <span>GinterX</span>
+                  <span>AI OVERSIGHT</span>
                 </div>
                 <div className="h-3 w-px bg-white/10" />
                 <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-lg hover:bg-white/5 text-gray-300 text-[11px] font-mono tracking-wider transition-colors cursor-default">
                   <div className="w-2 h-2 rounded-full bg-purple-400 shadow-[0_0_6px_rgba(192,132,252,0.8)]" />
-                  <span>Matic</span>
+                  <span>ZERO CHAOS</span>
                 </div>
               </div>
             </div>
