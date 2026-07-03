@@ -514,7 +514,7 @@ const Inventory: React.FC = () => {
 
         <div className="bg-card/60 backdrop-blur-xl border border-border rounded-3xl md:rounded-[2.5rem] overflow-hidden shadow-2xl">
           <div className="overflow-x-auto custom-scrollbar">
-            <table className="w-full text-sm text-left">
+            <table className="w-full min-w-[900px] text-sm text-left">
               <thead className="text-[10px] text-muted uppercase bg-muted/10 border-b border-border font-black tracking-[0.2em] backdrop-blur-md">
                 <tr>
                   <th className="px-4 md:px-8 py-4 md:py-6 whitespace-nowrap text-left min-w-[200px]">Asset Node</th>

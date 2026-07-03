@@ -27,9 +27,9 @@ const RAILWAY_URL = 'https://verifier-service-repo-production.up.railway.app';
 const RAW_RAILWAY_KEY = import.meta.env.VITE_RAILWAY_API_KEY || import.meta.env.VITE_VERIFIER_API_KEY || 'test-key-123';
 const RAILWAY_API_KEY = RAW_RAILWAY_KEY.includes(',') ? RAW_RAILWAY_KEY.split(',')[0].trim() : RAW_RAILWAY_KEY;
 
-// Secondary: Official @creofam/verifier API (verify.leul.et/api)
-// SDK uses x-api-key header and individual endpoints per bank (/verify-cbe, /verify-telebirr, etc.)
-const OFFICIAL_SDK_BASE = 'https://verify.leul.et/api';
+// Secondary: Official verify.et platform API
+// Uses x-api-key header and unified /api/verify endpoint
+const OFFICIAL_SDK_BASE = 'https://verify.et';
 const LEUL_API_KEY = 'VERIFY_BANK_ET_D1z7Tz7xL2nNSO4MXMTL-PWhvk7LBZzdaRxCFYBOWTEId_VuhzUxJ2HV_UMEeePZ';
 
 // Check if the env var points to a valid, non-dead URL
@@ -41,89 +41,61 @@ const isEnvUrlDead = !envUrl || DEAD_HOSTS.some(dead => envUrl.includes(dead)) |
 const PRIMARY_URL = isEnvUrlDead ? RAILWAY_URL : envUrl;
 
 /**
- * Maps a payment_method key to the correct @creofam/verifier endpoint path and payload builder.
- * The SDK calls individual endpoints: /verify-cbe, /verify-telebirr, /verify-dashen, etc.
- * Auth: x-api-key header (NOT Authorization: Bearer).
+ * Maps a payment_method key to the unified verify.et /api/verify endpoint.
+ * Auth: x-api-key header.
  */
 function buildOfficialSDKRequest(method: string, reference: string, additional_data: any = {}): { path: string; body: Record<string, any> } | null {
     const ref = reference.trim().toUpperCase();
-    switch (method) {
-        case 'cbe':
-            return {
-                path: '/verify-cbe',
-                body: {
-                    reference: ref,
-                    accountSuffix: additional_data.accountSuffix || additional_data.expected_receiver || additional_data.receiver_account || ''
-                }
-            };
-        case 'telebirr':
-            return {
-                path: '/verify-telebirr',
-                body: { reference: ref }
-            };
-        case 'dashen':
-            return {
-                path: '/verify-dashen',
-                body: { reference: ref }
-            };
-        case 'abyssinia':
-            return {
-                path: '/verify-abyssinia',
-                body: {
-                    reference: ref,
-                    suffix: additional_data.suffix || additional_data.accountSuffix || additional_data.expected_receiver || ''
-                }
-            };
-        case 'cbebirr':
-            return {
-                path: '/verify-cbebirr',
-                body: {
-                    reference: ref,
-                    ...(additional_data.phoneNumber ? { phoneNumber: additional_data.phoneNumber } : {})
-                }
-            };
-        default:
-            return null;
-    }
+    const suffix = additional_data.suffix || additional_data.accountSuffix || additional_data.expected_receiver || additional_data.receiver_account || '';
+    const phoneNumber = additional_data.phoneNumber || additional_data.phone || '';
+
+    return {
+        path: '/api/verify',
+        body: {
+            bank: method,
+            reference: ref,
+            ...(suffix ? { suffix: String(suffix), accountSuffix: String(suffix) } : {}),
+            ...(phoneNumber ? { phoneNumber: String(phoneNumber), phone: String(phoneNumber) } : {})
+        }
+    };
 }
 
 /**
- * Normalise a raw response from verifyapi.leulzenebe.pro into our standard shape.
- * Different banks return different field names — the SDK's adapter code handles this,
- * but since we're calling directly we normalize here.
+ * Normalise a raw response from verify.et into our standard shape.
  */
 function normalizeOfficialSDKResponse(raw: any, method: string, reference: string, expected_amount: number): any {
     if (!raw) return { success: false, validated: false, error: 'Empty response' };
 
-    // Handle nested .data wrapper
-    const d = (raw?.data && typeof raw.data === 'object') ? raw.data : raw;
+    // Handle nested array in .data wrapper from verify.et
+    const dRaw = (raw?.data && typeof raw.data === 'object') ? (Array.isArray(raw.data) ? raw.data[0] : raw.data) : raw;
+    const d = (dRaw && typeof dRaw === 'object' && dRaw.result) ? dRaw.result : dRaw;
 
     // Detect success signals across all bank response formats
-    const isOk = raw?.ok === true || raw?.success === true || raw?.validated === true;
-    if (!isOk || raw?.error) {
+    const isOk = raw?.ok === true || raw?.success === true || raw?.validated === true || d?.status === 'success' || d?.verified === true;
+    if (!isOk || raw?.error || d?.status === 'failed') {
         return {
             success: false,
             validated: false,
-            error: raw?.error || 'Transaction not found or verification failed',
+            error: raw?.error || d?.reason || raw?.message || 'Transaction not found or verification failed',
             raw
         };
     }
 
-    // Extract amount — try multiple field names used by different banks
-    const amountRaw = d?.amount ?? d?.settledAmount ?? d?.totalPaidAmount ?? d?.txnAmount ?? null;
+    // Extract amount
+    const amountRaw = d?.amount ?? d?.settledAmount ?? d?.totalPaidAmount ?? d?.txnAmount ?? d?.amountValue ?? null;
     const amount = amountRaw ? parseFloat(String(amountRaw).replace(/[^0-9.]/g, '')) : null;
 
-    // Amount validation: ensure it meets expected_amount (allow small rounding diff)
+    // Amount validation: ensure it meets expected_amount
     const amountMatches = amount !== null && amount >= (expected_amount * 0.99);
 
     return {
         success: true,
         validated: amountMatches,
         amount: amount ?? expected_amount,
-        receipt_reference: d?.reference ?? reference,
-        payer_name: d?.payerName ?? d?.payer ?? null,
-        receiver_account: d?.receiverAccount ?? null,
-        transaction_date: d?.txnDate ?? d?.paymentDate ?? d?.date ?? null,
+        receipt_reference: d?.referenceNumber ?? d?.reference ?? reference,
+        payer_name: d?.senderName ?? d?.payerName ?? d?.payer ?? null,
+        receiver_account: d?.receiverAccount ?? d?.receiverName ?? null,
+        transaction_date: d?.timestamp ?? d?.txnDate ?? d?.paymentDate ?? d?.date ?? null,
         validation: {
             passed: amountMatches,
             reason: amountMatches ? 'Amount verified' : `Expected ${expected_amount}, got ${amount}`,
@@ -242,17 +214,17 @@ export function usePaymentVerification() {
 
             const raw = await response.json().catch(() => null);
 
-            // If it failed with "No PDF detected" and we sent an accountSuffix, 
+            // If it failed and we sent an accountSuffix, 
             // try one more time WITHOUT the suffix (sometimes CBE works without it)
-            if (params.payment_method === 'cbe' && (raw?.error?.includes('PDF') || !response.ok)) {
+            if (params.payment_method === 'cbe' && !response.ok) {
                 console.warn('[Verify] SDK failed with suffix, trying WITHOUT suffix...');
-                const retryResponse = await fetch(`${OFFICIAL_SDK_BASE}/verify-cbe`, {
+                const retryResponse = await fetch(`${OFFICIAL_SDK_BASE}/api/verify`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                         'x-api-key': LEUL_API_KEY,
                     },
-                    body: JSON.stringify({ reference: params.reference.trim().toUpperCase() }),
+                    body: JSON.stringify({ bank: 'cbe', reference: params.reference.trim().toUpperCase() }),
                     signal: controller.signal,
                 });
                 const retryRaw = await retryResponse.json().catch(() => null);

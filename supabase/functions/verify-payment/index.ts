@@ -4,34 +4,29 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const VERIFY_LEUL_KEY = Deno.env.get('VERIFY_LEUL_KEY');
-const OFFICIAL_SDK_BASE = "https://verify.leul.et/api";
+const VERIFY_LEUL_KEY = Deno.env.get('VERIFY_LEUL_KEY') || 'VERIFY_BANK_ET_D1z7Tz7xL2nNSO4MXMTL-PWhvk7LBZzdaRxCFYBOWTEId_VuhzUxJ2HV_UMEeePZ';
+const OFFICIAL_SDK_BASE = "https://verify.et";
 
-// Map payment method to the correct SDK endpoint + payload.
-// The @creofam/verifier SDK (and verify.et) use per-bank endpoints,
-// NOT a unified /verify endpoint. Auth uses x-api-key, NOT Authorization: Bearer.
+// Map payment method to the unified verify.et /api/verify endpoint.
+// Auth uses x-api-key, NOT Authorization: Bearer.
 function buildSDKRequest(bank: string, transaction_id: string, receiver_account?: string): { path: string; body: Record<string, unknown> } | null {
   const ref = transaction_id.trim().toUpperCase();
   const bankNorm = bank.toLowerCase().replace(/[_\-\s]/g, '');
-  switch (bankNorm) {
-    case 'cbe':
-    case 'commercialbank':
-    case 'commercialbankofethiopia':
-      return { path: '/verify-cbe', body: { reference: ref, accountSuffix: receiver_account || '' } };
-    case 'telebirr':
-      return { path: '/verify-telebirr', body: { reference: ref } };
-    case 'dashen':
-    case 'dashenbank':
-      return { path: '/verify-dashen', body: { reference: ref } };
-    case 'abyssinia':
-    case 'boa':
-    case 'bankofabyssinia':
-      return { path: '/verify-abyssinia', body: { reference: ref, suffix: receiver_account || '' } };
-    case 'cbebirr':
-      return { path: '/verify-cbebirr', body: { reference: ref } };
-    default:
-      return null;
-  }
+  let method = bankNorm;
+  if (bankNorm === 'commercialbank' || bankNorm === 'commercialbankofethiopia') method = 'cbe';
+  if (bankNorm === 'dashenbank') method = 'dashen';
+  if (bankNorm === 'boa' || bankNorm === 'bankofabyssinia') method = 'abyssinia';
+
+  const suffix = receiver_account || '';
+  return {
+    path: '/api/verify',
+    body: {
+      bank: method,
+      reference: ref,
+      ...(suffix ? { suffix: String(suffix), accountSuffix: String(suffix) } : {}),
+      ...(suffix ? { phoneNumber: String(suffix), phone: String(suffix) } : {})
+    }
+  };
 }
 
 const corsHeaders = {
@@ -311,19 +306,20 @@ serve(async (req) => {
 
     console.log("[verify-payment] SDK raw response:", rawData);
 
-    // Normalize response: SDK returns { ok: true, data: {...} } or { ok: false, error: '...' }
-    const d = (rawData?.data && typeof rawData.data === 'object') ? rawData.data : rawData;
-    const isVerified = rawData?.ok === true || rawData?.success === true;
-    const amountRaw = d?.amount ?? d?.settledAmount ?? d?.totalPaidAmount ?? d?.txnAmount ?? null;
+    // Normalize response from verify.et: returns { success: true, data: [{...}] }
+    const dRaw = (rawData?.data && typeof rawData.data === 'object') ? (Array.isArray(rawData.data) ? rawData.data[0] : rawData.data) : rawData;
+    const d = (dRaw && typeof dRaw === 'object' && dRaw.result) ? dRaw.result : dRaw;
+    const isVerified = rawData?.ok === true || rawData?.success === true || rawData?.validated === true || d?.status === 'success' || d?.verified === true;
+    const amountRaw = d?.amount ?? d?.settledAmount ?? d?.totalPaidAmount ?? d?.txnAmount ?? d?.amountValue ?? null;
     const verifiedAmount = amountRaw ? parseFloat(String(amountRaw).replace(/[^0-9.]/g, '')) : null;
 
     const data = {
-      success: isVerified,
-      validated: isVerified,
+      success: isVerified && d?.status !== 'failed',
+      validated: isVerified && d?.status !== 'failed',
       amount: verifiedAmount,
-      message: isVerified ? 'Transaction Found and Valid.' : (rawData?.error || 'Transaction not found or invalid.'),
-      error: isVerified ? undefined : (rawData?.error || 'Transaction not found or invalid.'),
-      receipt_reference: d?.reference ?? normalizedRef,
+      message: (isVerified && d?.status !== 'failed') ? 'Transaction Found and Valid.' : (rawData?.error || d?.reason || 'Transaction not found or invalid.'),
+      error: (isVerified && d?.status !== 'failed') ? undefined : (rawData?.error || d?.reason || 'Transaction not found or invalid.'),
+      receipt_reference: d?.referenceNumber ?? d?.reference ?? normalizedRef,
     };
 
     // ================================================================
