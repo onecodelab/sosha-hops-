@@ -247,18 +247,21 @@ export function usePaymentVerification() {
         }
     };
 
-    // ── Attempt 3: Supabase Edge Function Proxy ──
+    // ── Attempt 1: Supabase Edge Function Proxy (Server-side, No CORS) ──
     const trySupabaseProxy = async (params: StartVerificationParams): Promise<any> => {
         const { supabase } = await import('@/lib/supabase');
 
         const payload = {
             bank: params.payment_method,
             transaction_id: params.reference.trim().toUpperCase(),
-            receiver_account: params.additional_data?.expected_receiver || params.additional_data?.accountSuffix,
-            amount: params.expected_amount
+            receiver_account: params.additional_data?.expected_receiver || params.additional_data?.accountSuffix || params.additional_data?.suffix || '',
+            phone_number: params.additional_data?.phoneNumber || params.additional_data?.phone || '',
+            suffix: params.additional_data?.suffix || params.additional_data?.accountSuffix || '',
+            amount: params.expected_amount,
+            organization_id: organizationId
         };
 
-        console.log('[Verify] Attempt 3 — Supabase Proxy', payload);
+        console.log('[Verify] Attempt 1 — Supabase Proxy:', payload);
 
         const { data, error } = await supabase.functions.invoke('verify-payment', {
             body: payload
@@ -282,28 +285,28 @@ export function usePaymentVerification() {
         try {
             let data: any;
 
-            // ATTEMPT 1: Railway
+            // ATTEMPT 1: Supabase Proxy (bypasses browser CORS completely)
             try {
-                data = await tryRailway(params);
-                console.log('[Verify] Railway response:', data);
-            } catch (railwayErr: any) {
-                console.warn('[Verify] Railway failed, trying Official SDK...', railwayErr.message);
+                data = await trySupabaseProxy(params);
+                console.log('[Verify] Supabase Proxy response:', data);
+            } catch (proxyErr: any) {
+                console.warn('[Verify] Supabase Proxy failed, trying Railway...', proxyErr.message);
 
-                // ATTEMPT 2: Official SDK
+                // ATTEMPT 2: Railway
                 try {
-                    data = await tryOfficialSDK(params);
-                    console.log('[Verify] Official SDK response:', data);
-                } catch (sdkErr: any) {
-                    console.warn('[Verify] Official SDK failed, trying Supabase Proxy...', sdkErr.message);
+                    data = await tryRailway(params);
+                    console.log('[Verify] Railway response:', data);
+                } catch (railwayErr: any) {
+                    console.warn('[Verify] Railway failed, trying Official SDK...', railwayErr.message);
 
-                    // ATTEMPT 3: Supabase Proxy
+                    // ATTEMPT 3: Official SDK
                     try {
-                        data = await trySupabaseProxy(params);
-                        console.log('[Verify] Supabase Proxy response:', data);
-                    } catch (proxyErr: any) {
+                        data = await tryOfficialSDK(params);
+                        console.log('[Verify] Official SDK response:', data);
+                    } catch (sdkErr: any) {
                         console.error('[Verify] All tiers failed.');
                         throw new Error(
-                            `Verification unavailable. Railway: ${railwayErr.message}. SDK: ${sdkErr.message}. Proxy: ${proxyErr.message}`
+                            `Verification unavailable. Proxy: ${proxyErr.message}. Railway: ${railwayErr.message}. SDK: ${sdkErr.message}`
                         );
                     }
                 }

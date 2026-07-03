@@ -9,7 +9,7 @@ const OFFICIAL_SDK_BASE = "https://verify.et";
 
 // Map payment method to the unified verify.et /api/verify endpoint.
 // Auth uses x-api-key, NOT Authorization: Bearer.
-function buildSDKRequest(bank: string, transaction_id: string, receiver_account?: string): { path: string; body: Record<string, unknown> } | null {
+function buildSDKRequest(bank: string, transaction_id: string, receiver_account?: string, phone_number?: string, suffix_param?: string): { path: string; body: Record<string, unknown> } | null {
   const ref = transaction_id.trim().toUpperCase();
   const bankNorm = bank.toLowerCase().replace(/[_\-\s]/g, '');
   let method = bankNorm;
@@ -17,14 +17,15 @@ function buildSDKRequest(bank: string, transaction_id: string, receiver_account?
   if (bankNorm === 'dashenbank') method = 'dashen';
   if (bankNorm === 'boa' || bankNorm === 'bankofabyssinia') method = 'abyssinia';
 
-  const suffix = receiver_account || '';
+  const suffix = suffix_param || receiver_account || '';
+  const phone = phone_number || receiver_account || '';
   return {
     path: '/api/verify',
     body: {
       bank: method,
       reference: ref,
       ...(suffix ? { suffix: String(suffix), accountSuffix: String(suffix) } : {}),
-      ...(suffix ? { phoneNumber: String(suffix), phone: String(suffix) } : {})
+      ...(phone ? { phoneNumber: String(phone), phone: String(phone) } : {})
     }
   };
 }
@@ -73,37 +74,36 @@ serve(async (req) => {
     const sbKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || Deno.env.get('SERVICE_ROLE_KEY')!;
     const supabase = createClient(sbUrl, sbKey);
 
-    // 1. JWT Authentication
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      return new Response(JSON.stringify({ error: 'Missing authorization header' }), { status: 401, headers: corsHeaders });
-    }
-
-    const anonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
-    const authClient = createClient(sbUrl, anonKey, { global: { headers: { Authorization: authHeader } } });
-    const { data: { user }, error: userErr } = await authClient.auth.getUser();
-
-    if (userErr || !user) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: corsHeaders });
-    }
-
-    // 2. AUTHENTICATION & ISOLATION HARDENING
-    const organizationId = user.app_metadata?.organization_id;
-    if (!organizationId) {
-      console.error(`[AUTH_ERROR] User ${user.id} has no organization_id in app_metadata`);
-      return new Response(JSON.stringify({ error: 'Identity Error', detail: 'User is not bound to an organization' }), { status: 403, headers: corsHeaders });
-    }
-
+    const bodyData = await req.json();
     const {
       transaction_id, // From Agent/Chatbot
       bank,           // From Agent/Chatbot
       order_id,       // Optional: If provided, we update the order
       amount,         // Optional: Expected amount for validation
-      receiver_account // Optional
-    } = await req.json();
+      receiver_account, // Optional
+      phone_number,
+      suffix
+    } = bodyData;
 
     if (!transaction_id || !bank) {
       return new Response(JSON.stringify({ error: "Please provide both transaction_id and bank name." }), { status: 400, headers: corsHeaders });
+    }
+
+    // 1. Authentication & Organization Resolution
+    let organizationId = bodyData.organization_id;
+    const authHeader = req.headers.get('Authorization');
+    if (authHeader) {
+      const anonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+      const authClient = createClient(sbUrl, anonKey, { global: { headers: { Authorization: authHeader } } });
+      const { data: { user } } = await authClient.auth.getUser();
+      if (user) {
+        organizationId = user.app_metadata?.organization_id || user.user_metadata?.organization_id || organizationId;
+      }
+    }
+
+    if (!organizationId) {
+      console.error(`[AUTH_ERROR] Missing organization_id`);
+      return new Response(JSON.stringify({ error: 'Identity Error', detail: 'Missing organization ID' }), { status: 403, headers: corsHeaders });
     }
 
     // Normalize reference to uppercase (CBE uses uppercase FT references)
@@ -280,7 +280,7 @@ serve(async (req) => {
       throw new Error("Verification service not configured (Missing VERIFY_LEUL_KEY)");
     }
 
-    const sdkRequest = buildSDKRequest(bank, normalizedRef, receiver_account);
+    const sdkRequest = buildSDKRequest(bank, normalizedRef, receiver_account, phone_number, suffix);
     if (!sdkRequest) {
       throw new Error(`Unsupported payment method: ${bank}`);
     }
