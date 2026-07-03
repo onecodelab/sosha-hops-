@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { useLayoutConfig } from '../contexts/LayoutContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useBranch } from '../contexts/BranchContext';
+import { useLanguage } from '../contexts/LanguageContext';
 import { supabase } from '@/lib/supabase';
 import { Order, Table } from '@/types';
 import { Button, showToast, cn, Badge, Card } from '../components/ui';
@@ -34,6 +35,8 @@ import { Dialog } from '../components/ui';
 const WaiterDashboard: React.FC = () => {
   const { profile, user } = useAuth();
   const { activeBranchId } = useBranch();
+  const { language } = useLanguage();
+  const isAm = language === 'am';
   const [tables, setTables] = useState<Table[]>([]);
   const { orders, kitchenPipeline, readyOrders, billingQueue, isLoading: ordersLoading, refresh: refreshOrders } = useOrders(user?.id);
 
@@ -162,11 +165,11 @@ const WaiterDashboard: React.FC = () => {
   const isLoading = ordersLoading || isSyncingTables;
 
   useLayoutConfig({
-    title: "My Station",
+    title: isAm ? "የኔ ጣቢያ" : "My Station",
     subtitle: (
       <span className="flex items-center gap-1.5 uppercase font-black tracking-widest text-[10px]">
-        <span className="text-zinc-500">Floor •</span>
-        <span className="text-primary italic">{profile?.full_name || 'Staff Member'}</span>
+        <span className="text-zinc-500">{isAm ? "ጣቢያ •" : "Floor •"}</span>
+        <span className="text-primary italic">{profile?.full_name || (isAm ? 'አስተናጋጅ' : 'Staff Member')}</span>
       </span>
     ),
     actions: (
@@ -179,7 +182,7 @@ const WaiterDashboard: React.FC = () => {
           }}
           className="bg-gradient-to-r from-amber-400 to-yellow-400 hover:from-amber-300 hover:to-yellow-300 text-black border-2 border-yellow-200 h-10 sm:h-11 px-5 sm:px-7 font-black uppercase text-xs sm:text-sm rounded-xl flex items-center gap-2 shadow-[0_0_20px_rgba(245,158,11,0.5)] hover:shadow-[0_0_30px_rgba(245,158,11,0.8)] transition-all hover:scale-105 active:scale-95"
         >
-          <PlusCircle className="w-4 h-4 sm:w-5 sm:h-5 stroke-[2.5]" /> <span>NEW ORDER</span>
+          <PlusCircle className="w-4 h-4 sm:w-5 sm:h-5 stroke-[2.5]" /> <span>{isAm ? "አዲስ ትዕዛዝ +" : "NEW ORDER"}</span>
         </Button>
         <Button onClick={refreshAll} variant="outline" size="icon" className="border-white/15 bg-white/5 hover:bg-white/15 h-10 w-10 sm:h-11 sm:w-11 text-white shadow-md"><RefreshCw className={cn("h-4 w-4 sm:h-5 sm:w-5", isLoading && "animate-spin text-yellow-400")} /></Button>
       </div>
@@ -219,78 +222,78 @@ const WaiterDashboard: React.FC = () => {
           }}
           className="mx-2"
         >
-          <div className="space-y-3">
-            {/* Executive 3-Card Tactical Grid */}
+          <div className="bg-zinc-900/90 border border-zinc-800/80 rounded-2xl p-3 sm:p-5 shadow-2xl backdrop-blur-xl space-y-3">
+            {/* Luxury Minimalist POS Command Ribbon (Apple / Square Style) */}
             <div className="grid grid-cols-3 gap-2 sm:gap-4">
               {/* CARD 1: FLOOR AVAILABILITY */}
-              <div className="bg-gradient-to-br from-emerald-500/20 via-emerald-500/5 to-transparent border-2 border-emerald-500/40 hover:border-emerald-500/70 rounded-2xl p-3 sm:p-5 shadow-lg relative overflow-hidden group transition-all flex flex-col justify-between min-h-[90px] sm:min-h-[110px]">
+              <div className="bg-zinc-800/40 hover:bg-zinc-800/70 border border-zinc-700/50 rounded-xl p-3 sm:p-4 transition-all flex flex-col justify-between min-h-[85px] sm:min-h-[105px]">
                 <div className="flex items-center justify-between gap-1">
-                  <span className="text-[9px] sm:text-xs font-black text-emerald-400 uppercase tracking-wider truncate">
-                    Floor Free
+                  <span className="text-[9px] sm:text-xs font-bold text-zinc-400 uppercase tracking-wider truncate">
+                    {isAm ? "ነፃ ጠረጴዛዎች" : "FREE FLOOR"}
                   </span>
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0 shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
+                  <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
                 </div>
-                <div className="my-1 sm:my-2 flex items-baseline gap-1 sm:gap-2">
-                  <span className="text-2xl sm:text-4xl font-black text-white tracking-tight drop-shadow-sm">
+                <div className="my-1 flex items-baseline gap-1 sm:gap-2">
+                  <span className="text-2xl sm:text-3xl font-black text-white tracking-tight">
                     {tables.filter(t => t.status === 'available').length}
                   </span>
-                  <span className="text-[9px] sm:text-xs font-black text-zinc-400 uppercase">
+                  <span className="text-[10px] sm:text-xs font-medium text-zinc-500">
                     / {tables.length}
                   </span>
                 </div>
                 <div className="mt-1 flex items-center">
-                  <span className="px-1.5 sm:px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 font-mono text-[8px] sm:text-[10px] font-black tracking-widest uppercase truncate border border-emerald-500/30">
-                    🟢 AVAILABLE
+                  <span className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 font-mono text-[8px] sm:text-[9px] font-bold tracking-widest uppercase truncate border border-emerald-500/20">
+                    🟢 {isAm ? "ነፃ" : "AVAILABLE"}
                   </span>
                 </div>
               </div>
 
               {/* CARD 2: OCCUPIED LOAD */}
-              <div className="bg-gradient-to-br from-red-500/20 via-red-500/5 to-transparent border-2 border-red-500/40 hover:border-red-500/70 rounded-2xl p-3 sm:p-5 shadow-lg relative overflow-hidden group transition-all flex flex-col justify-between min-h-[90px] sm:min-h-[110px]">
+              <div className="bg-zinc-800/40 hover:bg-zinc-800/70 border border-zinc-700/50 rounded-xl p-3 sm:p-4 transition-all flex flex-col justify-between min-h-[85px] sm:min-h-[105px]">
                 <div className="flex items-center justify-between gap-1">
-                  <span className="text-[9px] sm:text-xs font-black text-red-400 uppercase tracking-wider truncate">
-                    Dining Load
+                  <span className="text-[9px] sm:text-xs font-bold text-zinc-400 uppercase tracking-wider truncate">
+                    {isAm ? "የተያዙ ጠረጴዛዎች" : "ACTIVE TABLES"}
                   </span>
-                  <span className="w-2 h-2 rounded-full bg-red-500 animate-ping shrink-0 shadow-[0_0_8px_rgba(239,68,68,0.8)]" />
+                  <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-red-500 shrink-0" />
                 </div>
-                <div className="my-1 sm:my-2 flex items-baseline gap-1 sm:gap-2">
-                  <span className="text-2xl sm:text-4xl font-black text-red-400 tracking-tight drop-shadow-sm">
+                <div className="my-1 flex items-baseline gap-1 sm:gap-2">
+                  <span className="text-2xl sm:text-3xl font-black text-white tracking-tight">
                     {tables.filter(t => t.status === 'occupied').length}
                   </span>
-                  <span className="text-[9px] sm:text-xs font-black text-zinc-400 uppercase">
-                    tables
+                  <span className="text-[10px] sm:text-xs font-medium text-zinc-500">
+                    {isAm ? "ጠረጴዛዎች" : "tables"}
                   </span>
                 </div>
                 <div className="mt-1 flex items-center">
-                  <span className="px-1.5 sm:px-2 py-0.5 rounded-md bg-red-500/20 text-red-300 font-mono text-[8px] sm:text-[10px] font-black tracking-widest uppercase truncate border border-red-500/30">
-                    🔴 OCCUPIED
+                  <span className="px-1.5 py-0.5 rounded bg-red-500/10 text-red-400 font-mono text-[8px] sm:text-[9px] font-bold tracking-widest uppercase truncate border border-red-500/20">
+                    🔴 {isAm ? "የተያዘ" : "OCCUPIED"}
                   </span>
                 </div>
               </div>
 
               {/* CARD 3: ACTIVE WORKLOAD */}
-              <div className="bg-gradient-to-br from-amber-500/20 via-yellow-500/5 to-transparent border-2 border-yellow-400/50 hover:border-yellow-300 rounded-2xl p-3 sm:p-5 shadow-lg relative overflow-hidden group transition-all flex flex-col justify-between min-h-[90px] sm:min-h-[110px]">
+              <div className="bg-zinc-800/40 hover:bg-zinc-800/70 border border-yellow-500/30 rounded-xl p-3 sm:p-4 transition-all flex flex-col justify-between min-h-[85px] sm:min-h-[105px]">
                 <div className="flex items-center justify-between gap-1">
-                  <span className="text-[9px] sm:text-xs font-black text-yellow-400 uppercase tracking-wider truncate">
-                    My Workload
+                  <span className="text-[9px] sm:text-xs font-bold text-yellow-500/90 uppercase tracking-wider truncate">
+                    {isAm ? "የኔ ትዕዛዞች" : "MY WORKLOAD"}
                   </span>
-                  <Zap className="w-3 h-3 sm:w-4 sm:h-4 text-yellow-400 fill-yellow-400 shrink-0" />
+                  <Zap className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-yellow-400 fill-yellow-400 shrink-0" />
                 </div>
-                <div className="my-1 sm:my-2 flex items-baseline gap-1 sm:gap-2">
-                  <span className="text-2xl sm:text-4xl font-black text-yellow-400 tracking-tight drop-shadow-sm">
+                <div className="my-1 flex items-baseline gap-1 sm:gap-2">
+                  <span className="text-2xl sm:text-3xl font-black text-yellow-400 tracking-tight">
                     {orders.length}
                   </span>
-                  <span className="text-[9px] sm:text-xs font-black text-zinc-400 uppercase">
-                    orders
+                  <span className="text-[10px] sm:text-xs font-medium text-zinc-500">
+                    {isAm ? "ትዕዛዞች" : "orders"}
                   </span>
                 </div>
                 <div className="mt-1 flex items-center gap-1 overflow-hidden">
-                  <span className="px-1.5 sm:px-2 py-0.5 rounded-md bg-yellow-400/20 text-yellow-300 font-mono text-[8px] sm:text-[10px] font-black tracking-widest uppercase truncate border border-yellow-400/30">
-                    ⚡ ACTIVE
+                  <span className="px-1.5 py-0.5 rounded bg-yellow-400/10 text-yellow-400 font-mono text-[8px] sm:text-[9px] font-bold tracking-widest uppercase truncate border border-yellow-400/20">
+                    ⚡ {isAm ? "በስራ ላይ" : "ACTIVE"}
                   </span>
                   {kitchenPipeline.length > 0 && (
-                    <span className="px-1.5 py-0.5 rounded-md bg-orange-500 text-black font-mono text-[8px] sm:text-[10px] font-black shrink-0 animate-bounce">
-                      +{kitchenPipeline.length} KITCHEN
+                    <span className="px-1.5 py-0.5 rounded bg-orange-500 text-black font-mono text-[8px] sm:text-[9px] font-black shrink-0">
+                      +{kitchenPipeline.length} {isAm ? "ወጥ ቤት" : "KITCHEN"}
                     </span>
                   )}
                 </div>
@@ -298,16 +301,16 @@ const WaiterDashboard: React.FC = () => {
             </div>
 
             {/* Tactical Sync Status Bar for Mobile & Desktop */}
-            <div className="flex items-center justify-between gap-2 p-2.5 bg-white/5 border border-white/10 rounded-xl backdrop-blur-md">
-              <div className="flex items-center gap-2 pl-2">
-                <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse shadow-[0_0_8px_rgba(74,222,128,0.8)]" />
-                <span className="text-[10px] sm:text-xs font-black uppercase text-zinc-300 tracking-wider">
-                  Station Telemetry: <span className="text-green-400">ONLINE & SYNCED</span>
+            <div className="flex items-center justify-between gap-2 pt-2 border-t border-zinc-800/80">
+              <div className="flex items-center gap-2 pl-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                <span className="text-[10px] sm:text-xs font-bold uppercase text-zinc-400 tracking-wider">
+                  {isAm ? "የሲስተም ሁኔታ: " : "Station Telemetry: "} <span className="text-green-400 font-mono">{isAm ? "መስመር ላይ (ONLINE) ✓" : "ONLINE & SYNCED ✓"}</span>
                 </span>
               </div>
-              <Button onClick={refreshAll} variant="outline" size="sm" className="h-8 px-3.5 text-[9px] sm:text-[10px] font-black uppercase tracking-widest bg-white/10 hover:bg-white/20 border-white/20 text-white transition-all">
+              <Button onClick={refreshAll} variant="ghost" size="sm" className="h-7 sm:h-8 px-3 text-[9px] sm:text-[10px] font-bold uppercase tracking-widest hover:bg-zinc-800 text-zinc-300 transition-all border border-zinc-700/50 rounded-lg">
                 <RefreshCw className={cn("h-3 w-3 mr-1.5 text-yellow-400", isLoading && "animate-spin")} />
-                Sync Station
+                {isAm ? "አድስ (SYNC)" : "Sync Station"}
               </Button>
             </div>
           </div>
@@ -335,17 +338,17 @@ const WaiterDashboard: React.FC = () => {
                   </div>
                   <div className="flex items-center gap-2 flex-wrap">
                     <h4 className="text-sm sm:text-xl font-black text-black uppercase tracking-tight whitespace-nowrap drop-shadow-sm">
-                      AI Chatbot Orders
+                      {isAm ? "የኤአይ (AI) ትዕዛዞች" : "AI Chatbot Orders"}
                     </h4>
                     <span className="px-2 py-0.5 rounded-full bg-black text-yellow-400 font-mono text-[10px] sm:text-xs font-black uppercase tracking-wider animate-pulse shadow">
-                      {unassignedChatOrders.length} WAITING
+                      {unassignedChatOrders.length} {isAm ? "በመጠባበቅ ላይ" : "WAITING"}
                     </span>
                   </div>
                 </div>
 
                 <div className="shrink-0 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-red-600 text-white font-mono text-[9px] sm:text-[10px] font-black uppercase tracking-wider shadow-md">
                   <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
-                  <span className="hidden xs:inline">LIVE </span>DISPATCH
+                  <span className="hidden xs:inline">{isAm ? "አዲስ " : "LIVE "}</span>{isAm ? "ይመደብ" : "DISPATCH"}
                 </div>
               </div>
 
@@ -366,11 +369,11 @@ const WaiterDashboard: React.FC = () => {
                           #{order.order_number}
                         </span>
                         <h5 className="text-lg sm:text-xl font-black tracking-tight text-white group-hover:text-yellow-300 truncate">
-                          Table {order.table_number || '??'}
+                          {isAm ? "ጠረጴዛ" : "Table"} {order.table_number || '??'}
                         </h5>
                       </div>
                       <span className="px-2 py-1 rounded-lg bg-white/10 text-white font-mono text-[10px] font-black tracking-wider uppercase shrink-0">
-                        {order.order_items?.length || 1} items
+                        {order.order_items?.length || 1} {isAm ? "ምግቦች" : "items"}
                       </span>
                     </div>
 
@@ -387,7 +390,7 @@ const WaiterDashboard: React.FC = () => {
                       className="mt-3 w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-yellow-400 to-amber-400 hover:from-yellow-300 hover:to-amber-300 active:scale-95 text-black font-black text-xs sm:text-sm uppercase tracking-wider shadow-[0_0_15px_rgba(250,204,21,0.4)] flex items-center justify-center gap-1.5 transition-all cursor-pointer border border-yellow-200"
                     >
                       <Zap className="w-4 h-4 fill-black text-black animate-bounce shrink-0" />
-                      <span>CLAIM ORDER</span>
+                      <span>{isAm ? "ትዕዛዙን ተቀበል" : "CLAIM ORDER"}</span>
                     </button>
                   </div>
                 ))}
@@ -402,7 +405,7 @@ const WaiterDashboard: React.FC = () => {
               <div className="px-6 py-5 border-b border-white/5 bg-white/5 flex items-center justify-between relative z-10 shrink-0">
                 <div className="flex items-center gap-3">
                   <div className="w-2.5 h-2.5 rounded-full bg-orange-500 shadow-[0_0_15px_rgba(249,115,22,0.5)] shrink-0" />
-                  <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-orange-500 truncate">Kitchen Pipeline</h3>
+                  <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-orange-500 truncate">{isAm ? "በወጥ ቤት ያሉ" : "Kitchen Pipeline"}</h3>
                 </div>
                 <Badge className="bg-orange-500/10 text-orange-500 border-orange-500/20 px-4 py-1.5 font-mono text-xs font-black shadow-lg shrink-0">
                   {kitchenPipeline.length}
@@ -417,7 +420,7 @@ const WaiterDashboard: React.FC = () => {
                     <div className="p-6 bg-orange-500/10 rounded-full">
                       <ChefHat className="w-12 h-12 text-orange-500" />
                     </div>
-                    <span className="text-[10px] font-black uppercase tracking-[0.4em] text-orange-500">Pipeline Clear</span>
+                    <span className="text-[10px] font-black uppercase tracking-[0.4em] text-orange-500">{isAm ? "ምንም ትዕዛዝ የለም" : "Pipeline Clear"}</span>
                   </div>
                 )}
               </div>
@@ -429,7 +432,7 @@ const WaiterDashboard: React.FC = () => {
               <div className="px-6 py-5 border-b border-white/5 bg-white/5 flex items-center justify-between relative z-10 shrink-0">
                 <div className="flex items-center gap-3">
                   <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_15px_rgba(16,185,129,0.5)] shrink-0" />
-                  <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-emerald-500 truncate">Ready to Serve</h3>
+                  <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-emerald-500 truncate">{isAm ? "ለአገልግሎት ዝግጁ" : "Ready to Serve"}</h3>
                 </div>
                 <Badge className="bg-emerald-500/10 text-emerald-500 border-emerald-500/20 px-4 py-1.5 font-mono text-xs font-black shadow-lg shrink-0">
                   {readyOrders.length}
@@ -444,7 +447,7 @@ const WaiterDashboard: React.FC = () => {
                     <div className="p-6 bg-emerald-500/10 rounded-full">
                       <CheckCircle2 className="w-12 h-12 text-emerald-500" />
                     </div>
-                    <span className="text-[10px] font-black uppercase tracking-[0.4em] text-emerald-500">All Served</span>
+                    <span className="text-[10px] font-black uppercase tracking-[0.4em] text-emerald-500">{isAm ? "ሁሉም ቀርቧል" : "All Served"}</span>
                   </div>
                 )}
               </div>
@@ -456,7 +459,7 @@ const WaiterDashboard: React.FC = () => {
               <div className="px-6 py-5 border-b border-white/5 bg-white/5 flex items-center justify-between relative z-10 shrink-0">
                 <div className="flex items-center gap-3">
                   <div className="w-2.5 h-2.5 rounded-full bg-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.5)] shrink-0" />
-                  <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-blue-500 truncate">Billing Queue</h3>
+                  <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-blue-500 truncate">{isAm ? "የሂሳብ ክፍያ ጥያቄዎች" : "Billing Queue"}</h3>
                 </div>
                 <Badge className="bg-blue-500/10 text-blue-500 border-blue-500/20 px-4 py-1.5 font-mono text-xs font-black shadow-lg shrink-0">
                   {billingQueue.length}
@@ -471,7 +474,7 @@ const WaiterDashboard: React.FC = () => {
                     <div className="p-6 bg-blue-500/10 rounded-full">
                       <Receipt className="w-12 h-12 text-blue-500" />
                     </div>
-                    <span className="text-[10px] font-black uppercase tracking-[0.4em] text-blue-500">No Pending Bills</span>
+                    <span className="text-[10px] font-black uppercase tracking-[0.4em] text-blue-500">{isAm ? "ክፍያ የለም" : "No Pending Bills"}</span>
                   </div>
                 )}
               </div>
@@ -484,12 +487,12 @@ const WaiterDashboard: React.FC = () => {
       <Dialog
         isOpen={isClaimModalOpen}
         onClose={() => setIsClaimModalOpen(false)}
-        title="Claim Chat Order"
+        title={isAm ? "ትዕዛዝ ተቀበል" : "Claim Chat Order"}
         maxWidth="max-w-md"
       >
         <div className="p-6 space-y-6">
           <div className="space-y-2">
-            <label className="text-[10px] font-black text-muted uppercase tracking-[0.2em] ml-1">Assign to Table</label>
+            <label className="text-[10px] font-black text-muted uppercase tracking-[0.2em] ml-1">{isAm ? "ጠረጴዛ ምረጥ" : "Assign to Table"}</label>
             <div className="grid grid-cols-4 gap-2 max-h-48 overflow-y-auto p-1 custom-scrollbar">
               {tables.map(t => (
                 <button
