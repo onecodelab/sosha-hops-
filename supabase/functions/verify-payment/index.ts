@@ -302,23 +302,56 @@ serve(async (req) => {
     });
 
     clearTimeout(timeoutId);
-    const rawData = await apiResponse.json();
-
+    let rawData = await apiResponse.json();
     console.log("[verify-payment] SDK raw response:", rawData);
 
-    // Normalize response from verify.et: returns { success: true, data: [{...}] }
-    const dRaw = (rawData?.data && typeof rawData.data === 'object') ? (Array.isArray(rawData.data) ? rawData.data[0] : rawData.data) : rawData;
-    const d = (dRaw && typeof dRaw === 'object' && dRaw.result) ? dRaw.result : dRaw;
-    const isVerified = rawData?.ok === true || rawData?.success === true || rawData?.validated === true || d?.status === 'success' || d?.verified === true;
+    // If verify.et queued the verification, automatically poll statusUrl up to 6 times (around 10 seconds total)
+    let dRaw = (rawData?.data && typeof rawData.data === 'object') ? (Array.isArray(rawData.data) ? rawData.data[0] : rawData.data) : (rawData?.verification || rawData);
+    let d = (dRaw && typeof dRaw === 'object' && dRaw.result) ? dRaw.result : dRaw;
+    let pollUrl = rawData?.statusUrl || rawData?.links?.statusUrl || d?.statusUrl || rawData?.verification?.statusUrl || (d?.requestId ? `/api/verify/${d.requestId}` : null);
+
+    if (pollUrl && (rawData?.processingStatus === 'queued' || d?.processingStatus === 'queued' || d?.status === 'pending' || rawData?.verification?.status === 'pending')) {
+      console.log("[verify-payment] Verification queued. Polling statusUrl:", pollUrl);
+      for (let i = 0; i < 6; i++) {
+        await new Promise(resolve => setTimeout(resolve, 1800)); // wait 1.8 seconds per poll
+        const pollResp = await fetch(`${OFFICIAL_SDK_BASE}${pollUrl}`, {
+          method: 'GET',
+          headers: {
+            'accept': 'application/json',
+            'x-api-key': VERIFY_LEUL_KEY
+          }
+        }).catch(() => null);
+        if (pollResp && pollResp.ok) {
+          const pollData = await pollResp.json().catch(() => null);
+          if (pollData) {
+            console.log(`[verify-payment] Poll attempt ${i + 1} result:`, pollData);
+            rawData = pollData;
+            dRaw = (rawData?.data && typeof rawData.data === 'object') ? (Array.isArray(rawData.data) ? rawData.data[0] : rawData.data) : (rawData?.verification || rawData);
+            d = (dRaw && typeof dRaw === 'object' && dRaw.result) ? dRaw.result : dRaw;
+            const statusNorm = d?.status || rawData?.verification?.status || rawData?.status;
+            if (statusNorm === 'success' || statusNorm === 'verified' || statusNorm === 'completed' || d?.verified === true || rawData?.verification?.verified === true) {
+              break;
+            }
+            if (statusNorm === 'failed' || statusNorm === 'error' || d?.processingStatus === 'failed') {
+              break;
+            }
+          }
+        }
+      }
+    }
+
+    // A transaction is truly verified ONLY IF verified === true or status is success/completed/verified (and NOT queued/pending/failed)
+    const isVerified = (d?.verified === true || d?.status === 'success' || d?.status === 'verified' || d?.status === 'completed' || rawData?.validated === true) && d?.status !== 'failed' && d?.processingStatus !== 'failed' && d?.status !== 'pending' && d?.processingStatus !== 'queued';
     const amountRaw = d?.amount ?? d?.settledAmount ?? d?.totalPaidAmount ?? d?.txnAmount ?? d?.amountValue ?? null;
     const verifiedAmount = amountRaw ? parseFloat(String(amountRaw).replace(/[^0-9.]/g, '')) : null;
+    const errorMsg = d?.errorMessage || rawData?.error || d?.reason || rawData?.message || 'Transaction not found or invalid.';
 
     const data = {
-      success: isVerified && d?.status !== 'failed',
-      validated: isVerified && d?.status !== 'failed',
+      success: isVerified,
+      validated: isVerified,
       amount: verifiedAmount,
-      message: (isVerified && d?.status !== 'failed') ? 'Transaction Found and Valid.' : (rawData?.error || d?.reason || 'Transaction not found or invalid.'),
-      error: (isVerified && d?.status !== 'failed') ? undefined : (rawData?.error || d?.reason || 'Transaction not found or invalid.'),
+      message: isVerified ? 'Transaction Found and Valid.' : errorMsg,
+      error: isVerified ? undefined : errorMsg,
       receipt_reference: d?.referenceNumber ?? d?.reference ?? normalizedRef,
     };
 
