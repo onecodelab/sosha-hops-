@@ -277,14 +277,15 @@ const WaiterDashboard: React.FC = () => {
               <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-white/30 via-transparent to-transparent pointer-events-none" />
               
               {/* Compact Sleek Header Bar */}
-              <div className="flex items-center justify-between gap-3 w-full pb-3 border-b border-black/15 z-10 relative">
-                <div className="flex items-center gap-2.5 sm:gap-3.5 min-w-0">
+              {/* Compact Sleek Header Bar */}
+              <div className="flex items-center justify-between gap-2 sm:gap-3 w-full pb-3 border-b border-black/15 z-10 relative flex-wrap sm:flex-nowrap">
+                <div className="flex items-center gap-2 sm:gap-3.5 min-w-0">
                   <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-xl bg-black text-yellow-400 flex items-center justify-center shadow-lg shrink-0 border border-yellow-400/30">
                     <Bell className="w-5 h-5 sm:w-6 sm:h-6 stroke-[2.5] animate-pulse" />
                   </div>
-                  <div className="min-w-0 flex items-center gap-2 flex-wrap">
-                    <h4 className="text-base sm:text-xl font-black text-black uppercase tracking-tight truncate drop-shadow-sm">
-                      New Chatbot Orders
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h4 className="text-sm sm:text-xl font-black text-black uppercase tracking-tight whitespace-nowrap drop-shadow-sm">
+                      AI Chatbot Orders
                     </h4>
                     <span className="px-2 py-0.5 rounded-full bg-black text-yellow-400 font-mono text-[10px] sm:text-xs font-black uppercase tracking-wider animate-pulse shadow">
                       {unassignedChatOrders.length} WAITING
@@ -298,41 +299,47 @@ const WaiterDashboard: React.FC = () => {
                 </div>
               </div>
 
-              {/* Responsive Compact Grid Tray - Perfectly Fits 1, 4, or 10 Orders without Mess */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 sm:gap-2.5 mt-3 sm:mt-4 max-h-[220px] overflow-y-auto custom-scrollbar pr-1 z-10 relative w-full">
+              {/* Responsive Compact Grid Tray with Unmistakable Action Buttons */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 mt-3.5 max-h-[260px] overflow-y-auto custom-scrollbar pr-1 z-10 relative w-full">
                 {unassignedChatOrders.map(order => (
-                  <button
+                  <div
                     key={order.id}
-                    onClick={() => {
-                      if (order.table_id) handleInstantClaim(order.id, order.table_id);
-                      else {
-                        setSelectedChatOrder(order);
-                        setIsClaimModalOpen(true);
-                      }
-                    }}
-                    className="group relative bg-black/90 hover:bg-black text-left border border-yellow-400/40 hover:border-yellow-300 p-2.5 sm:p-3 rounded-xl sm:rounded-2xl shadow-md hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 flex flex-col justify-between overflow-hidden min-h-[72px] sm:min-h-[80px]"
+                    className="group relative bg-black/95 hover:bg-black text-left border-2 border-yellow-400/50 hover:border-yellow-300 p-3.5 rounded-2xl shadow-xl transition-all duration-200 flex flex-col justify-between overflow-hidden"
                   >
-                    {/* Glowing hover accent */}
-                    <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-yellow-400 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                    {/* Glowing top border accent */}
+                    <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 opacity-90" />
 
-                    <div className="flex items-start justify-between gap-1 w-full">
-                      <span className="font-mono text-[9px] sm:text-[10px] font-black text-yellow-400/70 uppercase tracking-wider truncate">
-                        #{order.order_number}
-                      </span>
-                      <span className="px-1.5 py-0.5 rounded bg-yellow-400/10 group-hover:bg-yellow-400 text-yellow-400 group-hover:text-black font-mono text-[8px] sm:text-[9px] font-black tracking-widest uppercase transition-colors flex items-center gap-0.5 shrink-0">
-                        <Zap className="w-2.5 h-2.5 fill-current" /> CLAIM
-                      </span>
-                    </div>
-
-                    <div className="mt-1 sm:mt-1.5 flex items-baseline justify-between gap-1">
-                      <span className="text-sm sm:text-base font-black tracking-tight text-white group-hover:text-yellow-300 truncate">
-                        Table {order.table_number || '??'}
-                      </span>
-                      <span className="text-[9px] font-bold text-white/50 group-hover:text-white/80 shrink-0">
+                    {/* Top Row: Table Info & Item Count */}
+                    <div className="flex items-start justify-between gap-2 w-full mt-1">
+                      <div className="min-w-0">
+                        <span className="font-mono text-[10px] font-bold text-yellow-400/80 uppercase tracking-wider block truncate">
+                          #{order.order_number}
+                        </span>
+                        <h5 className="text-lg sm:text-xl font-black tracking-tight text-white group-hover:text-yellow-300 truncate">
+                          Table {order.table_number || '??'}
+                        </h5>
+                      </div>
+                      <span className="px-2 py-1 rounded-lg bg-white/10 text-white font-mono text-[10px] font-black tracking-wider uppercase shrink-0">
                         {order.order_items?.length || 1} items
                       </span>
                     </div>
-                  </button>
+
+                    {/* Bottom Row: Unmistakable Full-Width Action Button */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (order.table_id) handleInstantClaim(order.id, order.table_id);
+                        else {
+                          setSelectedChatOrder(order);
+                          setIsClaimModalOpen(true);
+                        }
+                      }}
+                      className="mt-3 w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-yellow-400 to-amber-400 hover:from-yellow-300 hover:to-amber-300 active:scale-95 text-black font-black text-xs sm:text-sm uppercase tracking-wider shadow-[0_0_15px_rgba(250,204,21,0.4)] flex items-center justify-center gap-1.5 transition-all cursor-pointer border border-yellow-200"
+                    >
+                      <Zap className="w-4 h-4 fill-black text-black animate-bounce shrink-0" />
+                      <span>CLAIM ORDER</span>
+                    </button>
+                  </div>
                 ))}
               </div>
             </motion.div>
