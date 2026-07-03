@@ -17,15 +17,18 @@ function buildSDKRequest(bank: string, transaction_id: string, receiver_account?
   if (bankNorm === 'dashenbank') method = 'dashen';
   if (bankNorm === 'boa' || bankNorm === 'bankofabyssinia') method = 'abyssinia';
 
-  const suffix = suffix_param || receiver_account || '';
-  const phone = phone_number || receiver_account || '';
+  let suffixStr = String(suffix_param || receiver_account || '').trim();
+  if (method === 'cbe' && suffixStr.length > 8) {
+    suffixStr = suffixStr.slice(-8);
+  }
+  const phoneStr = String(phone_number || receiver_account || '').trim();
   return {
     path: '/api/verify',
     body: {
       bank: method,
       reference: ref,
-      ...(suffix ? { suffix: String(suffix), accountSuffix: String(suffix) } : {}),
-      ...(phone ? { phoneNumber: String(phone), phone: String(phone) } : {})
+      ...(suffixStr ? { suffix: suffixStr, accountSuffix: suffixStr } : {}),
+      ...(phoneStr ? { phoneNumber: phoneStr, phone: phoneStr } : {})
     }
   };
 }

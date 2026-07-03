@@ -340,8 +340,11 @@ export const BillModal: React.FC<BillModalProps> = ({
 
     // Add bank-specific parameters
     if (bank === 'cbe') {
-      additional_data.accountSuffix = getDynamicReceiver('cbe');
-      additional_data.expected_receiver = getDynamicReceiver('cbe');
+      const fullAcc = getDynamicReceiver('cbe');
+      const cbeSuffix = fullAcc ? String(fullAcc).trim().slice(-8) : '';
+      additional_data.accountSuffix = cbeSuffix;
+      additional_data.suffix = cbeSuffix;
+      additional_data.expected_receiver = cbeSuffix;
     } else if (bank === 'abyssinia') {
       additional_data.suffix = getDynamicReceiver('abyssinia');
       additional_data.expected_receiver = getDynamicReceiver('abyssinia');

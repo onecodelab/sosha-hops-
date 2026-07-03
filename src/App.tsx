@@ -45,7 +45,6 @@ const KitchenRestockRequests = lazy(() => import('./pages/KitchenRestockRequests
 const ManagerPendingRequests = lazy(() => import('./pages/ManagerPendingRequests'));
 const ManagerPurchaseOrders = lazy(() => import('./pages/ManagerPurchaseOrders'));
 const Settings = lazy(() => import('./pages/Settings'));
-const OwnerCommandCenter = lazy(() => import('./pages/OwnerCommandCenter'));
 const WaiterTips = lazy(() => import('./pages/WaiterTips'));
 const AdminTipsAudit = lazy(() => import('./pages/AdminTipsAudit'));
 const BaroAdminDashboard = lazy(() => import('./pages/BaroAdminDashboard'));
@@ -59,27 +58,12 @@ import ScrollToTop from './components/ScrollToTop';
 import { DashboardLayout } from './components/DashboardLayout';
 import { LayoutProvider, useLayoutConfig } from './contexts/LayoutContext';
 
-interface AppWrapperProps {
-  children: React.ReactNode;
-  title?: string;
-  subtitle?: string | React.ReactNode;
-  actions?: React.ReactNode;
-  className?: string;
-  fullScreen?: boolean;
-}
-
 const DashboardLayoutWrapper: React.FC = () => {
   return (
     <DashboardLayout>
       <Outlet />
     </DashboardLayout>
   );
-};
-
-// Custom wrapper for pages that need special layout props like OwnerCommandCenter
-const CustomAppWrapper: React.FC<AppWrapperProps> = ({ children, ...props }) => {
-  useLayoutConfig(props);
-  return <>{children}</>;
 };
 
 const App: React.FC = () => {
@@ -246,13 +230,7 @@ const App: React.FC = () => {
                         </ProtectedRoute>
                       } />
 
-                      <Route path="owner" element={
-                        <ProtectedRoute allowedRoles={['owner']}>
-                          <CustomAppWrapper className="p-0 overflow-hidden" title="Owner Command Center" subtitle="Intelligent Oversight" fullScreen={true}>
-                            <OwnerCommandCenter />
-                          </CustomAppWrapper>
-                        </ProtectedRoute>
-                      } />
+
 
                       <Route path="baro-admin" element={
                         <ProtectedRoute allowedRoles={['super_admin']}>

@@ -323,17 +323,17 @@ export function usePaymentVerification() {
                     validated: data?.validated || false,
                     amount: data?.amount || data?.amount_found || params.expected_amount,
                     receipt_reference: data?.receipt_reference || params.reference,
-                    error: data?.error,
+                    error: data?.error || data?.message,
                     validation: data?.validation || null,
                 },
-                last_error: !isSuccess ? (data?.error || 'Transaction not found or amount mismatch') : undefined,
+                last_error: !isSuccess ? (data?.error || data?.message || 'Transaction not found or amount mismatch') : undefined,
                 created_at: new Date().toISOString(),
             };
 
             setJob(jobResult);
 
             if (!isSuccess) {
-                setError(data?.error || 'Transaction not found or amount mismatch');
+                setError(data?.error || data?.message || 'Transaction not found or amount mismatch');
             }
 
         } catch (err: any) {
