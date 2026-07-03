@@ -5,7 +5,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const VERIFY_LEUL_KEY = Deno.env.get('VERIFY_LEUL_KEY');
-const OFFICIAL_SDK_BASE = "https://verifyapi.leulzenebe.pro";
+const OFFICIAL_SDK_BASE = "https://verify.leul.et/api";
 
 // Map payment method to the correct SDK endpoint + payload.
 // The @creofam/verifier SDK (and verify.et) use per-bank endpoints,
