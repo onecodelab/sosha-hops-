@@ -170,18 +170,18 @@ const WaiterDashboard: React.FC = () => {
       </span>
     ),
     actions: (
-      <div className="flex gap-3">
+      <div className="flex gap-2 sm:gap-3">
         <Button
           onClick={() => {
             setSelectedTableData(null);
             setAppendOrderId(null);
             setIsCreateOpen(true);
           }}
-          className="bg-primary hover:bg-primary/90 text-black h-10 px-6 font-black uppercase text-[10px] rounded-xl flex items-center gap-2 shadow-lg shadow-primary/20 hover:shadow-primary/40 transition-all hover:scale-[1.05] active:scale-[0.95]"
+          className="bg-gradient-to-r from-amber-400 to-yellow-400 hover:from-amber-300 hover:to-yellow-300 text-black border-2 border-yellow-200 h-10 sm:h-11 px-5 sm:px-7 font-black uppercase text-xs sm:text-sm rounded-xl flex items-center gap-2 shadow-[0_0_20px_rgba(245,158,11,0.5)] hover:shadow-[0_0_30px_rgba(245,158,11,0.8)] transition-all hover:scale-105 active:scale-95"
         >
-          <PlusCircle className="w-4 h-4" /> New Order
+          <PlusCircle className="w-4 h-4 sm:w-5 sm:h-5 stroke-[2.5]" /> <span>NEW ORDER</span>
         </Button>
-        <Button onClick={refreshAll} variant="outline" size="icon" className="border-white/10 bg-white/5 hover:bg-white/10 h-10 w-10 text-white"><RefreshCw className={cn("h-4 w-4", isLoading && "animate-spin")} /></Button>
+        <Button onClick={refreshAll} variant="outline" size="icon" className="border-white/15 bg-white/5 hover:bg-white/15 h-10 w-10 sm:h-11 sm:w-11 text-white shadow-md"><RefreshCw className={cn("h-4 w-4 sm:h-5 sm:w-5", isLoading && "animate-spin text-yellow-400")} /></Button>
       </div>
     )
   });
@@ -219,45 +219,95 @@ const WaiterDashboard: React.FC = () => {
           }}
           className="mx-2"
         >
-          <div className="flex flex-wrap items-center justify-between gap-4 p-4 bg-white/5 border border-white/10 rounded-2xl backdrop-blur-md relative overflow-hidden group transition-all hover:bg-white/10">
-            <div className="flex items-center gap-6">
-              <div className="flex flex-col">
-                <span className="text-[8px] font-black text-zinc-500 uppercase tracking-widest mb-0.5">Floor</span>
-                <div className="flex items-baseline gap-1.5">
-                  <span className="text-xl font-black text-foreground">{tables.filter(t => t.status === 'available').length}</span>
-                  <span className="text-[8px] font-black text-zinc-600 uppercase">/ {tables.length} FREE</span>
+          <div className="space-y-3">
+            {/* Executive 3-Card Tactical Grid */}
+            <div className="grid grid-cols-3 gap-2 sm:gap-4">
+              {/* CARD 1: FLOOR AVAILABILITY */}
+              <div className="bg-gradient-to-br from-emerald-500/20 via-emerald-500/5 to-transparent border-2 border-emerald-500/40 hover:border-emerald-500/70 rounded-2xl p-3 sm:p-5 shadow-lg relative overflow-hidden group transition-all flex flex-col justify-between min-h-[90px] sm:min-h-[110px]">
+                <div className="flex items-center justify-between gap-1">
+                  <span className="text-[9px] sm:text-xs font-black text-emerald-400 uppercase tracking-wider truncate">
+                    Floor Free
+                  </span>
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0 shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
+                </div>
+                <div className="my-1 sm:my-2 flex items-baseline gap-1 sm:gap-2">
+                  <span className="text-2xl sm:text-4xl font-black text-white tracking-tight drop-shadow-sm">
+                    {tables.filter(t => t.status === 'available').length}
+                  </span>
+                  <span className="text-[9px] sm:text-xs font-black text-zinc-400 uppercase">
+                    / {tables.length}
+                  </span>
+                </div>
+                <div className="mt-1 flex items-center">
+                  <span className="px-1.5 sm:px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 font-mono text-[8px] sm:text-[10px] font-black tracking-widest uppercase truncate border border-emerald-500/30">
+                    🟢 AVAILABLE
+                  </span>
                 </div>
               </div>
 
-              <div className="w-px h-6 bg-white/10" />
-
-              <div className="flex flex-col">
-                <span className="text-[8px] font-black text-zinc-500 uppercase tracking-widest mb-0.5">Load</span>
-                <div className="flex items-center gap-2">
-                  <span className="text-xl font-black text-red-500">{tables.filter(t => t.status === 'occupied').length}</span>
-                  <div className="px-1.5 py-0.5 rounded-full bg-red-500/10 border border-red-500/20 text-[7px] font-black text-red-500 uppercase tracking-widest">Occupied</div>
+              {/* CARD 2: OCCUPIED LOAD */}
+              <div className="bg-gradient-to-br from-red-500/20 via-red-500/5 to-transparent border-2 border-red-500/40 hover:border-red-500/70 rounded-2xl p-3 sm:p-5 shadow-lg relative overflow-hidden group transition-all flex flex-col justify-between min-h-[90px] sm:min-h-[110px]">
+                <div className="flex items-center justify-between gap-1">
+                  <span className="text-[9px] sm:text-xs font-black text-red-400 uppercase tracking-wider truncate">
+                    Dining Load
+                  </span>
+                  <span className="w-2 h-2 rounded-full bg-red-500 animate-ping shrink-0 shadow-[0_0_8px_rgba(239,68,68,0.8)]" />
+                </div>
+                <div className="my-1 sm:my-2 flex items-baseline gap-1 sm:gap-2">
+                  <span className="text-2xl sm:text-4xl font-black text-red-400 tracking-tight drop-shadow-sm">
+                    {tables.filter(t => t.status === 'occupied').length}
+                  </span>
+                  <span className="text-[9px] sm:text-xs font-black text-zinc-400 uppercase">
+                    tables
+                  </span>
+                </div>
+                <div className="mt-1 flex items-center">
+                  <span className="px-1.5 sm:px-2 py-0.5 rounded-md bg-red-500/20 text-red-300 font-mono text-[8px] sm:text-[10px] font-black tracking-widest uppercase truncate border border-red-500/30">
+                    🔴 OCCUPIED
+                  </span>
                 </div>
               </div>
 
-              <div className="w-px h-6 bg-white/10" />
-
-              <div className="flex flex-col">
-                <span className="text-[8px] font-black text-zinc-500 uppercase tracking-widest mb-0.5">Workload</span>
-                <div className="flex items-center gap-2">
-                  <span className="text-xl font-black text-primary">{orders.length}</span>
+              {/* CARD 3: ACTIVE WORKLOAD */}
+              <div className="bg-gradient-to-br from-amber-500/20 via-yellow-500/5 to-transparent border-2 border-yellow-400/50 hover:border-yellow-300 rounded-2xl p-3 sm:p-5 shadow-lg relative overflow-hidden group transition-all flex flex-col justify-between min-h-[90px] sm:min-h-[110px]">
+                <div className="flex items-center justify-between gap-1">
+                  <span className="text-[9px] sm:text-xs font-black text-yellow-400 uppercase tracking-wider truncate">
+                    My Workload
+                  </span>
+                  <Zap className="w-3 h-3 sm:w-4 sm:h-4 text-yellow-400 fill-yellow-400 shrink-0" />
+                </div>
+                <div className="my-1 sm:my-2 flex items-baseline gap-1 sm:gap-2">
+                  <span className="text-2xl sm:text-4xl font-black text-yellow-400 tracking-tight drop-shadow-sm">
+                    {orders.length}
+                  </span>
+                  <span className="text-[9px] sm:text-xs font-black text-zinc-400 uppercase">
+                    orders
+                  </span>
+                </div>
+                <div className="mt-1 flex items-center gap-1 overflow-hidden">
+                  <span className="px-1.5 sm:px-2 py-0.5 rounded-md bg-yellow-400/20 text-yellow-300 font-mono text-[8px] sm:text-[10px] font-black tracking-widest uppercase truncate border border-yellow-400/30">
+                    ⚡ ACTIVE
+                  </span>
                   {kitchenPipeline.length > 0 && (
-                    <div className="px-1.5 py-0.5 rounded-full bg-primary/10 border border-primary/20 text-[7px] font-black text-primary uppercase tracking-widest">
-                       +{kitchenPipeline.length}
-                    </div>
+                    <span className="px-1.5 py-0.5 rounded-md bg-orange-500 text-black font-mono text-[8px] sm:text-[10px] font-black shrink-0 animate-bounce">
+                      +{kitchenPipeline.length} KITCHEN
+                    </span>
                   )}
                 </div>
               </div>
             </div>
 
-            <div className="hidden sm:block">
-              <Button onClick={refreshAll} variant="ghost" size="sm" className="h-8 px-4 text-[9px] font-black uppercase tracking-widest hover:bg-white/5">
-                <RefreshCw className={cn("h-3 w-3 mr-2", isLoading && "animate-spin")} />
-                Sync
+            {/* Tactical Sync Status Bar for Mobile & Desktop */}
+            <div className="flex items-center justify-between gap-2 p-2.5 bg-white/5 border border-white/10 rounded-xl backdrop-blur-md">
+              <div className="flex items-center gap-2 pl-2">
+                <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse shadow-[0_0_8px_rgba(74,222,128,0.8)]" />
+                <span className="text-[10px] sm:text-xs font-black uppercase text-zinc-300 tracking-wider">
+                  Station Telemetry: <span className="text-green-400">ONLINE & SYNCED</span>
+                </span>
+              </div>
+              <Button onClick={refreshAll} variant="outline" size="sm" className="h-8 px-3.5 text-[9px] sm:text-[10px] font-black uppercase tracking-widest bg-white/10 hover:bg-white/20 border-white/20 text-white transition-all">
+                <RefreshCw className={cn("h-3 w-3 mr-1.5 text-yellow-400", isLoading && "animate-spin")} />
+                Sync Station
               </Button>
             </div>
           </div>

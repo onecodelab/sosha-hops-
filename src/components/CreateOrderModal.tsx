@@ -277,6 +277,47 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({
       let orderPlaced = false;
       let edgeFunctionError: string | null = null;
 
+      // PRE-CHECK: If table already has an active order, append directly instead of attempting to create a new order
+      if (activeTableId) {
+          const { data: existingActiveOrder } = await supabase
+            .from('orders')
+            .select('id, total_amount, subtotal_amount, vat_amount')
+            .eq('table_id', activeTableId)
+            .not('status', 'in', '("paid","closed","cancelled","completed")')
+            .order('created_at', { ascending: false })
+            .maybeSingle();
+
+          if (existingActiveOrder) {
+            console.log(`[CreateOrderModal] Found existing active order ${existingActiveOrder.id} on table ${tableNumber}. Appending items.`);
+            const newTotal = Number(existingActiveOrder.total_amount || 0) + (totalAmount * 1.15);
+            const newSubtotal = Number(existingActiveOrder.subtotal_amount || 0) + totalAmount;
+            const newVat = Number(existingActiveOrder.vat_amount || 0) + (totalAmount * 0.15);
+
+            const { error: updateErr } = await supabase
+              .from('orders')
+              .update({ total_amount: newTotal, subtotal_amount: newSubtotal, vat_amount: newVat, status: 'pending' })
+              .eq('id', existingActiveOrder.id);
+            if (updateErr) throw new Error(`Failed to update existing order: ${updateErr.message}`);
+
+            const itemsPayload = cart.map(item => ({
+              order_id: existingActiveOrder.id,
+              organization_id: orgId,
+              menu_item_id: item.dish.id,
+              quantity: item.quantity,
+              price: item.dish.price,
+              special_instructions: item.notes ? `[NEW] ${item.notes}` : '[NEW]'
+            }));
+
+            const { error: itemsErr } = await supabase.from('order_items').insert(itemsPayload);
+            if (itemsErr) throw new Error(`Failed to insert order items: ${itemsErr.message}`);
+            
+            showToast("Added new items to existing table order!", "success");
+            onSuccess();
+            onClose();
+            return;
+          }
+      }
+
       // --- ATTEMPT 1: Edge Function ---
       try {
         const { data: result, error: rpcErr } = await supabase.functions.invoke('place-order', {

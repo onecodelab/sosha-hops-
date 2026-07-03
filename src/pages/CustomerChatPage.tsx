@@ -1087,6 +1087,60 @@ const CustomerChatPage: React.FC = () => {
         try {
             const subtotal = cart.reduce((sum, item) => sum + (item.menuItem.price * item.quantity), 0);
             const totalAmount = subtotal * 1.15;
+
+            // PRE-CHECK: Look for any existing active order on this table
+            // This prevents the unique_active_order_per_table constraint violation when adding more items
+            const { data: existingActiveOrder } = await supabase
+                .from('orders')
+                .select('id, total_amount, subtotal_amount, vat_amount, organization_id, order_number, status')
+                .eq('table_id', tableId)
+                .not('status', 'in', '("paid","closed","cancelled","completed")')
+                .order('created_at', { ascending: false })
+                .limit(1)
+                .maybeSingle();
+
+            if (existingActiveOrder) {
+                console.log(`[CustomerChat] Found existing active order ${existingActiveOrder.id}. Appending new items.`);
+                const newTotal = Number(existingActiveOrder.total_amount || 0) + totalAmount;
+                const newSubtotal = Number(existingActiveOrder.subtotal_amount || 0) + subtotal;
+                const newVat = Number(existingActiveOrder.vat_amount || 0) + (subtotal * 0.15);
+
+                const { error: updateErr } = await supabase
+                    .from('orders')
+                    .update({ total_amount: newTotal, subtotal_amount: newSubtotal, vat_amount: newVat, status: 'pending' })
+                    .eq('id', existingActiveOrder.id);
+                if (updateErr) throw new Error(`Failed to update existing order total: ${updateErr.message}`);
+
+                const itemsPayload = cart.map(item => ({
+                    order_id: existingActiveOrder.id,
+                    organization_id: existingActiveOrder.organization_id || null,
+                    menu_item_id: item.menuItem.id,
+                    quantity: item.quantity,
+                    price: item.menuItem.price,
+                    special_instructions: item.notes ? `[NEW] ${item.notes}` : '[NEW]'
+                }));
+
+                const { error: itemsErr } = await supabase.from('order_items').insert(itemsPayload);
+                if (itemsErr) throw new Error(`Failed to add items to existing order: ${itemsErr.message}`);
+
+                const updatedOrder: ActiveOrder = {
+                    id: existingActiveOrder.id,
+                    order_number: existingActiveOrder.order_number || generateOrderNumber(),
+                    status: existingActiveOrder.status || 'pending',
+                    total_amount: newTotal,
+                };
+                setActiveOrder(updatedOrder);
+                setLatestOrderId(updatedOrder.id);
+                setSessionCompleted(false);
+                setCart([]);
+                setIsCartOpen(false);
+                showToast('Added new items to your order!', 'success');
+                window.setTimeout(() => {
+                    refreshActiveOrder().catch(err => console.warn('Active order sync failed:', err));
+                }, 300);
+                return;
+            }
+
             const payload = {
                 branch_id: branchId,
                 items: cart.map(item => ({
