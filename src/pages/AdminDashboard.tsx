@@ -310,91 +310,88 @@ const AdminDashboard: React.FC = () => {
          <div className="space-y-3 animate-in fade-in duration-500 h-full flex flex-col overflow-y-auto md:overflow-hidden">
 
             {/* Top Compact Metrics Bar */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-4 shrink-0">
-               <Card className="bg-card/60 backdrop-blur-xl border border-primary/20 rounded-[1.5rem] shadow-xl overflow-hidden group">
-                  <div className="p-4 relative">
-                     <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/5 rounded-full -mr-16 -mt-16 blur-3xl" />
-                     <div className="relative z-10 flex flex-col">
-                        <p className="text-[10px] font-black text-muted uppercase tracking-[0.2em] opacity-60 mb-1">{t('adminDashboard.revenueToday')}</p>
-                        <h3 className="text-3xl font-black text-foreground tracking-tighter">
-                           <span className="text-sm mr-1 opacity-40">{t('adminDashboard.etb')}</span>
-                           {stats.totalRevenue.toLocaleString()}
-                        </h3>
-                     </div>
-                     <div className="absolute bottom-4 right-4 p-3 bg-amber-500/10 rounded-2xl group-hover:scale-110 transition-transform duration-500 shadow-inner">
-                        <DollarSign className="w-5 h-5 text-amber-500" strokeWidth={3} />
-                     </div>
+            {/* Top Compact Clay Metrics Bar */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-4 shrink-0">
+               {/* 1. Today's Revenue — Lemon Gold Clay Swatch */}
+               <div className="bg-[#fef8e8] dark:bg-[#1f1a10] border-2 border-[#0c0d0e] dark:border-white/15 rounded-[28px] p-5 shadow-[-5px_5px_0px_#0c0d0e] dark:shadow-[-5px_5px_0px_#fbbd41]/25 flex items-center justify-between group transition-transform hover:-translate-y-1">
+                  <div className="flex flex-col">
+                     <p className="text-[10px] font-black text-[#55534e] dark:text-gray-400 uppercase tracking-[0.2em] mb-1">
+                        {t('adminDashboard.revenueToday')}
+                     </p>
+                     <h3 className="text-3xl font-black text-[#0c0d0e] dark:text-white tracking-tight">
+                        <span className="text-xs font-bold mr-1 opacity-60">{t('adminDashboard.etb')}</span>
+                        {stats.totalRevenue.toLocaleString()}
+                     </h3>
                   </div>
-               </Card>
+                  <div className="p-3.5 bg-[#fbbd41] text-[#0c0d0e] border-2 border-[#0c0d0e] rounded-2xl shadow-[-2px_2px_0px_#0c0d0e] group-hover:scale-110 transition-transform">
+                     <DollarSign className="w-6 h-6" strokeWidth={3} />
+                  </div>
+               </div>
 
-               <Card
-                  className="bg-card/60 backdrop-blur-xl border border-primary/20 rounded-[1.5rem] shadow-xl overflow-hidden group cursor-pointer hover:border-primary/50 transition-all"
+               {/* 2. Live Activity — Matcha Green Clay Swatch */}
+               <div
+                  className="bg-[#eafaf1] dark:bg-[#10241b] border-2 border-[#0c0d0e] dark:border-white/15 rounded-[28px] p-5 shadow-[-5px_5px_0px_#0c0d0e] dark:shadow-[-5px_5px_0px_#84e7a5]/25 flex items-center justify-between group cursor-pointer hover:-translate-y-1 transition-transform"
                   onClick={() => setIsModalOpen(true)}
                >
-                  <div className="p-4 relative">
-                     <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full -mr-16 -mt-16 blur-3xl" />
-                     <div className="relative z-10 flex flex-col">
-                        <p className="text-[10px] font-black text-muted uppercase tracking-[0.2em] opacity-60 mb-1">{t('adminDashboard.liveActivity')}</p>
-                        <div className="flex items-center gap-3">
-                           <h3 className="text-3xl font-black text-foreground tracking-tighter">{stats.activeOrdersCount}</h3>
-                           <div className="h-2.5 w-2.5 rounded-full bg-blue-500 animate-pulse shadow-glow" />
-                        </div>
-                     </div>
-                     <div className="absolute bottom-4 right-4 p-3 bg-blue-500/10 rounded-2xl group-hover:scale-110 transition-transform duration-500 shadow-inner">
-                        <Activity className="w-5 h-5 text-blue-500" strokeWidth={3} />
+                  <div className="flex flex-col">
+                     <p className="text-[10px] font-black text-[#02492a] dark:text-emerald-400 uppercase tracking-[0.2em] mb-1">
+                        {t('adminDashboard.liveActivity')}
+                     </p>
+                     <div className="flex items-center gap-3">
+                        <h3 className="text-3xl font-black text-[#0c0d0e] dark:text-white tracking-tight">{stats.activeOrdersCount}</h3>
+                        <div className="h-3 w-3 rounded-full bg-[#078a52] animate-pulse border border-[#0c0d0e]" />
                      </div>
                   </div>
-               </Card>
+                  <div className="p-3.5 bg-[#84e7a5] text-[#02492a] border-2 border-[#0c0d0e] rounded-2xl shadow-[-2px_2px_0px_#0c0d0e] group-hover:scale-110 transition-transform">
+                     <Activity className="w-6 h-6" strokeWidth={3} />
+                  </div>
+               </div>
 
-
+               {/* 3. AI Usage & Plan — Crisp Clay Card */}
                {profile?.role === 'owner' && (
-                  <Card className="bg-card/60 backdrop-blur-xl border border-primary/20 rounded-[1.5rem] shadow-xl overflow-hidden group col-span-2 lg:col-span-2">
-                     <div className="p-4 flex h-full items-center">
-                        <div className="flex-1 space-y-3">
-                           <div className="flex items-center justify-between">
-                               <div className="flex items-center gap-2">
-                                   <div className="p-2 bg-primary/10 rounded-lg">
-                                       <Brain className="w-4 h-4 text-primary" />
-                                   </div>
-                                   <div>
-                                       <p className="text-[10px] font-black text-muted uppercase tracking-[0.2em] opacity-60">
-                                           {t(`adminDashboard.chatbotUsage.plans.${orgCredits?.planTier as any || 'basic'}`)}
-                                       </p>
-                                       <p className="text-xs font-bold text-foreground">{t('adminDashboard.chatbotUsage.subtitle')}</p>
-                                   </div>
-                               </div>
-                               <div className="text-right">
-                                   <span className="text-lg font-black text-foreground">{Math.floor((orgCredits?.used || 0) / 20)}</span>
-                                   <span className="text-[10px] font-bold text-muted ml-1 italic">/ {Math.floor((orgCredits?.max || 10000) / 20)} {t('adminDashboard.chatbotUsage.ordersServed')}</span>
-                               </div>
+                  <div className="bg-white dark:bg-[#18191c] border-2 border-[#0c0d0e] dark:border-white/15 rounded-[28px] p-5 shadow-[-5px_5px_0px_#0c0d0e] dark:shadow-[-5px_5px_0px_rgba(255,255,255,0.08)] col-span-1 md:col-span-2 flex flex-col justify-center">
+                     <div className="flex items-center justify-between mb-2.5">
+                        <div className="flex items-center gap-2.5">
+                           <div className="p-2.5 bg-[#fbbd41] text-[#0c0d0e] border-2 border-[#0c0d0e] rounded-xl shadow-[-1px_1px_0px_#0c0d0e]">
+                              <Brain className="w-4 h-4" />
                            </div>
-                           
-                           {/* Progress Bar */}
-                           <div className="space-y-1.5">
-                               <div className="w-full h-2 bg-white/5 rounded-full overflow-hidden border border-white/5 p-[1px]">
-                                   <motion.div 
-                                       initial={{ width: 0 }}
-                                       animate={{ width: `${Math.min(((orgCredits?.used || 0) / (orgCredits?.max || 10000)) * 100, 100)}%` }}
-                                       className={cn(
-                                           "h-full rounded-full transition-all duration-1000",
-                                           ((orgCredits?.used || 0) / (orgCredits?.max || 10000)) > 0.8 ? "bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.4)]" : 
-                                           ((orgCredits?.used || 0) / (orgCredits?.max || 10000)) > 0.5 ? "bg-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.4)]" :
-                                           "bg-primary shadow-[0_0_10px_rgba(163,230,53,0.4)]"
-                                       )}
-                                   />
-                               </div>
-                               <div className="flex justify-between items-center">
-                                   <p className="text-[9px] font-bold text-muted uppercase tracking-wider">
-                                       {((orgCredits?.used || 0) / (orgCredits?.max || 100) * 100).toFixed(0)}% {t('adminDashboard.chatbotUsage.utilized')}
-                                   </p>
-                                   <button className="text-[9px] font-black text-primary uppercase tracking-[0.2em] hover:underline flex items-center gap-1">
-                                       {t('adminDashboard.chatbotUsage.upgrade')} <ArrowUpRight className="w-2.5 h-2.5" />
-                                   </button>
-                               </div>
+                           <div>
+                              <p className="text-[9px] font-black text-[#078a52] uppercase tracking-[0.2em]">
+                                 {t(`adminDashboard.chatbotUsage.plans.${orgCredits?.planTier as any || 'basic'}`)}
+                              </p>
+                              <p className="text-xs font-bold text-[#0c0d0e] dark:text-white">{t('adminDashboard.chatbotUsage.subtitle')}</p>
                            </div>
                         </div>
+                        <div className="text-right">
+                           <span className="text-lg font-black text-[#0c0d0e] dark:text-white">{Math.floor((orgCredits?.used || 0) / 20)}</span>
+                           <span className="text-[10px] font-bold text-[#55534e] dark:text-gray-400 ml-1">/ {Math.floor((orgCredits?.max || 10000) / 20)} {t('adminDashboard.chatbotUsage.ordersServed')}</span>
+                        </div>
                      </div>
-                  </Card>
+
+                     {/* Chunky Clay Progress Bar */}
+                     <div className="space-y-1.5">
+                        <div className="w-full h-3 bg-[#faf9f7] dark:bg-white/10 rounded-full overflow-hidden border-2 border-[#0c0d0e] dark:border-white/20 p-0.5">
+                           <motion.div 
+                              initial={{ width: 0 }}
+                              animate={{ width: `${Math.min(((orgCredits?.used || 0) / (orgCredits?.max || 10000)) * 100, 100)}%` }}
+                              className={cn(
+                                 "h-full rounded-full transition-all duration-1000",
+                                 ((orgCredits?.used || 0) / (orgCredits?.max || 10000)) > 0.8 ? "bg-[#e11d48]" : 
+                                 ((orgCredits?.used || 0) / (orgCredits?.max || 10000)) > 0.5 ? "bg-[#fbbd41]" :
+                                 "bg-[#078a52]"
+                              )}
+                           />
+                        </div>
+                        <div className="flex justify-between items-center">
+                           <p className="text-[10px] font-bold text-[#55534e] dark:text-gray-400 uppercase tracking-wider">
+                              {((orgCredits?.used || 0) / (orgCredits?.max || 100) * 100).toFixed(0)}% {t('adminDashboard.chatbotUsage.utilized')}
+                           </p>
+                           <button className="text-[10px] font-black text-[#078a52] uppercase tracking-[0.1em] hover:underline flex items-center gap-1">
+                              {t('adminDashboard.chatbotUsage.upgrade')} <ArrowUpRight className="w-2.5 h-2.5" />
+                           </button>
+                        </div>
+                     </div>
+                  </div>
                )}
             </div>
 
@@ -433,9 +430,16 @@ const AdminDashboard: React.FC = () => {
 
                      <div className="flex-1 overflow-y-auto custom-scrollbar p-1 space-y-4 pr-3">
                         {filteredActiveOrders.length === 0 ? (
-                           <div className="h-full flex flex-col items-center justify-center text-muted gap-4 opacity-30 mt-10">
-                              <Activity className="w-12 h-12" strokeWidth={3} />
-                              <span className="text-[10px] font-black uppercase tracking-[0.4em] italic text-center text-muted">{t('adminDashboard.operationalClear')}<br />{t('adminDashboard.waitStateActive')}</span>
+                           <div className="my-6 p-8 rounded-[28px] bg-white dark:bg-[#141517] border-2 border-dashed border-[#dad4c8] dark:border-white/15 flex flex-col items-center justify-center text-center space-y-3 shadow-xs">
+                              <div className="p-3.5 rounded-2xl bg-[#fef8e8] dark:bg-amber-500/10 border-2 border-[#0c0d0e] dark:border-white/20 text-[#0c0d0e] dark:text-amber-400">
+                                 <Activity className="w-7 h-7" strokeWidth={2.5} />
+                              </div>
+                              <p className="text-sm font-bold text-[#0c0d0e] dark:text-white">
+                                 {t('adminDashboard.operationalClear') || 'ምንም ንቁ ትዕዛዝ የለም'}
+                              </p>
+                              <p className="text-xs text-[#55534e] dark:text-gray-400 max-w-xs">
+                                 {t('adminDashboard.waitStateActive') || 'አዲስ ትዕዛዝ ከጠረጴዛዎች ወይም ከአስተናጋጆች ሲገባ እዚህ በቀጥታ ይታያል'}
+                              </p>
                            </div>
                         ) : (
                            <div className="space-y-4">

@@ -1,9 +1,7 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { Button } from './ui';
+import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { Menu, X, Settings2, Globe, Sparkles } from 'lucide-react';
-import ThemeToggle from './ThemeToggle';
+import { Menu, X, ArrowRight, LogIn } from 'lucide-react';
 import { LanguageSwitcher } from './LanguageSwitcher';
 import { useLanguage } from '../contexts/LanguageContext';
 import { BaroLogo } from './BaroLogo';
@@ -18,162 +16,164 @@ export const MarketingLayout: React.FC<MarketingLayoutProps> = ({ children }) =>
     const [mobileOpen, setMobileOpen] = useState(false);
 
     const navLinks = [
-        { label: t('marketingNav.features'), to: '/features' },
-        { label: t('marketingNav.pricing'), to: '/pricing' },
-        { label: t('marketingNav.demo'), to: '/book-demo' },
+        { label: t('marketingNav.features') || 'Features', to: '/features' },
+        { label: t('marketingNav.pricing') || 'Pricing', to: '/pricing' },
+        { label: t('marketingNav.demo') || 'Book Demo', to: '/book-demo' },
     ];
 
     return (
-        <div className="min-h-screen bg-background flex flex-col font-sans text-foreground transition-colors duration-500">
-            {/* Navigation */}
-            <nav className="sticky top-0 z-50 bg-background/80 backdrop-blur-md border-b border-foreground/10 h-16 flex items-center transition-colors duration-500">
-                <div className="max-w-[1440px] mx-auto px-4 sm:px-8 w-full">
-                    <div className="flex justify-between items-center relative">
-                        {/* Logo & Left Links */}
-                        <div className="flex items-center gap-12">
-                            <Link to="/" className="flex items-center gap-3">
-                                <BaroLogo className="scale-100" />
+        <div className="min-h-screen bg-[#faf9f7] text-[#0c0d0e] flex flex-col font-sans selection:bg-[#84e7a5] selection:text-[#02492a]">
+            {/* Navigation — Clay artisanal warm header */}
+            <header className="sticky top-0 z-50 bg-[#faf9f7]/95 backdrop-blur-md border-b border-[#dad4c8] h-20 flex items-center">
+                <div className="max-w-7xl mx-auto px-6 w-full flex items-center justify-between">
+                    {/* Brand Logo & Links */}
+                    <div className="flex items-center gap-10">
+                        <Link to="/" className="flex items-center" aria-label="Baro OS Home">
+                            <BaroLogo className="scale-100" />
+                        </Link>
+
+                        <nav className="hidden md:flex items-center gap-7">
+                            {navLinks.map((l) => (
+                                <Link
+                                    key={l.to}
+                                    to={l.to}
+                                    className="text-[#55534e] hover:text-[#0c0d0e] font-medium text-[15px] transition-colors"
+                                >
+                                    {l.label}
+                                </Link>
+                            ))}
+                        </nav>
+                    </div>
+
+                    {/* Actions & Language Switcher */}
+                    <div className="flex items-center gap-2.5 sm:gap-3">
+                        <div className="hidden sm:block">
+                            <LanguageSwitcher />
+                        </div>
+
+                        {user ? (
+                            <Link to="/app">
+                                <button className="clay-btn-outline text-xs sm:text-sm px-3.5 sm:px-4 py-2">
+                                    <span>{t('marketingNav.dashboard') || 'Dashboard'}</span>
+                                </button>
                             </Link>
+                        ) : (
+                            <>
+                                {/* PINNED MOBILE SIGN IN BUTTON */}
+                                <Link
+                                    to="/login"
+                                    className="flex items-center gap-1.5 font-bold text-xs sm:text-sm text-[#0c0d0e] px-3.5 py-2 rounded-full border-2 border-[#0c0d0e] bg-white shadow-[-3px_3px_0px_#0c0d0e] hover:bg-[#84e7a5]/20 transition-all"
+                                >
+                                    <LogIn className="w-3.5 h-3.5 text-[#078a52]" />
+                                    <span>{t('marketingNav.login') || 'Sign In'}</span>
+                                </Link>
 
-                            <div className="hidden md:flex items-center gap-8">
-                                {navLinks.map((l) => (
-                                    <Link
-                                        key={l.to}
-                                        to={l.to}
-                                        className="text-foreground/70 hover:text-[#0052ef] text-[16px] font-normal transition-colors"
-                                    >
-                                        {l.label}
-                                    </Link>
-                                ))}
-                            </div>
-                        </div>
-
-                        {/* Central Protocol Hub - Hidden on smaller md screens to prevent overlap */}
-                        <div className="hidden xl:flex items-center absolute left-1/2 -translate-x-1/2">
-                            <div className="flex items-center gap-3 bg-foreground/5 px-3 py-1.5 rounded-full border border-foreground/10">
-                                <LanguageSwitcher />
-                                <div className="w-px h-3 bg-foreground/10" />
-                                <ThemeToggle />
-                            </div>
-                        </div>
-
-                        {/* Right side Actions */}
-                        <div className="flex items-center gap-2 sm:gap-4 ml-auto">
-                            {user ? (
-                                <Link to="/app">
-                                    <button className="bg-foreground/5 text-foreground/70 hover:bg-[#0052ef] hover:text-white px-3 sm:px-4 py-1.5 sm:py-2 rounded-full font-medium text-[13px] sm:text-[15px] transition-colors border border-foreground/10">
-                                        {t('marketingNav.dashboard')}
+                                {/* DESKTOP BOOK DEMO BUTTON */}
+                                <Link to="/book-demo" className="hidden md:block">
+                                    <button className="clay-btn-primary text-sm px-5 py-2.5">
+                                        <span>{t('marketingNav.demo') || 'Book Demo'}</span>
+                                        <ArrowRight className="w-4 h-4" />
                                     </button>
                                 </Link>
-                            ) : (
-                                <>
-                                    <Link to="/login" className="flex items-center">
-                                        <button className="text-foreground/70 hover:text-[#0052ef] px-3 sm:px-4 py-2 font-medium text-[14px] sm:text-[15px] transition-colors">
-                                            {t('marketingNav.login')}
-                                        </button>
-                                    </Link>
-                                    <div className="hidden md:flex items-center gap-3">
-                                        <Link to="/book-demo">
-                                            <button className="bg-[#f36458] text-white hover:bg-[#0052ef] px-5 py-2 rounded-full font-medium text-[15px] transition-colors">
-                                                {t('marketingNav.demo')}
-                                            </button>
-                                        </Link>
-                                    </div>
-                                </>
-                            )}
+                            </>
+                        )}
 
-                            {/* Mobile hamburger */}
-                            <button
-                                className="md:hidden p-2 text-foreground/70 hover:text-[#0052ef] transition-colors"
-                                onClick={() => setMobileOpen(!mobileOpen)}
-                                aria-label="Toggle menu"
-                            >
-                                {mobileOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-                            </button>
-                        </div>
+                        {/* Mobile Menu Button */}
+                        <button
+                            className="md:hidden p-2 text-[#0c0d0e] bg-white hover:bg-[#faf9f7] rounded-xl border-2 border-[#0c0d0e] transition-colors shadow-[-2px_2px_0px_#0c0d0e]"
+                            onClick={() => setMobileOpen(!mobileOpen)}
+                            aria-label="Toggle menu"
+                        >
+                            {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+                        </button>
                     </div>
                 </div>
 
-                {/* Mobile dropdown */}
+                {/* Mobile Dropdown Menu */}
                 {mobileOpen && (
-                    <div className="absolute top-16 left-0 right-0 md:hidden border-t border-foreground/10 bg-background z-50">
-                        <div className="px-6 py-8 space-y-6">
+                    <div className="absolute top-20 left-0 right-0 md:hidden bg-[#faf9f7] border-b-2 border-[#0c0d0e] p-6 shadow-2xl space-y-5 z-50">
+                        {/* Navigation Links */}
+                        <div className="space-y-3">
                             {navLinks.map((l) => (
                                 <Link
                                     key={l.to}
                                     to={l.to}
                                     onClick={() => setMobileOpen(false)}
-                                    className="block text-foreground/70 hover:text-[#0052ef] text-[16px] transition-colors"
+                                    className="block font-bold text-lg text-[#0c0d0e] py-2 border-b border-[#dad4c8]/60"
                                 >
                                     {l.label}
                                 </Link>
                             ))}
-                            <div className="pt-6 space-y-6 border-t border-foreground/10">
-                                <div className="flex items-center gap-4">
-                                    <LanguageSwitcher />
-                                    <ThemeToggle />
-                                </div>
-                                {!user && (
-                                    <div className="pt-6 space-y-4 border-t border-foreground/10 flex flex-col">
-                                        <Link
-                                            to="/login"
-                                            onClick={() => setMobileOpen(false)}
-                                            className="block text-foreground/70 hover:text-[#0052ef] text-[16px] transition-colors"
-                                        >
-                                            {t('marketingNav.login')}
-                                        </Link>
-                                        <Link to="/book-demo" onClick={() => setMobileOpen(false)} className="block">
-                                            <button className="w-full bg-[#f36458] hover:bg-[#0052ef] text-white font-medium text-[16px] py-3 rounded-full transition-colors">
-                                                {t('marketingNav.demo')}
-                                            </button>
-                                        </Link>
-                                    </div>
-                                )}
-                            </div>
                         </div>
+
+                        {/* Language Selector Row */}
+                        <div className="pt-2 flex items-center justify-between">
+                            <span className="font-mono text-xs font-bold text-[#55534e] uppercase">
+                                SELECT LANGUAGE:
+                            </span>
+                            <LanguageSwitcher />
+                        </div>
+
+                        {/* Mobile Action Buttons (Login & Book Demo) */}
+                        {!user ? (
+                            <div className="space-y-3 pt-2">
+                                <Link
+                                    to="/login"
+                                    onClick={() => setMobileOpen(false)}
+                                    className="w-full flex items-center justify-center gap-2 font-bold text-base text-[#0c0d0e] py-3.5 px-4 rounded-2xl border-2 border-[#0c0d0e] bg-white shadow-[-4px_4px_0px_#0c0d0e] hover:translate-x-0.5 hover:-translate-y-0.5 transition-transform"
+                                >
+                                    <LogIn className="w-5 h-5 text-[#078a52]" />
+                                    <span>{t('marketingNav.login') || 'Sign In to Baro OS'}</span>
+                                </Link>
+
+                                <Link
+                                    to="/book-demo"
+                                    onClick={() => setMobileOpen(false)}
+                                    className="w-full block"
+                                >
+                                    <button className="clay-btn-primary w-full justify-center py-3.5 text-base">
+                                        <span>{t('marketingNav.demo') || 'Book a Free Demo'}</span>
+                                        <ArrowRight className="w-5 h-5" />
+                                    </button>
+                                </Link>
+                            </div>
+                        ) : (
+                            <div className="pt-2">
+                                <Link
+                                    to="/app"
+                                    onClick={() => setMobileOpen(false)}
+                                    className="w-full block"
+                                >
+                                    <button className="clay-btn-primary w-full justify-center py-3.5 text-base">
+                                        <span>{t('marketingNav.dashboard') || 'Go to Dashboard'}</span>
+                                        <ArrowRight className="w-5 h-5" />
+                                    </button>
+                                </Link>
+                            </div>
+                        )}
                     </div>
                 )}
-            </nav>
+            </header>
 
             {/* Main Content */}
-            <main className="flex-1 bg-background transition-colors duration-500">
+            <main className="flex-1">
                 {children}
             </main>
 
             {/* Footer */}
-            <footer className="bg-background border-t border-foreground/10 pt-24 pb-12 transition-colors duration-500">
-                <div className="max-w-[1440px] mx-auto px-8">
-                    <div className="flex flex-col md:flex-row items-center justify-between gap-12 mb-16">
-                        <div className="flex flex-col items-center md:items-start gap-6">
-                            <Link to="/" className="flex items-center gap-2 grayscale hover:grayscale-0 transition-all duration-300">
-                                <BaroLogo className="scale-90" />
-                            </Link>
-                            <p className="font-mono text-[13px] text-foreground/50 uppercase">
-                                {t('footer.tagline')}
-                            </p>
-                        </div>
-                        <div className="flex flex-wrap items-center justify-center gap-x-12 gap-y-6">
-                            {[
-                                { key: 'privacy', label: t('footer.privacy') },
-                                { key: 'terms', label: t('footer.terms') },
-                                { key: 'architecture', label: t('footer.architecture') },
-                                { key: 'status', label: t('footer.status') }
-                            ].map((link) => (
-                                <Link
-                                    key={link.key}
-                                    to="#"
-                                    className="text-[15px] text-foreground/70 hover:text-[#0052ef] transition-colors"
-                                >
-                                    {link.label}
-                                </Link>
-                            ))}
-                        </div>
+            <footer className="bg-[#faf9f7] border-t border-[#dad4c8] py-12 px-6">
+                <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-[#55534e]">
+                    <div className="flex items-center gap-2">
+                        <BaroLogo className="scale-75" />
+                        <span className="font-bold text-[#0c0d0e]">Baro OS</span>
+                        <span>• Ethiopian Restaurant Operations</span>
                     </div>
-
-                    <div className="flex flex-col md:flex-row items-center justify-between gap-8 pt-8 border-t border-foreground/10">
-                        <p className="text-[13px] text-foreground/50">
-                            {t('footer.copyright')}
-                        </p>
+                    <div className="flex items-center gap-6">
+                        <Link to="/features" className="hover:text-[#0c0d0e]">{t('marketingNav.features') || 'Features'}</Link>
+                        <Link to="/pricing" className="hover:text-[#0c0d0e]">{t('marketingNav.pricing') || 'Pricing'}</Link>
+                        <Link to="/login" className="hover:text-[#0c0d0e] font-semibold text-[#078a52]">
+                            {t('marketingNav.login') || 'Sign In'}
+                        </Link>
                     </div>
                 </div>
             </footer>
@@ -181,3 +181,4 @@ export const MarketingLayout: React.FC<MarketingLayoutProps> = ({ children }) =>
     );
 };
 
+export default MarketingLayout;

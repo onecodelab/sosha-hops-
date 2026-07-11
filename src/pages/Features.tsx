@@ -1,235 +1,249 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
 import { MarketingLayout } from '../components/MarketingLayout';
-import { LeafBubbleBackground } from '../components/LeafBubbleBackground';
-import { Button } from '../components/ui';
-import { WaveDivider } from '../components/WaveDivider';
-import { BaroLeafyCard } from '../components/ElectricCard';
-import { BaroLogo3D } from '../components/BaroLogo3D';
 import { useLanguage } from '../contexts/LanguageContext';
 import {
-    BarChart3,
-    ChefHat,
-    MousePointer2,
-    Cpu,
-    ArrowRight,
-    Sparkles,
-    Zap,
+    Smartphone,
+    Utensils,
     ShieldCheck,
-    Globe,
-    MonitorSmartphone
+    BarChart3,
+    CheckCircle2,
+    Layers,
+    ArrowRight
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
-const categories = [
-    {
-        title: 'Front of House',
-        icon: MousePointer2,
-        desc: 'Precision interfaces for the moments that matter. Built for speed, designed for elegance. The first touchpoint of your hospitality stream.',
-        features: ['Quick-Action POS', 'Table Command', 'Split-Second Payments', 'Guest Profiles'],
-        color: '#FFB800', // brand-yellow
-        accent: 'brand-yellow',
-        glow: 'rgba(255, 184, 0, 0.1)'
-    },
-    {
-        title: 'Back of House',
-        icon: ChefHat,
-        desc: 'The organic engine of your operation. Seamless coordination between fire and flow. Turning heat into balanced output.',
-        features: ['Digital KDS', 'Prep Management', 'Recipe Intelligence', 'Station Sync'],
-        color: '#A3E635', // brand-green
-        accent: 'brand-green',
-        glow: 'rgba(163, 230, 53, 0.1)'
-    },
-    {
-        title: 'Intelligence',
-        icon: BarChart3,
-        desc: 'Deep data surfacing from the delta. Clarity that empowers decision-making through real-time operational transparency.',
-        features: ['Real-time Analytics', 'Performance Delta', 'Financial Flow', 'AI Forecasting'],
-        color: '#00D1FF', // brand-blue
-        accent: 'brand-blue',
-        glow: 'rgba(0, 209, 255, 0.1)'
-    },
-    {
-        title: 'Operations',
-        icon: Cpu,
-        desc: 'The technical infrastructure that keeps the pulse strong across every branch, ensuring absolute stability and security.',
-        features: ['Multi-Branch Control', 'Living Inventory', 'Staff Logistics', 'Protocol Security'],
-        color: '#A3E635', // brand-green
-        accent: 'brand-green',
-        glow: 'rgba(163, 230, 53, 0.1)'
-    },
+const ETHIOPIAN_PAYMENT_CHANNELS = [
+  { name: 'Commercial Bank of Ethiopia', short: 'CBE', bg: 'bg-[#4A154B]', text: 'text-white' },
+  { name: 'Telebirr', short: 'Telebirr', bg: 'bg-[#0084C6]', text: 'text-white' },
+  { name: 'Dashen Bank', short: 'Dashen', bg: 'bg-[#183462]', text: 'text-white' },
+  { name: 'Bank of Abyssinia', short: 'BOA', bg: 'bg-[#F2A900]', text: 'text-[#0c0d0e]' },
+  { name: 'CBE Birr', short: 'CBE Birr', bg: 'bg-[#7A1C30]', text: 'text-white' },
+  { name: 'Awash Bank', short: 'Awash', bg: 'bg-[#004B87]', text: 'text-white' },
+  { name: 'MPESA', short: 'M-PESA', bg: 'bg-[#43B02A]', text: 'text-white' },
+  { name: 'Siinqee Bank', short: 'Siinqee', bg: 'bg-[#007A3D]', text: 'text-white' },
+  { name: 'Kaafi Ebirr', short: 'Kaafi Ebirr', bg: 'bg-[#E35205]', text: 'text-white' }
 ];
 
-const Features: React.FC = () => {
-    const navigate = useNavigate();
+export const FeaturesPage: React.FC = () => {
     const { t } = useLanguage();
+    const navigate = useNavigate();
+
+    const featureCategories = [
+        {
+            swatchName: 'SWATCH • MATCHA GREEN',
+            swatchBg: 'bg-[#84e7a5]',
+            swatchText: 'text-[#02492a]',
+            badge: t('features.cat1Badge') || 'ORDER & PAYMENT',
+            title: t('features.cat1Title') || 'Fast POS & Table Orders',
+            desc: t('features.cat1Desc') || 'Take orders directly at tables or counter with instant kitchen synchronization.',
+            icon: Smartphone,
+            items: [
+                t('features.cat1Item1') || 'Direct table ordering via Waiter POS',
+                t('features.cat1Item2') || 'Split bills and table transfers in 1 tap',
+                t('features.cat1Item3') || 'Instant receipt printing & digital sharing'
+            ]
+        },
+        {
+            swatchName: 'SWATCH • SLUSHIE CYAN',
+            swatchBg: 'bg-[#3bd3fd]',
+            swatchText: 'text-[#004d61]',
+            badge: t('features.cat2Badge') || 'KITCHEN MANAGEMENT',
+            title: t('features.cat2Title') || 'Kitchen Display System (KDS)',
+            desc: t('features.cat2Desc') || 'Direct digital orders sent instantly to kitchen screens. Zero paper tickets.',
+            icon: Utensils,
+            items: [
+                t('features.cat2Item1') || 'Real-time order prep display screen',
+                t('features.cat2Item2') || 'Visual alerts for delayed tickets',
+                t('features.cat2Item3') || 'Seamless waiter notification when ready'
+            ]
+        },
+        {
+            swatchName: 'SWATCH • LEMON GOLD',
+            swatchBg: 'bg-[#fbbd41]',
+            swatchText: 'text-[#0c0d0e]',
+            badge: t('features.cat_receipt_f3') || 'ALL 9 BANKS VERIFIED',
+            title: t('features.card3Title') || 'Universal Receipt Verification',
+            desc: t('features.cat_receipt_desc') || 'Stop fake payment screenshots. Instant verification across all 9 Ethiopian banks & wallets.',
+            icon: ShieldCheck,
+            isUniversalVerification: true,
+            items: [
+                t('features.cat_receipt_f1') || 'Instant check across all 9 providers',
+                t('features.cat_receipt_f2') || 'Automatic screenshot fraud detection',
+                t('features.cat_receipt_f4') || 'Zero cashier reconciliation errors'
+            ]
+        },
+        {
+            swatchName: 'SWATCH • UBE PURPLE',
+            swatchBg: 'bg-[#c1b0ff]',
+            swatchText: 'text-[#32037d]',
+            badge: t('features.cat4Badge') || 'REPORTS & DATA',
+            title: t('features.cat4Title') || 'Daily Sales & Profit Analytics',
+            desc: t('features.cat4Desc') || 'Clear daily reports showing exact revenue, top-selling dishes, and real profit.',
+            icon: BarChart3,
+            items: [
+                t('features.cat4Item1') || 'Live daily and monthly revenue dashboards',
+                t('features.cat4Item2') || 'Item-by-item profit breakdown',
+                t('features.cat4Item3') || 'Exportable financial summaries'
+            ]
+        },
+        {
+            swatchName: 'SWATCH • POMEGRANATE PINK',
+            swatchBg: 'bg-[#fc7981]',
+            swatchText: 'text-[#0c0d0e]',
+            badge: t('features.cat5Badge') || 'BUSINESS CONTROL',
+            title: t('features.cat5Title') || 'Inventory & Staff Management',
+            desc: t('features.cat5Desc') || 'Track your stock and ingredients automatically with every dish sold.',
+            icon: Layers,
+            items: [
+                t('features.cat5Item1') || 'Recipe-based automatic stock deduction',
+                t('features.cat5Item2') || 'Staff shift logs and performance tracking',
+                t('features.cat5Item3') || 'Supplier purchase order automation'
+            ]
+        }
+    ];
 
     return (
         <MarketingLayout>
-            {/* Hero Section */}
-            <section className="relative pt-32 pb-24 md:pt-48 md:pb-32 overflow-hidden bg-black liquid-bg">
-                <div className="absolute inset-0 bg-black/40 pointer-events-none" />
-                <div className="absolute top-[10%] left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-brand-green/30 to-transparent blur-[2px] pointer-events-none" />
-
-                <div className="max-w-7xl mx-auto px-6 relative z-10 text-center">
-                    <div className="flex justify-center mb-10 animate-in fade-in slide-in-from-bottom-4 duration-1000">
-                        <div className="px-4 py-1.5 rounded-full border border-brand-green/20 bg-brand-green/5 flex items-center gap-3">
-                            <Zap className="w-3.5 h-3.5 text-brand-green" />
-                            <span className="mono-os text-[10px] font-black text-brand-green uppercase tracking-[0.4em]">System_v.02_Protocols</span>
-                        </div>
-                    </div>
-
-                    <h1 className="text-7xl md:text-9xl font-black uppercase tracking-tighter mb-12 text-white leading-[0.85] animate-in fade-in slide-in-from-bottom-6 duration-1000 delay-200">
-                        Operational <br />
-                        <span className="serif-ital text-brand-green lowercase">stream</span>
+            <div className="bg-[#faf9f7] text-[#0c0d0e] py-16 md:py-24">
+                {/* Header */}
+                <div className="max-w-4xl mx-auto px-6 text-center mb-20">
+                    <span className="font-mono text-xs font-bold uppercase tracking-widest bg-[#84e7a5] text-[#02492a] px-3 py-1.5 rounded-full inline-block mb-4">
+                        {t('features.heroTag') || 'ALL FEATURES INCLUDED'}
+                    </span>
+                    <h1 className="text-4xl sm:text-6xl font-bold tracking-tight text-[#0c0d0e] mb-6">
+                        {t('features.heroTitle1') || 'Built for Speed,'}{' '}
+                        <span className="text-[#078a52]">{t('features.heroTitle2') || 'Clarity & Protection'}</span>
                     </h1>
-
-                    <p className="serif-ital text-2xl text-white/50 max-w-2xl mx-auto leading-relaxed animate-in fade-in slide-in-from-bottom-8 duration-1000 delay-400">
-                        A high-fidelity infrastructure designed to channel
-                        hospitality vitality into technical precision.
-                        Every module, a vital tributary.
+                    <p className="text-lg text-[#55534e] max-w-2xl mx-auto leading-relaxed font-medium">
+                        {t('features.heroDesc')}
                     </p>
                 </div>
 
-                <WaveDivider variant="strong" color="fill-brand-blue/30" />
-            </section>
-
-            {/* 🌊 THE STREAM: STAGGERED MODULES */}
-            <section className="bg-brand-blue/30 relative py-20">
-                <div className="max-w-7xl mx-auto px-6">
-                    <div className="flex flex-col gap-32">
-                        {categories.map((cat, idx) => (
+                {/* Alternating Clay Features List */}
+                <div className="max-w-7xl mx-auto px-6 space-y-16">
+                    {featureCategories.map((cat, idx) => {
+                        const Icon = cat.icon;
+                        return (
                             <div
-                                key={cat.title}
-                                className={`flex flex-col ${idx % 2 === 0 ? 'md:flex-row' : 'md:flex-row-reverse'} items-center gap-16 md:gap-32`}
+                                key={idx}
+                                className="clay-card p-8 sm:p-12 overflow-hidden relative"
                             >
-                                {/* Focal Point Side */}
-                                <div className="w-full md:w-1/2 relative group">
-                                    <div className="absolute inset-0 bg-white/[0.02] rounded-[3rem] blur-3xl group-hover:bg-white/[0.04] transition-all duration-1000" />
-                                    <div className="relative z-10 flex flex-col items-center">
-                                        <BaroLogo3D
-                                            size="lg"
-                                            animate
-                                            className="opacity-80 group-hover:opacity-100 group-hover:scale-105 transition-all duration-700"
-                                        />
-                                        <div
-                                            className="mt-[-80px] px-8 py-3 rounded-2xl bg-black border border-white/5 shadow-2xl backdrop-blur-3xl animate-in slide-in-from-bottom-4"
-                                            style={{ borderColor: `${cat.color}22` }}
-                                        >
-                                            <span className={`mono-os text-[10px] font-black uppercase tracking-[0.5em] text-${cat.accent}`}>
-                                                Protocol_{idx + 1}
+                                <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
+                                    {/* Left Text */}
+                                    <div className="lg:col-span-7 space-y-5">
+                                        <div className="flex items-center gap-3">
+                                            <span className={`font-mono text-xs font-bold px-3 py-1 rounded-full ${cat.swatchBg} ${cat.swatchText}`}>
+                                                {cat.swatchName}
+                                            </span>
+                                            <span className="font-mono text-xs font-semibold text-[#55534e]">
+                                                {cat.badge}
                                             </span>
                                         </div>
+
+                                        <h2 className="text-3xl sm:text-4xl font-extrabold text-[#0c0d0e] leading-tight">
+                                            {cat.title}
+                                        </h2>
+
+                                        <p className="text-base sm:text-lg text-[#55534e] leading-relaxed">
+                                            {cat.desc}
+                                        </p>
+
+                                        <div className="space-y-3 pt-3">
+                                            {cat.items.map((item, itemIdx) => (
+                                                <div key={itemIdx} className="flex items-center gap-3">
+                                                    <div className="w-5 h-5 rounded-full bg-[#84e7a5]/30 text-[#078a52] flex items-center justify-center shrink-0">
+                                                        <CheckCircle2 className="w-3.5 h-3.5" />
+                                                    </div>
+                                                    <span className="text-sm font-medium text-[#0c0d0e]">
+                                                        {item}
+                                                    </span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    {/* Right Artisanal Preview Card */}
+                                    <div className="lg:col-span-5">
+                                        {cat.isUniversalVerification ? (
+                                          <div className="bg-white border-2 border-[#0c0d0e] rounded-[28px] p-6 sm:p-7 shadow-[-6px_6px_0px_#0c0d0e] space-y-4">
+                                            <div className="flex items-center justify-between pb-3 border-b border-[#dad4c8]">
+                                              <span className="font-mono text-xs font-bold text-[#078a52] flex items-center gap-1.5">
+                                                <ShieldCheck className="w-4 h-4" /> ALL 9 PROVIDERS VERIFIED
+                                              </span>
+                                              <span className="px-2.5 py-0.5 rounded-full bg-[#84e7a5] text-[#02492a] font-mono text-[10px] font-bold">
+                                                100% COVERAGE
+                                              </span>
+                                            </div>
+
+                                            <h4 className="text-base font-bold text-[#0c0d0e]">
+                                              Universal Ethiopian Payment Audit Matrix
+                                            </h4>
+
+                                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                                              {ETHIOPIAN_PAYMENT_CHANNELS.map((chan) => (
+                                                <div
+                                                  key={chan.name}
+                                                  className={`${chan.bg} ${chan.text} px-2.5 py-2 rounded-xl flex items-center justify-between text-xs font-bold shadow-xs`}
+                                                >
+                                                  <span>{chan.short}</span>
+                                                  <span>✓</span>
+                                                </div>
+                                              ))}
+                                            </div>
+
+                                            <div className="p-3 rounded-xl bg-[#faf9f7] border border-[#dad4c8] flex items-center justify-between font-mono text-xs">
+                                              <span>Verification Status:</span>
+                                              <span className="font-bold text-[#078a52]">✓ GENUINE RECEIPT</span>
+                                            </div>
+                                          </div>
+                                        ) : (
+                                          <div className="bg-[#faf9f7] border border-dashed border-[#dad4c8] rounded-[28px] p-6 sm:p-8 space-y-4 hover:border-solid hover:border-[#0c0d0e] transition-all">
+                                              <div className="flex items-center justify-between">
+                                                  <div className="w-12 h-12 rounded-2xl bg-white border border-[#dad4c8] flex items-center justify-center text-[#0c0d0e]">
+                                                      <Icon className="w-6 h-6" />
+                                                  </div>
+                                                  <span className="font-mono text-xs font-bold text-[#078a52] bg-[#84e7a5]/30 px-3 py-1 rounded-full">
+                                                      SYSTEM LIVE
+                                                  </span>
+                                              </div>
+                                              <h4 className="text-lg font-bold text-[#0c0d0e]">
+                                                  {cat.title}
+                                              </h4>
+                                              <p className="text-xs font-mono text-[#55534e]">
+                                                  Zero paperwork • Instant sync across waiter POS & kitchen screen
+                                              </p>
+                                          </div>
+                                        )}
                                     </div>
                                 </div>
-
-                                {/* Content Side */}
-                                <div className="w-full md:w-1/2">
-                                    <BaroLeafyCard
-                                        color={cat.color}
-                                        badge={cat.title}
-                                        className="hover:scale-[1.02] transition-transform duration-700"
-                                    >
-                                        <div className="p-10 flex flex-col items-start h-full">
-                                            <div className="flex items-center gap-4 mb-8">
-                                                <div className="w-12 h-12 rounded-2xl bg-white/[0.03] border border-white/5 flex items-center justify-center">
-                                                    <cat.icon className="w-6 h-6 text-white" />
-                                                </div>
-                                                <h2 className="text-3xl font-black uppercase tracking-tight text-white group-hover:text-brand-yellow transition-colors">
-                                                    {cat.title}
-                                                </h2>
-                                            </div>
-
-                                            <p className="serif-ital text-xl text-white/50 mb-10 leading-relaxed text-left">
-                                                {cat.desc}
-                                            </p>
-
-                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-12 gap-y-6 w-full mt-auto">
-                                                {cat.features.map(f => (
-                                                    <div key={f} className="flex items-center gap-4 group/item">
-                                                        <div className="w-1.5 h-1.5 rounded-full bg-brand-green group-hover/item:scale-150 transition-transform" />
-                                                        <span className="mono-os text-[10px] text-white/40 group-hover/item:text-white transition-colors font-black uppercase tracking-widest">
-                                                            {f}
-                                                        </span>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    </BaroLeafyCard>
-                                </div>
                             </div>
-                        ))}
-                    </div>
+                        );
+                    })}
                 </div>
-            </section>
 
-            {/* 🚢 CTA: THE DELTA EXPANSION */}
-            <section className="relative py-72 bg-black overflow-hidden">
-                <WaveDivider position="top" color="fill-brand-blue/30" />
-
-                {/* Atmospheric Glows */}
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-brand-yellow/5 blur-[150px] rounded-full pointer-events-none" />
-                <LeafBubbleBackground />
-
-                <div className="max-w-4xl mx-auto px-6 text-center relative z-10">
-                    <div className="flex justify-center mb-10">
-                        <div className="w-12 h-12 rounded-full border border-white/10 flex items-center justify-center animate-bounce">
-                            <ArrowRight className="w-5 h-5 text-brand-green rotate-90" />
-                        </div>
-                    </div>
-
-                    <h2 className="text-6xl md:text-9xl font-black uppercase tracking-tighter mb-12 text-white leading-[0.8] animate-in slide-in-from-bottom-6">
-                        Expand the <br />
-                        <span className="serif-ital text-brand-yellow lowercase">delta</span>
-                    </h2>
-
-                    <p className="serif-ital text-2xl text-white/30 max-w-2xl mx-auto mb-20">
-                        Every operation has its own journey. Let's map your
-                        Organic Pulse and unlock the full potential of your hospitality engine.
-                    </p>
-
-                    <div className="flex flex-col sm:flex-row items-center justify-center gap-10">
-                        <Button
-                            size="lg"
-                            onClick={() => navigate('/book-demo')}
-                            className="px-16 h-20 bg-brand-yellow hover:bg-white text-black font-black uppercase tracking-widest text-[10px] rounded-full shadow-2xl shadow-brand-yellow/20 group transition-all relative overflow-hidden"
-                        >
-                            <span className="relative z-10 flex items-center gap-4">
-                                Book Protocol Demo
-                                <ArrowRight className="w-5 h-5 group-hover:translate-x-3 transition-transform" />
-                            </span>
-                        </Button>
-
-                        <Button
-                            variant="outline"
-                            size="lg"
-                            onClick={() => navigate('/signup')}
-                            className="px-16 h-20 border-white/10 hover:border-brand-green text-white font-black uppercase tracking-widest text-[10px] rounded-full hover:bg-brand-green/5 transition-all group"
-                        >
-                            <span className="flex items-center gap-4 opacity-60 group-hover:opacity-100">
-                                Initialize System
-                                <Sparkles className="w-4 h-4 text-primary" />
-                            </span>
-                        </Button>
-                    </div>
-
-                    <div className="mt-40 flex flex-wrap justify-center items-center gap-16 opacity-10">
-                        <div className="flex items-center gap-3">
-                            <MonitorSmartphone className="w-5 h-5" />
-                            <span className="mono-os text-[9px] font-black uppercase tracking-widest text-white">Full_Mobility</span>
-                        </div>
-                        <div className="flex items-center gap-3">
-                            <Globe className="w-5 h-5" />
-                            <span className="mono-os text-[9px] font-black uppercase tracking-widest text-white">Global_Sync</span>
-                        </div>
-                        <div className="flex items-center gap-3">
-                            <ShieldCheck className="w-5 h-5" />
-                            <span className="mono-os text-[9px] font-black uppercase tracking-widest text-white">Military_Secure</span>
+                {/* Bottom CTA Section */}
+                <div className="max-w-5xl mx-auto px-6 mt-24">
+                    <div className="bg-[#fbbd41] text-[#0c0d0e] rounded-[40px] p-10 sm:p-16 text-center space-y-6 border-2 border-[#0c0d0e] shadow-[-8px_8px_0px_#0c0d0e]">
+                        <h2 className="text-3xl sm:text-5xl font-bold tracking-tight">
+                            {t('features.bottomCtaTitle') || 'Ready to Modernize Your Restaurant?'}
+                        </h2>
+                        <p className="text-lg max-w-xl mx-auto font-normal">
+                            {t('features.bottomCtaDesc') || 'Schedule a free demo and let our team get your restaurant running with zero paper tickets and full payment verification within 2 weeks.'}
+                        </p>
+                        <div className="pt-4">
+                            <button
+                                onClick={() => navigate('/book-demo')}
+                                className="clay-btn-primary text-base px-10 py-4"
+                            >
+                                <span>{t('features.ctaButton') || 'Book a Free Demo'}</span>
+                                <ArrowRight className="w-5 h-5" />
+                            </button>
                         </div>
                     </div>
                 </div>
-            </section>
+            </div>
         </MarketingLayout>
     );
 };
 
-export default Features;
+export default FeaturesPage;

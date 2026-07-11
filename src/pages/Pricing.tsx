@@ -1,15 +1,17 @@
 import React, { useState } from 'react';
 import { MarketingLayout } from '../components/MarketingLayout';
-import { Button, Input, Card, CardContent } from '../components/ui';
+import { useLanguage } from '../contexts/LanguageContext';
 import {
     Mail,
     Phone,
     MapPin,
     ArrowRight,
-    Send,
+    CheckCircle2,
+    Sparkles,
 } from 'lucide-react';
 
 const BookDemoPage: React.FC = () => {
+    const { t } = useLanguage();
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [phone, setPhone] = useState('');
@@ -20,150 +22,171 @@ const BookDemoPage: React.FC = () => {
         e.preventDefault();
         const subject = encodeURIComponent(`Demo Inquiry - ${name}`);
         const body = encodeURIComponent(
-            `Full Name: ${name}\nEmail: ${email}\nPhone: ${phone}\n\nMessage:\n${message}`
+            `Full Name: ${name}\nEmail: ${email}\nPhone: ${phone}\n\nRestaurant Details:\n${message}`
         );
-        window.open(`mailto:hello@baroos.com?subject=${subject}&body=${body}`);
+        window.open(`mailto:flow@baroos.com?subject=${subject}&body=${body}`);
         setSubmitted(true);
     };
 
     return (
         <MarketingLayout>
-            <div className="min-h-screen bg-black relative overflow-hidden flex flex-col justify-center py-24 liquid-bg">
-                {/* Background Atmosphere */}
-                <div className="absolute inset-0 bg-black/60 pointer-events-none" />
-                <div className="absolute top-[20%] left-[10%] w-[500px] h-[500px] bg-brand-yellow/5 blur-[150px] rounded-full pointer-events-none animate-pulse-slow" />
+            <div className="bg-[#faf9f7] text-[#0c0d0e] py-16 md:py-24">
+                <div className="max-w-7xl mx-auto px-6 grid lg:grid-cols-12 gap-12 lg:gap-16 items-center">
 
-                <div className="max-w-7xl mx-auto px-6 grid lg:grid-cols-2 gap-20 items-center relative z-10 w-full mt-10">
+                    {/* LEFT COLUMN: INVITATION & DIRECT CONTACT */}
+                    <div className="lg:col-span-6 space-y-8">
+                        <div>
+                            <span className="font-mono text-xs font-bold uppercase tracking-widest bg-[#84e7a5] text-[#02492a] px-3 py-1.5 rounded-full inline-block mb-4">
+                                {t('bookDemo.tag') || 'BOOK A FREE DEMO'}
+                            </span>
 
-                    {/* LEFT COLUMN: NARRATIVE */}
-                    <div className="space-y-12 animate-in fade-in slide-in-from-left-8 duration-1000">
-                        <div className="space-y-8">
-                            <h1 className="text-7xl md:text-9xl font-black uppercase tracking-tighter text-white leading-[0.8]">
-                                Ready to <br /> put <br />
-                                <span className="serif-ital text-brand-green lowercase">the Flow</span> <br />
-                                to work?
+                            <h1 className="text-4xl sm:text-6xl font-bold tracking-tight text-[#0c0d0e] leading-[1.1] mb-6">
+                                {t('bookDemo.title1') || 'Ready to Modernize'}{' '}
+                                <span className="text-[#078a52] block sm:inline">
+                                    {t('bookDemo.title2') || 'Your Restaurant?'}
+                                </span>
                             </h1>
-                            <p className="serif-ital text-2xl md:text-3xl text-white/70 max-w-xl leading-relaxed">
-                                We are happy to think about smart steps with AI, from idea to first
-                                working agent within 2 weeks.
+
+                            <p className="text-base sm:text-lg text-[#55534e] max-w-xl leading-relaxed font-normal">
+                                {t('bookDemo.desc') || 'Schedule a free demo. We configure your menu, tables, and staff, and get your restaurant running smoothly within 2 weeks.'}
                             </p>
-
-                            <Button
-                                size="lg"
-                                className="px-12 h-20 bg-brand-yellow hover:bg-white text-black font-black uppercase tracking-widest text-[10px] rounded-full shadow-2xl shadow-brand-yellow/20 group transition-all ripple-link"
-                            >
-                                Schedule an introductory meeting
-                                <ArrowRight className="w-5 h-5 ml-6 group-hover:translate-x-3 transition-transform" />
-                            </Button>
                         </div>
 
-                        <div className="space-y-8 pt-12 border-t border-white/10">
-                            <p className="mono-os text-[10px] font-black text-white/30 tracking-[0.5em] uppercase">Or talk directly to our advisor</p>
-                            <div className="flex flex-wrap gap-10 text-white/50">
-                                <div className="flex items-center gap-4 group cursor-pointer hover:text-white transition-colors">
-                                    <MapPin className="w-4 h-4 text-brand-green group-hover:scale-125 transition-transform" />
-                                    <span className="mono-os text-[10px] font-black tracking-widest">Baro River Basin, GM</span>
-                                </div>
-                                <div className="flex items-center gap-4 group cursor-pointer hover:text-white transition-colors">
-                                    <Mail className="w-4 h-4 text-brand-green group-hover:scale-125 transition-transform" />
-                                    <span className="mono-os text-[10px] font-black tracking-widest">flow@baroos.com</span>
-                                </div>
-                                <div className="flex items-center gap-4 group cursor-pointer hover:text-white transition-colors">
-                                    <Phone className="w-4 h-4 text-brand-green group-hover:scale-125 transition-transform" />
-                                    <span className="mono-os text-[10px] font-black tracking-widest">+251 988 2026</span>
+                        {/* Early Access Clay Craft Card */}
+                        <div className="clay-card p-6 bg-white max-w-lg">
+                            <div className="flex items-start gap-3.5">
+                                <CheckCircle2 className="w-6 h-6 text-[#078a52] shrink-0 mt-0.5" />
+                                <div>
+                                    <h4 className="text-base font-bold text-[#0c0d0e]">
+                                        {t('bookDemo.earlyAccess') || 'Early Access Open'}
+                                    </h4>
+                                    <p className="text-sm text-[#55534e] mt-1 leading-relaxed">
+                                        Be among the forward-thinking Ethiopian restaurants running with zero paper tickets and full Telebirr receipt verification.
+                                    </p>
                                 </div>
                             </div>
                         </div>
 
-                        {/* Trusted By Cluster */}
-                        <div className="space-y-8">
-                            <p className="mono-os text-[9px] font-black text-white/20 tracking-[0.3em] uppercase">Trusted By</p>
-                            <div className="flex flex-wrap items-center gap-x-14 gap-y-8 opacity-40 grayscale hover:opacity-100 hover:grayscale-0 transition-all duration-1000 group/logos">
-                                {['Pulse', 'NileFlow', 'DeltaOps', 'SourceAI'].map(logo => (
-                                    <span key={logo} className="text-2xl font-black tracking-tighter text-white uppercase italic hover:text-brand-yellow transition-colors cursor-default">{logo}</span>
-                                ))}
+                        {/* Direct Contact Details */}
+                        <div className="space-y-4 pt-6 border-t border-[#dad4c8]">
+                            <p className="font-mono text-xs font-bold text-[#717989] uppercase tracking-wider">
+                                {t('bookDemo.talkDirectly') || 'OR CONTACT OUR TEAM DIRECTLY:'}
+                            </p>
+                            <div className="flex flex-col sm:flex-row sm:items-center gap-6 text-sm text-[#0c0d0e] font-medium">
+                                <div className="flex items-center gap-2.5">
+                                    <MapPin className="w-4 h-4 text-[#078a52]" />
+                                    <span>{t('bookDemo.location') || 'Addis Ababa, Ethiopia'}</span>
+                                </div>
+                                <div className="flex items-center gap-2.5">
+                                    <Mail className="w-4 h-4 text-[#078a52]" />
+                                    <span>flow@baroos.com</span>
+                                </div>
+                                <div className="flex items-center gap-2.5">
+                                    <Phone className="w-4 h-4 text-[#078a52]" />
+                                    <span>{t('bookDemo.phone') || '+251 988 2026'}</span>
+                                </div>
                             </div>
                         </div>
                     </div>
 
-                    {/* RIGHT COLUMN: FORM CARD */}
-                    <div className="w-full animate-in fade-in slide-in-from-right-8 duration-1000 delay-300">
-                        <Card className="bg-black/40 backdrop-blur-3xl border border-white/5 rounded-[3.5rem] overflow-hidden shadow-[0_50px_100px_rgba(0,0,0,0.5)] relative group">
-                            <div className="absolute inset-0 bg-gradient-to-br from-white/[0.02] to-transparent pointer-events-none" />
-                            <CardContent className="p-12 md:p-16 relative z-10">
-                                {submitted ? (
-                                    <div className="text-center py-24 space-y-8">
-                                        <div className="w-24 h-24 bg-brand-green/10 border border-brand-green/20 rounded-full flex items-center justify-center mx-auto mb-10 animate-pulse">
-                                            <Send className="w-10 h-10 text-brand-green" />
-                                        </div>
-                                        <h2 className="text-5xl font-black uppercase tracking-tighter text-white font-serif italic">Inquiry Received</h2>
-                                        <p className="mono-os text-xs text-muted-foreground/60 leading-relaxed max-w-xs mx-auto">Protocol connection established. An analyst will verify your parameters within 24 hours.</p>
-                                        <Button
-                                            variant="outline"
-                                            onClick={() => setSubmitted(false)}
-                                            className="mt-10 border-white/10 hover:border-brand-yellow text-[10px] font-black uppercase tracking-widest px-10 h-14 rounded-2xl ripple-link text-white"
-                                        >
-                                            Restart Channel
-                                        </Button>
+                    {/* RIGHT COLUMN: BOOKING FORM WITH CLAY HARD OFFSET SHADOW */}
+                    <div className="lg:col-span-6 w-full">
+                        <div className="bg-white border-2 border-[#0c0d0e] rounded-[32px] p-8 sm:p-12 shadow-[-8px_8px_0px_#0c0d0e]">
+                            {submitted ? (
+                                <div className="text-center py-16 space-y-6">
+                                    <div className="w-16 h-16 bg-[#84e7a5] text-[#02492a] rounded-full flex items-center justify-center mx-auto mb-4">
+                                        <CheckCircle2 className="w-8 h-8" />
                                     </div>
-                                ) : (
-                                    <form onSubmit={handleSubmit} className="space-y-10">
-                                        <div className="space-y-4">
-                                            <label className="text-[10px] font-black text-brand-yellow uppercase tracking-[0.3em] ml-1">
-                                                Your full name <span className="text-brand-green">*</span>
-                                            </label>
-                                            <Input
-                                                placeholder="Enter identifier..."
-                                                value={name}
-                                                onChange={(e) => setName(e.target.value)}
-                                                required
-                                                className="bg-white/5 border-white/10 rounded-2xl h-16 px-8 focus:ring-brand-yellow/20 font-bold text-white placeholder:opacity-20 transition-all focus:bg-white/[0.08]"
-                                            />
-                                        </div>
+                                    <h2 className="text-2xl sm:text-3xl font-bold text-[#0c0d0e]">
+                                        {t('bookDemo.successTitle') || 'Request Received!'}
+                                    </h2>
+                                    <p className="text-sm text-[#55534e] max-w-sm mx-auto leading-relaxed">
+                                        {t('bookDemo.successDesc') || 'Thank you! We received your demo request and our team will contact you within 24 hours to arrange your session.'}
+                                    </p>
+                                    <button
+                                        onClick={() => setSubmitted(false)}
+                                        className="clay-btn-outline text-sm"
+                                    >
+                                        <span>{t('bookDemo.restartButton') || 'Send Another Message'}</span>
+                                    </button>
+                                </div>
+                            ) : (
+                                <form onSubmit={handleSubmit} className="space-y-6">
+                                    <div className="pb-4 border-b border-[#dad4c8]">
+                                        <h3 className="text-2xl font-bold text-[#0c0d0e]">
+                                            {t('bookDemo.formTitle') || 'Schedule Your Free Demo'}
+                                        </h3>
+                                        <p className="text-xs font-mono text-[#55534e] mt-1">
+                                            WE SETUP EVERYTHING • 2 WEEKS ONBOARDING
+                                        </p>
+                                    </div>
 
-                                        <div className="space-y-4">
-                                            <label className="text-[10px] font-black text-brand-yellow uppercase tracking-[0.3em] ml-1">
-                                                Phone number
-                                            </label>
-                                            <Input
-                                                placeholder="+xxx xxx xxxx"
-                                                value={phone}
-                                                onChange={(e) => setPhone(e.target.value)}
-                                                className="bg-white/5 border-white/10 rounded-2xl h-16 px-8 focus:ring-brand-yellow/20 font-bold text-white placeholder:opacity-20 transition-all focus:bg-white/[0.08]"
-                                            />
-                                        </div>
+                                    <div className="space-y-2">
+                                        <label className="font-mono text-xs font-bold text-[#0c0d0e] uppercase tracking-wider block">
+                                            {t('bookDemo.nameLabel') || 'Full Name'} <span className="text-[#078a52]">*</span>
+                                        </label>
+                                        <input
+                                            placeholder={t('bookDemo.namePlaceholder') || 'Enter your name...'}
+                                            value={name}
+                                            onChange={(e) => setName(e.target.value)}
+                                            required
+                                            className="w-full bg-[#faf9f7] border border-[#dad4c8] rounded-xl h-12 px-4 text-[#0c0d0e] text-sm focus:outline-none focus:border-[#0c0d0e]"
+                                        />
+                                    </div>
 
-                                        <div className="space-y-4">
-                                            <label className="text-[10px] font-black text-brand-yellow uppercase tracking-[0.3em] ml-1">
-                                                Message <span className="text-brand-green">*</span>
-                                            </label>
-                                            <textarea
-                                                placeholder="Tell us about the project scope..."
-                                                value={message}
-                                                onChange={(e) => setMessage(e.target.value)}
-                                                required
-                                                rows={5}
-                                                className="w-full bg-white/5 border border-white/10 rounded-[2rem] p-8 text-sm text-white focus:outline-none focus:ring-2 focus:ring-brand-yellow/20 font-bold resize-none placeholder:opacity-20 transition-all focus:bg-white/[0.08]"
-                                            />
-                                        </div>
+                                    <div className="space-y-2">
+                                        <label className="font-mono text-xs font-bold text-[#0c0d0e] uppercase tracking-wider block">
+                                            {t('bookDemo.phoneLabel') || 'Phone Number'} <span className="text-[#078a52]">*</span>
+                                        </label>
+                                        <input
+                                            placeholder={t('bookDemo.phonePlaceholder') || '+251 9...'}
+                                            value={phone}
+                                            onChange={(e) => setPhone(e.target.value)}
+                                            required
+                                            className="w-full bg-[#faf9f7] border border-[#dad4c8] rounded-xl h-12 px-4 text-[#0c0d0e] text-sm focus:outline-none focus:border-[#0c0d0e]"
+                                        />
+                                    </div>
 
-                                        <Button
-                                            type="submit"
-                                            className="w-full h-20 bg-brand-yellow hover:bg-white text-black font-black uppercase tracking-[0.4em] text-[10px] rounded-3xl shadow-3xl shadow-brand-yellow/10 flex items-center justify-center gap-5 group transition-all ripple-link"
-                                        >
-                                            <Send className="w-5 h-5 group-hover:-translate-y-1 group-hover:translate-x-1 transition-transform" />
-                                            Send message
-                                        </Button>
-                                    </form>
-                                )}
-                            </CardContent>
-                        </Card>
+                                    <div className="space-y-2">
+                                        <label className="font-mono text-xs font-bold text-[#0c0d0e] uppercase tracking-wider block">
+                                            Email Address
+                                        </label>
+                                        <input
+                                            type="email"
+                                            placeholder="you@restaurant.com"
+                                            value={email}
+                                            onChange={(e) => setEmail(e.target.value)}
+                                            className="w-full bg-[#faf9f7] border border-[#dad4c8] rounded-xl h-12 px-4 text-[#0c0d0e] text-sm focus:outline-none focus:border-[#0c0d0e]"
+                                        />
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <label className="font-mono text-xs font-bold text-[#0c0d0e] uppercase tracking-wider block">
+                                            {t('bookDemo.messageLabel') || 'Tell Us About Your Restaurant'}
+                                        </label>
+                                        <textarea
+                                            placeholder={t('bookDemo.messagePlaceholder') || 'Restaurant name, location, number of tables...'}
+                                            value={message}
+                                            onChange={(e) => setMessage(e.target.value)}
+                                            rows={4}
+                                            className="w-full bg-[#faf9f7] border border-[#dad4c8] rounded-xl p-4 text-[#0c0d0e] text-sm focus:outline-none focus:border-[#0c0d0e]"
+                                        />
+                                    </div>
+
+                                    <button
+                                        type="submit"
+                                        className="clay-btn-primary w-full py-4 text-base"
+                                    >
+                                        <span>{t('bookDemo.submitButton') || 'Send Request'}</span>
+                                        <ArrowRight className="w-5 h-5" />
+                                    </button>
+                                </form>
+                            )}
+                        </div>
                     </div>
+
                 </div>
             </div>
-
-            {/* Final Atmospheric Exit */}
-            <div className="h-48 bg-gradient-to-t from-black to-transparent relative z-0" />
         </MarketingLayout>
     );
 };

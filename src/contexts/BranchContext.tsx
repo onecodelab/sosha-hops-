@@ -23,6 +23,8 @@ const BranchContext = createContext<BranchContextType>({
 
 export const useBranch = () => useContext(BranchContext);
 
+const EMPTY_BRANCHES: Branch[] = [];
+
 export const BranchProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const { profile } = useAuth();
     const [activeBranchId, setActiveBranchId] = useState<string | null>(() => {
@@ -30,7 +32,7 @@ export const BranchProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     });
 
     // Fetch all branches (for HQ users or to resolve the active branch)
-    const { data: rawBranches = [], isLoading } = useQuery({
+    const { data: rawBranches = EMPTY_BRANCHES, isLoading } = useQuery({
         queryKey: ['branches'],
         queryFn: async () => {
             const { data, error } = await supabase
@@ -78,7 +80,7 @@ export const BranchProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                 localStorage.setItem('baro-active-branch-id', branches[0].id);
             }
         }
-    }, [profile, branches, isLoading]);
+    }, [profile?.home_branch_id, branches, isLoading, activeBranchId]);
 
     const switchBranch = (branchId: string) => {
         // Only Owners/Admins/Managers can switch branches

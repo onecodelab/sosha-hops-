@@ -5,7 +5,7 @@ import {
     Send, Loader2, UtensilsCrossed, ArrowUp, ShoppingBag,
     Receipt, CreditCard, MessageCircle, Sparkles, X, ChevronDown,
     CheckCircle2, Timer, ChefHat, PackageCheck, Star, Users, Trash2,
-    Leaf as FreshLeaf, Plus
+    Leaf as FreshLeaf, Plus, Bell
 } from 'lucide-react';
 import { cn, showToast, Button } from '../components/ui';
 import { supabase } from '@/lib/supabase';
@@ -1370,27 +1370,51 @@ const CustomerChatPage: React.FC = () => {
     }
 
     return (
-        <div className="flex flex-col h-[100dvh] bg-[#FAFAFA] overflow-hidden relative font-sans text-[#0F172A] select-none">
+        <div className="flex flex-col h-[100dvh] bg-background text-foreground overflow-hidden relative font-sans select-none transition-colors duration-300">
             {/* Header */}
-            <div className="flex-none px-6 py-3 flex items-center justify-between bg-white/80 backdrop-blur-md border-b border-[#E2E8F0] z-50 sticky top-0 animate-fade-in">
-                <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-transparent border border-[#E2E8F0] flex items-center justify-center overflow-hidden flex-shrink-0">
-                        {orgLogoUrl ? <img src={orgLogoUrl} alt="Logo" className="w-full h-full object-contain" /> : <Sparkles className="w-5 h-5 text-[#84CC16]" />}
+            <div className="flex-none px-4 sm:px-6 py-3 flex items-center justify-between bg-background/90 backdrop-blur-2xl border-b border-primary/20 z-50 sticky top-0 shadow-lg shadow-black/10 transition-all duration-300">
+                <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-11 h-11 rounded-2xl bg-card border border-primary/30 shadow-[0_0_18px_rgba(255,184,0,0.15)] flex items-center justify-center overflow-hidden shrink-0">
+                        {orgLogoUrl ? (
+                            <img src={orgLogoUrl} alt="Logo" className="w-full h-full object-cover" />
+                        ) : (
+                            <Sparkles className="w-5 h-5 text-primary animate-pulse" />
+                        )}
                     </div>
-                    <div>
-                        <h1 className="text-[20px] font-bold text-[#0F172A] leading-tight tracking-tight">{orgName || 'Restaurant'}</h1>
-                        <p className="text-[12px] font-medium text-[#64748B]">
-                            {branchName || 'Main Branch'} • Table {tableNumber || 'Guest'}
-                        </p>
+                    <div className="min-w-0 flex flex-col">
+                        <div className="flex items-center gap-2">
+                            <h1 className="text-base sm:text-xl font-black tracking-tight text-foreground truncate max-w-[140px] sm:max-w-[220px] leading-tight">
+                                {orgName || 'Baro Hops'}
+                            </h1>
+                            <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[10px] font-black uppercase tracking-wider shrink-0">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+                                <span>Table {tableNumber || 'Guest'}</span>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-1.5 text-[11px] font-bold text-muted-foreground uppercase tracking-widest truncate mt-0.5">
+                            <span className="truncate">{branchName || 'Main Branch'}</span>
+                            <span className="sm:hidden text-emerald-400 font-black">• T{tableNumber || 'G'}</span>
+                        </div>
                     </div>
                 </div>
-                <div className="flex items-center gap-2">
+
+                <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
+                    <button
+                        onClick={() => showToast('Waiter notified! 🙋 Someone will be right at your table.', 'success')}
+                        className="h-9 px-3 sm:px-3.5 rounded-xl bg-primary/10 hover:bg-primary/20 active:scale-95 border border-primary/30 text-primary text-xs font-black flex items-center gap-1.5 transition-all shadow-sm shrink-0"
+                        title="Call Waiter to your table"
+                    >
+                        <Bell className="w-3.5 h-3.5 animate-bounce" />
+                        <span className="hidden sm:inline uppercase tracking-wider">Call Waiter</span>
+                    </button>
+
+                    <ThemeToggle />
                     <LanguageSwitcher />
                 </div>
             </div>
 
             {/* Main Content Area */}
-            <div className="flex-1 overflow-hidden relative z-10 flex flex-col bg-[#FAFAFA]">
+            <div className="flex-1 overflow-hidden relative z-10 flex flex-col bg-background transition-colors duration-300">
                 {currentView === 'menu' && (
                     <MenuView
                         items={allItems}

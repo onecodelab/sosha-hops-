@@ -1,5 +1,5 @@
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useRef } from 'react';
 import { User } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
 import { UserProfile } from '@/types';
@@ -47,7 +47,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     refetch
   } = useProfile(user?.id);
 
-    useEffect(() => {
+  const refetchRef = useRef(refetch);
+  useEffect(() => {
+    refetchRef.current = refetch;
+  }, [refetch]);
+
+  useEffect(() => {
     // Initial silent session check
     supabase.auth.getSession().then(({ data: { session }, error }) => {
       if (error) {
@@ -57,7 +62,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       
       if (session) {
-        setUser(session.user);
+        setUser(prev => prev?.id === session.user.id ? prev : session.user);
       }
       setAuthLoading(false);
     });
@@ -68,23 +73,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Filter out noisy state changes that don't impact the user session
       if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
         if (session) {
-          setUser(session.user);
-          refetch();
+          setUser(prev => prev?.id === session.user.id ? prev : session.user);
+          refetchRef.current();
         }
       } else if (event === 'SIGNED_OUT') {
         setUser(null);
-        refetch();
+        refetchRef.current();
         navigate('/');
       } else if (event === 'INITIAL_SESSION') {
          // Silently update user if session exists
-         if (session) setUser(session.user);
+         if (session) {
+           setUser(prev => prev?.id === session.user.id ? prev : session.user);
+         }
       }
       
       setAuthLoading(false);
     });
 
     return () => subscription.unsubscribe();
-  }, [refetch]);
+  }, []);
 
   const signOut = async () => {
     try {

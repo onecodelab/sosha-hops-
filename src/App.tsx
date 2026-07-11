@@ -55,6 +55,7 @@ import { LoadingSpinner } from './components/LoadingSpinner';
 import ProtectedRoute from './components/ProtectedRoute';
 import { BrandLoader } from './components/BrandLoader';
 import ScrollToTop from './components/ScrollToTop';
+import PixelTracker from './components/PixelTracker';
 import { DashboardLayout } from './components/DashboardLayout';
 import { LayoutProvider, useLayoutConfig } from './contexts/LayoutContext';
 
@@ -72,6 +73,7 @@ const App: React.FC = () => {
       <LanguageProvider>
         <BrowserRouter>
           <ScrollToTop />
+          <PixelTracker />
           <AuthProvider>
             <BranchProvider>
               <LayoutProvider>

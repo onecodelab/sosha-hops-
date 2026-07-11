@@ -3,22 +3,34 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { MarketingLayout } from '../components/MarketingLayout';
 import { useLanguage } from '../contexts/LanguageContext';
-import { Search, ArrowRight } from 'lucide-react';
+import { 
+  ArrowRight, 
+  CheckCircle2, 
+  ShieldCheck, 
+  TrendingUp, 
+  Clock, 
+  Utensils, 
+  QrCode, 
+  Sparkles,
+  Smartphone
+} from 'lucide-react';
+
+const ETHIOPIAN_PAYMENT_CHANNELS = [
+  { name: 'Commercial Bank of Ethiopia', short: 'CBE', bg: 'bg-[#4A154B]', text: 'text-white' },
+  { name: 'Telebirr', short: 'Telebirr', bg: 'bg-[#0084C6]', text: 'text-white' },
+  { name: 'Dashen Bank', short: 'Dashen', bg: 'bg-[#183462]', text: 'text-white' },
+  { name: 'Bank of Abyssinia', short: 'BOA', bg: 'bg-[#F2A900]', text: 'text-[#0c0d0e]' },
+  { name: 'CBE Birr', short: 'CBE Birr', bg: 'bg-[#7A1C30]', text: 'text-white' },
+  { name: 'Awash Bank', short: 'Awash', bg: 'bg-[#004B87]', text: 'text-white' },
+  { name: 'MPESA', short: 'M-PESA', bg: 'bg-[#43B02A]', text: 'text-white' },
+  { name: 'Siinqee Bank', short: 'Siinqee', bg: 'bg-[#007A3D]', text: 'text-white' },
+  { name: 'Kaafi Ebirr', short: 'Kaafi Ebirr', bg: 'bg-[#E35205]', text: 'text-white' }
+];
 
 const Landing: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { t } = useLanguage();
-  const [searchQuery, setSearchQuery] = React.useState('');
-
-  const handleSearchSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (searchQuery.trim()) {
-      navigate(`/book-demo?venue=${encodeURIComponent(searchQuery.trim())}`);
-    } else {
-      navigate('/book-demo');
-    }
-  };
 
   React.useEffect(() => {
     const hash = window.location.hash;
@@ -37,254 +49,252 @@ const Landing: React.FC = () => {
   }, [user, navigate]);
 
   const cards = [
-    { tag: 'OPERATIONS', title: t('marketing.feat1Title'), desc: t('marketing.feat1Desc') },
-    { tag: 'SPEED', title: t('marketing.feat2Title'), desc: t('marketing.feat2Desc') },
-    { tag: 'ARCHITECTURE', title: t('marketing.feat3Title'), desc: t('marketing.feat3Desc') },
-    { tag: 'PHASE 01', title: t('marketing.seq1Title'), desc: t('marketing.seq1Desc') },
-    { tag: 'PHASE 02', title: t('marketing.seq2Title'), desc: t('marketing.seq2Desc') },
-    { tag: 'PHASE 03', title: t('marketing.seq3Title'), desc: t('marketing.seq3Desc') },
+    { 
+      tag: t('marketing.badge1') || 'ALL-IN-ONE', 
+      title: t('marketing.feat1Title') || 'Fast Orders', 
+      desc: t('marketing.feat1Desc') || 'Take and track orders instantly, from any table, without paper or confusion.',
+      icon: Smartphone,
+      swatchClass: 'bg-[#84e7a5]/20 text-[#02492a]'
+    },
+    { 
+      tag: 'ALL 9 BANKS & WALLETS', 
+      title: t('marketing.feat3Title') || 'Stop Fake Receipts', 
+      desc: 'Instant verification ensures every customer receipt from CBE, Telebirr, Dashen, BOA, M-PESA & more is 100% genuine.',
+      icon: ShieldCheck,
+      swatchClass: 'bg-[#fbbd41]/30 text-[#0c0d0e]'
+    },
+    { 
+      tag: 'KITCHEN KDS', 
+      title: t('marketing.feat2Title') || 'Kitchen in Sync', 
+      desc: t('marketing.feat2Desc') || 'The kitchen sees every order the moment it is placed — no tickets, no shouting.',
+      icon: Utensils,
+      swatchClass: 'bg-[#3bd3fd]/20 text-[#004d61]'
+    },
+    { 
+      tag: 'REPORTS', 
+      title: t('marketing.feat4Title') || 'Smart Reports', 
+      desc: t('marketing.feat4Desc') || 'Know your best sellers, your busiest hours, and your real profit — every day.',
+      icon: TrendingUp,
+      swatchClass: 'bg-[#c1b0ff]/30 text-[#32037d]'
+    },
+    { 
+      tag: 'PHASE 01', 
+      title: t('marketing.seq1Title') || '1. Easy Setup', 
+      desc: t('marketing.seq1Desc') || 'Get your restaurant on Baro OS in minutes. Add your menu, your tables, your team.',
+      icon: Clock,
+      swatchClass: 'bg-[#dad4c8]/40 text-[#0c0d0e]'
+    },
+    { 
+      tag: 'PHASE 02', 
+      title: t('marketing.seq2Title') || '2. Take Orders', 
+      desc: t('marketing.seq2Desc') || 'Start taking orders. Everything flows — kitchen, inventory, and billing — in perfect sync.',
+      icon: QrCode,
+      swatchClass: 'bg-[#84e7a5]/20 text-[#02492a]'
+    },
   ];
 
   return (
     <MarketingLayout>
-      <div className="bg-background min-h-screen text-foreground overflow-x-hidden transition-colors duration-500">
-        {/* Hero Section - Futuristic Tablet OS Screen Mockup */}
-        <section className="relative py-8 md:py-16 px-4 sm:px-6 lg:px-8 max-w-[1440px] mx-auto min-h-[calc(100vh-64px)] flex items-center justify-center">
-          {/* Subtle Ambient Glow behind display */}
-          <div className="absolute inset-0 bg-gradient-to-tr from-emerald-500/10 via-teal-500/5 to-transparent blur-[120px] pointer-events-none" />
-          
-          {/* Tablet Stand Mount Accents (Left & Right Clamps) */}
-          <div className="absolute -left-1 top-1/2 -translate-y-1/2 w-3 h-32 bg-gradient-to-r from-[#202328] to-[#0f1115] rounded-l-md border-y border-l border-white/20 shadow-2xl hidden lg:block z-10" />
-          <div className="absolute -right-1 top-1/2 -translate-y-1/2 w-3 h-32 bg-gradient-to-l from-[#202328] to-[#0f1115] rounded-r-md border-y border-r border-white/20 shadow-2xl hidden lg:block z-10" />
-
-          {/* The Tablet / Display Frame */}
-          <div className="relative w-full max-w-[1240px] bg-[#06080a] rounded-2xl sm:rounded-[24px] border border-white/15 shadow-[0_30px_100px_-20px_rgba(0,0,0,0.95),0_0_60px_rgba(16,185,129,0.18)] overflow-hidden flex flex-col text-left min-h-[580px] md:min-h-[640px] transition-all duration-500 z-20">
-            
-            {/* Top Internal Screen Navigation Bar */}
-            <div className="flex items-center justify-between px-6 md:px-10 py-4 md:py-5 border-b border-white/[0.08] bg-[#080a0d]/90 backdrop-blur-md z-30 relative select-none">
-              <div className="flex items-center gap-8">
-                {/* Brand Logo inside display */}
-                <div className="flex items-center gap-2.5 cursor-pointer" onClick={() => navigate('/')}>
-                  <div className="w-5 h-5 rounded-[4px] bg-gradient-to-br from-emerald-400 to-green-600 shadow-[0_0_12px_rgba(52,211,153,0.6)] flex items-center justify-center">
-                    <div className="w-2 h-2 bg-white rounded-[1px]" />
-                  </div>
-                  <span className="text-white font-bold tracking-tight text-lg">Baro<span className="text-emerald-400 font-light">OS</span></span>
-                </div>
-
-                {/* Internal Nav Links */}
-                <div className="hidden lg:flex items-center gap-7">
-                  {['Features', 'Operations', 'Kitchen', 'Security', 'Pricing'].map((item, idx) => (
-                    <span
-                      key={item}
-                      onClick={() => navigate(idx === 4 ? '/pricing' : '/features')}
-                      className="text-[13px] text-gray-400 hover:text-white transition-colors cursor-pointer font-normal"
-                    >
-                      {item}
-                    </span>
-                  ))}
-                </div>
-              </div>
-
-              {/* Right Side Actions inside display */}
-              <div className="flex items-center gap-4 text-[13px]">
-                <span onClick={() => navigate('/features')} className="text-gray-400 hover:text-white transition-colors cursor-pointer hidden sm:block">Deals</span>
-                <span onClick={() => navigate('/book-demo')} className="text-gray-400 hover:text-white transition-colors cursor-pointer hidden sm:block">Help</span>
-                <button
-                  onClick={() => navigate('/login')}
-                  className="bg-white hover:bg-gray-100 text-[#080a0d] px-4 py-1.5 rounded-full font-semibold transition-all shadow-sm active:scale-95 ml-1"
-                >
-                  Sign In
-                </button>
-              </div>
+      <div className="bg-[#faf9f7] text-[#0c0d0e] overflow-x-hidden">
+        {/* HERO SECTION — CLAY WARM CREAM ARTISANAL CANVAS */}
+        <section className="relative py-16 md:py-24 px-6 max-w-5xl mx-auto text-center">
+          <div className="space-y-8">
+            {/* Artisanal Clay Pill Tag */}
+            <div className="inline-flex items-center gap-2 px-4.5 py-2 rounded-full bg-[#fbbd41] text-[#0c0d0e] border-2 border-[#0c0d0e] shadow-[-3px_3px_0px_#0c0d0e] text-xs sm:text-sm font-black font-mono tracking-wide">
+              <Sparkles className="w-4 h-4 text-[#078a52]" />
+              <span>{t('marketing.heroTag') || '🇪T #1 ETHIOPIAN RESTAURANT OS • ZERO PAPER TICKETS'}</span>
             </div>
 
-            {/* Main 2-Column Hero Content */}
-            <div className="relative flex-1 grid grid-cols-1 lg:grid-cols-12 overflow-hidden bg-gradient-to-br from-[#06080a] via-[#090d10] to-[#050709]">
-              
-              {/* Left Column: Text & Search Input Bar */}
-              <div className="lg:col-span-7 z-20 flex flex-col justify-center p-6 sm:p-10 lg:p-14 lg:pr-6">
-                
-                {/* Pill Tag */}
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-[6px] bg-white/[0.06] border border-white/10 text-emerald-400 text-[11px] font-mono uppercase tracking-wider mb-6 w-fit shadow-inner">
-                  <span>{t('marketing.heroTag') || 'BARO OS 2.0 • INTRODUCING AGENTIC HOSPITALITY'}</span>
-                </div>
+            {/* Clay Headline with dramatic compression */}
+            <h1 className="text-4xl sm:text-6xl lg:text-7xl font-bold text-[#0c0d0e] tracking-tight leading-[1.08] max-w-4xl mx-auto">
+              {t('marketing.heroTitle1') || 'Manage Your Restaurant,'}{' '}
+              <span className="bg-[#84e7a5] px-3 py-1 rounded-2xl inline-block mt-2 sm:mt-0 shadow-xs">
+                {t('marketing.heroTitle2') || 'Not Paperwork'}
+              </span>
+            </h1>
 
-                {/* Main Headline */}
-                <h1 className="text-[34px] sm:text-[46px] lg:text-[56px] xl:text-[62px] font-semibold text-white tracking-[-1.2px] lg:tracking-[-2px] leading-[1.08] mb-5 font-sans">
-                  {t('marketing.heroTitle1') || 'Secure operations'} <br className="hidden sm:inline" />
-                  <span className="text-white/95">{t('marketing.heroTitle2') || 'without the hassles'}</span>
-                </h1>
+            {/* Subtitle */}
+            <p className="text-lg sm:text-xl text-[#55534e] font-normal leading-relaxed max-w-2xl mx-auto">
+              All-in-one POS, kitchen display, stock control, and <span className="text-[#0c0d0e] font-bold">100% receipt verification across all Ethiopian banks & wallets</span>.{' '}
+              <span className="text-[#0c0d0e] font-semibold">Simple, fast, and reliable.</span>
+            </p>
 
-                {/* Subtitle */}
-                <p className="text-[14px] sm:text-[16px] text-gray-400/90 font-normal leading-[1.6] max-w-lg mb-8">
-                  {t('marketing.heroDesc') || 'AI-powered hospitality management from $0.00 setup for the first year with full agentic oversight and 24/7 reliability.'} {t('marketing.heroAccent')}
-                </p>
-
-                {/* Interactive Search Input Box */}
-                <form 
-                  onSubmit={handleSearchSubmit}
-                  className="flex items-center bg-[#11141a]/95 border border-white/15 rounded-xl p-1.5 max-w-lg shadow-[0_15px_35px_rgba(0,0,0,0.6)] focus-within:border-emerald-500/60 focus-within:ring-2 focus-within:ring-emerald-500/20 transition-all backdrop-blur-md"
-                >
-                  <div className="pl-3.5 pr-2 text-gray-400">
-                    <Search className="w-4 h-4 text-emerald-400" />
-                  </div>
-                  <input 
-                    type="text" 
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Type the venue name you want..." 
-                    className="bg-transparent text-white placeholder:text-gray-500 text-[14px] w-full focus:outline-none px-1 py-2 sm:py-2.5 font-normal"
-                  />
-                  <button 
-                    type="submit"
-                    className="bg-white hover:bg-gray-100 text-[#06080a] font-semibold px-4 sm:px-6 py-2.5 rounded-lg text-[13px] whitespace-nowrap transition-all shadow-md active:scale-95 flex items-center gap-1.5"
-                  >
-                    <span>Search Venue</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  </button>
-                </form>
-
-              </div>
-
-              {/* Right Column: Glowing Emerald Light Leak & Matrix Data Stream */}
-              <div className="lg:col-span-5 absolute inset-0 lg:relative z-10 overflow-hidden pointer-events-none lg:pointer-events-auto flex items-center justify-center">
-                
-                {/* Left fade gradient for smooth blending */}
-                <div className="absolute inset-0 bg-gradient-to-r from-[#06080a] via-[#06080a]/85 lg:via-transparent to-transparent z-10" />
-                
-                {/* Glowing Light Bursts (The Green Data Stream Glow) */}
-                <div className="absolute right-[-15%] top-[15%] w-[350px] sm:w-[500px] lg:w-[600px] h-[350px] sm:h-[500px] lg:h-[600px] bg-gradient-to-tr from-emerald-500/40 via-teal-400/25 to-transparent rounded-full blur-[80px] lg:blur-[100px] animate-pulse duration-1000" />
-                <div className="absolute right-[10%] top-[30%] w-[200px] sm:w-[300px] h-[200px] sm:h-[300px] bg-gradient-to-r from-yellow-100/40 via-emerald-300/40 to-transparent rounded-full blur-[60px]" />
-                <div className="absolute right-0 bottom-0 w-[400px] h-[400px] bg-gradient-to-tl from-emerald-600/30 via-transparent to-transparent rounded-full blur-[90px]" />
-
-                {/* Vertical Laser / Ray Leak Effect */}
-                <div className="absolute inset-0 bg-[linear-gradient(115deg,_transparent_30%,_rgba(16,185,129,0.15)_45%,_rgba(52,211,153,0.25)_50%,_rgba(16,185,129,0.1)_55%,_transparent_70%)] opacity-80" />
-
-                {/* Animated Digital Matrix Code Columns */}
-                <div className="absolute inset-0 flex justify-end items-center opacity-75 select-none pr-6 sm:pr-10 gap-3 sm:gap-6 font-mono text-[10px] sm:text-[11px] overflow-hidden z-0">
-                  
-                  {/* Column 1 */}
-                  <div className="flex flex-col gap-2 text-emerald-400/35 animate-[translateY_25s_linear_infinite]">
-                    <div>01001001</div>
-                    <div className="text-emerald-200/95 font-bold drop-shadow-[0_0_8px_rgba(52,211,153,0.9)]">8820 1198</div>
-                    <div>0019 8472</div>
-                    <div>SYS_OK 200</div>
-                    <div>99.98% OPS</div>
-                    <div className="text-white font-semibold tracking-wider">ZERO CHAOS</div>
-                    <div>4819 0021</div>
-                    <div>11001010</div>
-                    <div>POS_ACTIVE</div>
-                    <div className="text-emerald-300 font-medium">8492 1102</div>
-                    <div>01100100</div>
-                    <div>7721 9901</div>
-                  </div>
-
-                  {/* Column 2 */}
-                  <div className="flex flex-col gap-2.5 text-emerald-500/30 font-light pt-14 animate-[translateY_20s_linear_infinite_reverse]">
-                    <div>4920 1102</div>
-                    <div>01101011</div>
-                    <div className="text-emerald-200 font-bold drop-shadow-[0_0_8px_rgba(52,211,153,0.8)]">REV $48,290</div>
-                    <div>9901 2231</div>
-                    <div>10100011</div>
-                    <div className="text-white/90 font-medium">AI OVERSIGHT</div>
-                    <div>3321 0019</div>
-                    <div>00110011</div>
-                    <div>TABLE_12_OK</div>
-                    <div>8821 4490</div>
-                    <div>11001101</div>
-                  </div>
-
-                  {/* Column 3 - Brightest Core */}
-                  <div className="flex flex-col gap-1.5 text-emerald-400/45 pt-6 hidden sm:flex">
-                    <div>00110100</div>
-                    <div className="text-yellow-200 font-bold drop-shadow-[0_0_10px_rgba(253,224,71,0.9)] text-[12px]">ZERO SETUP</div>
-                    <div>11001001</div>
-                    <div>8492 0012</div>
-                    <div className="text-emerald-100 font-bold tracking-wider">POS_LIVE_24/7</div>
-                    <div>01010101</div>
-                    <div>9920 1182</div>
-                    <div>00101010</div>
-                    <div>7482 9910</div>
-                    <div className="text-emerald-300">10110001</div>
-                  </div>
-
-                  {/* Column 4 */}
-                  <div className="flex flex-col gap-2 text-emerald-600/30 hidden lg:flex pt-24 animate-[translateY_30s_linear_infinite]">
-                    <div>11010010</div>
-                    <div>5541 0029</div>
-                    <div>01110011</div>
-                    <div>8829 1102</div>
-                    <div className="text-emerald-300 font-semibold">MATRIX_LIVE</div>
-                    <div>00110101</div>
-                    <div>9918 2201</div>
-                    <div>10101010</div>
-                  </div>
-                </div>
-
-              </div>
-
-            </div>
-
-            {/* Bottom Right Glass Partner Bar */}
-            <div className="absolute bottom-6 right-6 z-30 hidden md:flex items-center">
-              <div className="bg-[#11141a]/90 backdrop-blur-md border border-white/10 rounded-xl p-1.5 flex items-center gap-1 shadow-2xl">
-                <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-lg hover:bg-white/5 text-gray-300 text-[11px] font-mono tracking-wider transition-colors cursor-default">
-                  <div className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.8)]" />
-                  <span>BARO SPEED</span>
-                </div>
-                <div className="h-3 w-px bg-white/10" />
-                <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-lg hover:bg-white/5 text-gray-300 text-[11px] font-mono tracking-wider transition-colors cursor-default">
-                  <div className="w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_6px_rgba(34,211,238,0.8)]" />
-                  <span>AI OVERSIGHT</span>
-                </div>
-                <div className="h-3 w-px bg-white/10" />
-                <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-lg hover:bg-white/5 text-gray-300 text-[11px] font-mono tracking-wider transition-colors cursor-default">
-                  <div className="w-2 h-2 rounded-full bg-purple-400 shadow-[0_0_6px_rgba(192,132,252,0.8)]" />
-                  <span>ZERO CHAOS</span>
-                </div>
-              </div>
-            </div>
-
-          </div>
-        </section>
-
-        {/* Unified Card Grid Section */}
-
-        <section className="py-[64px] md:py-[120px] px-8 max-w-[1440px] mx-auto">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {cards.map((card, idx) => (
-              <div 
-                key={idx} 
-                className="bg-card border border-foreground/10 rounded-[6px] p-[32px] flex flex-col hover:border-foreground/40 transition-colors group cursor-default"
+            {/* Clay Playful Interactive Buttons */}
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-2">
+              <button 
+                onClick={() => navigate('/book-demo')}
+                className="clay-btn-primary text-base px-8 py-4 w-full sm:w-auto"
               >
-                <span className="font-mono text-[13px] text-foreground/50 uppercase mb-8 group-hover:text-[#0052ef] transition-colors">
-                  {card.tag}
-                </span>
-                <h3 className="text-[24px] font-normal leading-[1.24] tracking-[-0.24px] text-foreground mb-4">
-                  {card.title}
-                </h3>
-                <p className="text-[15px] leading-[1.5] text-foreground/70">
-                  {card.desc}
-                </p>
+                <span>{t('marketing.deltaCta') || 'Book a Free Demo'}</span>
+                <ArrowRight className="w-5 h-5" />
+              </button>
+              <button 
+                onClick={() => navigate('/features')}
+                className="clay-btn-outline text-base px-8 py-4 w-full sm:w-auto"
+              >
+                <span>{t('marketing.ctaProtocol') || 'See How It Works'}</span>
+              </button>
+            </div>
+
+            {/* Trust Pills with Dashed Border Container */}
+            <div className="p-4 rounded-2xl border border-dashed border-[#dad4c8] bg-white/60 max-w-3xl mx-auto grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="flex items-center justify-center gap-2 text-sm font-semibold text-[#0c0d0e]">
+                <CheckCircle2 className="w-4 h-4 text-[#078a52] shrink-0" />
+                <span>All-in-One POS & KDS</span>
               </div>
-            ))}
+              <div className="flex items-center justify-center gap-2 text-sm font-semibold text-[#0c0d0e]">
+                <ShieldCheck className="w-4 h-4 text-[#078a52] shrink-0" />
+                <span>All 9 Banks & Wallets</span>
+              </div>
+              <div className="flex items-center justify-center gap-2 text-sm font-semibold text-[#0c0d0e]">
+                <TrendingUp className="w-4 h-4 text-[#078a52] shrink-0" />
+                <span>24/7 Reliability</span>
+              </div>
+            </div>
           </div>
         </section>
 
-        {/* Bottom CTA Section */}
-        <section className="py-[120px] px-8 max-w-[1440px] mx-auto text-center border-t border-foreground/10">
-          <h2 className="text-[48px] md:text-[72px] leading-[1.05] tracking-[-1.68px] md:tracking-[-2.88px] font-normal text-foreground mb-8">
-            {t('marketing.deltaTitle1')} {t('marketing.deltaTitle2')}
-          </h2>
-          <p className="text-[18px] text-foreground/70 leading-[1.5] max-w-2xl mx-auto mb-10">
-            {t('marketing.deltaDesc')}
-          </p>
-          <button 
-            onClick={() => navigate('/book-demo')}
-            className="bg-[#f36458] text-white hover:bg-[#0052ef] px-8 py-4 rounded-[99999px] font-normal text-[16px] transition-colors"
-          >
-            {t('marketing.deltaCta')}
-          </button>
+        {/* CLAY NAMED SWATCH SECTION 1 — MATCHA GREEN STORY (ALL-BANK RECEIPT VERIFICATION) */}
+        <section className="bg-[#84e7a5] text-[#02492a] py-20 border-y border-[#078a52]/20">
+          <div className="max-w-7xl mx-auto px-6">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
+              
+              <div className="lg:col-span-6 space-y-5">
+                <span className="font-mono text-xs font-bold uppercase tracking-widest bg-[#078a52] text-white px-3 py-1 rounded-full">
+                  SWATCH STORY • MATCHA
+                </span>
+                
+                <h2 className="text-3xl sm:text-5xl font-extrabold text-[#02492a] tracking-tight leading-tight">
+                  {t('marketing.fraudTitle') || 'Stop Screenshot Payment Fraud Across ALL Ethiopian Banks & Wallets'}
+                </h2>
+
+                <p className="text-base sm:text-lg text-[#02492a]/90 font-normal leading-relaxed">
+                  {t('marketing.fraudDesc') || 'Our verification engine checks every receipt presented by customers before any order leaves your counter. Whether customers pay via bank transfer or mobile wallet, Baro OS instantly verifies genuine transactions and catches fake receipts.'}
+                </p>
+
+                <div className="p-4 rounded-2xl bg-white/40 border border-[#078a52]/30 text-sm font-semibold text-[#02492a]">
+                  {t('marketing.fraudBanner') || '⚡ 100% Automatic Protection — Zero Fake Receipts. Zero Revenue Loss.'}
+                </div>
+              </div>
+
+              {/* ALL 9 BANKS & WALLETS VERIFICATION CARD */}
+              <div className="lg:col-span-6">
+                <div className="bg-white text-[#0c0d0e] rounded-[32px] p-7 border-2 border-[#02492a] shadow-[0_8px_0px_#02492a] hover:-translate-y-2 transition-transform duration-300">
+                  <div className="flex items-center justify-between mb-4 pb-3 border-b border-[#dad4c8]">
+                    <span className="font-mono text-xs font-bold uppercase text-[#078a52] flex items-center gap-2">
+                      <ShieldCheck className="w-4 h-4" /> {t('marketing.fraudCardBadge') || 'ALL 9 PAYMENT PROVIDERS VERIFIED'}
+                    </span>
+                    <span className="px-2.5 py-0.5 rounded-full bg-[#84e7a5] text-[#02492a] font-mono text-[10px] font-bold">
+                      {t('marketing.fraudCardTag') || 'LIVE AUDIT ENGINE'}
+                    </span>
+                  </div>
+
+                  <h3 className="text-xl sm:text-2xl font-bold mb-3 text-[#0c0d0e]">
+                    {t('marketing.fraudCardTitle') || 'Universal Ethiopian Receipt Verifier'}
+                  </h3>
+
+                  <p className="text-xs sm:text-sm text-[#55534e] mb-5 leading-relaxed">
+                    {t('marketing.fraudCardDesc') || 'We verify transaction IDs & reference numbers across every major bank and mobile money platform in Ethiopia:'}
+                  </p>
+
+                  {/* Complete 9-Bank Brand Badge Matrix */}
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 mb-6">
+                    {ETHIOPIAN_PAYMENT_CHANNELS.map((chan) => (
+                      <div
+                        key={chan.name}
+                        className={`${chan.bg} ${chan.text} px-3 py-2.5 rounded-xl flex items-center justify-between shadow-xs border border-black/10`}
+                      >
+                        <div className="flex flex-col">
+                          <span className="text-xs font-bold leading-tight">{chan.short}</span>
+                          <span className="text-[9px] opacity-80 leading-tight">{chan.name}</span>
+                        </div>
+                        <span className="text-xs font-black ml-1.5">✓</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="p-3.5 rounded-xl bg-[#faf9f7] border border-[#dad4c8] flex items-center justify-between font-mono text-xs">
+                    <span className="text-[#55534e]">{t('marketing.fraudCardAudit') || 'Cross-Bank Verification Audit:'}</span>
+                    <span className="font-bold text-[#078a52]">{t('marketing.fraudCardStatus') || '✓ 100% PROTECTED'}</span>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </section>
+
+        {/* CORE VALUE CARDS — ARTISANAL CLAY CARDS GRID */}
+        <section className="py-24 px-6 max-w-7xl mx-auto">
+          <div className="text-center max-w-3xl mx-auto mb-16">
+            <span className="font-mono text-xs font-bold uppercase tracking-widest text-[#078a52] block mb-3">
+              CRAFTED FOR ETHIOPIAN RESTAURANTS
+            </span>
+            <h2 className="text-3xl sm:text-5xl font-bold text-[#0c0d0e] tracking-tight mb-4">
+              {t('marketing.streamTitle1') || 'Everything'} {t('marketing.streamTitle2') || 'Connected'}
+            </h2>
+            <p className="text-lg text-[#55534e]">
+              {t('marketing.showcaseDesc') || 'Every order, every item, every staff action — one clear view. No more guessing what is happening on the floor.'}
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {cards.map((card, idx) => {
+              const IconComp = card.icon;
+              return (
+                <div 
+                  key={idx} 
+                  className="clay-card p-8 flex flex-col justify-between"
+                >
+                  <div>
+                    <div className="flex items-center justify-between mb-6">
+                      <span className={`font-mono text-xs font-bold px-3 py-1 rounded-full uppercase ${card.swatchClass}`}>
+                        {card.tag}
+                      </span>
+                      <div className="w-11 h-11 rounded-2xl bg-[#faf9f7] border border-[#dad4c8] flex items-center justify-center text-[#0c0d0e]">
+                        <IconComp className="w-5 h-5" />
+                      </div>
+                    </div>
+                    <h3 className="text-2xl font-bold text-[#0c0d0e] mb-3">
+                      {card.title}
+                    </h3>
+                    <p className="text-sm leading-relaxed text-[#55534e]">
+                      {card.desc}
+                    </p>
+                  </div>
+                  
+                  <div className="pt-6 mt-6 border-t border-dashed border-[#dad4c8] flex items-center justify-between text-xs font-mono text-[#55534e]">
+                    <span>Baro OS Protocol</span>
+                    <span className="font-bold text-[#078a52]">READY</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+
+        {/* CLAY NAMED SWATCH SECTION 2 — LEMON GOLD STORY (GROWTH & DEMO) */}
+        <section className="bg-[#fbbd41] text-[#0c0d0e] py-20 border-t border-[#dad4c8]">
+          <div className="max-w-4xl mx-auto px-6 text-center space-y-6">
+            <span className="font-mono text-xs font-bold uppercase tracking-widest bg-[#0c0d0e] text-white px-3 py-1 rounded-full inline-block">
+              SWATCH STORY • LEMON GOLD
+            </span>
+            <h2 className="text-4xl sm:text-6xl font-bold tracking-tight">
+              {t('marketing.deltaTitle1') || 'Get Started'} {t('marketing.deltaTitle2') || 'With Baro OS'}
+            </h2>
+            <p className="text-lg text-[#0c0d0e]/80 max-w-2xl mx-auto leading-relaxed">
+              {t('marketing.deltaDesc') || 'Join forward-thinking Ethiopian restaurants running smoother and safer with Baro OS.'}
+            </p>
+            <div className="pt-4">
+              <button 
+                onClick={() => navigate('/book-demo')}
+                className="clay-btn-primary text-lg px-10 py-5"
+              >
+                <span>{t('marketing.deltaCta') || 'Book a Free Demo'}</span>
+                <ArrowRight className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
         </section>
       </div>
     </MarketingLayout>

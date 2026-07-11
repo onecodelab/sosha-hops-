@@ -1,9 +1,7 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { Language } from '../lib/translations';
 import { Globe, Check } from 'lucide-react';
-import { cn } from './ui';
 
 export const LanguageSwitcher: React.FC = () => {
   const { language, setLanguage } = useLanguage();
@@ -29,37 +27,43 @@ export const LanguageSwitcher: React.FC = () => {
   const currentLang = languages.find(l => l.code === language);
 
   return (
-    <div className="relative" ref={dropdownRef}>
+    <div className="relative inline-block" ref={dropdownRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 transition-colors text-sm text-gray-300"
+        className="flex items-center gap-2 px-3.5 py-2 rounded-full bg-white border border-[#dad4c8] hover:border-[#0c0d0e] transition-all text-sm font-semibold text-[#0c0d0e] shadow-xs"
+        aria-label="Select Language"
       >
-        <Globe className="w-4 h-4 text-primary" />
-        <span className="hidden md:inline font-medium">{currentLang?.native}</span>
-        <span className="md:hidden font-medium uppercase">{language}</span>
+        <Globe className="w-4 h-4 text-[#078a52]" />
+        <span>{currentLang?.native}</span>
+        <span className="text-xs uppercase text-[#55534e] font-mono">({language})</span>
       </button>
 
       {isOpen && (
-        <div className="absolute top-full right-0 mt-2 w-48 bg-[#1A1A1A] border border-gray-800 rounded-xl shadow-xl overflow-hidden z-[60] animate-in fade-in zoom-in-95 duration-100">
-          <div className="p-1">
-            {languages.map((lang) => (
-              <button
-                key={lang.code}
-                onClick={() => { setLanguage(lang.code); setIsOpen(false); }}
-                className={cn(
-                  "w-full text-left px-3 py-2 text-sm rounded-lg flex items-center justify-between transition-colors",
-                  language === lang.code
-                    ? "bg-primary/10 text-primary font-bold"
-                    : "text-gray-400 hover:bg-white/5 hover:text-white"
-                )}
-              >
-                <div className="flex flex-col">
-                  <span>{lang.native}</span>
-                  <span className="text-[10px] text-gray-600 font-normal">{lang.label}</span>
-                </div>
-                {language === lang.code && <Check className="w-3 h-3" />}
-              </button>
-            ))}
+        <div className="absolute top-full left-0 sm:left-auto sm:right-0 mt-2 w-52 bg-white border-2 border-[#0c0d0e] rounded-2xl shadow-[-4px_4px_0px_#0c0d0e] overflow-hidden z-[100] animate-in fade-in zoom-in-95 duration-150">
+          <div className="p-1.5 space-y-1">
+            {languages.map((lang) => {
+              const isSelected = language === lang.code;
+              return (
+                <button
+                  key={lang.code}
+                  onClick={() => {
+                    setLanguage(lang.code);
+                    setIsOpen(false);
+                  }}
+                  className={`w-full text-left px-3.5 py-2.5 rounded-xl flex items-center justify-between transition-colors ${
+                    isSelected
+                      ? "bg-[#84e7a5]/30 text-[#02492a] font-bold"
+                      : "text-[#0c0d0e] hover:bg-[#faf9f7]"
+                  }`}
+                >
+                  <div className="flex flex-col">
+                    <span className="text-sm font-bold">{lang.native}</span>
+                    <span className="text-xs text-[#55534e] font-normal">{lang.label}</span>
+                  </div>
+                  {isSelected && <Check className="w-4 h-4 text-[#078a52]" />}
+                </button>
+              );
+            })}
           </div>
         </div>
       )}

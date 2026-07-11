@@ -315,7 +315,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, setIsCollapsed, h
                     />
                     <NavItem
                         icon={ClipboardList}
-                        label="Transactions"
+                        label={t('nav.transactions') || "Transactions"}
                         path="/app/menu-transactions"
                         allowedRoles={['owner', 'admin', 'manager']}
                     />
@@ -374,7 +374,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, setIsCollapsed, h
                     )}
                 >
                     <LogOut className="w-5 h-5 shrink-0" />
-                    {!isCollapsed && <span className="text-[13px] font-medium tracking-tight">Logout</span>}
+                    {!isCollapsed && <span className="text-[13px] font-medium tracking-tight">{t('nav.logout') || "Sign Out"}</span>}
                 </button>
                 
                 {!isCollapsed && (
