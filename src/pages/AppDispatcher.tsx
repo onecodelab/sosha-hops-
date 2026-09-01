@@ -89,8 +89,6 @@ const AppDispatcher: React.FC = () => {
             case 'manager': navigate('/app/manager', { replace: true }); break;
             case 'waiter': navigate('/app/waiter', { replace: true }); break;
             case 'kitchen': navigate('/app/kitchen', { replace: true }); break;
-            case 'supplier': navigate('/app/supplier/dashboard', { replace: true }); break;
-            case 'driver': navigate('/app/driver/dashboard', { replace: true }); break;
             default:
                 setGuardState('error');
                 setErrorInfo({

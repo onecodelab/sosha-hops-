@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { showToast } from '@/components/ui';
 
 export interface VerificationJob {
     id: string;
@@ -333,7 +334,45 @@ export function usePaymentVerification() {
             setJob(jobResult);
 
             if (!isSuccess) {
+                const foundAmount = data?.amount ?? data?.amount_found ?? data?.result_data?.amount;
+                const expected = params.expected_amount;
+                const hasAmount = foundAmount !== undefined && foundAmount !== null && !isNaN(Number(foundAmount));
+
+                if (hasAmount && Number(foundAmount) < expected) {
+                    const shortage = (expected - Number(foundAmount)).toFixed(2);
+                    const bannerHtml = `
+                        <div class="space-y-1.5">
+                            <div class="flex items-center justify-between border-b border-white/20 pb-1 font-black text-xs uppercase tracking-wider">
+                                <span>⚠️ የክፍያ ጉድለት / PAYMENT SHORTAGE</span>
+                            </div>
+                            <div class="text-xs space-y-0.5">
+                                <div>ደረሰኝ ድምር (Bill Total): <span class="font-mono font-bold">${expected.toFixed(2)} ETB</span></div>
+                                <div>የተከፈለው (Paid in Bank): <span class="font-mono font-black text-yellow-300">${Number(foundAmount).toFixed(2)} ETB</span></div>
+                                <div class="text-red-200 font-bold">የቀረው ያልተከፈለ (Missing): <span class="font-mono text-white underline">${shortage} ETB</span></div>
+                            </div>
+                            <div class="text-[11px] opacity-90 italic">
+                                የተከፈለው መጠን ከትዕዛዙ ያንሳል! እባክዎ የቀረውን ${shortage} ብር ያስከፍሉ። / Amount paid is less than bill total. Please collect remaining balance.
+                            </div>
+                        </div>
+                    `;
+                    showToast(bannerHtml, 'error', 10000);
+                } else {
+                    const failReason = data?.error || data?.message || 'Transaction reference not found or invalid';
+                    const bannerHtml = `
+                        <div class="space-y-1">
+                            <div class="font-black text-xs uppercase tracking-wider border-b border-white/20 pb-1">
+                                ❌ ማረጋገጥ አልተቻለም / VERIFICATION FAILED
+                            </div>
+                            <div class="text-xs font-medium">${failReason}</div>
+                            <div class="text-[11px] opacity-80">እባክዎ የባንክ ማጣቀሻ ቁጥሩን (Reference Number) ትክክለኛነት ከደንበኛው ጋር ያረጋግጡ። / Please verify transaction reference with customer.</div>
+                        </div>
+                    `;
+                    showToast(bannerHtml, 'error', 10000);
+                }
+
                 setError(data?.error || data?.message || 'Transaction not found or amount mismatch');
+            } else {
+                showToast(`የክፍያ ማረጋገጫ ተሳክቷል! ${data?.amount || params.expected_amount} ETB Verified ✓`, 'success', 4000);
             }
 
         } catch (err: any) {

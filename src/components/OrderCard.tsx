@@ -2,8 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { Order } from '@/types';
 import { cn, Badge, Button, showToast } from './ui';
-import { useAuth } from '@/contexts/AuthContext';
-import { Clock, MessageSquare, PlusCircle, CheckCircle2, Loader2, Flag, Receipt, FileText, User, Zap, Truck } from 'lucide-react';
+import { Clock, MessageSquare, PlusCircle, CheckCircle2, Loader2, Flag, Receipt, FileText, User, Zap } from 'lucide-react';
 
 import { orderService } from '../services/orderService';
 import { BaroLeafyCard, BaroKitchenCard, BaroBillingCard } from './ElectricCard';
@@ -194,17 +193,14 @@ export const OrderCard: React.FC<OrderCardProps> = ({
 
       {/* Buttons */}
       <div className="flex flex-col gap-1.5 mt-auto pt-1">
-        {/* Kitchen Controls - Glossy Buttons */}
         {isKitchen && order.status === 'pending' && (
-          <Button size="sm" onClick={() => onAction?.('accepted', order.id)} className="w-full bg-primary text-black h-7 rounded-lg font-black uppercase text-[9px] tracking-widest shadow-[0_0_15px_rgba(251,191,36,0.2)] hover:bg-white hover:scale-[1.02] transition-all">Accept Order</Button>
+          <div className="flex gap-1.5 w-full">
+            <Button size="sm" onClick={() => onAction?.('accepted', order.id)} className="flex-1 bg-primary text-black h-7 rounded-lg font-black uppercase text-[9px] tracking-widest shadow-[0_0_15px_rgba(251,191,36,0.2)] hover:bg-white hover:scale-[1.02] transition-all">Accept Order</Button>
+            <Button size="sm" variant="outline" onClick={() => onAction?.('cancelled', order.id)} className="px-2.5 h-7 rounded-lg text-red-400 border-red-500/30 hover:bg-red-500/15 font-bold uppercase text-[9px]">Reject</Button>
+          </div>
         )}
         {isKitchen && (order.status === 'accepted' || order.status === 'preparing') && (
           <Button size="sm" onClick={() => onAction?.('ready', order.id)} className="w-full bg-green-500 text-black h-7 rounded-lg font-black uppercase text-[9px] tracking-widest shadow-[0_0_15px_rgba(34,197,94,0.2)] hover:bg-green-400 hover:scale-[1.02] transition-all">Mark Prepared</Button>
-        )}
-        {isKitchen && order.status === 'ready' && (
-          <Button size="sm" onClick={() => onAction?.('dispatch', order.id)} className="w-full bg-emerald-600 text-white h-8 rounded-lg font-black uppercase text-[10px] tracking-widest shadow-[0_0_15px_rgba(16,185,129,0.2)] hover:bg-emerald-500 hover:scale-[1.02] transition-all">
-            <Truck className="w-4 h-4 mr-2" /> Dispatch
-          </Button>
         )}
 
         {/* Waiter Actions - Same Style */}

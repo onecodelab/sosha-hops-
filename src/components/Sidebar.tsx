@@ -340,12 +340,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, setIsCollapsed, h
                         path="/app/admin/tips"
                         allowedRoles={['owner', 'admin']}
                     />
-                    <NavItem
-                        icon={Building}
-                        label="Logistics Hub"
-                        path="/app/supplier/dashboard"
-                        allowedRoles={['supplier']}
-                    />
                 </NavSection>
 
                 <RoleGuard allowedRoles={['super_admin']} hideOnly>

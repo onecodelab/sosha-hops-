@@ -1088,6 +1088,13 @@ const CustomerChatPage: React.FC = () => {
             const subtotal = cart.reduce((sum, item) => sum + (item.menuItem.price * item.quantity), 0);
             const totalAmount = subtotal * 1.15;
 
+            // Check if this device previously closed/paid their session
+            if (sessionStorage.getItem(`baro_table_session_closed_${tableId}`) || localStorage.getItem(`baro_table_session_closed_${tableId}`)) {
+                showToast('የቀድሞ ትዕዛዝዎ ተጠናቋል። አዲስ ለማዘዝ እባክዎ ጠረጴዛው ላይ ያለውን QR ኮድ ይቃኙ። / Your previous dining session has ended. Please scan the physical QR code at your table.', 'error', 10000);
+                setIsPlacingOrder(false);
+                return;
+            }
+
             // PRE-CHECK: Look for any existing active order on this table
             // This prevents the unique_active_order_per_table constraint violation when adding more items
             const { data: existingActiveOrder } = await supabase
@@ -1099,7 +1106,15 @@ const CustomerChatPage: React.FC = () => {
                 .limit(1)
                 .maybeSingle();
 
+            const myStoredOrderId = localStorage.getItem(`baro_active_order_${tableId}`) || sessionStorage.getItem(`baro_active_order_${tableId}`);
+
             if (existingActiveOrder) {
+                // If this device belonged to an older, different order, block appending to a stranger's table
+                if (myStoredOrderId && myStoredOrderId !== existingActiveOrder.id) {
+                    showToast('ይህ ጠረጴዛ በአዲስ ደንበኞች ተይዟል። አዲስ ትዕዛዝ ለመጀመር እባክዎ የጠረጴዛውን QR ኮድ ይቃኙ። / Table occupied by new party. Please scan the table QR code to start a new order.', 'error', 10000);
+                    setIsPlacingOrder(false);
+                    return;
+                }
                 console.log(`[CustomerChat] Found existing active order ${existingActiveOrder.id}. Appending new items.`);
                 const newTotal = Number(existingActiveOrder.total_amount || 0) + totalAmount;
                 const newSubtotal = Number(existingActiveOrder.subtotal_amount || 0) + subtotal;
@@ -1131,6 +1146,7 @@ const CustomerChatPage: React.FC = () => {
                 };
                 setActiveOrder(updatedOrder);
                 setLatestOrderId(updatedOrder.id);
+                localStorage.setItem(`baro_active_order_${tableId}`, updatedOrder.id);
                 setSessionCompleted(false);
                 setCart([]);
                 setIsCartOpen(false);
@@ -1170,6 +1186,7 @@ const CustomerChatPage: React.FC = () => {
             };
             setActiveOrder(optimisticOrder);
             setLatestOrderId(optimisticOrder.id);
+            localStorage.setItem(`baro_active_order_${tableId}`, optimisticOrder.id);
             setSessionCompleted(false);
             setCart([]);
             setIsCartOpen(false);
@@ -1238,6 +1255,17 @@ const CustomerChatPage: React.FC = () => {
                 if (currentOrgId) setActiveOrgId(currentOrgId);
 
                 const sessionTokenKey = `baro_table_session_${tableId}`;
+                const sessionClosedKey = `baro_table_session_closed_${tableId}`;
+                
+                // If session was previously completed and user returns without scanning fresh QR
+                if (sessionStorage.getItem(sessionClosedKey) && !urlToken) {
+                    sessionStorage.removeItem(sessionTokenKey);
+                    setIsVerified(false);
+                    setIsHistoryLoading(false);
+                    setIsVerifying(false);
+                    return;
+                }
+
                 let activeToken = (sessionStorage.getItem(sessionTokenKey) || '').replace(/[\r\n\s]+/g, '');
 
                 if (activeToken && isTokenExpired(activeToken)) {
@@ -1248,6 +1276,8 @@ const CustomerChatPage: React.FC = () => {
                 if (!activeToken) {
                     if (urlToken) {
                         try {
+                            // Fresh QR scan resets any closed state
+                            sessionStorage.removeItem(sessionClosedKey);
                             const { data: sessionToken, error: rpcErr } = await supabase.rpc('get_table_session_token', {
                                 p_table_id: tableId,
                                 p_qr_token: urlToken
@@ -1435,6 +1465,9 @@ const CustomerChatPage: React.FC = () => {
                         onPaymentSubmitted={() => {
                             setSessionCompleted(true);
                             setRatingSubmitted(false);
+                            if (tableId) {
+                                sessionStorage.setItem(`baro_table_session_closed_${tableId}`, 'true');
+                            }
                         }}
                     />
                 )}

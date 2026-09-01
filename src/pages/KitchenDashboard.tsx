@@ -213,9 +213,6 @@ const KitchenDashboard: React.FC = () => {
          if (action === 'accepted' || action === 'ready') {
             await orderService.updateStatus(orderId, action as any);
             showToast(`Order marked as ${action}`, "success");
-         } else if (action === 'dispatch') {
-            await orderService.dispatchForDelivery(orderId);
-            showToast(`Order dispatched for delivery`, "success");
          }
          await fetchOrders();
       } catch (err: any) {

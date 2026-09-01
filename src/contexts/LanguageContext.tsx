@@ -18,12 +18,14 @@ const LanguageContext = createContext<LanguageContextType>({
 export const useLanguage = () => useContext(LanguageContext);
 
 export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [language, setLanguageState] = useState<Language>('en');
+  const [language, setLanguageState] = useState<Language>('am');
 
   useEffect(() => {
     const saved = localStorage.getItem('baro-lang') as Language;
     if (saved && ['en', 'am', 'ar'].includes(saved)) {
       setLanguageState(saved);
+    } else {
+      setLanguageState('am');
     }
   }, []);
 

@@ -48,8 +48,6 @@ const Settings = lazy(() => import('./pages/Settings'));
 const WaiterTips = lazy(() => import('./pages/WaiterTips'));
 const AdminTipsAudit = lazy(() => import('./pages/AdminTipsAudit'));
 const BaroAdminDashboard = lazy(() => import('./pages/BaroAdminDashboard'));
-const SupplierDashboard = lazy(() => import('./pages/SupplierDashboard'));
-const DriverDashboard = lazy(() => import('./pages/DriverDashboard'));
 
 import { LoadingSpinner } from './components/LoadingSpinner';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -237,18 +235,6 @@ const App: React.FC = () => {
                       <Route path="baro-admin" element={
                         <ProtectedRoute allowedRoles={['super_admin']}>
                           <BaroAdminDashboard />
-                        </ProtectedRoute>
-                      } />
-
-                      <Route path="supplier/dashboard" element={
-                        <ProtectedRoute allowedRoles={['supplier']}>
-                          <SupplierDashboard />
-                        </ProtectedRoute>
-                      } />
-
-                      <Route path="driver/dashboard" element={
-                        <ProtectedRoute allowedRoles={['driver']}>
-                          <DriverDashboard />
                         </ProtectedRoute>
                       } />
                     </Route>

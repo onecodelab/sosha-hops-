@@ -162,6 +162,16 @@ const WaiterDashboard: React.FC = () => {
     }
   };
 
+  const handleRejectOrder = async (orderId: string) => {
+    try {
+      await orderService.updateStatus(orderId, 'cancelled');
+      showToast(isAm ? "ትዕዛዙ ተሰርዟል (ተወግዷል)" : "Order rejected and cleared", "warning");
+      refreshAll();
+    } catch (err: any) {
+      showToast("Reject failed: " + err.message, "error");
+    }
+  };
+
   const isLoading = ordersLoading || isSyncingTables;
 
   useLayoutConfig({
@@ -377,21 +387,31 @@ const WaiterDashboard: React.FC = () => {
                       </span>
                     </div>
 
-                    {/* Bottom Row: Unmistakable Full-Width Action Button */}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (order.table_id) handleInstantClaim(order.id, order.table_id);
-                        else {
-                          setSelectedChatOrder(order);
-                          setIsClaimModalOpen(true);
-                        }
-                      }}
-                      className="mt-3 w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-yellow-400 to-amber-400 hover:from-yellow-300 hover:to-amber-300 active:scale-95 text-black font-black text-xs sm:text-sm uppercase tracking-wider shadow-[0_0_15px_rgba(250,204,21,0.4)] flex items-center justify-center gap-1.5 transition-all cursor-pointer border border-yellow-200"
-                    >
-                      <Zap className="w-4 h-4 fill-black text-black animate-bounce shrink-0" />
-                      <span>{isAm ? "ትዕዛዙን ተቀበል" : "CLAIM ORDER"}</span>
-                    </button>
+                    {/* Bottom Row: Claim & Reject Action Buttons */}
+                    <div className="mt-3 flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (order.table_id) handleInstantClaim(order.id, order.table_id);
+                          else {
+                            setSelectedChatOrder(order);
+                            setIsClaimModalOpen(true);
+                          }
+                        }}
+                        className="flex-1 py-2.5 px-3 rounded-xl bg-gradient-to-r from-yellow-400 to-amber-400 hover:from-yellow-300 hover:to-amber-300 active:scale-95 text-black font-black text-xs sm:text-sm uppercase tracking-wider shadow-[0_0_15px_rgba(250,204,21,0.4)] flex items-center justify-center gap-1.5 transition-all cursor-pointer border border-yellow-200"
+                      >
+                        <Zap className="w-4 h-4 fill-black text-black animate-bounce shrink-0" />
+                        <span>{isAm ? "ተቀበል" : "CLAIM"}</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleRejectOrder(order.id)}
+                        className="py-2.5 px-3 rounded-xl bg-red-500/15 hover:bg-red-500/25 active:scale-95 text-red-400 hover:text-red-300 border border-red-500/30 font-black text-xs sm:text-sm uppercase tracking-wider transition-all cursor-pointer shrink-0 flex items-center gap-1"
+                        title={isAm ? "ትዕዛዙን ሰርዝ/አስወግድ" : "Reject/Decline Order"}
+                      >
+                        <span>{isAm ? "ሰርዝ ✕" : "REJECT ✕"}</span>
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>

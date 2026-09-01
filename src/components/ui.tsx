@@ -212,28 +212,41 @@ export const Dialog: React.FC<DialogProps> = ({ isOpen, onClose, title, children
 };
 
 // --- Toast (Simplified) ---
-export const ToastContainer = () => <div id="toast-container" className="fixed top-4 right-4 z-[110] flex flex-col gap-2 pointer-events-none" />;
+export const ToastContainer = () => <div id="toast-container" className="fixed top-4 right-4 z-[9999] flex flex-col gap-2.5 pointer-events-none max-w-[92vw] sm:max-w-md" />;
 
-export const showToast = (message: string, type: 'success' | 'error' | 'warning' = 'success') => {
+export const showToast = (
+  message: string, 
+  type: 'success' | 'error' | 'warning' | 'info' = 'success',
+  duration: number = 4000
+) => {
   const container = document.getElementById('toast-container');
   if (!container) return;
 
   const toast = document.createElement('div');
 
-  let bgClass = 'bg-green-600';
-  if (type === 'error') bgClass = 'bg-red-600';
-  if (type === 'warning') bgClass = 'bg-yellow-600';
+  let bgClass = 'bg-emerald-600 border-emerald-400/30';
+  if (type === 'error') bgClass = 'bg-red-600 border-red-400/40 shadow-[0_0_30px_rgba(220,38,38,0.4)]';
+  if (type === 'warning') bgClass = 'bg-amber-600 border-amber-400/40 shadow-[0_0_30px_rgba(217,119,6,0.4)]';
+  if (type === 'info') bgClass = 'bg-sky-600 border-sky-400/40';
 
-  toast.className = `pointer-events-auto flex items-center w-full max-w-xs p-4 rounded-xl shadow-2xl text-white ${bgClass} animate-in slide-in-from-right fade-in duration-300 mb-2 border border-primary/20 backdrop-blur-md`;
+  toast.className = `pointer-events-auto flex items-start justify-between gap-3 w-full p-4 rounded-2xl shadow-2xl text-white ${bgClass} animate-in slide-in-from-right fade-in duration-300 mb-2 border backdrop-blur-xl transition-all`;
 
   toast.innerHTML = `
-    <div class="text-sm font-bold tracking-wide">${message}</div>
+    <div class="text-xs sm:text-sm font-semibold tracking-wide w-full leading-relaxed">${message}</div>
+    <button type="button" class="shrink-0 text-white/70 hover:text-white text-base leading-none p-1 rounded-lg hover:bg-white/10 transition-all cursor-pointer" aria-label="Close">✕</button>
   `;
+
+  const closeBtn = toast.querySelector('button');
+  const removeToast = () => {
+    toast.classList.add('opacity-0', 'translate-x-full');
+    setTimeout(() => toast.remove(), 250);
+  };
+
+  if (closeBtn) {
+    closeBtn.addEventListener('click', removeToast);
+  }
 
   container.appendChild(toast);
 
-  setTimeout(() => {
-    toast.classList.add('fade-out', 'slide-out-to-right');
-    setTimeout(() => toast.remove(), 300);
-  }, 4000);
+  setTimeout(removeToast, duration);
 };
