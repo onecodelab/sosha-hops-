@@ -409,12 +409,10 @@ export const BillModal: React.FC<BillModalProps> = ({
           });
         }
       } else {
-        // Validation Failed
-        showToast(data.error || "Validation Failed", "error");
+        // Validation Failed (detailed banner already shown by usePaymentVerification)
         setIsVerified(false);
       }
     } else if (job.status === 'failed') {
-      showToast(job.last_error || "Verification Service Failed", "error");
       setIsVerified(false);
     }
   }, [job]);

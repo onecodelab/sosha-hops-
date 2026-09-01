@@ -357,14 +357,18 @@ export function usePaymentVerification() {
                     `;
                     showToast(bannerHtml, 'error', 10000);
                 } else {
-                    const failReason = data?.error || data?.message || 'Transaction reference not found or invalid';
+                    let rawMsg = (data?.error || data?.message || '').trim();
+                    let failReason = rawMsg;
+                    if (!rawMsg || rawMsg.toLowerCase() === 'verification status.' || rawMsg.toLowerCase() === 'verification status') {
+                        failReason = 'የባንክ ዝውውሩ አልተገኘም (ትክክለኛ ያልሆነ ማጣቀሻ ቁጥር ወይም የተሳሳተ የሂሳብ ቁጥር) / Transaction reference not found or receiver account mismatch.';
+                    }
                     const bannerHtml = `
-                        <div class="space-y-1">
-                            <div class="font-black text-xs uppercase tracking-wider border-b border-white/20 pb-1">
-                                ❌ ማረጋገጥ አልተቻለም / VERIFICATION FAILED
+                        <div class="space-y-1.5">
+                            <div class="font-black text-xs uppercase tracking-wider border-b border-white/20 pb-1 flex items-center justify-between">
+                                <span>❌ ማረጋገጥ አልተቻለም / VERIFICATION FAILED</span>
                             </div>
-                            <div class="text-xs font-medium">${failReason}</div>
-                            <div class="text-[11px] opacity-80">እባክዎ የባንክ ማጣቀሻ ቁጥሩን (Reference Number) ትክክለኛነት ከደንበኛው ጋር ያረጋግጡ። / Please verify transaction reference with customer.</div>
+                            <div class="text-xs font-semibold leading-relaxed">${failReason}</div>
+                            <div class="text-[11px] opacity-85">እባክዎ የባንክ ማጣቀሻ ቁጥሩን (Reference Number) እና የተቀባዩን ሂሳብ ትክክለኛነት ከደንበኛው ጋር ያረጋግጡ። / Please verify transaction reference and receiver account with customer.</div>
                         </div>
                     `;
                     showToast(bannerHtml, 'error', 10000);
