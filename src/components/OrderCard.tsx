@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { Order } from '@/types';
 import { cn, Badge, Button, showToast } from './ui';
+import { useAuth } from '@/contexts/AuthContext';
 import { Clock, MessageSquare, PlusCircle, CheckCircle2, Loader2, Flag, Receipt, FileText, User, Zap } from 'lucide-react';
 
 import { orderService } from '../services/orderService';
